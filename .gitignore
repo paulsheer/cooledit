@@ -11,4 +11,9 @@ widget/remotefs
 widget/remotefs.obj
 *.diff
 *~
+cursor/missfont.log
+set-core.sh
+autom4te.cache
+junk
+remotefs
 

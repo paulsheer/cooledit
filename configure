@@ -12,6 +12,12 @@
 ## M4sh Initialization. ##
 ## -------------------- ##
 
+# prevent git clone from rebuilding stuff (paulsheer)
+touch aclocal.m4
+touch Makefile.in
+touch configure
+touch config.h.in
+
 # Be more Bourne compatible
 DUALCASE=1; export DUALCASE # for MKS sh
 if test -n "${ZSH_VERSION+set}" && (emulate sh) >/dev/null 2>&1; then :

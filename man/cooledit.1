@@ -1,0 +1,1299 @@
+.TH cooledit 1 "4 April 2005"
+.\"SKIP_SECTION"
+.SH NAME
+cooledit-4.0.0 \- Full featured text editor for the X Window System, Version 11.
+.\"SKIP_SECTION"
+.SH USAGE
+.B cooledit 
+[-AabCEhiPsSUVv?] [options] [[+<line>] [<path>/]<file>] [[+<line>] [<path>/]<file>] ...
+.SH DISCLAIMER
+The information in this file is provided without warranty
+for its accuracy or completeness. Use of this file or its
+information is entirely at your own risk.
+.SH DESCRIPTION
+.LP
+This is a portable, fast X Window text editor
+with beautiful 3D widgets. It requires only the X11
+library to run. The engine is the same as that used for
+the internal editor of the 
+.B Midnight Commander 
+and hence
+.B cooledit 
+represents a X Window version of that editor. The library that
+comes with 
+.B Cooledit 
+is now standalone. You can use it to write your own 
+.B Cool 
+applications. Check out the included programs 
+.B Coolman 
+and 
+.BR "Smalledit".
+.\".\"DONT_SPLIT"
+.SH OPTIONS
+.TP
+.I "-d, -display <display>"
+The X server and display you would like to display to.
+.TP
+.I "-g, -geom, -geometry <geometry>"
+Main window size and position on the screen, eg 
+.BR "cooledit -geom 630x490+95+5". 
+If 
+.B cooledit 
+is envoked with the size, the size will be saved 
+on exit. If cooledit is envoked with the position, the 
+position will be saved on exit. 
+.B cooledit -geom + 
+envokes the default size.
+.TP
+.I "-lines <n>"
+Size of the edit window in text lines.
+.TP
+.I "-columns <n>"
+Size of the edit window in mean character widths.
+.TP
+.I "-vis, --visual <visual-class> (experimental)"
+Without this option, the visual class is selected from a list of preferred
+classes and depth ranges. Use 
+.B cooledit -vis help 
+for more information.
+.TP
+.I "-C, -cmap, --own-colormap (experimental)"
+Force use of own colormap. If 
+.B Cooledit 
+is started after other colour-hungry application, and you are 
+using one of the colour-palette visuals (like PseudoColor) the colors 
+may look poor. In this case, use this option for a separate colour 
+palette. 
+.B (Contact me if you are forced to use this option.)
+.TP
+.I "-defcmap, --default-colormap (experimental)"
+Force use of default colormap. If 
+.B Cooledit 
+is started with a visual other than the default, then
+it creates its own colormap. This overrides this behaviour.
+.B (Contact me if you are forced to use this option.)
+.TP
+\fI--edit-bg <nn>\fP
+Editor background colour. Rather edit your \fB~/.cedit/.cooledit.ini\fP file,
+look for the option \fBoption_editor_bg_normal\fP and others. This can be
+\fB0\fP to \fB26\fP. Useful options are probably only \fB1\fP and \fB0\fP
+for dark blue and black.
+.TP
+.I "-bg, --background-color <color>"
+Specifies the background color for a solid background. If 
+.I <color> 
+is 
+.I igloo 
+(default) then a background color is not used, and the background is set 
+to the igloo logo.
+.TP
+.I "-R, --foreground-red <value>"
+Red component of actual widget colors (buttons, windows), default: 0.9.
+.TP
+.I "-G, --foreground-green <value>"
+Green component, default: 1.1.
+.TP
+.I "-B, --foreground-blue <value>"
+Blue component, default: 1.4.
+.TP
+.I "-f, -fn, -font <font-name>"
+See \fBFONTS\fP below. Try \fI-fn ?\fP for help.
+.TP
+\fI-locale, --locale-encoding\fP
+Use locale encoding interpretation.
+.TP
+\fI-fontset, --fontset\fP
+Tries to load font as a fontset. See \fBFONTS\fP below.
+Try \fI-fn ?\fP for help. See also \fI--utf8-interpretation\fP.
+.TP
+\fI--anti-aliasing\fP
+This is depreciated. See \fBFONTS\fP below.
+.TP
+\fI--interchar-spacing <n>\fP
+Add extra pixels of space between each character. This option
+works with \fI--anti-aliasing\fP only. (Default is 0.)
+.TP
+\fI--interwidget-spacing <n>\fP
+Spacing between widgets in dialog boxes. Make larger for
+a more spacious. Different defaults for different looks.
+.TP
+\fI--look [gtk|cool]\fP
+\fBCooledit\fP widget style Look.
+.TP
+\fI--red-first\fP
+For LCD displays use R-G-B pixel ordering. (Default.)
+.TP
+\fI--blue-first\fP
+For LCD displays use B-G-R pixel ordering. Try both of these
+options and see which looks better.
+.TP
+.I -S, --suppress-load-files
+Don't load saved desktop on startup.
+.TP
+.I -U, --suppress-load-options
+Don't load any saved options on startup.
+.TP
+.I -E, -no-override
+Command line must not override any options
+already set in the initialisation file.
+.TP
+.I -I, --use-initialisation-file <file>
+Use alternative intialisation file. Default: ~/.cedit/.cooledit.ini
+.TP
+.I -i, --all-characters
+No longer an option. Now the default.
+.TP
+.I --word-wrap <length>
+The maximum length of a line. See the next two options.
+.TP
+.I --type-writer
+This option causes a newline to be inserted when the line you are 
+typing becomes longer than 
+.I --word-wrap 
+length.
+.TP
+.I --auto-paragraph
+This is a more advanced form of the option above: it causes 
+the entire paragraph to be reformatted with each edit of a paragraph. 
+See 
+.B WORD PROCESSOR MODE 
+below.
+.TP
+.I -t, -tab, --tab-spacing <spacing>
+Interpret the tab character as being the length of 
+<spacing> characters. Default is 8. You should avoid using
+other than 8 since most other editors and text viewers
+assume a tab spacing of 8. Use 
+.B -fake-half-tabs 
+to simulate a smaller tab spacing.
+.TP
+.I -s, -space, --space-filled-tabs
+Never insert a tab space. Rather insert spaces (ascii 20h) to fill to the
+desired tab size.
+.TP
+.I -nospace, --no-space-filled-tabs
+Default.
+.TP
+.I -a, --auto-indent
+Pressing return will tab across to match the indentation
+of the first line above that has text on it (default).
+.TP
+.I -noautoi, --no-auto-indent
+Turn off auto tabs.
+.TP
+.I -b, --backspace-through-tabs
+Make a single backspace delete all the space to the left
+margin if there is no text between the cursor and the left
+margin.
+.TP
+.I -noback, --no-backspace-through-tabs
+Default.
+.TP
+.I -half, --fake-half-tabs
+This will emulate a half tab for those who want to program
+with a tab spacing of 4, but do not want the tab size changed
+from 8 (so that the code will be formatted the same when displayed
+by other programs). When editing between text and the left 
+margin, moving and tabbing will be as though a tab space were
+4, while actually using spaces and normal tabs for an optimal fill.
+When editing anywhere else, a normal tab is inserted.
+.TP
+.I -no-half, --no-fake-half-tabs
+Turn off half tabbing.
+.TP
+.I -toolbar
+Edit windows have a toolbar on the left: default.
+.TP
+.I --no-xim
+Disable XIM support.
+.TP
+.I -no-toolbar
+Edit windows do not have a toolbar.
+.TP
+.I -m, --minimal-main-window
+This is used internally to create a new main window with one edit window
+when the user activates `New Main Window' from the Window menu. You
+can also use it to force the main window to be just large enough to
+hold all the sub-windows.
+.TP
+.I -A, -save-setup
+Save options on exit (default).
+.TP
+.I -P, -no-save-setup
+Don't save options on exit.
+.TP
+.I -W, --whole-chars-search <chars>
+Characters that constitute a whole word
+when searching, default: 0-9a-z_ (typed out in full)
+.TP
+.I -w, --whole-chars-move <chars>
+Characters that constitute a whole word
+when moving and deleting,
+default: 0-9a-z_; ,[](){} (typed out in full)
+.TP
+.I -verbose
+Print info about X intialisation.
+.TP
+.I -h, -H, -?, --help
+Print out commandline options summary.
+.TP
+.I -V, -v, --version
+Print out version number.
+.PP
+.SH Commandline examples
+.TP
+.I cooledit +10 hello.c -S -geom +
+Start cooledit with one file, with minimum geometry, with cursor at line 10.
+.PP
+.TP
+.I cooledit hello.c program.c
+Start cooledit with two files, the file 
+.I hello.c 
+being the current file. The previous files are also loaded
+underneath these two files.
+.PP
+.SH DEFAULT KEY DEFINITIONS
+
+Keys may be redefined using an easy to use key learner.
+See the next section on how to get this to work.
+
+The following is a partial list of all default key bindings
+and their actions, for reference. You will probably never need
+to refer to it because most of the editor actions can be found
+in the menus. Note that F14 is analogous to Shift-F4 etc. Also
+be aware that on some machines, what X percieves as an Alt
+is actually some other modifier key (our Sun-Sparc uses the
+diamond key).
+
+.nf
+.B Movement keys:
+   Left                    left one char
+   Right                   right one char
+   Up                      up one line
+   Down                    down one line
+   Home                    beginning of line
+   End                     end of line
+   PgUp                    up one screen full
+   PgDn                    down one screen full
+   Ctrl-PgUp               beginning of file
+   Ctrl-PgDn               end file
+   Ctrl-Home               beginning of page
+   Ctrl-End                end of page
+   Ctrl-Left               left one word
+   Ctrl-Right              right one word
+   Ctrl-Up                 up one paragraph
+   Ctrl-Down               down one paragraph
+   Alt-Up                  scroll up one line
+   Alt-Down                scroll down one line
+
+.B Highlight keys:
+   Shift with any of the above keys will highlight
+   at the same time.
+
+.B Column highlighting:
+   Holding down the Control key while using the mouse to highlight text,
+   will cause the highlighted text to be displayed in inverse colour. You
+   will be able to select columns (arbitrary rectangles) of text and
+   drag and drop them as usual.
+
+.I Input History:
+   When editing an input line, Shift-Up or Shift-Down 
+   will bring up a history of previous inputs.
+
+.B Editing keys:
+   Delete                  delete char to the right
+   Backspace               delete char to the left
+   Alt-Del                 delete to line end
+   Alt-Backspace           delete to line begin
+   Alt-Right               delete word to the right
+   Alt-Left                delete word to the left
+   F5                      copy highlighted text to cursor
+   F6                      move highlighted text to cursor
+   F8                      delete highlighted text
+   Ctrl-y                  delete line
+   Shift-Enter             insert a newline
+   Enter                   insert a newline with auto indent (default)
+   Tab                     insert a tab (see options menu)
+   Insert                  toggle insert/overwrite
+   Ctrl-q                  quote - the next key pressed will be
+                           interpreted as a literal
+.B Undo:
+   Ctrl-u
+   Ctrl-Backspace
+
+.B File
+   Ctrl-F1                 man page
+   F2                      save
+   F12 or
+   Shift-F2                save as
+   Ctrl-o                  load
+   Ctrl-j                  jump to file under cursor
+   Ctrl-n                  new
+   Ctrl-f                  save highlighted text as
+   Shift-F5 or
+   F15                     insert file at cursor
+
+.B Mark:
+   F3                      toggle highlight
+   Ctrl-b                  toggle highlight columns
+
+.B Search and replace:
+   F7                      search
+   F17 or
+   Shift-F7                search again
+   F4                      replace
+   F14 or
+   Shift-F4                replace again
+
+.B X Clipboard:
+   Ctrl-Ins                copy to clipboard
+   Shift-Ins               paste to clipboard
+   Shift-Delete            cut to clipboard
+   Ctrl-Delete             delete highlighted text
+   Alt-Ins                 insert from selection history
+
+.B General:
+   F10                     exit (current editor)
+   Ctrl-F3                 new edit window
+   Shift-F3                new main window
+   Alt-F6                  maximise the window
+   Ctrl-F6                 window cycle
+   Ctrl-F10                exit application
+   Alt-x                   save all and exit
+   Ctrl-F2                 save state of desktop
+   Ctrl-d                  insert date and time
+   Alt-l                   goto line number
+   Alt-F7                  run make
+   Alt-t                   sort
+   Ctrl-r                  start/end record macro
+   Ctrl-a                  execute macro
+   Ctrl-p                  spell check highlighted text
+   Shift-F9                C formatter
+   Ctrl-Tab                complete word
+   Alt-i                   insert unicode character
+   Shift/F1                rxvt terminal
+
+.B Debug:
+   Alt-F2                  toggle breakpoint
+   Alt-F3                  continue until cursor
+   Alt-F4                  continue
+   Alt-F5                  run from beginning
+   Alt-F8                  single step, dive into functions
+   Alt-F9                  single step, skip over functions
+   Ctrl-c                  interrupt program
+.fi
+New shell scripts will be added from time to time. Consult
+the \fBScripts\fP menu for the hotkeys that envoke these.
+.PP
+.SH EMERGENCIES
+keywords: hang, crash, halt, pause, stop, infinite loop, SIGHUP,
+SIGUSR1.
+.PP
+There are some circumstances when \fBCooledit\fP may
+go into an infinite loop, like if there is a bug in the editor
+movement commands, or if you create a recursive macro. In this
+case, you can  restore \fBCooledit\fP by using the \fBkill\fP
+shell function. Try \fBkill -SIGUSR1\fP \fIpid\fP  where
+\fIpid\fP is the process ID of cooledit from: \fBps | grep
+cooledit\fP, for example. This will send SIGUSR1, a user signal,
+which, for \fBCooledit\fP, will force a jump into its main loop,
+and restore operation. It is a good idea to then save what you
+have done and exit immediately in case there has been memory
+corruption.
+.PP
+.SH SPELL CHECK AS YOU TYPE
+\fBCooledit\fP spell checks typed words on
+the fly, placing the traditional wavy red line under miss-spelled
+words. This works by feeding typed words through \fBispell\fP and
+placing them amidst the syntax highlighting rules if \fBispell\fP
+returns a non-match. These rules \fIexpire\fP after 60 seconds -
+which mean they won't stay underlined indefinitely. Word feeding is
+initiated by most key presses and applies only to the word under
+the cursor.
+
+\fBispell\fP or some alternative like \fBaspell\fP must be installed.
+.PP
+.SH UNICODE AND UTF-8 SUPPORT
+\fBCooledit\fP has full Unicode support without character combining.
+
+See See \fBFONTS\fP below.
+.PP
+.SH THE INTERACTIVE GRAPHICAL DEBUGGER
+\fBCooledit\fP features an interface to
+\fBgdb\fP(1) under the \fBDebug\fP menu. This means that you can
+seamlessly debug C/C++ programs from within \fBCooledit\fP. You can
+set and clear breakpoints (the line is bookmarked in red) and follow the
+program flow with the green cursor line. Please remember that this an
+\fIinterface\fP to gdb: \fBCooledit\fP has no debugging features of its
+own. Some versions of gdb are better supported than others.
+
+Interfaces are given to the common gdb commands. Any other commands can
+be executed with the \fBEnter Command\fP menu item. Automatic variable
+displays will soon be available though.
+
+When a program stops for some reason (either a breakpoint or a signal),
+\fBCooledit\fP tries to determine the file and line number. If this
+cannot be done, a backtrace is displayed. Backtraces do not contain full
+paths, hence files cannot be located if they are not already loaded. If
+the file \fIis\fP already loaded, then hitting enter on a
+\fIfile\fP:\fIline\fP backtrace line will jump to the currect line
+number.
+
+Programs must of course be compiled with the \fB-g\fP option and
+preferably the \fB-O0\fP option (without -O0 gcc's optimizations may
+make the program flow appear a little strange and some variables will
+not be accessible).
+
+Break-points are set and cleared from the menu or with Alt-F2. If you
+set a break point manually (with Alt-F1) it will not display in the
+edit window. Similarly if you clear a break point manually or close a
+window (thus clearing the breakpoints) there will be discrepancy between
+the book marks and the actual breakpoints. The same goes if you modify
+a file without restarting gdb.
+
+Variables can be displayed by selecting \fBDisplay variable...\fP. A
+listbox will show all the variables you have selected. Click on the
+listbox and press \fBDel\fP to delete from this list. Use \fBIns\fP to
+highlight a variable - this will cause a watchpoint to be inserted for
+this variable (i.e. the program will thereafter stop whenever the value
+of that variable changes). The listbox will also show an \fBX\fP in the
+second column if the variable has been altered since the last time the
+listbox was refreshed - this enables you to easily see which variable
+changes as you step through the lines of your program.
+
+Everything else you need to know is obvious from the menu. You would do
+well to read gdb's info pages if you have never used a debugger under
+Unix before.
+
+See also the section \fBJUMP TO FILE AND YOUR PERSONAL FILE LIST\fP regarding
+how \fBCooledit\fP will consult your personal file list to resolve
+a path to a file.
+.PP
+.SH SYNTAX HIGHLIGHTING
+The following section explains the format of the file \fB~/.cedit/syntax\fP
+which is the initiation file for colorizing source.
+
+The file \fB~/.cedit/Syntax\fP is rescanned on opening of any new editor
+file. It contains a list of file types and how to identify what rule set
+the text you are editing belongs to. The \fBfile\fP token dictates how
+to match up your text. On the same line as a \fBfile\fP token must
+appear a regular expression to match the filename, a string to be
+displayed on the left of the editor window for description purposes, and
+a regular expression to match the first line of the file. If either of
+the regular expressions match, the file is deemed to have the particular
+type. For example
+.PP
+.nf
+file ..\\*\\\\.(py|PY])$ Python\\sProgram ^#!\\s\\*/.\\*/python
+.fi
+.PP
+Will cause a file to be labelled as \fBPython Program\fP if it contains
+say, \fB#!/usr/bin/python\fP, on the first line OR of it ends in say
+\fB.py\fP.
+
+Note that \fB*\fP, \fB+\fP and \fB\\\fP have to be escaped with
+a \fB\\\fP, and space must be presented with a \fB\\s\fP.
+
+After the \fBfile\fP keyword may come the \fBinclude\fP keyword. The
+\fBinclude\fP keyword says to load a rule set from a separate file, and
+is the preferred way of adding new rule sets. The path from where it
+loads defaults to \fBcooledit/syntax/\fP under the \fBlib/\fP directory
+where you installed \fBCooledit\fP. See the examples in your own
+\fBSyntax\fP file and in this directory.
+
+Each rule set is divided into contexts, and each context contains
+keyword definitions. A context is a scope within the text that a
+particular set of keywords applies to. For instance, the region within a
+C style quote (i.e. between \fB"\fP quotations) has its own separate
+colour and hence its own separate context. Within it, the normal C
+tokens, like \fBif\fP and \fBwhile\fP, will not apply, but \fB%d\fP
+should be highlighted in a different colour. Contexts are usually for
+when you have something that must be coloured across multiple lines. The
+\fBdefault\fP context contains the list of keywords to fall back on
+should there be no other applicable context. This is usually normal
+programming code.
+
+A trivial C programming rule set might look like this:
+.PP
+.nf
+file .\\*\\\\.c C\\sProgram\\sFile (#include|/\\\\\\*)
+
+wholechars abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_
+
+# default colors
+context default
+  keyword  whole  if       yellow/24
+  keyword  whole  else     yellow/24
+  keyword  whole  for      yellow/24
+  keyword  whole  while    yellow/24
+  keyword  whole  do       yellow/24
+  keyword  whole  switch   yellow/24
+  keyword  whole  case     yellow/24
+  keyword  whole  static   yellow/24
+  keyword  whole  extern   yellow/24
+  keyword         {        brightcyan/14
+  keyword         }        brightcyan/14
+  keyword         '*'      green/6 
+
+# C comments
+context /\\* \\*/ brown/22
+
+# C preprocessor directives
+context linestart # \\n brightred/18
+  keyword  \\\\\\n  yellow/24
+
+# C string constants
+context " " green/6
+  keyword  %d    yellow/24
+  keyword  %s    yellow/24
+  keyword  %c    yellow/24
+  keyword  \\\\"   yellow/24
+.fi
+.PP
+Each context starts with a line of the form:
+.br
+\fBcontext\fP [\fBexclusive\fP] [\fBwhole\fP|\fBwholeright\fP|\fBwholeleft\fP] 
+[\fBlinestart\fP] \fIdelim\fP [\fBlinestart\fP] \fIdelim\fP [\fIforeground\fP] [\fIbackground\fP]
+.br
+
+One exception is the first context. It must start with the command
+.br
+\fBcontext\fP \fBdefault\fP [\fIforeground\fP] [\fIbackground\fP]
+.br
+or else \fBcooledit\fP will return an error.
+
+The \fBlinestart\fP option dictates that \fIdelim\fP must start at
+the beginning of a line.
+
+The \fBwhole\fP option tells that delim must be a whole word. What
+constitutes a whole word are a set of characters that can be
+changed at any point in the file with the \fBwholechars\fP
+command. The \fBwholechars\fP command at the top just sets the
+set exactly to its default and could therefore have been omitted. To
+specify that a word must be whole on the left only, you can use
+the \fBwholeleft\fP option, and similarly on the right. The left and
+right set of characters can be set separately with,
+.br
+\fBwholechars\fP [\fBleft\fP|\fBright\fP] \fIcharacters\fP
+
+The \fBexclusive\fP option causes the text between the delimiters to be
+colourised, but not the delimiters themselves.
+
+Each rule is a line of the form:
+.br
+\fBkeyword\fP [\fBwhole\fP|\fBwholeright\fP|\fBwholeleft\fP] [\fBlinestart\fP] 
+\fIstring\fP \fIforeground\fP [\fIbackground\fP]
+.br
+
+Important to note is the line
+.nf
+\fB  keyword  \\\\\\n  yellow/24\fP
+.fi
+This line defines a keyword containing the \\ and newline characters.
+Because keywords have a higher precedence than context delimiters, this
+keyword prevents the context from ending at the end of a line if the
+line ends in a \\ thus allowing C preprocessor directive to continue
+across multiple lines.
+
+The colours themselves need to apply to the Midnight Commander internal
+editor as well as to \fBCooledit\fP. Therefore the form
+.br
+    \fImidnight-commander-color\fP\fB/\fP\fIcooledit-color\fP
+.br
+is used. See some of the many rule sets given, for examples on using
+this. Usually the background colour is omitted, thus defaulting to the
+usual background colour.
+
+Context or keyword strings are interpreted so that you can include tabs
+and spaces with the sequences \\t and \\s. Newlines and the \\ are
+specified with \\n and \\\\ respectively. Since whitespace is used as a
+seperator, it may not be used explicitedly. Also, \\* must be used to
+specify a *, and a \\+ to specify a +. The * itself is a wildcard that
+matches any length of characters. The + is like the * but matches a
+length of non-whitespace characters only. For example,
+.nf
+\fB  keyword         '+'      green/6\fP
+\fB  keyword         '\\s'      green/6\fP
+.fi
+colours all C single character constants green. You could also have
+used
+.nf
+\fB  keyword         "*"      green/6\fP
+.fi
+to colour string constants, except that the matched string may not cross
+newlines.
+
+The \fB\\{\fP wild card matches any characters that exists between it
+and its matching \fB\\}\fP. For example, the following matches C style
+octals:
+.nf
+\fB  keyword '\\\\\\{0123\\}\\{01234567\\}\\{01234567\\}' brightgreen/16\fP
+.fi
+.PP
+The \fB\\[\fP \fB\\]\fP wild card is similar and matches any number of
+characters.
+
+All wild cards may be used within context delimiters as
+well, but you \fIcannot have a wildcard as the first character of a context
+delimiter\fP. In addition, \fIusing a wildcard as the first character
+of a keyword, impacts hugely on performance\fP.
+
+The colours themselves are numbered 0 to 26 and are explained below in
+\fBFURTHER BEHAVIOURAL OPTIONS\fP. You can also use \fBany\fP of the named
+colors specified in \fB/usr/lib/X11/rgb.txt\fP, though only one word
+versions of them. It is better to stick to the numerical colors
+to limit use of the color palette.
+
+Comments may be included on a line of there own and begin with
+a #.
+
+Because of the simplicity of the implementation, there are a few
+intricacies that will not be coped with correctly but these are a minor
+irritation. On the whole, a broad spectrum of quite complicated
+situations are handled with these simple rules. It is a good idea to
+take a look at the syntax file to see some of the nifty tricks you can
+do with a little imagination. If you can't get by with the rules I have
+coded, and you think you have a rule that would be useful, please email
+me with your request. However, do not ask for regular expression
+support, because this is flatly impossible.
+
+A useful hint is to work as much as possible with the things
+you \fIcan\fP do rather than try to do things that this
+implementation can't cope with. Also remember that the aim of
+syntax highlighting is to make programming less prone to error,
+\fInot\fP to make code look pretty.
+.PP
+.SH COLOURS
+Syntax colours can be any of the integer values \fB0\fP
+through \fB26\fP. The options \fBoption_editor_bg_normal\fP
+in your \fB~/.cedit/.cooledit.ini\fP file (and their
+counterparts \fBoption_editor_fg_normal\fP etc.) can also
+be set to a value of \fB0\fP through \fB26\fP. Each of
+these 27 colours' RGB values can be set to specific
+values in your \fB~/.cedit/.cooledit.ini\fP file. They are
+called \fBoption_color_0\fP through \fBoption_color_26\fP.
+They are in hex with 2 digits per Red, Green and Blue,
+(just like HTML specified colours).
+.PP
+.SH COMPLETION
+This would typically be
+used by typing in half a word (for example "str") and then pressing the
+completion key, \fB"Ctrl-Tab"\fP (Note that anything can be completed
+eg. email addresses.)  A list box will then appear showing you all the
+words on your system  that begin with str: strcat, strchr, strcpy etc.
+You can select the word to type out. If there is only one match then
+the word will be completed without showing the list box. If there is no
+match then nothing will happen. Note that completion is case sensitive
+Thanks to Michael Zagorsky for this idea.
+
+Unfortunately, a word-list of completion words is highly dependent on 
+your system and the programming language you are using. It is very  easy
+to create your own word-list though. The word-list must reside in  the
+file \fB"/.cedit/cooledit.completion"\fP. The file is simply a list of
+words separated by newlines, preferably  with no duplications. It may
+have leading or trailing blank lines, but there must be no blank lines
+in the text. Of course, having a word in the word-list therefore has
+nothing to do with whether the word will or will not be accepted by the
+programming language you are using.
+
+The easiest way to create a really comprehensive word-list for
+C programming is just to concatenate, sift and sort all the system header
+files. This is done with the shell script below.
+If your system commands do not support some of the options used, you 
+should replace them with GNU versions from your sunsite mirror. On my
+system, the script creates a file of about a megabyte in size, 83k words,
+which is reasonably small.
+The word-list will be loaded when you first press the completion key.
+You can append to the word-list email addresses, TeX commands, shell commands
+or any other kind of data. You need not sort the entries as I have done 
+here, but you should ensure that there are no duplicate entries, or
+the word-list is going to be very long - of course 'sort -u' is the
+easiest way of avoiding duplications. Here is an example script that
+generates a completion list for TeX and C. You will have to change
+TEXDIR and INCLUDEDIR to point to locations for your system. This script
+uses a lot of memory and may take a long time to run.
+.PP
+.nf
+#!/bin/sh
+#
+TEXDIR="/usr/lib/tex /usr/local/lib/tex /usr/lib/texmf /usr/local/lib/texmf"
+INCLUDEDIR="/usr/qt/include /usr/local/include /usr/include /usr/openwin/include"
+#
+cat `find $INCLUDEDIR \\
+-follow -regex '.*\\.h'` \\
+| sed -e 's/[^A-Za-z0-9_#]/\\
+/g' | sed \\
+-e 's/^[0-9].*$//g' \\
+-e 's/^#[0-9#].*$//g' \\
+-e 's/^[A-Za-z0-9_#]$//g' \\
+-e 's/^[A-Za-z0-9_#][A-Za-z0-9_#]$//g' \\
+-e 's/^[A-Za-z0-9_#][A-Za-z0-9_#][A-Za-z0-9_#]$//g' \\
+| cat -s | sort -u > ~/.cedit/cooledit.completion
+cat `find $TEXDIR -follow -regex '.*\\.tex'` | \\
+sed -e 's/[A-Za-z0-9]\\\\/&\\
+\\\\/g' | \\
+sed -e 's/\\\\$//g' | \\
+sed -e 's/[^A-Za-z0-9\\\\]/\\
+/g' | \\
+sed -e 's/\\\\\\\\*/\\\\/g' | \\
+sed -e 's/^[A-Za-z0-9].*$//g' \\
+-e 's/^\\\\$//g' \\
+-e 's/^\\\\[A-Za-z0-9\\\\]$//g' \\
+| cat -s | sort -u >> ~/.cedit/cooledit.completion
+.fi
+.PP
+.SH SCRIPT EXECUTION
+The \fBScripts\fP  menu has a list of commands that can be executed from
+hot-keys. You can create your own scripts by clicking on \fBNew
+script\fP  and filling in the various fields of the dialog. Several
+predefined examples are given in the menu. To get a feel for how this
+works click on \fBEdit a script\fP  and select a predefined script from
+the list. The switches you see in the dialog box are self explanatory.
+They cause \fBcooledit\fP to perform various functions before and after
+the execution of  the script and provide for seamless interfacing
+between \fBcooledit\fP  and compilers or shell commands. The script text 
+may also contain the % character to substitute for the editor's 
+file-name, path, etc. For instance, if %f is found in the script, it
+will be, before execution, replaced with the file-name of the file you
+are currently editing. The complete list of substitutions is as follows:
+.PP
+.TP
+.I %d
+The current directory as set from the 
+.B Command 
+menu.
+.TP
+.I %f
+The full file-name of the file you are currently editing, without
+the path.
+.TP
+.I %n
+The file-name without the extension.
+.TP
+.I %x
+The file-name extension only.
+.TP
+.I %p
+The full path of the file-name without the trailing slash.
+.TP
+.I %t
+The name of a temporary file if needed.
+.TP
+.I %b
+The name of the block file.
+.TP
+.I %c
+The name of the clipboard file.
+.TP
+.I %e
+The name of the error message file.
+.TP
+.I %a
+The string typed in by the user if they where prompted.
+.TP
+.I %F
+The current font, or 8x13bold if the current font is a 
+proportionally spaced font - use for terminal apps.
+.TP
+.I %O
+The current font regardless of its size.
+.TP
+.I %%
+Inserts a literal %.
+.PP
+Typically commands will process the editor file, or
+some highlighted text, and then output error messages to the
+error file, which might be displayed for viewing.
+Studying the examples will give an explanation of this.
+Note that the options \fB"Display script's stdout/err continuously"\fP
+must not be set simultaneously with \fB"Insert stdout/err on completion"\fP. 
+If both are set, the former take precedence. 
+Also, if the script runs in the background, none of the \fIon completion\fP
+options will have effect.
+.PP
+.SH WORD PROCESSOR MODE - AUTO PARAGRAPH FORMATTING
+If the 
+.B Auto paragraph formatting 
+option is on (Select \fBGeneral\fP from the \fBOptions\fP menu) then
+paragraphs will be reformatted as you type. The \fBWord wrap line
+length\fP option specifies the paragraph's maximum width. The key
+\fBAlt-p\fP (`Paragraph_Format' in the \fBDefine keys\fP dialog) will
+force a paragraph to be formatted when \fBAuto paragraph formatting\fP
+is off, and will find a paragraph between the illegal lines defined 
+below. A paragraph start and end are specified by two consecutive 
+newline characters. A \fI"non"-paragraph\fP is one of the following
+(non-paragraphs are not formatted except with with Alt-p):
+.TP
+.I   -
+Paragraphs containing any line that begins with the characters:
+.BR "-+*\,.;:&>".
+.TP
+.I   -
+Paragraphs containing any line (other than the first line) that begins 
+with a \fIspace\fP or \fItab\fP character. The first line may contain an
+indent for example.
+.PP
+This means that all contiguous blocks of text can be bordered by a 
+blank line, and they will be nicely paragraphed. Because of the above 
+rules, you can pretty much leave paragraph formatting on even when 
+programming, since program text will break these rules every time. One 
+difference though is that pressing `Enter' in the middle of a line will 
+properly break a paragraph with a double newline, unlike normal mode, 
+where a only a single newline is inserted.
+.PP
+One other nifty feature is the formatting of fully indented paragraphs. 
+If a paragraph's lines are all identically indented (like a quote), then 
+the indent will be retained, while normal formatting occurs. This may be 
+a problem when you are trying to type something that must be indented, 
+but must not be paragraphed, like a postal address. In this case you can 
+make one line begin with an illegal character, or make one line be 
+indented more or less than the other lines.
+.PP
+See also the 
+command-line option \fB"--auto-paragraph"\fP, above.
+.PP
+.SH MISCELLANEOUS USAGE
+
+The \fBinput widget\fP can be found in most dialogs and allows the editing
+of one line of text. By pressing \fBShift-Up\fP or \fBShift-Down\fP, you can
+see a \fBhistory\fP of previous entries. This is the same as pressing the
+input widget's button.
+
+Pressing \fBAlt Ins\fP in the editor will show you a history of 
+cuts/copies you made to the X buffer. Pressing Space or Enter will insert
+the selected selection.
+
+The quote key \fBCtrl-q\fP can be used to insert any decimal or
+hexidecimal number. Ctrl-q and then an ordinary key press interprets
+that key literally,  eg. Ctrl-q then
+Ctrl-m inserts an ascii Carriage Return or 13 decimal. This
+is useful to convert DOS text files to Unix and back. Just do
+a search and replace with   Ctrl-q Ctrl-j Ctrl-q Ctrl-m   as
+one string, and   Ctrl-q Ctrl-j   as the other.
+
+You can also type out a three digit decimal number after Ctrl-q  to
+insert that number. Hexidecial numbers can be inserted by typing the 
+two digit number and then pressing the \fBh\fP key. E.g. \fBCtrl-q 0 6
+4\fP inserts an \fB@\fP symbol decimal 64; the sequence \fBCtrl-q 1 4
+2\fP or \fBCtrl-q 8 e h\fP inserts an 8E hexidecimal.
+
+To define a macro, press 
+.B Ctrl-R 
+and then type out the key
+strokes you want to be executed. Press 
+.B Ctrl-R 
+again when finished. You can then assign the macro to any key you
+like by pressing that key. The macro is executed when you press
+.B Ctrl-A 
+and then the assigned key. The macro is also executed if
+the key is pressed on its own and is not assigned to any other
+function. Once defined, the macro commands go into the file 
+.B .cedit/cooledit.macros 
+in your home directory. The macro will overwrite any existing definition 
+that was assigned to that same key. You can also delete 
+macros from the 
+.B command 
+menu. The maximum number of macros you are allowed is 1024,
+thereafter you may get a crash. Do not delete or edit the macro file
+without restarting 
+.B cooledit 
+because 
+.B cooledit 
+caches the macros hot-keys in memory. This also means that macros will
+not be available to other 
+.B cooledit's 
+that are running simultaneously without them being restarted.
+.PP
+.SH Running Make and Man
+\fBCooledit\fP has an interactive man page reader. To bring up a man page,
+type it out in the editor, highlight it with the mouse or cursor, and then
+press Ctrl-F1. The browser will appear in the root window.
+Inside the browser, you can double-click on words to bring up
+new man pages. You can also highlight text, drag it, and drop it
+into an edit window.
+.PP
+Press Alt-F7 to run \fBmake\fP in the current directory. The 
+\fBmake\fP command is run via the generic script execution feature
+(see \fISCRIPT EXECUTION\fP). The current directory can be changed in the 
+\fBCommand\fP menu. The output of \fBmake\fP will go to a viewer
+in the root window. Here you can double-click
+or press enter on an error message to take you directly
+to the file and line number where the error appears (provided
+the file is already open).
+.PP
+.SH Search and Replace
+
+You can use scanf search and replace to search and replace
+a C format string. First take a look at the 
+.B sscanf 
+and 
+.B sprintf 
+man pages to see what a format string
+is and how it works. An example is as follows: Suppose you want
+to replace all instances of say, an open bracket, three
+comma separated numbers, and a close bracket, with the
+word 
+.I apples 
+, the third number, the word 
+.I oranges
+and then the second number, you would fill in the 
+.B Replace 
+dialog box as follows:
+
+.nf
+.B Enter search string
+(%d,%d,%d)
+.B Enter replace string
+apples %d oranges %d
+.B Enter replacement argument order
+3,2
+.fi
+
+The last line specifies that the third and then the second
+number are to be used in place of the first and second.
+
+Note that the scanf() C function treats whitespace as being elastic.
+Read about the scanf format %[ in the scanf man page: it is very useful
+for scanning strings, and whitespace. For example, here is how
+to change C++ comments into C comments: For the search string
+type `/' `/' `%' `[' `^' Ctrl-q Enter `]', then in the replace string enter
+`/' `*' `%' `s' ` ' `*' `/'. Then make sure that you have depressed the
+scanf option button, and replace all.
+
+Also, the \fBCase sensitive\fP switch should be turned on when using
+scanf strings. The conversion specifiers in scanf and printf (i.e.
+search and replace respectively) must match exactly in their type -
+float must match with float etc. Searching with %f and replacing with
+%f, may not work, since, if you read the man page, scanf treats %f as a
+type float, while printf treats it as a type double. Instead use %lf to
+search, and replace with %f - both of type double.
+
+Regular expression substring replacement is available. (For those
+breathing a huge sigh of relief: note that you could always use \fBSed\fP
+under the \fBScripts\fP menu to do this anyway.) Substrings are
+\fBnot\fP indicated by \fB\\1 \\2 ...\fP as with \fBsed\fP(1), but with
+\fB%s\fP. You must then use the \fBEnter argument order\fP field to
+specify the order of subtrings replacement. Hence the above example
+becomes:
+
+.nf
+.B Enter search string
+\\( *([0-9]*) *, *([0-9]*) *, *([0-9]*) *\\)
+.B Enter replace string
+apples %s oranges %s
+.B Enter replacement argument order
+3,2
+.fi
+
+The option \fBBackwards\fP is provided to reverse search and replace.
+Although this is fully  functional, it is not an efficient
+implementation of reverse searching,  even to the extent that searches
+using scanf or regexp may be \fIextremely\fP slow. Hence beware, and
+remember that you can \fBkill -SIGUSR1\fP \fIpid\fP to restore \fBCooledit\fP.
+.PP
+.SH OPTIONS MENU
+Besides the 
+.B define keys 
+menu item, there is a 
+.B general 
+options item, a 
+.B switches 
+item, and a 
+.B save mode 
+item. The options in the 
+.B general 
+and 
+.B switches 
+options dialogs are analogous to those on the command line. The
+.B save mode
+dialog allows you to change the method of saving a file. 
+.B Quick save 
+saves the file by immediately, truncating the disk file to zero length
+(i.e. erasing it) and then writing the editor contents to the file. This
+method is fast, but dangerous, since a system error during a file save 
+will leave the file only partially written, possibly rendering the data
+irretrievable. When saving, the 
+.B safe save 
+option enables creation of a temporary file into which the file contents are
+first written. In the event of an problem, the original file is untouched.
+When the temporary file is successfully written, it is renamed to the name
+of the original file, thus replacing it. The safest method is 
+.B create backups. 
+Where a backup file is created before any changes are made. You can specify
+your own backup file extension in the dialog. Note that saving twice will
+replace your backup as well as your original file.
+.PP
+.SH FURTHER BEHAVIOURAL OPTIONS
+Other options may be set by hand through editing the file
+\fB~/.cedit/.cooledit.ini\fP (see \fBFILES\fP below). The section
+\fB[Options]\fP contains various settings (search for the string
+\fB[Options]\fP). Most of the settings are self explanatary. Unless
+otherwise stated, the setting is 0 for off and 1 for on. Some of these
+settings can be set from the \fIOptions\fP menu, while others only take
+effect on startup and should therefore be edited by hand. Some of the
+settings are explained as follows:
+.TP
+.I option_edit_bottom_extreme
+(and its counterparts) These define the extents of cursor 
+movement within the edit window. Text will be scrolled to keep 
+the cursor this distance from the edit window border. The units are 
+in character widths and heights.
+.TP
+.I option_find_bracket
+Sets whether matching brackets will be highlighted. 
+.TP
+.I option_pull_down_window_list
+Sets whether the 
+.B Window 
+menu will be displayed when cycling through edit windows or opening
+a new file. 
+.TP
+.I option_cursor_blink_rate
+Changes the cursor blink rate per second. This also effects the 
+rate at which background script file outputs are updated. Use 
+.I option_flashing_cursor = 0 
+to turn off cursor blinking.
+.TP
+.I option_xor_cursor
+Changes the cursor style to an exclusive OR cursor.
+.TP
+.I option_flashing_cursor
+Turn on/off cursor flashing.
+.TP
+.I option_hint_messages 
+Tells how often (in seconds) to change the window title hint message; 0
+disables.
+.TP
+.I "options_text_ and options_editor_"
+These settings set the colours of text display boxes (usually having a pinkish 
+backround) and the editor (usually having a dark blue background). 
+The colour palette is 3x3x3 for red, green and blue. The formula is 
+R*3^2 + G*3^1 + B*3^0 = ColourValue. Where R, G and B are the red, green 
+and blue components of the colour and range from 0 to 2. Hence 
+.I option_editor_bg_normal = 1 
+is a dark blue and 
+.I option_editor_fg_normal = 26 
+is a bright white.
+.TP
+.I option_man_cmdline
+Sets the shell command that will be used to run the man command. 
+.B %m 
+will be substituted for the man page entered. The -a option is preferred 
+because it forces man to display all matching man pages across all 
+sections. This may not be supported on some systems.
+.TP
+.I option_text_line_spacing
+Number of pixel widths between lines. You can specify this as 0 for
+condensed text or a larger number for broadly spaced lines.
+.TP
+.I option_mouse_double_click
+Maximum time-out to recognise a double click in 
+.BR "milliseconds". 
+Default is 300.
+.TP
+.I option_max_undo
+This is the maximum number of keypresses recorded.  Each key press is 
+recorded on an undo stack.  Memory space set aside for the stack starts 
+off small, but is doubled  whenever the stack is filled. This option 
+sets the maximum size that  the stack is allowed to reach, and should be 
+a power of 2. The amount  of memory used in bytes will be four times 
+this number (eight times on  64 bit machines). Beware of making this 
+number to large because memory  will eventually be used up. The default 
+is 8192 which is roughly 10 pages  of C program code.
+.TP
+.I option_interwidget_spacing
+Pixel distance between each widget's bounding box. Set to 5 or 6 widen
+things up a bit.
+.TP
+.I option_toolbar
+Causes a vertical convenience tool-bar to be displayed to the left of
+each edit window, default: on.
+.TP
+.I option_interpret_numlock
+.B Cooledit 
+can try to be clever by checking for the numlock key to switch between
+arrow keys and numeric keys on the keypad. May not be a good idea,
+default: off.
+.TP
+.I option_long_whitespace
+For proportional fonts, the space character (ASCII 32 decimal) can
+be so thin that programming code is difficult to manipulate. This
+option doubles its width, default off.
+.PP
+.SH COMPOSING INTERNATIONAL CHARACTERS
+To enable the standard Compose key behavior for Linux, edit
+\fB/etc/default/keyboard\fP and add the line,
+
+.nf
+XKBOPTIONS="compose:ralt"
+.fi
+
+for using the right \fBAlt\fP key as a "compose" key. Then reboot. The following
+shell commands will enable English UTF8 key composing and Asian language key composing
+with the proper OS support:
+
+.nf
+export XMODIFIERS=@im=ibus
+export LANG=en_US.UTF-8
+ibus-setup
+.fi
+
+or, for just English and, say, other Latin diacriticals,
+
+.nf
+export XMODIFIERS=
+export LANG=en_US.UTF-8
+.fi
+
+The key sequence,
+
+.nf
+right-Alt-Press
+right-Alt-release
+single-quote-press
+single-quote-release
+i-press
+i-release
+.fi
+
+will insert an character "i" with an acute accent.
+
+\fBCooledit\fP built-in character composing worked differently. See the "Latin1 key composing" in
+the \fBReadme\fP menu.
+
+.PP
+.SH BINARY FILES
+No translation of characters is made between the raw binary bytes
+and the font glyph lookup, aside from locale or UTF8 encoding
+(the encoding is selectable from the Options-Switches menu). If a
+font glyph is missing or has zero width, then a substitute
+character string is made, say, \fB^A\fP for 00000001b (1d) or
+\fB10FFFFh\fP for Unicode character 000100001111111111111111b (1114111d).
+.PP
+.SH TABBING OPTIONS
+A variety of tabbing and auto indent options are available. One of the problems
+I've encountered with tabbing is that the programmer often wants to indent
+code with half tabs (four spaces) instead of the standard tab (eight characters).
+It would be easy to mearly change the tab width to four, but then the resulting
+code would not display correctly under viewers or other character devices.
+To solve this, a \fIFake Half Tabs\fP option is available.
+This makes it appear as though you are using a half sized tab
+by inserting and moving through four space characters when you are to the left
+of your text. When eight space characters are inserted, they are automatically
+replaced with a tab.
+.PP
+The \fB--widget-font\fP option also works with this.
+.PP
+.SH FONTS
+Fonts are specified on the command-line and not from any menu.
+
+Two fonts groups are loaded, one using the \fB-font\fP option and one using the \fB--widget-font\fP
+option. Both proportional and fixed-width fonts are supported, but fixed-width fonts are most
+appropriate for code editing. Type \fBcooledit -fn ?\fP for help. Fonts glyphs are looked up
+interpreting UTF-8 encoding on the raw edit text buffer and then indexing the glyph. No other
+interpretation takes place and if the glyph is not present, then Cooledit renders a substitute Hex
+sequence. If the \fB--locale-encoding\fP option is set then OS Locale settings are used instead of
+UTF-8. See "Use Locale encoding" and "UTF8 interpretation" in the \fBOptions-Switches\fP menu.
+
+There are 4 ways to specify fonts:
+
+.PP
+.SH 1. Truetype fonts in the cooledit installation
+If Cooledit is compiled with Freetype Library support, then
+options of the form,
+
+.nf
+-font NotoSansMono-Bold.ttf,NotoSansMonoCJKsc-Regular.otf:15
+.fi
+
+are supported. Any number of comma-separated fonts will \fIall\fP be loaded as and when a character
+code-point needs to be rendered. 15 is the desired pixel size.
+
+Cooledit searches the \fBshare/cooledit/fonts/\fP directory for all installed fonts.
+
+.PP
+.SH 2. Truetype fonts on file
+Cooledit can load any PCF, TTF, or OTF font and any font supported by the FreeType library using the
+full path to the font:
+
+.nf
+-font /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:20
+.fi
+
+.PP
+.SH 3. Font structs
+For older X Servers Font Structs are still supported using, for example,
+
+.nf
+-font "-*-fixed-bold-r-normal--13-*"
+.fi
+
+This is the fastest font rendering and simply loads a single legacy font for a single character set. Type xlsfonts for a full list of installed fonts.
+
+.PP
+.SH 4. Font sets
+For older X servers Font Sets are still supported using, for example,
+
+.nf
+-fontset -font "-*-fixed-bold-r-normal--13-*"
+.fi
+
+Note that the Cooledit legacy feature \fB-font "-*-fixed-bold-r-normal--13-*/3"\fP still
+works for scaling a font struct by 3.
+.PP
+.SH FILES
+.I $HOME/.cedit/
+.IP
+User's own temporary directory.
+.PP
+.I $HOME/.cedit/.cooledit.ini
+.IP
+Initialisation file. This stores a list of files that were open
+when the user last exited 
+.BR "cooledit". 
+It also stores scripts, options, and user defined keys.
+The file is broken into sections separated by double newlines.
+Each section is headed by the section name in square brackets on
+it own line.
+.PP
+.I $HOME/.cedit/cooledit.macros
+.IP
+is generated automatically when macros are recorded. Each line in
+the file represents a macro definition. Do not edit this file while
+cooledit is running unless you are not going to run a macro during
+that cooledit session.
+.PP
+.I $HOME/.cedit/cooledit.block
+.IP
+When the option 
+.B Save block on commance 
+is on in the script editor, the block will be saved with this file-name,
+on execution of the script.
+.PP
+.I $HOME/.cedit/cooledit.clip
+.IP
+This is the default file to use when you save a highlighted block
+to a file. A copy of the highlighted text is also saved to this
+file whenever you cut or copy to the X buffer.
+.PP
+.I $HOME/.cedit/cooledit.temp
+.IP
+This is a temporary file you can use in your shell scripts.
+.PP
+.I $HOME/.cedit/cooledit.script
+.IP
+This is a file-name of the shell script when it is saved for
+execution. You can view it for debugging purposes.
+.PP
+.SH AVAILABILITY
+The latest public release of this program can be found at
+.br
+\fBhttp://www.ibiblio.org/pub/Linux/apps/editors/X/cooledit/\fP
+.PP
+.SH SEE ALSO
+mc(1), mcedit(1), X(1), scanf(3).
+.PP
+.SH AUTHORS
+Paul Sheer
+.PP
+

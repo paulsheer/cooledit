@@ -1,0 +1,6 @@
+?package(cooledit): \
+ command="cooledit" \
+ icon="editors_section.png" \
+ needs="x11" title="CoolEdit" \
+ longtitle="Powerful programmer's text editor with shell scripting hooks and Unicode support" \
+ section="Applications/Editors"

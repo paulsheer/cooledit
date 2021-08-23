@@ -1,0 +1,13 @@
+#!/bin/sh
+
+if test "$1" = "" ; then
+    echo "Usage:"
+    echo "       coolproject <project-name>"
+    echo ""
+    echo "where <prject-name> is a new or existing project"
+    exit 1
+fi
+
+mkdir -p ~/.cedit/project > /dev/null 2>&1
+exec cooledit -I ~/.cedit/project/$1
+

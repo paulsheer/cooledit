@@ -1,0 +1,184 @@
+#    Java assembly -- JDisAsm syntax -- (C) 2000. A'rpi/ESP-team
+#  Syntax hilight definition file for Midnight Commander / CoolEdit
+
+context default
+
+    keyword { magenta/19
+    keyword } magenta/19
+
+#    keyword whole interface yellow/24
+    keyword whole invoke yellow/24
+#    keyword whole special yellow/24
+#    keyword whole static yellow/24
+#    keyword whole virtual yellow/24
+    keyword whole array yellow/24
+#    keyword wholeright \[idx\] yellow/24
+    keyword whole const yellow/24
+#    keyword whole field yellow/24
+    keyword whole null yellow/24
+
+# mnemonics:
+    keyword whole push yellow/24
+    keyword whole push2 yellow/24
+    keyword whole pop yellow/24
+    keyword whole pop2 yellow/24
+    keyword whole dup yellow/24
+    keyword whole dup2 yellow/24
+    keyword whole goto yellow/24
+    keyword whole return yellow/24
+    keyword whole new yellow/24
+    keyword whole new yellow/24
+    keyword whole nop yellow/24
+    keyword whole swap yellow/24
+    keyword whole iadd yellow/24
+    keyword whole ladd yellow/24
+    keyword whole fadd yellow/24
+    keyword whole dadd yellow/24
+    keyword whole isub yellow/24
+    keyword whole lsub yellow/24
+    keyword whole fsub yellow/24
+    keyword whole dsub yellow/24
+    keyword whole imul yellow/24
+    keyword whole lmul yellow/24
+    keyword whole fmul yellow/24
+    keyword whole dmul yellow/24
+    keyword whole idiv yellow/24
+    keyword whole ldiv yellow/24
+    keyword whole fdiv yellow/24
+    keyword whole ddiv yellow/24
+    keyword whole irem yellow/24
+    keyword whole lrem yellow/24
+    keyword whole frem yellow/24
+    keyword whole drem yellow/24
+    keyword whole ineg yellow/24
+    keyword whole lneg yellow/24
+    keyword whole fneg yellow/24
+    keyword whole dneg yellow/24
+    keyword whole ishl yellow/24
+    keyword whole lshl yellow/24
+    keyword whole ishr yellow/24
+    keyword whole lshr yellow/24
+    keyword whole iushr yellow/24
+    keyword whole lushr yellow/24
+    keyword whole iand yellow/24
+    keyword whole land yellow/24
+    keyword whole ior yellow/24
+    keyword whole lor yellow/24
+    keyword whole ixor yellow/24
+    keyword whole lxor yellow/24
+    keyword whole iinc yellow/24
+    keyword whole i2l yellow/24
+    keyword whole i2f yellow/24
+    keyword whole i2d yellow/24
+    keyword whole l2i yellow/24
+    keyword whole l2f yellow/24
+    keyword whole l2d yellow/24
+    keyword whole f2i yellow/24
+    keyword whole f2l yellow/24
+    keyword whole f2d yellow/24
+    keyword whole d2i yellow/24
+    keyword whole d2l yellow/24
+    keyword whole d2f yellow/24
+    keyword whole i2b yellow/24
+    keyword whole i2c yellow/24
+    keyword whole i2s yellow/24
+    keyword whole cmp yellow/24
+    keyword whole call yellow/24
+    keyword whole ret yellow/24
+    keyword whole arraylength yellow/24
+    keyword whole athrow yellow/24
+    keyword whole checkcast yellow/24
+    keyword whole instanceof yellow/24
+    keyword whole monitor yellow/24
+    keyword whole wide yellow/24
+    keyword whole new yellow/24
+    keyword whole breakpoint yellow/24
+
+
+    keyword whole if\s\s\s\s*\sgoto yellow/24
+    keyword whole if\s*\sgoto yellow/24
+
+    keyword whole int white/24
+    keyword whole float white/24
+    keyword whole double white/24
+    keyword whole byte white/24
+    keyword whole char white/24
+    keyword whole long white/24
+    keyword whole short white/24
+    keyword whole objref white/24
+    keyword whole void white/24
+    keyword whole boolean white/24
+
+    keyword ST[*] brightmagenta/19
+
+#    keyword whole (*) white/14
+    keyword wholeright (*) brightcyan/23
+
+    keyword interface\s*\s brightcyan/14
+    keyword virtual\s*\s brightcyan/14
+    keyword static\s*\s brightcyan/14
+    keyword special\s*\s brightcyan/14
+    keyword field\s*\s brightcyan/14
+    keyword Field\:\s*\s brightcyan/14
+
+    keyword \`\- brightgreen/16
+    keyword \,\- brightgreen/16
+    keyword \|\- brightgreen/16
+    keyword \|\s brightgreen/16
+
+    keyword \{*\} brightred/24
+
+#    keyword \s*\s\{ brightcyan/14
+
+    keyword LOC_*\s brightgreen/16
+    keyword LOC_*\n brightgreen/16
+
+    keyword F\s\#*\: white/24
+    keyword F\s\#\s*\: white/24
+    keyword F\s\#\s\s*\: white/24
+    keyword M\s\#*\: white/24
+    keyword M\s\#\s*\: white/24
+    keyword M\s\#\s\s*\: white/24
+    keyword A\s\#*\: white/24
+    keyword A\s\#\s*\: white/24
+    keyword A\s\#\s\s*\: white/24
+
+
+#    keyword invoke*\( brightcyan/14
+# context \{ \} brightred/24
+#    keyword /\* brown/22
+#    keyword \*/ brown/22
+
+# context if goto yellow/24
+
+
+context " " green/6
+    keyword \\" brightgreen/16
+    keyword %% brightgreen/16
+    keyword %\[#0\s-\+,\]\[0123456789\]\[.\]\[0123456789\]\[L\]e brightgreen/16
+    keyword %\[#0\s-\+,\]\[0123456789\]\[.\]\[0123456789\]\[L\]E brightgreen/16
+    keyword %\[#0\s-\+,\]\[0123456789\]\[.\]\[0123456789\]\[L\]f brightgreen/16
+    keyword %\[#0\s-\+,\]\[0123456789\]\[.\]\[0123456789\]\[L\]g brightgreen/16
+    keyword %\[#0\s-\+,\]\[0123456789\]\[.\]\[0123456789\]\[L\]G brightgreen/16
+    keyword %\[0\s-\+,\]\[0123456789\]\[.\]\[0123456789\]\[hl\]d brightgreen/16
+    keyword %\[0\s-\+,\]\[0123456789\]\[.\]\[0123456789\]\[hl\]i brightgreen/16
+    keyword %\[#0\s-\+,\]\[0123456789\]\[.\]\[0123456789\]\[hl\]o brightgreen/16
+    keyword %\[0\s-\+,\]\[0123456789\]\[.\]\[0123456789\]\[hl\]u brightgreen/16
+    keyword %\[#0\s-\+,\]\[0123456789\]\[.\]\[0123456789\]\[hl\]x brightgreen/16
+    keyword %\[#0\s-\+,\]\[0123456789\]\[.\]\[0123456789\]\[hl\]X brightgreen/16
+    keyword %\[hl\]n brightgreen/16
+    keyword %\[.\]\[0123456789\]s brightgreen/16
+    keyword %[*] brightgreen/16
+    keyword %c brightgreen/16
+    keyword \\\\ brightgreen/16
+    keyword \\' brightgreen/16
+    keyword \\a brightgreen/16
+    keyword \\b brightgreen/16
+    keyword \\t brightgreen/16
+    keyword \\n brightgreen/16
+    keyword \\v brightgreen/16
+    keyword \\f brightgreen/16
+    keyword \\r brightgreen/16
+    keyword \\0 brightgreen/16
+
+

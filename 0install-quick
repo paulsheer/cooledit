@@ -1,0 +1,19 @@
+#!/bin/sh
+# For super easy install just run ./0install-quick as root.
+
+CFLAGS=-O ./configure || exit 1
+
+#
+# for gcc:
+# CFLAGS='-O2 -fomit-frame-pointer -s -Wall -pipe' ./configure
+make || exit 1
+make install-strip || exit 1
+
+echo ""
+echo "#########################################################"
+echo "Installation complete"
+echo "Your ~/.coolicon file is incompatable as of version 3.7.0"
+echo "It is recommended that it be removed."
+echo "#########################################################"
+echo ""
+

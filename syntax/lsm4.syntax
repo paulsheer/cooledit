@@ -1,0 +1,31 @@
+
+context default
+    spellcheck
+
+    keyword linestart Begin4			brightmagenta/20
+    keyword linestart Title:			red/9  yellow/24
+    keyword linestart Version:			red/9  yellow/24
+    keyword linestart Entered-date:		red/9  yellow/24
+    keyword linestart Description:		red/9  yellow/24
+    keyword linestart Keywords:			red/9  yellow/24
+    keyword linestart Primary-site:		red/9  yellow/24
+    keyword linestart Platforms:		red/9  yellow/24
+    keyword linestart Copying-policy:		red/9  yellow/24
+    keyword linestart End			brightmagenta/20
+
+    keyword whole GPL	green/6
+    keyword whole BSD	green/6
+    keyword whole Shareware	green/6
+    keyword wholeright \s*.tar.gz	green/6
+    keyword wholeright \s*.tar.bz2	green/6
+    keyword wholeright \s*.tar.rpm	green/6
+    keyword wholeright \s*.tar.deb	green/6
+    keyword wholeright \s*.lsm	green/6
+
+context linestart Author: \n brightred/19
+    keyword whole \s*@*\s(*)		cyan/16
+
+context linestart Maintained-by: \n brightred/19
+    keyword whole \s*@*\s(*)		cyan/16
+
+###############################################################################

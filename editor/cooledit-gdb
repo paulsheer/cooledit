@@ -1,0 +1,10 @@
+#!/bin/sh
+# We want to be sure of running gdb in english so that
+# Cooledit can understand its output.
+LC_ALL=C
+LC_CTYPE=C
+LC_MESSAGE=C
+unset LANG
+unset LANGUAGE
+export LC_ALL LC_CTYPE LC_MESSAGE
+exec gdb $@

@@ -1,0 +1,113 @@
+# Pascal (BP7 IDE alike)
+
+context default
+    keyword whole absolute yellow/24
+    keyword whole and yellow/24
+    keyword whole array yellow/24
+    keyword whole as yellow/24
+    keyword whole asm yellow/24
+    keyword whole assembler yellow/24
+    keyword whole begin yellow/24
+    keyword whole break yellow/24
+    keyword whole case yellow/24
+    keyword whole class yellow/24
+    keyword whole const yellow/24
+    keyword whole continue yellow/24
+    keyword whole constructor yellow/24
+    keyword whole destructor yellow/24
+    keyword whole dispose yellow/24
+    keyword whole div yellow/24
+    keyword whole do yellow/24
+    keyword whole downto yellow/24
+    keyword whole else yellow/24
+    keyword whole end yellow/24
+    keyword whole except yellow/24
+    keyword whole exit yellow/24
+    keyword whole export yellow/24
+    keyword whole exports yellow/24
+    keyword whole external yellow/24
+    keyword whole fail yellow/24
+    keyword whole far yellow/24
+    keyword whole false yellow/24
+    keyword whole file yellow/24
+    keyword whole finally yellow/24
+    keyword whole for yellow/24
+    keyword whole forward yellow/24
+    keyword whole function yellow/24
+    keyword whole goto yellow/24
+    keyword whole if yellow/24
+    keyword whole implementation yellow/24
+    keyword whole in yellow/24
+    keyword whole inherited yellow/24
+    keyword whole initialization yellow/24
+    keyword whole inline yellow/24
+    keyword whole interface yellow/24
+    keyword whole interrupt yellow/24
+    keyword whole is yellow/24
+    keyword whole label yellow/24
+    keyword whole library yellow/24
+    keyword whole mod yellow/24
+    keyword whole near yellow/24
+    keyword whole new yellow/24
+    keyword whole nil yellow/24
+    keyword whole not yellow/24
+    keyword whole object yellow/24
+    keyword whole of yellow/24
+    keyword whole on yellow/24
+    keyword whole operator yellow/24
+    keyword whole or yellow/24
+    keyword whole otherwise yellow/24
+    keyword whole packed yellow/24
+    keyword whole procedure yellow/24
+    keyword whole program yellow/24
+    keyword whole property yellow/24
+    keyword whole raise yellow/24
+    keyword whole record yellow/24
+    keyword whole repeat yellow/24
+    keyword whole self yellow/24
+    keyword whole set yellow/24
+    keyword whole shl yellow/24
+    keyword whole shr yellow/24
+    keyword whole string yellow/24
+    keyword whole then yellow/24
+    keyword whole to yellow/24
+    keyword whole true yellow/24
+    keyword whole try yellow/24
+    keyword whole type yellow/24
+    keyword whole unit yellow/24
+    keyword whole until yellow/24
+    keyword whole uses yellow/24
+    keyword whole var yellow/24
+    keyword whole virtual yellow/24
+    keyword whole while yellow/24
+    keyword whole with yellow/24
+    keyword whole xor yellow/24
+    keyword whole .. yellow/24
+    
+    keyword > cyan/Cyan
+    keyword < cyan/Cyan
+    keyword \+ cyan/Cyan
+    keyword - cyan/Cyan
+    keyword % cyan/Cyan
+    keyword = cyan/Cyan
+    keyword [ cyan/Cyan
+    keyword ] cyan/Cyan
+    keyword ( cyan/Cyan
+    keyword ) cyan/Cyan
+    keyword , cyan/Cyan
+    keyword . cyan/Cyan
+    keyword : cyan/Cyan
+    keyword ; cyan/Cyan
+    keyword {$*} brightred/19
+
+context ' ' brightcyan/Green
+context // \n brown/22
+context (\* \*) brown/22
+# context {$ } brightred/19
+#    keyword \[ABCDEFGHIJKLMNOPQRSTUVWXYZ\]\[-\+\] brightgreen/16
+#    keyword $* brightgreen/16
+context { } lightgray/22
+    spellcheck
+
+
+

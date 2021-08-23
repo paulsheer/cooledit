@@ -1,0 +1,521 @@
+###############################################################################
+#                                                                             #
+# GIMP Script-fu (SIOD Scheme) syntax highlighting                            #
+#                                                                             #
+# Olivier Boursin <gimpi@oliportal.net>                                       #
+# Copyleft 2003, Olivier Boursin                                              #
+#                                                           v0.50, 2003/08/18 #
+#                                                                             #
+###############################################################################
+
+
+
+context default
+
+
+  # SIOD Scheme functions
+
+    keyword ( brightred/18
+    keyword ) brightred/18
+
+    keyword whole <    magenta/23
+    keyword whole <=   magenta/23
+    keyword whole =    magenta/23
+    keyword whole >    magenta/23
+    keyword whole >=   magenta/23
+    keyword whole -    magenta/23
+    keyword whole /    magenta/23
+    keyword whole \*   magenta/23
+    keyword whole \+   magenta/23
+
+    keyword whole abs                   magenta/23
+    keyword whole acos                  magenta/23
+    keyword whole allocate-heap         magenta/23
+    keyword whole and                   magenta/23
+    keyword whole append                magenta/23
+    keyword whole append2               magenta/23
+    keyword whole apply                 magenta/23
+    keyword whole apropos               magenta/23
+    keyword whole aref                  magenta/23
+    keyword whole aref                  magenta/23
+    keyword whole array->hexstr         magenta/23
+    keyword whole aset                  magenta/23
+    keyword whole aset                  magenta/23
+    keyword whole ash                   magenta/23
+    keyword whole asin                  magenta/23
+    keyword whole ass                   magenta/23
+    keyword whole assoc                 magenta/23
+    keyword whole assq                  magenta/23
+    keyword whole assv                  magenta/23
+    keyword whole atan                  magenta/23
+    keyword whole atan2                 magenta/23
+    keyword whole base64decode          magenta/23
+    keyword whole base64encode          magenta/23
+    keyword whole begin                 magenta/23
+    keyword whole benchmark-eval        magenta/23
+    keyword whole benchmark-funcall1    magenta/23
+    keyword whole benchmark-funcall2    magenta/23
+    keyword whole bit-and               magenta/23
+    keyword whole bit-not               magenta/23
+    keyword whole bit-or                magenta/23
+    keyword whole bit-xor               magenta/23
+    keyword whole butlast               magenta/23
+    keyword whole bytes-append          magenta/23
+    keyword whole c\[ad\]r              magenta/23
+    keyword whole caaar                 magenta/23
+    keyword whole caadr                 magenta/23
+    keyword whole caar                  magenta/23
+    keyword whole cadar                 magenta/23
+    keyword whole caddr                 magenta/23
+    keyword whole cadr                  magenta/23
+    keyword whole car                   magenta/23
+    keyword whole \*catch               magenta/23
+    keyword whole cdaar                 magenta/23
+    keyword whole cdadr                 magenta/23
+    keyword whole cdar                  magenta/23
+    keyword whole cddar                 magenta/23
+    keyword whole cdddr                 magenta/23
+    keyword whole cddr                  magenta/23
+    keyword whole cdr                   magenta/23
+    keyword whole %%closure             magenta/23
+    keyword whole %%closure-code        magenta/23
+    keyword whole %%closure-env         magenta/23
+    keyword whole cond                  magenta/23
+    keyword whole cons                  magenta/23
+    keyword whole cons-array            magenta/23
+    keyword whole copy-list             magenta/23
+    keyword whole cos                   magenta/23
+    keyword whole define                magenta/23
+    keyword whole delq                  magenta/23
+    keyword whole env-lookup            magenta/23
+    keyword whole eof-val               magenta/23
+    keyword whole eq?                   magenta/23
+    keyword whole equal?                magenta/23
+    keyword whole eqv?                  magenta/23
+    keyword whole error                 magenta/23
+    keyword whole eval                  magenta/23
+    keyword whole exp                   magenta/23
+    keyword whole fast-load             magenta/23
+    keyword whole fast-print            magenta/23
+    keyword whole fast-read             magenta/23
+    keyword whole fast-save             magenta/23
+    keyword whole fclose                magenta/23
+    keyword whole fflush                magenta/23
+    keyword whole fmod                  magenta/23
+    keyword whole fopen                 magenta/23
+    keyword whole fread                 magenta/23
+    keyword whole fseek                 magenta/23
+    keyword whole ftell                 magenta/23
+    keyword whole fwrite                magenta/23
+    keyword whole gc                    magenta/23
+    keyword whole gc-info               magenta/23
+    keyword whole gc-status             magenta/23
+    keyword whole get                   magenta/23
+    keyword whole getc                  magenta/23
+    keyword whole help                  magenta/23
+    keyword whole hexstr->bytes         magenta/23
+    keyword whole href                  magenta/23
+    keyword whole hset                  magenta/23
+    keyword whole if                    magenta/23
+    keyword whole intern                magenta/23
+    keyword whole lambda                magenta/23
+    keyword whole larg-default          magenta/23
+    keyword whole last                  magenta/23
+    keyword whole last-c-error          magenta/23
+    keyword whole length                magenta/23
+    keyword whole length                magenta/23
+    keyword whole length                magenta/23
+    keyword whole let\*                 magenta/23
+    keyword whole let\*-macro           magenta/23
+    keyword whole let                   magenta/23
+    keyword whole let-internal          magenta/23
+    keyword whole let-internal-macro    magenta/23
+    keyword whole list                  magenta/23
+    keyword whole lkey-default          magenta/23
+    keyword whole load                  magenta/23
+    keyword whole log                   magenta/23
+    keyword whole lref-default          magenta/23
+    keyword whole make-list             magenta/23
+    keyword whole mapcar                magenta/23
+    keyword whole mapcar1               magenta/23
+    keyword whole mapcar2               magenta/23
+    keyword whole max                   magenta/23
+    keyword whole member                magenta/23
+    keyword whole memq                  magenta/23
+    keyword whole memv                  magenta/23
+    keyword whole min                   magenta/23
+    keyword whole nconc                 magenta/23
+    keyword whole not                   magenta/23
+    keyword whole nreverse              magenta/23
+    keyword whole nth                   magenta/23
+    keyword whole null?                 magenta/23
+    keyword whole number?               magenta/23
+    keyword whole number->string        magenta/23
+    keyword whole or                    magenta/23
+    keyword whole pair?                 magenta/23
+    keyword whole parse-number          magenta/23
+    keyword whole parser_fasl           magenta/23
+    keyword whole parser_fasl_hook      magenta/23
+    keyword whole parser_read           magenta/23
+    keyword whole pow                   magenta/23
+    keyword whole prin1                 magenta/23
+    keyword whole print                 magenta/23
+    keyword whole print-to-string       magenta/23
+    keyword whole prog1                 magenta/23
+    keyword whole putc                  magenta/23
+    keyword whole putprop               magenta/23
+    keyword whole puts                  magenta/23
+    keyword whole qsort                 magenta/23
+    keyword whole quit                  magenta/23
+    keyword whole quote                 magenta/23
+    keyword whole rand                  magenta/23
+    keyword whole read                  magenta/23
+    keyword whole read-from-string      magenta/23
+    keyword whole realtime              magenta/23
+    keyword whole require               magenta/23
+    keyword whole reverse               magenta/23
+    keyword whole runtime               magenta/23
+    keyword whole save-forms            magenta/23
+    keyword whole set!                  magenta/23
+    keyword whole set-car!              magenta/23
+    keyword whole set-cdr!              magenta/23
+    keyword whole set-eval-history      magenta/23
+    keyword whole setprop               magenta/23
+    keyword whole set-symbol-value!     magenta/23
+    keyword whole sin                   magenta/23
+    keyword whole sqrt                  magenta/23
+    keyword whole srand                 magenta/23
+    keyword whole %%stack-limit         magenta/23
+    keyword whole strbreakup            magenta/23
+    keyword whole strcat                magenta/23
+    keyword whole strcmp                magenta/23
+    keyword whole strcpy                magenta/23
+    keyword whole strcspn               magenta/23
+    keyword whole string?               magenta/23
+    keyword whole string-append         magenta/23
+    keyword whole string-dimension      magenta/23
+    keyword whole string-downcase       magenta/23
+    keyword whole string-length         magenta/23
+    keyword whole string-lessp          magenta/23
+    keyword whole string->number        magenta/23
+    keyword whole string-search         magenta/23
+    keyword whole string-trim           magenta/23
+    keyword whole string-trim-left      magenta/23
+    keyword whole string-trim-right     magenta/23
+    keyword whole string-upcase         magenta/23
+    keyword whole strspn                magenta/23
+    keyword whole subset                magenta/23
+    keyword whole substring             magenta/23
+    keyword whole substring-equal?      magenta/23
+    keyword whole swrite                magenta/23
+    keyword whole sxhash                magenta/23
+    keyword whole symbol?               magenta/23
+    keyword whole symbol-bound?         magenta/23
+    keyword whole symbolconc            magenta/23
+    keyword whole symbol-value          magenta/23
+    keyword whole tan                   magenta/23
+    keyword whole the-environment       magenta/23
+    keyword whole \*throw               magenta/23
+    keyword whole typeof                magenta/23
+    keyword whole unbreakupstr          magenta/23
+    keyword whole ungetc                magenta/23
+    keyword whole verbose               magenta/23
+    keyword whole while                 magenta/23
+    keyword whole writes                magenta/23
+
+    keyword whole \*after-gc\*                    magenta/11
+    keyword whole \*eval-history-ptr\*            magenta/11
+    keyword whole \*parser_fasl.scm-loaded\*      magenta/11
+    keyword whole \*parser_read.scm-loaded\*      magenta/11
+    keyword whole \*pi\*                          magenta/11
+    keyword whole \*plists\*                      magenta/11
+    keyword whole \*traced\*                      magenta/11
+    keyword whole \*\*unbound-marker\*\*          magenta/11
+    keyword whole errobj                          magenta/11
+    keyword whole nil                             magenta/11
+    keyword whole t                               magenta/11
+
+
+  # GIMP functions
+
+    # All yellow except register ;-)
+    keyword whole script-fu-register gray/0 cyan/16
+
+    # wholechars necessary unless somebody knows how to write those six definitions :-/
+    wholechars abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789-
+
+    keyword whole extension-+ yellow/24 
+    keyword whole file-+      yellow/24
+    keyword whole gimp-+      yellow/24
+    keyword whole perl-fu-+   yellow/24
+    keyword whole plug-in-+   yellow/24
+    keyword whole script-fu-+ yellow/24
+    
+
+  # GIMP constants
+
+    keyword whole ADDITION-MODE                   green/17 brown/9
+    keyword whole ADD                             green/17 brown/9
+    keyword whole ALL-HUES                        green/17 brown/9
+    keyword whole ALPHA-LUT                       green/17 brown/9
+    keyword whole ALPHA-MASK                      green/17 brown/9
+    keyword whole APPLY                           green/17 brown/9
+    keyword whole ASOLUTE-CONVOL                  green/17 brown/9
+    keyword whole AUXILLARY-CHANNEL               green/17 brown/9
+    keyword whole BEHIND-MODE                     green/17 brown/9
+    keyword whole BG-BUCKET-FILL                  green/17 brown/9
+    keyword whole BG-IMAGE-FILL                   green/17 brown/9
+    keyword whole BILINEAR                        green/17 brown/9
+    keyword whole BLACK-MASK                      green/17 brown/9
+    keyword whole BLUE-CHANNEL                    green/17 brown/9
+    keyword whole BLUE-HUES                       green/17 brown/9
+    keyword whole BLUE-LUT                        green/17 brown/9
+    keyword whole BLUR-CONVOLVE                   green/17 brown/9
+    keyword whole BURN                            green/17 brown/9
+    keyword whole CLIP-TO-BOTTOM-LAYER            green/17 brown/9
+    keyword whole CLIP-TO-IMAGE                   green/17 brown/9
+    keyword whole COLOR-MODE3                     green/17 brown/9
+    keyword whole CONICAL-ASYMMETRIC              green/17 brown/9
+    keyword whole CONICAL-SYMMETRIC               green/17 brown/9
+    keyword whole CONSOLE                         green/17 brown/9
+    keyword whole CONTINUOUS                      green/17 brown/9
+    keyword whole CUBIC-INTERPOLATION             green/17 brown/9
+    keyword whole CUSTOM-CONVOLVE                 green/17 brown/9
+    keyword whole CUSTOM                          green/17 brown/9
+    keyword whole CUSTOM-PALETTE                  green/17 brown/9
+    keyword whole CYAN-HUES                       green/17 brown/9
+    keyword whole DARKEN-ONLY                     green/17 brown/9
+    keyword whole DARKEN-ONLY-MODE                green/17 brown/9
+    keyword whole DIFFERENCE                      green/17 brown/9
+    keyword whole DIFFERENCE-MODE                 green/17 brown/9
+    keyword whole DISCARD                         green/17 brown/9
+    keyword whole DISSOLVE-MODE                   green/17 brown/9
+    keyword whole DIVIDE-MODE5                    green/17 brown/9
+    keyword whole DODGEBURN-HIGHLIGHTS            green/17 brown/9
+    keyword whole DODGEBURN-MIDTONES              green/17 brown/9
+    keyword whole DODGEBURN-SHADOWS               green/17 brown/9
+    keyword whole DODGE                           green/17 brown/9
+    keyword whole ERROR-CONSOLE                   green/17 brown/9
+    keyword whole EXPAND-AS-NECESSARY             green/17 brown/9
+    keyword whole EXTENSION                       green/17 brown/9
+    keyword whole FALSE                           green/17 brown/9
+    keyword whole FG-BG-HSV                       green/17 brown/9
+    keyword whole FG-BG-RGB                       green/17 brown/9
+    keyword whole FG-BUCKET-FILL                  green/17 brown/9
+    keyword whole FG-IMAGE-FILL                   green/17 brown/9
+    keyword whole FG-TRANS                        green/17 brown/9
+    keyword whole FIXED-DITHER                    green/17 brown/9
+    keyword whole FLATTEN-IMAGE                   green/17 brown/9
+    keyword whole FS-DITHER                       green/17 brown/9
+    keyword whole FSLOWBLEED-DITHER               green/17 brown/9
+    keyword whole GRAYA_IMAGE                     green/17 brown/9
+    keyword whole GRAYA-IMAGE                     green/17 brown/9
+    keyword whole GRAY-CHANNEL                    green/17 brown/9
+    keyword whole GRAY_IMAGE                      green/17 brown/9
+    keyword whole GRAY-IMAGE                      green/17 brown/9
+    keyword whole GRAY                            green/17 brown/9
+    keyword whole GREEN-CHANNEL                   green/17 brown/9
+    keyword whole GREEN-HUES                      green/17 brown/9
+    keyword whole GREEN-LUT                       green/17 brown/9
+    keyword whole HARD                            green/17 brown/9
+    keyword whole HIGHLIGHTS                      green/17 brown/9
+    keyword whole HORIZONTAL                      green/17 brown/9
+    keyword whole HUE-MODE1                       green/17 brown/9
+    keyword whole IMAGE-CLONE                     green/17 brown/9
+    keyword whole INCREMENTAL                     green/17 brown/9
+    keyword whole INDEXEDA_IMAGE                  green/17 brown/9
+    keyword whole INDEXEDA-IMAGE                  green/17 brown/9
+    keyword whole INDEXED-CHANNEL                 green/17 brown/9
+    keyword whole INDEXED_IMAGE                   green/17 brown/9
+    keyword whole INDEXED-IMAGE                   green/17 brown/9
+    keyword whole INDEXED                         green/17 brown/9
+    keyword whole INTERNAL                        green/17 brown/9
+    keyword whole INTERSECT                       green/17 brown/9
+    keyword whole LIGHTEN-ONLY-MODE0              green/17 brown/9
+    keyword whole LINEAR-INTERPOLATION            green/17 brown/9
+    keyword whole LINEAR                          green/17 brown/9
+    keyword whole LOOP-SAWTOOTH                   green/17 brown/9
+    keyword whole LOOP-TRIANGLE                   green/17 brown/9
+    keyword whole MAGENTA-HUES                    green/17 brown/9
+    keyword whole MAKE-PALETTE                    green/17 brown/9
+    keyword whole MESSAGE-BOX                     green/17 brown/9
+    keyword whole MIDTONES                        green/17 brown/9
+    keyword whole MONO-PALETTE                    green/17 brown/9
+    keyword whole MULTIPLY                        green/17 brown/9
+    keyword whole MULTIPLY-MODE                   green/17 brown/9
+    keyword whole NEAREST-NEIGHBOR-INTERPOLATION  green/17 brown/9
+    keyword whole NEGATIVE-CONVOL                 green/17 brown/9
+    keyword whole NODESTRUCT-DITHER               green/17 brown/9
+    keyword whole NO-DITHER                       green/17 brown/9
+    keyword whole NO-IMAGE-FILL                   green/17 brown/9
+    keyword whole NORMAL-CONVOL                   green/17 brown/9
+    keyword whole NORMAL                          green/17 brown/9
+    keyword whole NORMAL-MODE                     green/17 brown/9
+    keyword whole OFFSET-BACKGROUND               green/17 brown/9
+    keyword whole OFFSET-TRANSPARENT              green/17 brown/9
+    keyword whole ONCE-BACKWARDS                  green/17 brown/9
+    keyword whole ONCE-END-COLOR                  green/17 brown/9
+    keyword whole ONCE-FORWARD                    green/17 brown/9
+    keyword whole OVERLAY-MODE                    green/17 brown/9
+    keyword whole PATTERN-BUCKET-FILL             green/17 brown/9
+    keyword whole PATTERN-CLONE                   green/17 brown/9
+    keyword whole PDB-BOUNDARY8                   green/17 brown/9
+    keyword whole PDB-CALLING-ERROR               green/17 brown/9
+    keyword whole PDB-CANCEL                      green/17 brown/9
+    keyword whole PDB-CHANNEL5                    green/17 brown/9
+    keyword whole PDB-COLOR0                      green/17 brown/9
+    keyword whole PDB-DISPLAY2                    green/17 brown/9
+    keyword whole PDB-DRAWABLE6                   green/17 brown/9
+    keyword whole PDB-END2                        green/17 brown/9
+    keyword whole PDB-EXECUTION-ERROR             green/17 brown/9
+    keyword whole PDB-FLOATARRAY                  green/17 brown/9
+    keyword whole PDB-FLOAT                       green/17 brown/9
+    keyword whole PDB-IMAGE3                      green/17 brown/9
+    keyword whole PDB-INT16ARRAY                  green/17 brown/9
+    keyword whole PDB-INT16                       green/17 brown/9
+    keyword whole PDB-INT32ARRAY                  green/17 brown/9
+    keyword whole PDB-INT32                       green/17 brown/9
+    keyword whole PDB-INT8ARRAY                   green/17 brown/9
+    keyword whole PDB-INT8                        green/17 brown/9
+    keyword whole PDB-LAYER4                      green/17 brown/9
+    keyword whole PDB-PARASITE0                   green/17 brown/9
+    keyword whole PDB-PASS-THROUGH                green/17 brown/9
+    keyword whole PDB-PATH9                       green/17 brown/9
+    keyword whole PDB-REGION1                     green/17 brown/9
+    keyword whole PDB-SELECTION7                  green/17 brown/9
+    keyword whole PDB-STATUS1                     green/17 brown/9
+    keyword whole PDB-STRINGARRAY                 green/17 brown/9
+    keyword whole PDB-STRING                      green/17 brown/9
+    keyword whole PDB-SUCCESS                     green/17 brown/9
+    keyword whole PIXELS                          green/17 brown/9
+    keyword whole PLUGIN                          green/17 brown/9
+    keyword whole POINTS                          green/17 brown/9
+    keyword whole PRESSURE                        green/17 brown/9
+    keyword whole RADIAL                          green/17 brown/9
+    keyword whole RED-CHANNEL                     green/17 brown/9
+    keyword whole RED-HUES                        green/17 brown/9
+    keyword whole RED-LUT                         green/17 brown/9
+    keyword whole REPEAT-NONE                     green/17 brown/9
+    keyword whole REPEAT-SAWTOOTH                 green/17 brown/9
+    keyword whole REPEAT-TRIANGULAR               green/17 brown/9
+    keyword whole REPLACE                         green/17 brown/9
+    keyword whole REUSE-PALETTE                   green/17 brown/9
+    keyword whole RGBA_IMAGE                      green/17 brown/9
+    keyword whole RGBA-IMAGE                      green/17 brown/9
+    keyword whole RGBA                            green/17 brown/9
+    keyword whole RGB_IMAGE                       green/17 brown/9
+    keyword whole RGB-IMAGE                       green/17 brown/9
+    keyword whole RGB                             green/17 brown/9
+    keyword whole RGB                             green/17 brown/9
+    keyword whole RUN-INTERACTIVE                 green/17 brown/9
+    keyword whole RUN-NONINTERACTIVE              green/17 brown/9
+    keyword whole RUN-WITH-LAST-VALS              green/17 brown/9
+    keyword whole SATURATION-MODE2                green/17 brown/9
+    keyword whole SCREEN-MODE                     green/17 brown/9
+    keyword whole SHADOWS                         green/17 brown/9
+    keyword whole SHAPEBURST-ANGULAR              green/17 brown/9
+    keyword whole SHAPEBURST-DIMPLED              green/17 brown/9
+    keyword whole SHAPEBURST-SPHERICAL            green/17 brown/9
+    keyword whole SHARPEN-CONVOLVE                green/17 brown/9
+    keyword whole SOFT                            green/17 brown/9
+    keyword whole SPIRAL-ANTICLOCKWISE0           green/17 brown/9
+    keyword whole SPIRAL-CLOCKWISE                green/17 brown/9
+    keyword whole SQUARE                          green/17 brown/9
+    keyword whole STACK-TRACE-ALWAYS              green/17 brown/9
+    keyword whole STACK-TRACE-NEVER               green/17 brown/9
+    keyword whole STACK-TRACE-QUERY               green/17 brown/9
+    keyword whole SUB                             green/17 brown/9
+    keyword whole SUBTRACT-MODE                   green/17 brown/9
+    keyword whole TEMPORARY                       green/17 brown/9
+    keyword whole TRANS-IMAGE-FILL                green/17 brown/9
+    keyword whole TRUE                            green/17 brown/9
+    keyword whole UNKNOWN                         green/17 brown/9
+    keyword whole VALUE-LUT                       green/17 brown/9
+    keyword whole VALUE-MODE4                     green/17 brown/9
+    keyword whole VERTICAL                        green/17 brown/9
+    keyword whole WEB-PALETTE                     green/17 brown/9
+    keyword whole WHITE-IMAGE-FILL                green/17 brown/9
+    keyword whole WHITE-MASK                      green/17 brown/9
+    keyword whole YELLOW-HUES                     green/17 brown/9
+
+    keyword whole SF-ADJUSTMENT  green/17 brown/9
+    keyword whole SF-BRUSH       green/17 brown/9
+    keyword whole SF-CHANNEL     green/17 brown/9
+    keyword whole SF-COLOR       green/17 brown/9
+    keyword whole SF-DRAWABLE    green/17 brown/9
+    keyword whole SF-FILENAME    green/17 brown/9
+    keyword whole SF-FONT        green/17 brown/9
+    keyword whole SF-GRADIENT    green/17 brown/9
+    keyword whole SF-IMAGE       green/17 brown/9
+    keyword whole SF-LAYER       green/17 brown/9
+    keyword whole SF-OPTION      green/17 brown/9
+    keyword whole SF-PATTERN     green/17 brown/9
+    keyword whole SF-SLIDER      green/17 brown/9
+    keyword whole SF-SPINNER     green/17 brown/9
+    keyword whole SF-STRING      green/17 brown/9
+    keyword whole SF-TOGGLE      green/17 brown/9
+    keyword whole SF-VALUE       green/17 brown/9
+
+
+  # GIMP variables
+
+    # Mines / les miennes
+      keyword whole p_+  brightcyan/16 gray/13
+      keyword whole vl_+ brightcyan/16
+
+    # Theirs / les leurs
+      keyword whole in\{ABCDEFGHIJKLMNOPQRSTUVWXYZ\}+  brightcyan/16 gray/13
+      keyword whole the\{ABCDEFGHIJKLMNOPQRSTUVWXYZ\}+ brightcyan/16
+    
+
+  # Numbers and digits
+
+    # not signed
+    keyword       \{0123456789\}           brightgreen/6
+
+    # signed
+    keyword whole \{\+-\*/\}\[0123456789\] brightgreen/6
+
+
+
+# Comments
+context  ; \n gray/13
+
+  # Syntax Highlighting Colours References (can be suppressed of course)
+  # (mc means Midnight Commander compatibility)
+    keyword whole couleur\s00 mc/0
+    keyword whole couleur\s01 mc/1
+    keyword whole couleur\s02 mc/2
+    keyword whole couleur\s03 mc/3
+    keyword whole couleur\s04 mc/4
+    keyword whole couleur\s05 mc/5
+    keyword whole couleur\s06 mc/6
+    keyword whole couleur\s07 mc/7
+    keyword whole couleur\s08 mc/8
+    keyword whole couleur\s09 mc/9
+    keyword whole couleur\s10 mc/10
+    keyword whole couleur\s11 mc/11
+    keyword whole couleur\s12 mc/12
+    keyword whole couleur\s13 mc/13
+    keyword whole couleur\s14 mc/14
+    keyword whole couleur\s15 mc/15
+    keyword whole couleur\s16 mc/16
+    keyword whole couleur\s17 mc/17
+    keyword whole couleur\s18 mc/18
+    keyword whole couleur\s19 mc/19
+    keyword whole couleur\s20 mc/20
+    keyword whole couleur\s21 mc/21
+    keyword whole couleur\s22 mc/22
+    keyword whole couleur\s23 mc/23
+    keyword whole couleur\s24 mc/24
+    keyword whole couleur\s25 mc/25
+    keyword whole couleur\s26 mc/26
+
+
+
+# Text strings
+context " " green/25
+
+    keyword \\"  brightmagenta/23
+    keyword \\n  brightmagenta/23
+    keyword \{0123456789\} brightgreen/7

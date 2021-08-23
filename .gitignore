@@ -1,0 +1,14 @@
+widget/*.c~
+widget/*.h~
+widget/*.c.BAK*
+editor/*.c~
+editor/*.h~
+editor/*.c.BAK*
+rxvt/*.c~
+rxvt/*.h~
+rxvt/*.c.BAK*
+widget/remotefs
+widget/remotefs.obj
+*.diff
+*~
+

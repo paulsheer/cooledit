@@ -1,0 +1,121 @@
+#
+# Prolog syntax hilighting
+#
+#   Carlos Rodrigues <a9566@lei.di.fct.unl.pt>
+#
+
+context default
+    keyword whole atom brightcyan/17
+    keyword whole integer brightcyan/17
+    keyword whole atomic brightcyan/17
+    keyword whole constant brightcyan/17
+    keyword whole functor brightcyan/17
+    keyword whole arg brightcyan/17
+    keyword whole var brightcyan/17
+    keyword whole nonvar brightcyan/17
+    keyword whole assert brightcyan/17
+    keyword whole assertz brightcyan/17
+    keyword whole asserta brightcyan/17
+    keyword whole retract brightcyan/17
+    keyword whole abolish brightcyan/17
+    keyword whole consult brightcyan/17
+    keyword whole reconsult brightcyan/17
+    keyword whole clause brightcyan/17
+    keyword whole listing brightcyan/17
+    keyword whole read brightcyan/17
+    keyword whole sread brightcyan/17
+    keyword whole write brightcyan/17
+    keyword whole writeq brightcyan/17
+    keyword whole display brightcyan/17
+    keyword whole displayq brightcyan/17
+    keyword whole displayl brightcyan/17
+    keyword whole print brightcyan/17
+    keyword whole see brightcyan/17
+    keyword whole seeing brightcyan/17
+    keyword whole tell brightcyan/17
+    keyword whole telling brightcyan/17
+    keyword whole told brightcyan/17
+    keyword whole flush brightcyan/17
+    keyword whole get brightcyan/17
+    keyword whole get0 brightcyan/17
+    keyword whole put brightcyan/17
+    keyword whole tab brightcyan/17
+    keyword whole nl brightcyan/17
+    keyword whole skip brightcyan/17
+    keyword whole ttyget brightcyan/17
+    keyword whole ttyput brightcyan/17
+    keyword whole ttynl brightcyan/17
+    keyword whole ttyskip brightcyan/17
+    keyword whole ttytab brightcyan/17
+    keyword whole op brightcyan/17
+    keyword whole save brightcyan/17
+    keyword whole log brightcyan/17
+    keyword whole trace brightcyan/17
+    keyword whole true brightcyan/17
+    keyword whole fail brightcyan/17
+    keyword whole exit brightcyan/17
+    keyword whole abort brightcyan/17
+    keyword whole call brightcyan/17
+    keyword whole not brightcyan/17
+    keyword whole name brightcyan/17
+    keyword whole repeat brightcyan/17
+    keyword whole system brightcyan/17
+    keyword whole systemp brightcyan/17
+    keyword whole save_term brightcyan/17
+    keyword whole unsave_term brightcyan/17
+    keyword whole member brightcyan/17
+    keyword whole append brightcyan/17
+    keyword whole iterate brightcyan/17
+    keyword whole fork_exec brightcyan/17
+    keyword whole ancestor brightcyan/17
+    keyword whole cutg brightcyan/17
+    keyword whole retry brightcyan/17
+
+    keyword /\* brown/22
+    keyword \*/ brown/22
+
+    keyword :- brightred/18
+    keyword wholeright . brightred/18
+
+    keyword whole ! brightgreen/6
+    keyword whole _ brightgreen/6
+
+    keyword ( brightgreen/6
+    keyword ) brightgreen/6
+
+    keyword , cyan/16
+    keyword ; cyan/16
+    keyword =.. cyan/16
+    keyword = cyan/16
+    keyword \\= cyan/16
+    keyword == cyan/16
+    keyword \\== cyan/16
+
+    keyword < cyan/16
+    keyword > cyan/16
+    keyword =\\= cyan/16
+    keyword >= cyan/16
+    keyword =< cyan/16
+    keyword =:= cyan/16
+    keyword := cyan/16
+    keyword whole is cyan/16
+    keyword \+ cyan/16
+    keyword \\\+ cyan/16
+    keyword - cyan/16
+    keyword \* cyan/16
+    keyword / cyan/16
+    keyword whole mod cyan/16
+
+    keyword [ yellow/24
+    keyword ] yellow/24
+
+context exclusive [ ] white/26
+    keyword , yellow/25
+    keyword | yellow/25
+    keyword _ brightgreen/6
+
+context exclusive /\* \*/ brown/22
+context % \n brown/22
+
+context ' ' magenta/19
+context " " yellow/24

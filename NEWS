@@ -1,0 +1,245 @@
+Version 4.0.0
+
+    * Truetype, OpenType, PCF fonts-on-file support.
+    * Full unicode support and glyph rendering for all 1114111
+        code points that are also supported by NotoSans.
+    * Color TTF fonts supported.
+    * Color Emoji fonts supported with scaling (😅).
+
+Version 3.17.21-24
+
+    * Copy-paste to Windows from Oracle VM now works.
+    * Various bug fixes.
+
+Version 3.17.18 / 3.17.19
+
+    * Bug fixes.
+    * 64-bit support.
+    * Fix rare crashes and make cooledit Valgrind clean
+
+Version 3.17
+
+    * Jump to file on Ctrl-j
+    * Complete in filebrowser with Ctrl-Tab
+    * Debugger fixes and fixes for HP-UX
+    * Various build fixes for different OS's
+    * Insert history in all input widgets.
+    * Shell command line on Escape pipes selected text through
+	arbitrary commands (experimental).
+    * Colour space options, black on white display.
+    * Prolog syntax highlighting.
+    * Gimp script syntax highlighting.
+    * Valgrind auditing.
+
+Version 3.16
+
+    * Gtk look set to default.
+    * Look setting on command line Gtk/Next/Cool.
+    * INCR support (for large pastes from Gtk and Tk).
+    * Debuger support for gdb version 5.0.
+
+Version 3.15
+
+    * Unicode support: UTF-8 encoding with UCS charset.
+    * Anti-aliased font support (See FAQ to get this working).
+    * Dead key composing fixed.
+    * All colours configurable.
+    * Syntax highlighting for Macro-HTML Source, Java Assembly,
+	BAssPasC, and LUA.
+    * Block indenting command.
+
+Version 3.14
+
+    * Drag and drop interoperability with qt-2.1 and JX-1.5.3 verified.
+    * Typing-replaces-selected-text ootion.
+    * Syntax highlighting for GNU Lilypond musical definition language.
+    * Syntax highlighting for PHP.
+    * Bug fixes.
+
+Version 3.13
+
+    * Built-in Rxvt terminal emulator.
+    * Print dialog box to print in PostScript.
+    * Multiple font support in widget library.
+    * Editor and Widget fonts separated.
+    * X Input Method support with X key composing.
+    * NeXT look and feel.
+    * Smooth scrolling option.
+    * `coolproject' shell command added.
+    * Icons for icewm.
+    * Fortran syntax highlighting rules.
+    * Zope utils added.
+    * Sh utils added.
+    * gzip/bzip2/compress file support added.
+    * Bug and memory leaks fixed.
+    * Beware debug `l' is now backtrace and `k' is kill.
+
+Version 3.12
+
+    * Bookmark all matching strings.
+    * Find matching bracket (long overdue).
+    * Minor behavioural fixes.
+    * New Python function to manipulate menus.
+
+Version 3.11
+
+    * New Python functions.
+    * Python bug fixes.
+    * Debugger bug fixes.
+    * Various optimizations and behavioral/graphical
+	fixes/enhancements.
+    * Dynamic variable display and watchpoints in debugger.
+    * Localization fixes.
+    * Russian translation.
+    * Fixed memory leaks/segfaults in spell check code.
+    * Ctags interface.
+    * Syntax highlighting extensions/fixes.
+    * Syntax highlighting rules for Ada95.
+
+Version 3.10
+
+    * Spell-check as you type with red wavy lines.
+    * More comprehensive HTML syntax highlighting.
+
+Version 3.9
+
+    * Interactive graphical debugger.
+    * Find file feature searches within files recursively.
+    * Bookmark feature.
+    * Further syntax highlighting rules.
+    * Goto-line now automatically opens full file names.
+    * Run multiple scripts, simultaneously viewing their output.
+    * Regular expression substring replaces.
+    * Syntax rules for Java, ML and Smalltalk.
+    * Bug fixes.
+
+Version 3.8
+
+    * Builtin Python interpretor.
+    * Perl syntax highlighting rules.
+    * Syntax highlighting bug fixes.
+    * additional web page:
+	http://www.netins.net/showcase/Comput-IT/cooledit/index.html
+
+Version 3.7
+
+    * Cooledit now supports the XDND drag and drop
+	protocol. (Soon Qt and Gtk will be converting to
+	this protocol also.)
+    * Support for the previous Dnd protocol removed.
+    * Behavioural improvements.
+
+Version 3.6.1
+
+    * More syntax highlighting types, and bug fixes.
+    * Check out the new utilities coollistbox, coolinput etc
+	for making GUI apps from shell scripts.
+
+Version 3.6
+
+    * Syntax highlighting support.
+    * Horizontal scroll bar added.
+
+Version 3.5
+
+    * Middle button does a pastes (as well as Shift-Ins).
+	    See Options dialog box.
+    * Coolicons desktop icon package with mail polling ---
+	    when recieving a mail message, a rotating 3D `e'
+	    appears on the desktop.
+    * Auto paragraph formatting to use Cooledit like a word
+	    processor.
+    * File browser first letters to file-name.
+    * Bug fixes.
+
+Version 3.4
+
+    * Internationalisation: translations must now be done.
+    * Toolhints for buttons.
+    * Completion: just type Ctrl-Tab to complete a C or LaTeX
+	    function/macro.
+    * Column highlighting, move and copy supported (use Control
+	    key with the mouse).
+    * Fixed file-browser bug on Solaris.
+    * Fixed regexp search/replace bugs.
+
+Version 3.2
+
+    * Filebrowser now displays size, time, and mode.
+    * Coolwidget library has some new widgets.
+    * Issue SIGUSR1 to restore Cooledit in case of crash.
+    * Toolbar (with the toolbar, I think Cooledit conforms
+	    fully to the GNOME standards).
+    * More actions as user defined keys. You can now redefine
+	    (almost) anything.
+    * Mail command.
+    * Backward search and replace.
+    * Cosmetic improvements and corrections to minor behavioural
+	    problems.
+    * Radio buttons and switches now hotkey operable.
+    * More options + more options configurable through dialogs.
+    * Bug fixes.
+
+Version 3.1
+
+    * Find matching bracket.
+    * Full support for proportional fonts. You can now use
+	    cooledit with any ISO font.
+    * International characters can now be inserted with
+	    multi-key composing (right control).
+    * Insertion of decimal and hex numbers with Ctrl-q.
+    * Xor cursor option + nifty mouse cursors.
+    * Tilde expansion in file browser + filter option.
+    * Heuristic Visual selection and Visual command-line
+	    option. (This is experimental: define GUESS_VISUAL
+	    in config.h before compiling.)
+    * Drag/drop/highlight/paste in input lines.
+    * Drag a filename onto the background of the main window,
+	    opens that file in a new window.
+    * Now resizable: dialog boxes, shell/make output, manapage.
+    * Infinite undo option ('option_max_undo').
+    * Older version 0 Dnd support for rxvt and KDE.
+    * Many bug fixes.
+
+Version 3.0
+
+    * Full Drag and drop support for block copy and move.
+    * Use file browser to drag a file and insert it
+	    directly into an edit window.
+    * Run ispell on a block. This allows spell checking of
+	    an individual word or block.
+    * Run make (Alt-f7) and display output to a text-box. Hit
+	    an error and Cooledit takes you right to the file
+	    (if open) and line number.
+    * Control-F1 now calls up an interactive man page browser.
+    * Key learning window to easily redefine keys.
+    * Many new editing keys: Ctrl/Meta arrow/move combinations.
+    * Shell script editing and execution to create your own
+	    support for any compiler or shell command.
+    * New main window on Shift-F3.
+    * Input widgets now have history with Shift-Down/Up.
+    * Editor has selection history - very useful.
+    * Backup files are created - extension is configurable.
+    * Full support for different font sizes (fixed spaced
+	    fonts only though)
+    * Removed an inadvertent 32768 line limit on file size.
+    * Many cosmetic improvements.
+    * Word wrap.
+    * Process selection request events - copy and paste now
+	    compatible with all standard X applications.
+    * Smalledit text editor -- a cut down version of Cooledit.
+    * Myriad command-line options.
+    * Bug fixes.
+
+Version 2.2.4
+
+    * Support for different font sizes.
+    * Many bug fixes.
+	    (Some of these were memory leaks that may
+	     have caused the editor to crash. These
+	     should be sorted out now.)
+    * Compiles without modifications on some new os's.
+    * Goto-line command added.
+    * Some key bindings added for some os's.
+
+Version 2.2.3 is the first public release

@@ -1,0 +1,250 @@
+/* rxvt.c - terminal emulator widget top-level functions
+   Copyright (C) 1996-2018 Paul Sheer
+ */
+
+
+#include "rxvt/rxvtlib.h"
+#include "coolwidget.h"
+#include "font.h"
+
+struct rxvts {
+    rxvtlib *rxvt;
+    struct rxvts *next;
+    int killed;
+} *rxvt_list = 0;
+
+extern void rxvt_fd_write_watch (int fd, fd_set * reading, fd_set * writing, fd_set * error,
+				 void *data);
+extern void rxvt_fd_read_watch (int fd, fd_set * reading, fd_set * writing, fd_set * error,
+				void *data);
+
+int rxvt_event (XEvent * xevent)
+{
+    Window win;
+    struct rxvts *l, *prev = 0;
+    if (!rxvt_list)
+	return 0;
+    win = xevent->xany.window;
+    for (l = rxvt_list->next, prev = rxvt_list; l; l = l->next) {
+	l->killed |= CChildExitted (l->rxvt->cmd_pid, 0);
+	if (l->killed || l->rxvt->killed) {
+	    struct rxvts *next;
+	    next = l->next;
+	    CRemoveWatch (l->rxvt->cmd_fd, rxvt_fd_read_watch, 1);
+	    CRemoveWatch (l->rxvt->cmd_fd, rxvt_fd_write_watch, 2);
+	    close (l->rxvt->cmd_fd);
+	    if (l->killed) {
+		XDestroyWindow (l->rxvt->Xdisplay,
+				l->rxvt->TermWin.parent[0]);
+		XDestroyWindow (l->rxvt->Xdisplay, l->rxvt->TermWin.vt);
+		XDestroyWindow (l->rxvt->Xdisplay, l->rxvt->scrollBar.win);
+	    }
+	    prev->next = next;
+	    rxvtlib_shut (l->rxvt);
+	    free (l->rxvt);
+	    memset (l, 0, sizeof (*l));
+	    free (l);
+	    l = prev;
+	} else if (win && (l->rxvt->TermWin.parent[0] == win
+			   || l->rxvt->TermWin.parent[1] == win
+			   || l->rxvt->TermWin.parent[2] == win
+			   || l->rxvt->TermWin.parent[3] == win
+			   || l->rxvt->TermWin.parent[4] == win
+			   || l->rxvt->scrollBar.win == win
+			   || l->rxvt->menuBar.win == win)) {
+	    l->rxvt->x_events_pending = 1;
+	    memcpy (&l->rxvt->xevent, xevent, sizeof (*xevent));
+	    l->rxvt->fds_available++;
+	    if (XFilterEvent(xevent, 0)) {
+		xevent->type = 0;
+		xevent->xany.window = 0;
+		return 1;
+	    }
+	    rxvt_process_x_event (l->rxvt);
+	    if (l->rxvt->killed) {
+		CRemoveWatch (l->rxvt->cmd_fd, 0, 3);
+		CRemoveWatch (l->rxvt->cmd_fd, 0, 3);
+		return 1;
+	    }
+	    rxvtlib_update_screen (l->rxvt);
+	    if (win != DefaultRootWindow (l->rxvt->Xdisplay)
+		&& xevent->type != ClientMessage
+		&& xevent->type != SelectionNotify
+		&& xevent->type != SelectionRequest
+		&& xevent->type != SelectionClear) {
+		xevent->type = 0;
+		xevent->xany.window = 0;
+		return 1;
+	    }
+	    return 0;
+	}
+	prev = l;
+    }
+    return 0;
+}
+
+int rxvt_have_pid (pid_t pid)
+{
+    struct rxvts *l;
+    if (!rxvt_list)
+	return 0;
+    for (l = rxvt_list->next; l; l = l->next)
+	if (l->rxvt->cmd_pid == pid)
+	    return 1;
+    return 0;
+}
+
+/* rxvt's need to interoperate */
+void rxvt_selection_clear (void)
+{
+    struct rxvts *l;
+    if (!rxvt_list)
+	return;
+    for (l = rxvt_list->next; l; l = l->next) {
+	rxvtlib *o;
+	o = l->rxvt;
+	if (o->selection.text)
+	    FREE (o->selection.text);
+	o->selection.text = NULL;
+	o->selection.len = 0;
+    }
+    return;
+}
+
+#if 0
+int rxvt_alive (pid_t p)
+{
+    struct rxvts *l;
+    if (!rxvt_list)
+	return 0;
+    for (l = rxvt_list->next; l; l = l->next)
+	if (l->rxvt->cmd_pid == p && !l->killed && !l->rxvt->killed)
+	    return 1;
+    return 0;
+}
+#endif
+
+extern void (*user_selection_clear) (void);
+
+rxvtlib *rxvt_allocate (Window win, int c, char **a, int do_sleep)
+{
+    rxvtlib *rxvt;
+    struct rxvts *l;
+    rxvt = (rxvtlib *) malloc (sizeof (rxvtlib));
+    rxvtlib_init (rxvt);
+    user_selection_clear = (void (*)(void)) rxvt_selection_clear;
+    rxvt->parent_window = win;
+    rxvtlib_main (rxvt, c, (const char *const *) a, do_sleep);
+    if (rxvt->killed) {
+	free (rxvt);
+	return 0;
+    }
+    if (!rxvt_list) {
+	rxvt_list = l = malloc (sizeof (struct rxvts));
+	rxvt_list->next = 0;
+	rxvt_list->rxvt = 0;
+	rxvt_list->killed = 0;
+    }
+    for (l = rxvt_list; l->next; l = l->next);
+    l = (l->next = malloc (sizeof (struct rxvts)));
+    l->next = 0;
+    l->killed = 0;
+    l->rxvt = rxvt;
+    return rxvt;
+}
+
+extern char *init_font;
+
+char **rxvt_args (char **argv)
+{
+    char **a;
+    char *b[] =
+	{ "rxvt", "-fg", "white", "-bg", "black", "-font", "8x13bold", "-sl", "5000", "-si", "+sk", "-e", 0 };
+    int i = 0, j, k;
+    if (argv)
+	for (i = 0; argv[i]; i++);
+    CPushFont ("editor", 0);
+    if (CIsFixedFont () && init_font) {
+	for (k = 0; b[k] && strcmp (b[k], "-font"); k++);
+	if (k != i)
+	    b[k + 1] = init_font;
+    }
+    CPopFont ();
+    for (j = 0; b[j]; j++);
+    a = malloc ((i + j + 1) * sizeof (char *));
+    memcpy (a, b, j * sizeof (char *));
+    if (argv)
+	memcpy (a + j, argv, (i + 1) * sizeof (char *));
+    if (!i)
+	a[--j] = 0;		/* shell */
+    return a;
+}
+
+#if 0
+void rxvt_resize_window (rxvtlib * rxvt, int w, int h)
+{
+    XResizeWindow (rxvt->Xdisplay, rxvt->TermWin.parent[0], w, h);
+    rxvtlib_resize_window (rxvt, w, h);
+}
+#endif
+
+void rxvtlib_shutall (void)
+{
+    struct rxvts *l;
+    if (!rxvt_list)
+	return;
+    l = rxvt_list->next;
+    free (rxvt_list);
+    rxvt_list = 0;
+    while (l) {
+	struct rxvts *next;
+	next = l->next;
+	CRemoveWatch (l->rxvt->cmd_fd, 0, 3);
+	CRemoveWatch (l->rxvt->cmd_fd, 0, 3);
+	if (!l->killed)
+	    close (l->rxvt->cmd_fd);
+	XDestroyWindow (l->rxvt->Xdisplay, l->rxvt->TermWin.parent[0]);
+	XDestroyWindow (l->rxvt->Xdisplay, l->rxvt->TermWin.vt);
+	XDestroyWindow (l->rxvt->Xdisplay, l->rxvt->scrollBar.win);
+	rxvtlib_shut (l->rxvt);
+	free (l->rxvt);
+	memset (l, 0, sizeof (*l));
+	free (l);
+	l = next;
+    }
+}
+
+rxvtlib *rxvt_start (Window win, char **argv, int do_sleep)
+{
+    int a = 0;
+    rxvtlib *rxvt;
+    char **b;
+    b = rxvt_args (argv);
+    while (b[a])
+	a++;
+    rxvt = rxvt_allocate (win, a, b, do_sleep);
+    if (rxvt) {
+	rxvtlib_main_loop (rxvt);
+	rxvtlib_update_screen (rxvt);
+    }
+    free (b);
+    return rxvt;
+}
+
+void rxvt_get_tty_name (rxvtlib * rxvt, char *p)
+{
+    strcpy (p, rxvt->ttydev);
+}
+
+pid_t rxvt_get_pid (rxvtlib * rxvt)
+{
+    return rxvt->cmd_pid;
+}
+
+#if 0
+Window rxvt_get_main_window (rxvtlib *rxvt)
+{
+    return rxvt->TermWin.parent[0];
+}
+#endif
+

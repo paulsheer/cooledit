@@ -1,0 +1,52 @@
+context default
+    keyword &*; brightgreen/16
+    keyword %*; brightgreen/16
+    keyword <![CDATA[ white/26
+    keyword ]]> white/26
+
+context exclusive <![CDATA[ ]]>
+
+context <?xml-stylesheet ?> white/26
+    keyword whole href yellow/24
+    keyword whole type yellow/24
+    keyword whole "*" yellow/24
+    keyword whole '*' yellow/24
+
+context <?xml ?> white/26
+    keyword whole version yellow/24
+    keyword whole encoding yellow/24
+    keyword whole standalone yellow/24
+    keyword whole "*" yellow/24
+    keyword whole '*' yellow/24
+
+context <!-- --> brown/22
+
+context <!DOCTYPE > white/26
+    keyword whole "*" yellow/24
+    keyword whole '*' yellow/24
+
+context <!ENTITY > white/26
+    keyword whole "*" yellow/24
+    keyword whole '*' yellow/24
+
+context <!ELEMENT > white/26
+    keyword whole "*" yellow/24
+    keyword whole '*' yellow/24
+
+context <!ATTLIST > white/26
+    keyword whole "*" yellow/24
+    keyword whole '*' yellow/24
+
+context <!NOTATION > white/26
+    keyword whole "*" yellow/24
+    keyword whole '*' yellow/24
+
+context <!ELEMENT > white/26
+    keyword whole "*" yellow/24
+    keyword whole '*' yellow/24
+
+context < > cyan/16
+    keyword whole "*" brightcyan/14
+    keyword whole '*' brightcyan/14
+    keyword : brightcyan/14
+    keyword / brightcyan/14

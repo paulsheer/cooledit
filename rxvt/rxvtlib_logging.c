@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
+#include "inspect.h"
 #include "rxvtlib.h"
 
 /*--------------------------------*-C-*---------------------------------*
@@ -63,7 +65,7 @@
 #ifdef WTMP_SUPPORT
 /* INTPROTO */
 void            rxvt_update_wtmp (const char *fname, const struct utmp *putmp)
-{
+{E_
     int             fd, retry = 10;	/* 10 attempts at locking */
     struct flock    lck;	/* fcntl locking scheme */
 
@@ -99,7 +101,7 @@ void            rxvt_update_wtmp (const char *fname, const struct utmp *putmp)
  */
 /* EXTPROTO */
 void            rxvtlib_makeutent (rxvtlib *o, const char *pty, const char *hostname)
-{
+{E_
     struct passwd  *pwent = getpwuid (getuid ());
     UTMP            ut;
 
@@ -243,7 +245,7 @@ void            rxvtlib_makeutent (rxvtlib *o, const char *pty, const char *host
  */
 /* EXTPROTO */
 void            rxvtlib_cleanutent (rxvtlib *o)
-{
+{E_
     UTMP            ut;
 
 #ifndef USE_SYSV_UTMP

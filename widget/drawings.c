@@ -1,11 +1,13 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* drawings.c - for doing modifiable line drawings in a window
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 
 #define DRAWINGS_C
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -29,7 +31,7 @@
     only events withing the bounds are evaluated.
 */
 void extendbounds (CWidget *wdt, int x1, int y1, int x2, int y2)
-{
+{E_
     int xb = max (x1, x2);
     int xa = min (x1, x2);
     int yb = max (y1, y2);
@@ -48,13 +50,13 @@ void extendbounds (CWidget *wdt, int x1, int y1, int x2, int y2)
 
 /* returns 1 on error */
 int CSetDrawingTarget (const char *picture_ident)
-{
+{E_
     return (!(CDrawTarget = CIdent(picture_ident)));
 }
 
 
 void expose_picture(CWidget *wdt)
-{
+{E_
     CExposeWindowArea (wdt->parentid, 0, wdt->pic->x1 + wdt->x,
 	wdt->pic->y1 + wdt->y, wdt->pic->x2 - wdt->pic->x1 + 1,
 	wdt->pic->y2 - wdt->pic->y1 + 1);
@@ -62,7 +64,7 @@ void expose_picture(CWidget *wdt)
 
 
 void destroy_picture (CWidget *wdt)
-{
+{E_
     if (wdt->pic->pp) {
 	free (wdt->pic->pp);
 	wdt->pic->pp = 0;
@@ -75,7 +77,7 @@ void destroy_picture (CWidget *wdt)
 
 
 void cw_reboundpic(CWidget *wdt)
-{
+{E_
     int j;
     wdt->pic->x1 = 30000;
     wdt->pic->x2 = -30000;
@@ -101,7 +103,7 @@ void cw_reboundpic(CWidget *wdt)
 
 CWidget *CDrawPicture (const char *identifier, Window parent, int x, int y,
 		int max_num_elements)
-{
+{E_
     CWidget **w;
 
     w = find_empty_widget_entry (); /*find first unused list entry in list of widgets*/
@@ -119,7 +121,7 @@ CWidget *CDrawPicture (const char *identifier, Window parent, int x, int y,
 }
 
 void CClearPicture(void)
-{
+{E_
     CWidget *wdt = CDrawTarget;
     wdt->pic->numelements = 0;
 
@@ -128,7 +130,7 @@ void CClearPicture(void)
 }
 
 int CDrawLine (float x1, float y1, float x2, float y2, unsigned long c)
-{
+{E_
     CWidget *wdt = CDrawTarget;
     int last = wdt->pic->numelements;
 
@@ -148,7 +150,7 @@ int CDrawLine (float x1, float y1, float x2, float y2, unsigned long c)
 }
 
 int CDrawRectangle (float x, float y, float w, float h, unsigned long c)
-{
+{E_
     CWidget *wdt = CDrawTarget;
     int last = wdt->pic->numelements;
 
@@ -169,7 +171,7 @@ int CDrawRectangle (float x, float y, float w, float h, unsigned long c)
 
 
 void CRemovePictureElement (int j)
-{
+{E_
     if (CDrawTarget->pic->numelements <= j || j < 0)
 	return;
 
@@ -184,7 +186,7 @@ void CRemovePictureElement (int j)
 
 
 void CScalePicture (float s)
-{
+{E_
     CWidget *wdt = CDrawTarget;
     int j = 0;
 
@@ -215,7 +217,7 @@ void CScalePicture (float s)
 		    ((a) >= (b) && (a) <= (c))
 
 int eh_picture (CWidget *wdt, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     int last = wdt->pic->numelements;
     CPicturePrimative *pp = wdt->pic->pp;
     Window win = wdt->parentid;

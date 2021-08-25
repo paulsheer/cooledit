@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* coolwidget.h - main header file
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -402,6 +403,7 @@ struct cool_widget {
 
 #define TEXTINPUT_PASSWORD		(1<<3)
 #define TEXTINPUT_NUMBERS		(1<<4)
+#define TEXTINPUT_NOHISTORY		(1<<5)
 
 #define TEXT_CENTRED			(1<<3)
 #define TEXT_FIXED			(1<<4)
@@ -607,7 +609,7 @@ CWidget *CDrawFieldedTextbox (const char *identifier, Window parent, int x, int 
 			      char **(*get_line) (void *, int, int *, int *),
 			      long options, void *data);
 
-struct file_entry *get_file_entry_list (char *host, const char *directory, unsigned long options_, char *filter, char *errmsg);
+struct file_entry *get_file_entry_list (char *host, char *directory, unsigned long options_, char *filter, char *errmsg);
 char *user_file_list_search (Window parent, int x, int y, const char *base_name);
 char *user_file_list_complete (Window parent, int x, int y, int lines, int columns, const char *base_name);
 void get_file_time (char *timestr, time_t file_time, int l);
@@ -912,6 +914,10 @@ CWidget *CPreviousFocus (CWidget * w);
 CWidget *CChildFocus (CWidget * w);
 int CHandleGlobalKeys (CWidget *w, XEvent * xevent, CEvent * cwevent);
 
+struct hint_pos;
+struct hint_pos *CPushHintPos (void);
+void CPopHintPos (struct hint_pos *r);
+
 void reset_hint_pos (int x, int y);
 void set_hint_pos (int x, int y);
 void CGetHintPos (int *x, int *y);
@@ -928,6 +934,7 @@ void CDisableAlarm (void);
 void set_signal_handlers_to_default (void);
 char *read_pipe (int fd, int *len, const pid_t *child_pid);
 pid_t triple_pipe_open (int *in, int *out, int *err, int mix, const char *file, char *const argv[]);
+pid_t triple_pipe_open_env (int *in, int *out, int *err, int mix, const char *file, char *const argv[], char *const envp[]);
 pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *const argv[]);
 
 /* see coolnext.c for details */

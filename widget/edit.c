@@ -1,10 +1,12 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* edit.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 #define _EDIT_C THIS_IS
 
+#include "inspect.h"
 #include <config.h>
 #if defined(NEEDS_IO_H)
 #    include <io.h>
@@ -60,7 +62,7 @@ static int push_action_disabled = 0;
 #ifdef NO_INLINE_GETBYTE
 
 int edit_get_byte (WEdit * edit, long byte_index)
-{
+{E_
     unsigned long p;
     if (byte_index >= (edit->curs1 + edit->curs2) || byte_index < 0)
 	return '\n';
@@ -76,7 +78,7 @@ int edit_get_byte (WEdit * edit, long byte_index)
 #endif
 
 char *edit_get_buffer_as_text (WEdit * e)
-{
+{E_
     int l, i;
     char *t;
     l = e->curs1 + e->curs2;
@@ -90,7 +92,7 @@ char *edit_get_buffer_as_text (WEdit * e)
 /* returns a buffer containing the current line and the offset of the
 cursor from the left margin in bytes: */
 char *edit_get_current_line_as_text (WEdit * e, long *length, long *cursor)
-{
+{E_
     long start, end;
     char *r, *p;
     start = edit_bol (e, e->curs1);
@@ -128,7 +130,7 @@ char *edit_get_current_line_as_text (WEdit * e, long *length, long *cursor)
 /* Initialisation routines */
 
 static int init_dynamic_edit_buffers_text (WEdit * edit, const char *host, const char *text)
-{
+{E_
     long buf;
     int buf2;
 
@@ -162,8 +164,8 @@ struct loader_data {
     int done;
 };
 
-static int edit_sock_reader (struct action_callbacks *o, const unsigned char *buf, int buflen, long filelen, char *errmsg)
-{
+static int edit_sock_reader (struct action_callbacks *o, const unsigned char *buf, int buflen, long long filelen, char *errmsg)
+{E_
     struct loader_data *ld;
 
     ld = (struct loader_data *) o->hook;
@@ -198,7 +200,7 @@ static int edit_sock_reader (struct action_callbacks *o, const unsigned char *bu
 }
 
 static int init_dynamic_edit_buffers_file (WEdit * edit, const char *host, const char *filename)
-{
+{E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     struct loader_data ld;
     struct action_callbacks o;
@@ -220,7 +222,7 @@ static int init_dynamic_edit_buffers_file (WEdit * edit, const char *host, const
     o.hook = (void *) &ld;
     o.sock_reader = edit_sock_reader;
 
-    u = remotefs_lookup (host);
+    u = remotefs_lookup (host, NULL);
     if ((*u->remotefs_readfile) (u, &o, filename, errmsg)) {
         edit_error_dialog (_(" Error "), catstrs (_(" Failed trying to open file for reading: "), filename, " \n [", errmsg, "]", NULL));
         return 1;
@@ -236,7 +238,7 @@ static int init_dynamic_edit_buffers_file (WEdit * edit, const char *host, const
 }
 
 static int init_dynamic_edit_buffers (WEdit * edit, const char *host, const char *filename, const char *text)
-{
+{E_
     int j;
 
     for (j = 0; j <= MAXBUFF; j++) {
@@ -269,7 +271,7 @@ static struct edit_filters {
 };
 
 static int edit_find_filter (const char *filename)
-{
+{E_
     int i, l;
     if (!filename)
 	return -1;
@@ -285,7 +287,7 @@ static int edit_find_filter (const char *filename)
 }
 
 char *edit_get_filter (const char *filename)
-{
+{E_
     int i, l;
     char *p;
     i = edit_find_filter (filename);
@@ -298,7 +300,7 @@ char *edit_get_filter (const char *filename)
 }
 
 char *edit_get_write_filter (char *writename, const char *filename)
-{
+{E_
     int i, l;
     char *p;
     i = edit_find_filter (filename);
@@ -312,7 +314,7 @@ char *edit_get_write_filter (char *writename, const char *filename)
 
 
 long edit_insert_stream (WEdit * edit, int fd, const pid_t *the_pid)
-{
+{E_
     int len;
     long total = 0;
     for (;;) {
@@ -332,7 +334,7 @@ long edit_insert_stream (WEdit * edit, int fd, const pid_t *the_pid)
 }
 
 long edit_write_stream (WEdit * edit, FILE * f)
-{
+{E_
     long i;
     for (i = 0; i < edit->last_byte; i++) {
 	int r;
@@ -347,7 +349,7 @@ long edit_write_stream (WEdit * edit, FILE * f)
 
 /* inserts a file at the cursor, returns 1 on success */
 int edit_insert_file (WEdit * edit, const char *filename)
-{
+{E_
     char *p;
     if ((p = edit_get_filter (filename))) {
         pid_t the_pid;
@@ -399,11 +401,11 @@ int edit_insert_file (WEdit * edit, const char *filename)
 }
 
 static int check_file_access (WEdit *edit, const char *host, const char *filename, struct portable_stat *st)
-{
+{E_
     char errmsg[REMOTEFS_ERR_MSG_LEN] = "";
     struct remotefs *u;
 
-    u = remotefs_lookup (host);
+    u = remotefs_lookup (host, NULL);
     if ((*u->remotefs_checkordinaryfileaccess) (u, filename, SIZE_LIMIT, st, errmsg)) {
         edit_error_dialog (_ (" Error "), errmsg);
         return 1;
@@ -414,7 +416,7 @@ static int check_file_access (WEdit *edit, const char *host, const char *filenam
 
 /* returns 1 on error */
 static int edit_open_file (WEdit * edit, const char *host, const char *filename, const char *text, unsigned long text_size)
-{
+{E_
     struct portable_stat st;
     if (text) {
 	edit->last_byte = text_size;
@@ -442,17 +444,17 @@ int space_width;
 extern int option_long_whitespace;
 
 void edit_set_space_width (int s)
-{
+{E_
     space_width = s;
 }
 
 #endif
 
-int (*edit_file_is_open) (const char *host, const char *, int) = 0;
+edit_file_is_open_fn_t edit_file_is_open = 0;
 
 /* fills in the edit struct. returns 0 on fail. Pass edit as NULL for this */
 WEdit *edit_init (WEdit * edit, int lines, int columns, const char *filename, const char *text, const char *host, const char *dir, unsigned long text_size, int new_window)
-{
+{E_
     char *f;
     int to_free = 0;
     int use_filter = 0;
@@ -485,12 +487,20 @@ WEdit *edit_init (WEdit * edit, int lines, int columns, const char *filename, co
     f = (char *) filename;
     if (filename) {
 	f = catstrs (dir, filename, NULL);
-	if (edit_file_is_open)
-	    if ((*edit_file_is_open) (host, f, new_window)) {
+	if (edit_file_is_open) {
+            int o;
+            o = (*edit_file_is_open) (host, f, new_window);
+	    if (o == -1) {      /* error */
 		if (to_free)
 		    free (edit);
 		return 0;
 	    }
+	    if (o == 1) {      /* already open */
+		if (to_free)
+		    free (edit);
+		return 0;
+	    }
+        }
     }
     if (edit_find_filter (f) < 0) {
 	if (edit_open_file (edit, host, f, text, text_size)) {
@@ -510,7 +520,11 @@ WEdit *edit_init (WEdit * edit, int lines, int columns, const char *filename, co
     edit->force |= REDRAW_PAGE;
     if (filename) {
 	filename = catstrs (dir, filename, NULL);
-	edit_split_filename (edit, host, (char *) filename);
+	if (edit_split_filename (edit, host, (char *) filename)) {
+	    if (to_free)
+		free (edit);
+	    return 0;
+	}
     } else {
 	edit->filename = (char *) strdup ("");
 	edit->dir = (char *) strdup (dir);
@@ -552,7 +566,7 @@ WEdit *edit_init (WEdit * edit, int lines, int columns, const char *filename, co
 
 /* clear the edit struct, freeing everything in it. returns 1 on success */
 int edit_clean (WEdit * edit)
-{
+{E_
     if (edit) {
 	int j = 0;
 	edit_free_syntax_rules (edit);
@@ -583,7 +597,7 @@ int edit_clean (WEdit * edit)
 
 /* returns 1 on success */
 int edit_renew (WEdit * edit)
-{
+{E_
     int lines = edit->num_widget_lines;
     int columns = edit->num_widget_columns;
     char *dir;
@@ -605,7 +619,7 @@ int edit_renew (WEdit * edit)
 }
 
 void edit_clear_macro (struct macro_rec *macro)
-{
+{E_
     int i;
     for (i = 0; i < macro->macro_i; i++)
         CStr_free (&macro->macro[i].ch);
@@ -614,7 +628,7 @@ void edit_clear_macro (struct macro_rec *macro)
 
 /* returns 1 on success, if returns 0, the edit struct would have been free'd */
 int edit_reload (WEdit * edit, const char *filename, const char *text, const char *host, const char *dir, unsigned long text_size)
-{
+{E_
     WEdit *e;
     int lines = edit->num_widget_lines;
     int columns = edit->num_widget_columns;
@@ -634,7 +648,7 @@ int edit_reload (WEdit * edit, const char *filename, const char *text, const cha
 
 
 void show_undo_stack (WEdit * edit, const char *action)
-{
+{E_
 #if 0
     int i;
     if (option_max_undo > 32)
@@ -658,7 +672,7 @@ void show_undo_stack (WEdit * edit, const char *action)
 #define WMOD(x)         ((x) & edit->stack_size_mask)
 
 void edit_push_action (WEdit * edit, int command, long param)
-{
+{E_
     unsigned long sp = edit->stack_pointer;
     struct undo_element c;
 
@@ -758,7 +772,7 @@ void edit_push_action (WEdit * edit, int command, long param)
    then the file should be as it was when he loaded up. Then set edit->modified to 0.
  */
 static struct undo_element pop_action (WEdit * edit)
-{
+{E_
     struct undo_element c;
     unsigned long sp = edit->stack_pointer;
     if (sp == edit->stack_bottom)
@@ -787,7 +801,7 @@ static struct undo_element pop_action (WEdit * edit)
 
 /* is called whenever a modification is made by one of the four routines below */
 static inline void appearance_modification (WEdit * edit, long p)
-{
+{E_
     edit->screen_modified = 1;
     if (edit->last_get_mb_rule > p - 1) {
 	edit->last_get_mb_rule = p - 1;
@@ -801,14 +815,14 @@ static inline void appearance_modification (WEdit * edit, long p)
 
 /* is called whenever a modification is made by one of the four routines below */
 static inline void edit_modification (WEdit * edit, long p)
-{
+{E_
     edit->caches_valid = 0;
     edit->modified = 1;
     appearance_modification (edit, p);
 }
 
 void edit_appearance_modification (WEdit * edit)
-{
+{E_
     appearance_modification (edit, 0);
 }
 
@@ -818,7 +832,7 @@ void edit_appearance_modification (WEdit * edit)
  */
 
 void edit_insert (WEdit * edit, int c)
-{
+{E_
 /* check if file has grown to large */
     if (edit->last_byte >= SIZE_LIMIT)
 	return;
@@ -869,7 +883,7 @@ void edit_insert (WEdit * edit, int c)
 
 /* same as edit_insert and move left */
 void edit_insert_ahead (WEdit * edit, int c)
-{
+{E_
     if (edit->last_byte >= SIZE_LIMIT)
 	return;
     if (edit->curs1 < edit->start_display) {
@@ -904,7 +918,7 @@ void edit_insert_ahead (WEdit * edit, int c)
 
 
 int edit_delete (WEdit * edit)
-{
+{E_
     int p;
     if (!edit->curs2)
 	return 0;
@@ -945,7 +959,7 @@ int edit_delete (WEdit * edit)
 
 
 int edit_backspace (WEdit * edit)
-{
+{E_
     int p;
     if (!edit->curs1)
 	return 0;
@@ -986,7 +1000,7 @@ int edit_backspace (WEdit * edit)
 }
 
 int edit_delete_wide (WEdit * edit)
-{
+{E_
     struct mb_rule r;
     r = get_mb_rule (edit, edit->curs1);
     edit_delete (edit);
@@ -996,7 +1010,7 @@ int edit_delete_wide (WEdit * edit)
 }
 
 void edit_insert_unicode (WEdit * edit, C_wchar_t wc)
-{
+{E_
     unsigned char *c;
     c = wcrtomb_wchar_to_utf8 (wc);
     if (!*c) {
@@ -1008,7 +1022,7 @@ void edit_insert_unicode (WEdit * edit, C_wchar_t wc)
 }
 
 long edit_backspace_wide (WEdit * edit)
-{
+{E_
     int i;
     long c = 0;
     if (!edit->curs1)
@@ -1025,7 +1039,7 @@ static int right_of_four_spaces (WEdit *edit);
 void edit_tab_cmd (WEdit * edit);
 
 void edit_backspace_tab (WEdit * edit, int whole_tabs_only)
-{
+{E_
     int i;
     if (whole_tabs_only) {
 	int indent;
@@ -1052,13 +1066,13 @@ void edit_backspace_tab (WEdit * edit, int whole_tabs_only)
 }
 
 void edit_wide_char_align (WEdit * edit)
-{
+{E_
     while (edit_get_wide_byte (edit, edit->curs1) == -1)
 	edit_cursor_move (edit, 1);
 }
 
 void edit_wide_char_align_left (WEdit * edit)
-{
+{E_
     while (edit_get_wide_byte (edit, edit->curs1) == -1)
 	edit_cursor_move (edit, -1);
 }
@@ -1066,7 +1080,7 @@ void edit_wide_char_align_left (WEdit * edit)
 
 /* moves the cursor right or left: increment positive or negative respectively */
 int edit_cursor_move (WEdit * edit, long increment)
-{
+{E_
 /* this is the same as a combination of two of the above routines, with only one push onto the undo stack */
     int c;
 
@@ -1127,7 +1141,7 @@ int edit_cursor_move (WEdit * edit, long increment)
 
 /* returns index of last char on line + 1 */
 long edit_eol (WEdit * edit, long current)
-{
+{E_
     if (current < edit->last_byte) {
 	for (;; current++)
 	    if (edit_get_byte (edit, current) == '\n')
@@ -1139,7 +1153,7 @@ long edit_eol (WEdit * edit, long current)
 
 /* returns index of first char on line */
 long edit_bol (WEdit * edit, long current)
-{
+{E_
     if (current > 0) {
 	for (;; current--)
 	    if (edit_get_byte (edit, current - 1) == '\n')
@@ -1151,7 +1165,7 @@ long edit_bol (WEdit * edit, long current)
 
 
 int edit_count_lines (WEdit * edit, long current, int upto)
-{
+{E_
     int lines = 0;
     if (upto > edit->last_byte)
 	upto = edit->last_byte;
@@ -1167,7 +1181,7 @@ int edit_count_lines (WEdit * edit, long current, int upto)
 /* If lines is zero this returns the count of lines from current to upto. */
 /* If upto is zero returns index of lines forward current. */
 long edit_move_forward (WEdit * edit, long current, int lines, long upto)
-{
+{E_
     if (upto) {
 	return edit_count_lines (edit, current, upto);
     } else {
@@ -1188,7 +1202,7 @@ long edit_move_forward (WEdit * edit, long current, int lines, long upto)
 
 /* Returns offset of 'lines' lines up from current */
 long edit_move_backward (WEdit * edit, long current, int lines)
-{
+{E_
     if (lines < 0)
 	lines = 0;
     current = edit_bol (edit, current);
@@ -1201,7 +1215,7 @@ long edit_move_backward (WEdit * edit, long current, int lines)
 /* If cols is zero this returns the count of columns from current to upto. */
 /* If upto is zero returns index of cols across from current. */
 long edit_move_forward3 (WEdit * edit, long current, int cols, long upto)
-{
+{E_
     long p, q;
     int col = 0;
 
@@ -1241,7 +1255,7 @@ long edit_move_forward3 (WEdit * edit, long current, int cols, long upto)
 
 /* returns the current column position of the cursor */
 int edit_get_col (WEdit * edit)
-{
+{E_
     return edit_move_forward3 (edit, edit_bol (edit, edit->curs1), 0, edit->curs1);
 }
 
@@ -1249,12 +1263,12 @@ int edit_get_col (WEdit * edit)
 /* Scrolling functions */
 
 void edit_update_curs_row (WEdit * edit)
-{
+{E_
     edit->curs_row = edit->curs_line - edit->start_line;
 }
 
 void edit_update_curs_col (WEdit * edit)
-{
+{E_
     long b;
     b = edit_bol (edit, edit->curs1);
     edit->curs_col = edit_move_forward3(edit, b, 0, edit->curs1);
@@ -1263,7 +1277,7 @@ void edit_update_curs_col (WEdit * edit)
 
 /*moves the display start position up by i lines */
 void edit_scroll_upward (WEdit * edit, unsigned long i)
-{
+{E_
     int lines_above = edit->start_line;
     if (i > lines_above)
 	i = lines_above;
@@ -1280,7 +1294,7 @@ int edit_get_line_height (WEdit * edit, int row);
 
 /* returns 1 if could scroll, 0 otherwise */
 void edit_scroll_downward (WEdit * edit, int i)
-{
+{E_
     int lines_below;
     lines_below = edit->total_lines - edit->start_line;
     if (lines_below > 0) {
@@ -1319,14 +1333,14 @@ of the window is blank: */
 }
 
 void edit_scroll_right (WEdit * edit, int i)
-{
+{E_
     edit->force |= REDRAW_PAGE;
     edit->force &= (0xfff - REDRAW_CHAR_ONLY);
     edit->start_col -= i;
 }
 
 void edit_scroll_left (WEdit * edit, int i)
-{
+{E_
     if (edit->start_col) {
 	edit->start_col += i;
 	if (edit->start_col > 0)
@@ -1339,7 +1353,7 @@ void edit_scroll_left (WEdit * edit, int i)
 /* high level cursor movement commands */
 
 static int is_in_indent (WEdit *edit)
-{
+{E_
     long p = edit_bol (edit, edit->curs1);
     while (p < edit->curs1)
 	if (!strchr (" \t", edit_get_byte (edit, p++)))
@@ -1350,7 +1364,7 @@ static int is_in_indent (WEdit *edit)
 static int left_of_four_spaces (WEdit *edit);
 
 void edit_move_to_prev_col (WEdit * edit, long p)
-{
+{E_
     edit_cursor_move (edit, edit_move_forward3 (edit, p, edit->prev_col, 0) - edit->curs1);
 
     if (is_in_indent (edit) && option_fake_half_tabs) {
@@ -1370,7 +1384,7 @@ void edit_move_to_prev_col (WEdit * edit, long p)
 
 /* move i lines */
 void edit_move_up (WEdit * edit, unsigned long i, int scroll)
-{
+{E_
     long p, l = edit->curs_line;
 
     if (i > l)
@@ -1391,7 +1405,7 @@ void edit_move_up (WEdit * edit, unsigned long i, int scroll)
 }
 
 int is_blank (WEdit * edit, long offset)
-{
+{E_
     long s, f;
     int c;
     s = edit_bol (edit, offset);
@@ -1407,7 +1421,7 @@ int is_blank (WEdit * edit, long offset)
 
 /* returns the offset of line i */
 long edit_find_line (WEdit * edit, int line)
-{
+{E_
     int i, j = 0;
     int m = 2000000000;
     if (!edit->caches_valid) {
@@ -1448,14 +1462,14 @@ long edit_find_line (WEdit * edit, int line)
 }
 
 int line_is_blank (WEdit * edit, long line)
-{
+{E_
     return is_blank (edit, edit_find_line (edit, line));
 }
 
 /* moves up until a blank line is reached, or until just 
    before a non-blank line is reached */
 static void edit_move_up_paragraph (WEdit * edit, int scroll)
-{
+{E_
     int i;
     if (edit->curs_line <= 1) {
 	i = 0;
@@ -1483,7 +1497,7 @@ static void edit_move_up_paragraph (WEdit * edit, int scroll)
 
 /* move i lines */
 void edit_move_down (WEdit * edit, int i, int scroll)
-{
+{E_
     long p, l = edit->total_lines - edit->curs_line;
 
     if (i > l)
@@ -1505,7 +1519,7 @@ void edit_move_down (WEdit * edit, int i, int scroll)
 /* moves down until a blank line is reached, or until just
    before a non-blank line is reached */
 static void edit_move_down_paragraph (WEdit * edit, int scroll)
-{
+{E_
     int i;
     if (edit->curs_line >= edit->total_lines - 1) {
 	i = edit->total_lines;
@@ -1532,13 +1546,13 @@ static void edit_move_down_paragraph (WEdit * edit, int scroll)
 }
 
 static void edit_begin_page (WEdit *edit)
-{
+{E_
     edit_update_curs_row (edit);
     edit_move_up (edit, edit->curs_row, 0);
 }
 
 static void edit_end_page (WEdit *edit)
-{
+{E_
     edit_update_curs_row (edit);
     edit_move_down (edit, edit->num_widget_lines - edit->curs_row - 1, 0);
 }
@@ -1546,7 +1560,7 @@ static void edit_end_page (WEdit *edit)
 
 /* goto beginning of text */
 static void edit_move_to_top (WEdit * edit)
-{
+{E_
     if (edit->curs_line) {
 	edit_cursor_move (edit, -edit->curs1);
 	edit_move_to_prev_col (edit, 0);
@@ -1559,7 +1573,7 @@ static void edit_move_to_top (WEdit * edit)
 
 /* goto end of text */
 static void edit_move_to_bottom (WEdit * edit)
-{
+{E_
     if (edit->curs_line < edit->total_lines) {
 	edit_cursor_move (edit, edit->curs2);
 	edit->start_display = edit->last_byte;
@@ -1572,7 +1586,7 @@ static void edit_move_to_bottom (WEdit * edit)
 
 /* goto beginning of line */
 static void edit_cursor_to_bol (WEdit * edit)
-{
+{E_
     edit_cursor_move (edit, edit_bol (edit, edit->curs1) - edit->curs1);
     edit->search_start = edit->curs1;
     edit->prev_col = edit_get_col (edit);
@@ -1580,7 +1594,7 @@ static void edit_cursor_to_bol (WEdit * edit)
 
 /* goto end of line */
 static void edit_cursor_to_eol (WEdit * edit)
-{
+{E_
     edit_cursor_move (edit, edit_eol (edit, edit->curs1) - edit->curs1);
     edit->search_start = edit->curs1;
     edit->prev_col = edit_get_col (edit);
@@ -1588,7 +1602,7 @@ static void edit_cursor_to_eol (WEdit * edit)
 
 /* move cursor to line 'line' */
 void edit_move_to_line (WEdit * e, long line)
-{
+{E_
     if(line < e->curs_line)
 	edit_move_up (e, e->curs_line - line, 0);
     else
@@ -1598,7 +1612,7 @@ void edit_move_to_line (WEdit * e, long line)
 
 /* scroll window so that first visible line is 'line' */
 void edit_move_display (WEdit * e, long line)
-{
+{E_
     if(line < e->start_line)
 	edit_scroll_upward (e, e->start_line - line);
     else
@@ -1607,13 +1621,13 @@ void edit_move_display (WEdit * e, long line)
 
 /* save markers onto undo stack */
 void edit_push_markers (WEdit * edit)
-{
+{E_
     edit_push_action (edit, MARK_1, edit->mark1);
     edit_push_action (edit, MARK_2, edit->mark2);
 }
 
 void free_selections (void)
-{
+{E_
     int i;
     for (i = 0; i < n_selection_history; i++)
         CStr_free(&selection_history[i]);
@@ -1622,7 +1636,7 @@ void free_selections (void)
 
 /* return -1 on nothing to store or error, zero otherwise */
 void edit_get_selection (WEdit * edit)
-{
+{E_
     long start_mark, end_mark;
     CStr *c;
     int i;
@@ -1650,7 +1664,7 @@ void edit_get_selection (WEdit * edit)
 }
 
 void edit_set_markers (WEdit * edit, long m1, long m2, int c1, int c2)
-{
+{E_
     edit->mark1 = m1;
     edit->mark2 = m2;
     edit->column1 = c1;
@@ -1660,7 +1674,7 @@ void edit_set_markers (WEdit * edit, long m1, long m2, int c1, int c2)
 
 /* highlight marker toggle */
 void edit_mark_cmd (WEdit * edit, int unmark)
-{
+{E_
     edit_push_markers (edit);
     if (unmark) {
 	edit_set_markers (edit, 0, 0, 0, 0);
@@ -1675,7 +1689,7 @@ void edit_mark_cmd (WEdit * edit, int unmark)
 }
 
 static unsigned long my_type_of (int c)
-{
+{E_
     int x, r = 0;
     char *p, *q;
     if (!c)
@@ -1709,7 +1723,7 @@ static unsigned long my_type_of (int c)
 }
 
 void edit_left_word_move (WEdit * edit, int s)
-{
+{E_
     for (;;) {
 	int c1, c2;
 	edit_cursor_move (edit, -1);
@@ -1728,13 +1742,13 @@ void edit_left_word_move (WEdit * edit, int s)
 }
 
 static void edit_left_word_move_cmd (WEdit * edit)
-{
+{E_
     edit_left_word_move (edit, 0);
     edit->force |= REDRAW_PAGE;
 }
 
 void edit_right_word_move (WEdit * edit, int s)
-{
+{E_
     for (;;) {
 	int c1, c2;
 	edit_cursor_move (edit, 1);
@@ -1753,14 +1767,14 @@ void edit_right_word_move (WEdit * edit, int s)
 }
 
 static void edit_right_word_move_cmd (WEdit * edit)
-{
+{E_
     edit_right_word_move (edit, 0);
     edit->force |= REDRAW_PAGE;
 }
 
 
 static void edit_right_delete_word (WEdit * edit)
-{
+{E_
     int c1, c2;
     for (;;) {
 	if (edit->curs1 >= edit->last_byte)
@@ -1775,7 +1789,7 @@ static void edit_right_delete_word (WEdit * edit)
 }
 
 static void edit_left_delete_word (WEdit * edit)
-{
+{E_
     int c1, c2;
     for (;;) {
 	if (edit->curs1 <= 0)
@@ -1796,7 +1810,7 @@ extern int column_highlighting;
    undo as it happed. But who would notice.
  */
 void edit_do_undo (WEdit * edit)
-{
+{E_
     push_action_disabled = 1;	/* don't record undo's onto undo stack! */
 
     for (;;) {
@@ -1864,7 +1878,7 @@ void edit_do_undo (WEdit * edit)
 }
 
 static void edit_delete_to_line_end (WEdit * edit)
-{
+{E_
     for (;;) {
 	if (edit_get_byte (edit, edit->curs1) == '\n')
 	    break;
@@ -1875,7 +1889,7 @@ static void edit_delete_to_line_end (WEdit * edit)
 }
 
 static void edit_delete_to_line_begin (WEdit * edit)
-{
+{E_
     for (;;) {
 	if (edit_get_byte (edit, edit->curs1 - 1) == '\n')
 	    break;
@@ -1886,7 +1900,7 @@ static void edit_delete_to_line_begin (WEdit * edit)
 }
 
 void edit_delete_line (WEdit * edit)
-{
+{E_
     int c;
     do {
 	c = edit_delete (edit);
@@ -1899,7 +1913,7 @@ void edit_delete_line (WEdit * edit)
 }
 
 static void insert_spaces_tab (WEdit * edit, int half)
-{
+{E_
     int i;
     edit_update_curs_col (edit);
     i = ((edit->curs_col / (option_tab_spacing * space_width / (half + 1))) + 1) * (option_tab_spacing * space_width / (half + 1)) - edit->curs_col;
@@ -1910,7 +1924,7 @@ static void insert_spaces_tab (WEdit * edit, int half)
 }
 
 static int is_aligned_on_a_tab (WEdit * edit)
-{
+{E_
     edit_update_curs_col (edit);
     if ((edit->curs_col % (TAB_SIZE * space_width)) && edit->curs_col % (TAB_SIZE * space_width) != (HALF_TAB_SIZE * space_width))
 	return 0;		/* not alligned on a tab */
@@ -1918,7 +1932,7 @@ static int is_aligned_on_a_tab (WEdit * edit)
 }
 
 static int right_of_four_spaces (WEdit *edit)
-{
+{E_
     int i, ch = 0;
     for (i = 1; i <= HALF_TAB_SIZE; i++)
 	ch |= edit_get_byte (edit, edit->curs1 - i);
@@ -1928,7 +1942,7 @@ static int right_of_four_spaces (WEdit *edit)
 }
 
 static int left_of_four_spaces (WEdit *edit)
-{
+{E_
     int i, ch = 0;
     for (i = 0; i < HALF_TAB_SIZE; i++)
 	ch |= edit_get_byte (edit, edit->curs1 + i);
@@ -1938,7 +1952,7 @@ static int left_of_four_spaces (WEdit *edit)
 }
 
 int edit_indent_width (WEdit * edit, long p)
-{
+{E_
     long q = p;
     while (strchr ("\t ", edit_get_byte (edit, q)) && q < edit->last_byte - 1)	/* move to the end of the leading whitespace of the line */
 	q++;
@@ -1946,7 +1960,7 @@ int edit_indent_width (WEdit * edit, long p)
 }
 
 void edit_insert_indent (WEdit * edit, int indent)
-{
+{E_
 #ifndef MIDNIGHT
     indent /= space_width;
 #endif
@@ -1961,7 +1975,7 @@ void edit_insert_indent (WEdit * edit, int indent)
 }
 
 void edit_auto_indent (WEdit * edit, int extra, int no_advance)
-{
+{E_
     long p;
     int indent;
     p = edit->curs1;
@@ -1974,7 +1988,7 @@ void edit_auto_indent (WEdit * edit, int extra, int no_advance)
 }
 
 static void edit_double_newline (WEdit * edit)
-{
+{E_
     edit_insert (edit, '\n');
     if (edit_get_byte (edit, edit->curs1) == '\n')
 	return;
@@ -1985,7 +1999,7 @@ static void edit_double_newline (WEdit * edit)
 }
 
 void edit_tab_cmd (WEdit * edit)
-{
+{E_
     int i;
 
     if (option_fake_half_tabs) {
@@ -2014,7 +2028,7 @@ void edit_tab_cmd (WEdit * edit)
 void format_paragraph (WEdit * edit, int force);
 
 static void check_and_wrap_line (WEdit * edit)
-{
+{E_
     int curs, c;
     if (!option_typewriter_wrap)
 	return;
@@ -2054,7 +2068,7 @@ int edit_execute_cmd (WEdit * edit, int command, CStr char_for_insertion);
 
 #ifdef MIDNIGHT
 int edit_translate_key (WEdit * edit, unsigned int x_keycode, long x_key, int x_state, int *cmd, long *ch)
-{
+{E_
     int command = -1;
     long char_for_insertion = -1;
 
@@ -2070,7 +2084,7 @@ int edit_translate_key (WEdit * edit, unsigned int x_keycode, long x_key, int x_
 #endif
 
 void edit_push_key_press (WEdit * edit)
-{
+{E_
     edit_push_action (edit, KEY_PRESS,  edit->start_display);
     if (edit->mark2 == -1)
 	edit_push_action (edit, MARK_1, edit->mark1);
@@ -2078,7 +2092,7 @@ void edit_push_key_press (WEdit * edit)
 
 /* this find the matching bracket in either direction, and sets edit->bracket */
 static long edit_get_bracket (WEdit * edit, int in_screen, unsigned long furthest_bracket_search)
-{
+{E_
     const char *b = "{}{[][()(", *p = 0;
     int i = 1, a, inc = -1, c, d, n = 0;
     unsigned long j = 0;
@@ -2128,7 +2142,7 @@ static long edit_get_bracket (WEdit * edit, int in_screen, unsigned long furthes
 static long last_bracket = -1;
 
 static void edit_find_bracket (WEdit * edit)
-{
+{E_
     if (option_find_bracket) {
 	edit->bracket = edit_get_bracket (edit, 1, 10000);
 	if (last_bracket != edit->bracket)
@@ -2138,7 +2152,7 @@ static void edit_find_bracket (WEdit * edit)
 }
 
 static void edit_goto_matching_bracket (WEdit *edit)
-{
+{E_
     long q;
     q = edit_get_bracket (edit, 0, 0);
     if (q < 0)
@@ -2157,7 +2171,7 @@ static void edit_goto_matching_bracket (WEdit *edit)
 /* commands are executed, and char_for_insertion is inserted at the cursor */
 /* returns 0 if the command is a macro that was not found, 1 otherwise */
 int edit_execute_key_command (WEdit * edit, int command, CStr char_for_insertion)
-{
+{E_
     int r;
     if (command == CK_Begin_Record_Macro) {
         edit_clear_macro (&edit->macro);
@@ -2200,7 +2214,7 @@ static const char *shell_cmd[] = SHELL_COMMANDS_i
 #else
 static void (*user_commamd) (WEdit *, int) = 0;
 void edit_set_user_command (void (*func) (WEdit *, int))
-{
+{E_
     user_commamd = func;
 }
 
@@ -2210,7 +2224,7 @@ void edit_mail_dialog (WEdit * edit);
 void edit_indent_left_right_paragraph (WEdit * edit);
 
 int edit_is_movement_command(int command)
-{
+{E_
     switch (command) {
     case CK_Begin_Page:
     case CK_End_Page:
@@ -2265,6 +2279,7 @@ int edit_is_movement_command(int command)
     case CK_Unmark:
     case CK_Copy:
     case CK_XStore:
+    case CK_Maximize:
 	return 1;
     }
     return 0;
@@ -2279,7 +2294,7 @@ int edit_is_movement_command(int command)
    otherwise.
  */
 int edit_execute_cmd (WEdit * edit, int command, CStr char_for_insertion)
-{
+{E_
     int result = 1;
     edit->force |= REDRAW_LINE;
     if (edit->found_len || column_highlighting)
@@ -2847,7 +2862,7 @@ int edit_execute_cmd (WEdit * edit, int command, CStr char_for_insertion)
 
 /* returns 0 if command is a macro that was not found, 1 otherwise */
 int edit_execute_command (WEdit * edit, int command, ...)
-{
+{E_
     int r;
     r = edit_execute_cmd (edit, command, CStr_const ("", 0));
     edit_update_screen (edit);
@@ -2855,7 +2870,7 @@ int edit_execute_command (WEdit * edit, int command, ...)
 }
 
 void edit_execute_macro (WEdit * edit, struct macro_rec *macro)
-{
+{E_
     int i;
     edit->force |= REDRAW_PAGE;
     for (i = 0; i < macro->macro_i; i++)

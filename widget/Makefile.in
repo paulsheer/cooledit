@@ -143,7 +143,8 @@ am_libCw_la_OBJECTS = initapp.lo coolwidget.lo dirtools.lo menu.lo \
 	filelist.lo pipe.lo wordproc.lo syntax.lo vertchar.lo \
 	cursor.lo bookmark.lo font.lo xim.lo pathdup.lo widechar.lo \
 	unicodedialog.lo aafont.lo look-cool.lo look-gtk.lo \
-	look-next.lo redblack.lo regtools.lo remotefs.lo ipv6scan.lo
+	look-next.lo redblack.lo regtools.lo remotefs.lo ipv6scan.lo \
+	aes.lo sha256.lo remotefspassword.lo symauth.lo inspect.lo
 libCw_la_OBJECTS = $(am_libCw_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -383,7 +384,9 @@ libCw_la_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
 	vertchar.c cursor.c bookmark.c font.c font.h xim.c \
 	pathdup.c widechar.c unicodedialog.c aafont.c aafont.h \
 	look-cool.c look-gtk.c look-next.c redblack.c redblack.h \
-	regtools.c remotefs.c ipv6scan.c
+	regtools.c remotefs.c remotefs.h ipv6scan.c aes.c aes.h \
+	sha256.c sha256.h remotefspassword.c remotefspassword.h \
+	symauth.c symauth.h inspect.c
 
 libCw_la_LDFLAGS = -version-info 1:0:0
 all: all-am
@@ -466,6 +469,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ClientWin.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/aafont.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/aes.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bitmapbutton.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bookmark.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cmdlineopt.Plo@am__quote@
@@ -509,8 +513,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/regex.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/regtools.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/remotefs.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/remotefspassword.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/scrollbar.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sha256.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stringtools.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/symauth.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/inspect.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syntax.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/textwidget.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unicodedialog.Plo@am__quote@

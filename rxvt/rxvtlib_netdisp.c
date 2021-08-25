@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
+#include "inspect.h"
 #include "rxvtlib.h"
 
 /*--------------------------------*-C-*---------------------------------*
@@ -40,7 +42,7 @@
 /* return a pointer to a static buffer */
 /* EXTPROTO */
 char           *network_display (const char *display)
-{
+{E_
     static char     ipaddress[32] = "";
     char            buffer[1024], *rval = NULL;
     struct ifconf   ifc;

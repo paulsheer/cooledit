@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /*---------------------------------*C*--------------------------------------*
  * File:      grkelot.c
  *--------------------------------------------------------------------------*
@@ -63,6 +64,7 @@
  * TODO: make it more dynamic (linked lists is an idea but slower)
  */
 
+#include "inspect.h"
 #include "_rxvtlib.h"
 #include "rxvtlibtypedef.h"
 #include "rxvtlibproto.h"
@@ -186,7 +188,7 @@ static void     kstate_set_life (char *str);
 /* --- Functions ------------- */
 /* INTPROTO */
 void            kstate_setcurr (int stateno)
-{
+{E_
     u_char          prev_state;
 
     if ((u_int) stateno > (u_int) MAX_STATES)
@@ -201,7 +203,7 @@ void            kstate_setcurr (int stateno)
 
 /* INTPROTO */
 void            kstate_init (void)
-{
+{E_
     pStateNow->num_xlat = pStateNow->num_switcher = pStateNow->life =
 	pStateNow->prev_state = 0;
     pStateNow->xlat = NULL;
@@ -209,7 +211,7 @@ void            kstate_init (void)
 
 /* INTPROTO */
 void            kstate_end (void)
-{
+{E_
     int             i;
 
     for (i = 0; i < pStateNow->num_xlat; i++)
@@ -224,7 +226,7 @@ void            kstate_end (void)
  */
 /* INTPROTO */
 void            kstate_init_all (int greek_mode)
-{
+{E_
 /* the translation tables for the 4 FSM states for ELOT-928 mappings */
     int             i;
 
@@ -259,7 +261,7 @@ void            kstate_init_all (int greek_mode)
 
 /* INTPROTO */
 void            kstate_end_all (void)
-{
+{E_
     int             i;
 
     for (i = 0; i < MAX_STATES; i++) {
@@ -274,13 +276,13 @@ void            kstate_end_all (void)
  */
 /* INTPROTO */
 void            kstate_reset (void)
-{
+{E_
     kstate_setcurr (0);
 }
 
 /* INTPROTO */
 void            kstate_add_xlat (char *str)
-{
+{E_
     K_XLAT         *xlat;
     u_int          *pval_tmp;
     char           *sval;
@@ -315,7 +317,7 @@ void            kstate_add_xlat (char *str)
  */
 /* INTPROTO */
 void            kstate_add_switcher (char *str)
-{
+{E_
     K_SWITCH       *switcher;
 
     if (str == NULL)
@@ -336,13 +338,13 @@ void            kstate_add_switcher (char *str)
 /* L1 or L0 */
 /* INTPROTO */
 void            kstate_set_life (char *str)
-{
+{E_
     pStateNow->life = atoi (&str[1]);
 }
 
 /* INTPROTO */
 unsigned int    kstate_cxlat (unsigned int c)
-{
+{E_
     int             i;
 
 /* check for ascii switcher */
@@ -368,31 +370,31 @@ unsigned int    kstate_cxlat (unsigned int c)
 #ifdef RXVT
 /* EXTPROTO */
 void            greek_init (void)
-{
+{E_
     kstate_init_all (GreekMode);
 }
 
 /* EXTPROTO */
 void            greek_end (void)
-{
+{E_
     kstate_end_all ();
 }
 
 /* EXTPROTO */
 void            greek_reset (void)
-{
+{E_
     kstate_reset ();
 }
 
 /* EXTPROTO */
 void            greek_setmode (int greek_mode)
-{
+{E_
     GreekMode = greek_mode;
 }
 
 /* EXTPROTO */
 int             greek_getmode (void)
-{
+{E_
     return (GreekMode);
 }
 
@@ -401,7 +403,7 @@ int             greek_getmode (void)
  */
 /* EXTPROTO */
 int             greek_xlat (char *s, int num_chars)
-{
+{E_
     int             i, count;
     unsigned int    c;
 
@@ -418,7 +420,7 @@ int             greek_xlat (char *s, int num_chars)
 /*
 #ifdef TEST
 int             main (void)
-{
+{E_
 #if 0
 char text[] = "abcdef;aGDZXC";
 #endif

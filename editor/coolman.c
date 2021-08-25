@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* coolman.c - displays man pages using the man system command
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -18,6 +19,7 @@
  * 
  */
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,14 +35,9 @@
 #include <X11/Xatom.h>
 
 #include "coolwidget.h"
+#include "manpage.h"
 #include "cmdlineopt.h"
 #include "stringtools.h"
-
-CWidget *CManpageDialog (Window in, int x, int y, int columns, int lines, const char *manpage);
-
-/* default window sizes */
-#define START_WIDTH	80
-#define START_HEIGHT	25
 
 /* {{{ command-line options */
 #ifdef HAVE_DND
@@ -49,9 +46,6 @@ extern int option_dnd_version;
 
 /* options file */
 char *editor_options_file = 0;
-
-/* editor widget: */
-CWidget *man = 0;
 
 /* main and first window */
 Window main_window = 0;
@@ -74,12 +68,15 @@ char *option_font2 = 0;
 static int get_help = 0;
 static int get_version = 0;
 
+int option_utf_interpretation2 = 1;
+int option_locale_encoding = 0;
+
 /* other things on the command line */
 static char *command_line_args[] =
 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 void usage (void)
-{
+{E_
     printf ( \
 	_("Coolman version %s\nUsage:\n" \
 	"coolman [options] <man-page>\n" \
@@ -94,7 +91,7 @@ void usage (void)
 }
 
 void version (void)
-{
+{E_
     printf (_("Coolman version %s\n"), VERSION);
 }
 
@@ -117,7 +114,7 @@ static struct cmdline_option_free cmdline_fl;
 
 /* here we use our own function (which is better than get_opt() or get_opt_long()) */
 static void process_command_line (int argc, char **argv)
-{
+{E_
     int error;
     error = get_cmdline_options (argc, argv, coolman_options, &cmdline_fl);
 
@@ -142,35 +139,15 @@ static void process_command_line (int argc, char **argv)
 /* {{{ menu callbacks */
 
 int mansearch_callback (CWidget * w, XEvent * x, CEvent * c);
-
-int open_man (char *def)
-{
-    char *page;
-    page = CInputDialog ("getman", 0, 0, 0, 400, def, _(" Goto Manual Page "), _(" Enter a man page to open : "));
-    CFocus (CIdent ("mandisplayfile.text"));
-    if (!page)
-	return 1;
-    if (!*page)
-	return 1;
-    man = CManpageDialog (0, 0, 0, 80, 25, page);
-    free (page);
-    return 1;
-}
-
-int go_callback (CWidget * w, XEvent * xe, CEvent * ce)
-{
-    CStr s;
-    s = CLastInput ("getman.inpt_dlg");
-    return open_man (s.data);
-}
+int open_man (char *def);
 
 int help_callback (CWidget * w, XEvent * xe, CEvent * ce)
-{
+{E_
     return open_man ("coolman");
 }
 
 int run_main_callback (CWidget * w, XEvent * xe, CEvent * ce)
-{
+{E_
     switch (fork ()) {
     case 0:
 	CDisableAlarm ();
@@ -190,21 +167,21 @@ int run_main_callback (CWidget * w, XEvent * xe, CEvent * ce)
 }
 
 int quit_callback (CWidget * w, XEvent * xe, CEvent * ce)
-{
+{E_
     CShutdown ();
     exit (0);
     return 1;
 }
 
 int about_callback (CWidget * w, XEvent * xe, CEvent * ce)
-{
+{E_
     CMessageDialog (main_window, 20, 20, TEXT_CENTRED, _(" About "),
 		    _("\n" \
 		    "Coolman  version  %s\n" \
 		    "\n" \
 		    "A man page reader\n" \
 		    "\n" \
-		    "Copyright (C) 1996-2017 Paul Sheer\n" \
+		    "Copyright (C) 1996-2022 Paul Sheer\n" \
 		    "\n" \
 	   " Coolman comes with ABSOLUTELY NO WARRANTY; for details \n" \
 	" see the file COPYING in the source distribution. \n"), VERSION);
@@ -252,6 +229,8 @@ int main (int argc, char **argv)
     coolman_startup.font = option_font2;
     CInitialise (&coolman_startup);
 
+    set_editor_encoding (option_utf_interpretation2, option_locale_encoding);
+
 /* create main window */
     main_window = CDrawMainWindow ("coolman", "Coolman");
 
@@ -259,9 +238,6 @@ int main (int argc, char **argv)
     CGetHintPos (&x, &y);
     (CDrawButton ("new", main_window, x, y, AUTO_SIZE, _(" New Window ")))->hotkey = 'W';
     CAddCallback ("new", run_main_callback);
-    CGetHintPos (&x2, 0);
-    CDrawButton ("goto", main_window, x2, y, AUTO_SIZE, _(" Goto "));
-    CAddCallback ("goto", go_callback);
     CGetHintPos (&x2, 0);
     (CDrawButton ("about", main_window, x2, y, AUTO_SIZE, _(" About ")))->hotkey = 'b';
     CAddCallback ("about", about_callback);
@@ -275,7 +251,7 @@ int main (int argc, char **argv)
 
 /* draw the man page textbox */
     if (command_line_args[0]) {
-	man = CManpageDialog (main_window, x, y, 80, 25, command_line_args[0]);
+	man = CManpageDialog (main_window, x, y, START_WIDTH, START_HEIGHT, command_line_args[0]);
     } else {
 	char *page;
 	page = CInputDialog ("getman", 0, 0, 0, 200, "", _(" Open New Window "), _(" Enter a man page to open : "));
@@ -283,7 +259,7 @@ int main (int argc, char **argv)
 	    goto fin;
 	if (!*page)
 	    goto fin;
-	man = CManpageDialog (main_window, x, y, 80, 25, page);
+	man = CManpageDialog (main_window, x, y, START_WIDTH, START_HEIGHT, page);
 	free (page);
     }
 

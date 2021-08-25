@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* tri.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -30,7 +31,7 @@ void gl_striangle (int x0, int y0,
 		   int x2, int y2, int z0, int bf)
 #endif
 #endif
-{
+{E_
     void (*colhline_pos) (void);
     void (*colhline_neg) (void);
 

@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* shell.h
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -111,4 +112,5 @@ void load_scripts (void);
 void update_script_menu_items (void);
 void execute_script (WEdit *edit, int i);
 int get_script_number_from_key (unsigned int state, KeySym keysym);
+void edit_insert_shell_output (WEdit * edit);
 

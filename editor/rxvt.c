@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* rxvt.c - terminal emulator widget top-level functions
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include "rxvt/rxvtlib.h"
 #include "coolwidget.h"
 #include "font.h"
@@ -19,7 +21,7 @@ extern void rxvt_fd_read_watch (int fd, fd_set * reading, fd_set * writing, fd_s
 				void *data);
 
 int rxvt_event (XEvent * xevent)
-{
+{E_
     Window win;
     struct rxvts *l, *prev = 0;
     if (!rxvt_list)
@@ -84,7 +86,7 @@ int rxvt_event (XEvent * xevent)
 }
 
 int rxvt_have_pid (pid_t pid)
-{
+{E_
     struct rxvts *l;
     if (!rxvt_list)
 	return 0;
@@ -96,7 +98,7 @@ int rxvt_have_pid (pid_t pid)
 
 /* rxvt's need to interoperate */
 void rxvt_selection_clear (void)
-{
+{E_
     struct rxvts *l;
     if (!rxvt_list)
 	return;
@@ -113,7 +115,7 @@ void rxvt_selection_clear (void)
 
 #if 0
 int rxvt_alive (pid_t p)
-{
+{E_
     struct rxvts *l;
     if (!rxvt_list)
 	return 0;
@@ -127,7 +129,7 @@ int rxvt_alive (pid_t p)
 extern void (*user_selection_clear) (void);
 
 rxvtlib *rxvt_allocate (Window win, int c, char **a, int do_sleep)
-{
+{E_
     rxvtlib *rxvt;
     struct rxvts *l;
     rxvt = (rxvtlib *) malloc (sizeof (rxvtlib));
@@ -156,7 +158,7 @@ rxvtlib *rxvt_allocate (Window win, int c, char **a, int do_sleep)
 extern char *init_font;
 
 char **rxvt_args (char **argv)
-{
+{E_
     char **a;
     char *b[] =
 	{ "rxvt", "-fg", "white", "-bg", "black", "-font", "8x13bold", "-sl", "5000", "-si", "+sk", "-e", 0 };
@@ -182,14 +184,14 @@ char **rxvt_args (char **argv)
 
 #if 0
 void rxvt_resize_window (rxvtlib * rxvt, int w, int h)
-{
+{E_
     XResizeWindow (rxvt->Xdisplay, rxvt->TermWin.parent[0], w, h);
     rxvtlib_resize_window (rxvt, w, h);
 }
 #endif
 
 void rxvtlib_shutall (void)
-{
+{E_
     struct rxvts *l;
     if (!rxvt_list)
 	return;
@@ -215,7 +217,7 @@ void rxvtlib_shutall (void)
 }
 
 rxvtlib *rxvt_start (Window win, char **argv, int do_sleep)
-{
+{E_
     int a = 0;
     rxvtlib *rxvt;
     char **b;
@@ -232,18 +234,18 @@ rxvtlib *rxvt_start (Window win, char **argv, int do_sleep)
 }
 
 void rxvt_get_tty_name (rxvtlib * rxvt, char *p)
-{
+{E_
     strcpy (p, rxvt->ttydev);
 }
 
 pid_t rxvt_get_pid (rxvtlib * rxvt)
-{
+{E_
     return rxvt->cmd_pid;
 }
 
 #if 0
 Window rxvt_get_main_window (rxvtlib *rxvt)
-{
+{E_
     return rxvt->TermWin.parent[0];
 }
 #endif

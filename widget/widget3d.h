@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 
 #ifndef WIDGET_3D_H
 #define WIDGET_3D_H

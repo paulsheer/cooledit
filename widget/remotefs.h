@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 
 
 
@@ -20,7 +21,8 @@ enum remotefs_error_code {
     RFSERR_OTHER_ERROR,                         /* 7 */
     RFSERR_ENDOFFILE,                           /* 8 */
     RFSERR_PATHNAME_TOO_LONG,                   /* 9 */
-    RFSERR_LAST_INTERNAL_ERROR,                 /* 10 */
+    RFSERR_NON_CRYPTO_OP_ATTEMPTED,             /* 10 */
+    RFSERR_LAST_INTERNAL_ERROR,                 /* 11 */
 
 /* The combined errors from: opengroup.org, Linux, FreeBSD, Solaris, HP-UX,
    and Windows _sys_errlist are listed below.  This excludes the Windows WSA
@@ -346,32 +348,43 @@ void remotefs_serverize (const char *listen_address, const char *acceptrange);
 
 struct file_entry;
 
-struct remotefs *remotefs_lookup (const char *host_);
-#define the_remotefs_local                      (remotefs_lookup (REMOTEFS_LOCAL))
+struct remotefs *remotefs_lookup (const char *host_, char *directory);
+#define the_remotefs_local                      (remotefs_lookup (REMOTEFS_LOCAL, NULL))
 
 struct action_callbacks {
     void *hook;
-    int (*sock_reader) (struct action_callbacks *o, const unsigned char *chunk, int chunklen, long filelen, char *errmsg);
+    int (*sock_reader) (struct action_callbacks *o, const unsigned char *chunk, int chunklen, long long filelen, char *errmsg);
     int (*sock_writer) (struct action_callbacks *o, unsigned char *chunk, int *chunklen, char *errmsg);
 };
 
 typedef unsigned long long remotefs_error_code_t;
+#define REMOTEFS_MAX_PASSWORD_LEN               256
+
+enum remotfs_password_return {
+    REMOTFS_PASSWORD_RETURN_SUCCESS = 0,
+    REMOTFS_PASSWORD_RETURN_ERROR = 1,
+    REMOTFS_PASSWORD_RETURN_USERCANCEL = 2,
+};
+
+typedef enum remotfs_password_return (*remotfs_password_cb_t) (void *user_data, int again, const char *host, int *crypto_enabled, unsigned char *password, const char *user_msg, char *errmsg);
 
 struct remotefs_private;
 struct portable_stat;
 
 const char *remotefs_home_dir (struct remotefs *rfs);
+void remotefs_set_password_cb (remotfs_password_cb_t f, void *d);
 
 struct remotefs {
     unsigned int magic;
     int (*remotefs_listdir) (struct remotefs *rfs, const char *directory, unsigned long options, char *filter, struct file_entry **r, int *n, char *errmsg);
     int (*remotefs_readfile) (struct remotefs *rfs, struct action_callbacks *o, const char *filename, char *errmsg);
-    int (*remotefs_writefile) (struct remotefs *rfs, struct action_callbacks *o, const char *filename, long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg);
+    int (*remotefs_writefile) (struct remotefs *rfs, struct action_callbacks *o, const char *filename, long long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg);
     int (*remotefs_checkordinaryfileaccess) (struct remotefs *rfs, const char *filename, unsigned long long sizelimit, struct portable_stat *st, char *errmsg);
     int (*remotefs_stat) (struct remotefs *rfs, const char *path, struct portable_stat *st, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg);
     int (*remotefs_chdir) (struct remotefs *rfs, const char *dirname, char *cwd, int cwdlen, char *errmsg);
     int (*remotefs_realpathize) (struct remotefs *rfs, const char *path, const char *homedir, char *out, int outlen, char *errmsg);
     int (*remotefs_gethomedir) (struct remotefs *rfs, char *out, int outlen, char *errmsg);
+    int (*remotefs_enablecrypto) (struct remotefs *rfs, const unsigned char *challenge_local, unsigned char *challenge_remote, char *errmsg);
     struct remotefs_private *remotefs_private;
 };
 

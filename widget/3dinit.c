@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* 3dkit.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -19,6 +20,7 @@ tools to initialise different 3D primitives.
 
 
 
+#include "inspect.h"
 #include <config.h>
 #include <math.h>
 #include <stdlib.h>
@@ -34,7 +36,7 @@ tools to initialise different 3D primitives.
 
 
 double mag (Vec v)
-{
+{E_
     double r;
     if ((r = sqrt (v.x * v.x + v.y * v.y + v.z * v.z)) == 0)
 	return 1;
@@ -55,7 +57,7 @@ double mag (Vec v)
 
 
 void norm_vec (TD_Surface * surf, int i, int j, Vec * v, int d)
-{
+{E_
     int i1 = 0, i2 = 0, j1 = 0, j2 = 0, w = surf->w;
     double x, y, z, r;
     double x1, y1, z1;
@@ -113,7 +115,7 @@ void norm_vec (TD_Surface * surf, int i, int j, Vec * v, int d)
    normally +256 or -256 (can be less to give a darker surface) */
 
 void TD_initcolor (TD_Surface * surf, int n)
-{
+{E_
     int i, j, k, w = surf->w, l = surf->l, m;
 
     double r, ru;
@@ -223,7 +225,7 @@ void TD_initcolor (TD_Surface * surf, int n)
 
 
 static inline void fxchg (double *a, double *b)
-{
+{E_
     double t = *a;
     *a = *b;
     *b = t;
@@ -232,7 +234,7 @@ static inline void fxchg (double *a, double *b)
 
 void TD_initellipsoidpart (TD_Surface * surf, long x, long y, long z,
 		      long a, long b, long c, int w, int dir, int col)
-{
+{E_
     int i, j;
     Vec v;
     float r;
@@ -294,7 +296,7 @@ void TD_initellipsoidpart (TD_Surface * surf, long x, long y, long z,
 void TD_initellipsoid (TD_Surface * surf1, TD_Surface * surf2, TD_Surface * surf3,
 	TD_Surface * surf4, TD_Surface * surf5, TD_Surface * surf6, long x, 
 	long y, long z, long a, long b, long c, int w, int col)
-{
+{E_
     TD_initellipsoidpart (surf1, x, y, z, a, b, c, w, 0, col);
     TD_initellipsoidpart (surf2, x, y, z, a, b, c, w, 1, col);
     TD_initellipsoidpart (surf3, x, y, z, a, b, c, w, 2, col);
@@ -306,7 +308,7 @@ void TD_initellipsoid (TD_Surface * surf1, TD_Surface * surf2, TD_Surface * surf
 
 void TD_initsellipsoid (TD_Solid *s, int n, long x, 
 	long y, long z, long a, long b, long c, int w, int col)
-{
+{E_
     TD_initellipsoid(&s->surf[n], &s->surf[n+1], &s->surf[n+2], 
 	&s->surf[n+3], &s->surf[n+4], &s->surf[n+5], x, y, z,
 	a, b, c, w, col);

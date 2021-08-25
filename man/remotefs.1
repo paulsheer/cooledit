@@ -1,0 +1,136 @@
+.TH remotefs 1 "12 September 2022"
+.\"SKIP_SECTION"
+.SH NAME
+remotefs \- Remote File System access tool for Windows and Unix
+.\"SKIP_SECTION"
+.SH USAGE
+.B remotefs
+[OPTIONS] <listen-address> <accept-ip-range>
+.br
+.B remotefs
+-h
+.br
+.B REMOTEFS.EXE
+<listen-address> <accept-ip-range>
+.SH DISCLAIMER
+The information in this file is provided without warranty
+for its accuracy or completeness. Use of this file or its
+information is entirely at your own risk.
+.SH DESCRIPTION
+.LP
+This is a standalone executable to run on a remote machine that
+gives \fBcooledit\fP remote file-system access. The allowed operations
+are reading and writing of files, directory listing, reading
+of file permissions and ownership.
+
+This means you can use \fBcooledit\fP to edit files on a remote
+machine, even a Windows machine. The advantage of this tool is low
+latency saving and loading files and the advantage that this can
+be done securely of the Internet.
+
+You will notice in the bottom left of the \fBcooledit\fP file-browser
+is a new input to enter the IP of the remote machine or \fIlocalhost\fP
+for the local machine.
+
+The executable \fBREMOTEFS.EXE\fP is provided in the distribution for
+running on Windows. You will need to open a command prompt.
+.\".\"DONT_SPLIT"
+.SH OPTIONS
+.TP
+.I "-h"
+Print help and exit.
+.TP
+.I "--no-crypto"
+Disable crypto. All data is send in plain-text with no security or authentication.
+This effectively reverts \fBremotefs\fP to the version before encryption was supported.
+Mainly useful for debugging. Use the \fBDisable crypto\fP button if security is not
+required.
+.TP
+.I "--force-crypto"
+Require encryption, or reject transaction. Normally host are allowed to hit the button
+\fBDisable crypto\fP when prompted for a password. This option disallows this.
+.TP
+.I "-k <file>, --key-file <file>"
+Read AES key from <file>. Default: AESKEYFILE
+.br
+If not specified, AESKEYFILE will be created and populated with a strong random key.
+If AESKEYFILE exists it will be read.
+.TP
+.I "<listen-address>"
+The interface to bind to. Try running \fBifconfig\fP on Unix or \fBIPCONFIG.EXE\fP on Windows to list available IP addresses.
+.TP
+.I "<accept-ip-range>"
+The address ranges allowed to connect. Remote clients not in the range are dropped. Users ought to be cautious
+who is allowed to connect since \fBremotefs\fP gives full access to all files on the machine. Both IPv4 and IPv6 addresses
+are supported. Ranges of the form IP-IP and IP/MASK are supported. An example is \fB10.1.0.1-10.1.0.99,fe80::9df2:ea47:67b9:644f,fe80::c6f0:196e:0000:123a/64,192.168.1.16/30\fP.
+.PP
+.SH ENCRYPTION
+The encryption algorithm is as follows.
+.PP
+.nf
+.B Definitions
+    P => plaintext
+    M => ciphertext
+    K1, k2 => key
+    V => IV
+    I => nonce
+
+    V, S, s, A1, A2, I, Q are 128 bits
+    P, C, D are n * 128 bits, n > 0
+    D is discarded
+
+    AES_CBC_ENC(key, IV, plaintext) => (newIV, ciphertext)
+    SHA256(...) => (128bit, 128bit)
+
+.B Encryption
+    (C, Q) <= AES_CBC_ENC(K1, V, (I, P))
+    (A1, A2) <= SHA256(V, C(firstblock), Q, AES_ECB_ENC(K2, V))
+    (D, S) <= AES_CBC_ENC(K2, A1, C)
+    (D, S) <= AES_CBC_ENC(K2, S, A2)
+    M <= (V, C, S)
+
+.B Decryption
+    (V, C, s) <= M
+    (A1, A2) <= SHA256(V, C(firstblock), C(lastblock), AES_ECB_ENC(K2, V))
+    (D, S) <= AES_CBC_ENC(K2, A, C)
+    (D, S) <= AES_CBC_ENC(K2, S, A2)
+    S ?= s
+    ((I, P), Q) <= AES_CBC_DEC(K1, V, C)
+.fi
+.PP
+.SH EXAMPLE
+To enable a \fBcooledit\fP process running on any machine 192.168.1.2 through 192.168.1.254 to access the machine 192.168.1.1, login on 192.168.1.1 and run this:
+
+.nf
+  remotefs 192.168.1.1 192.168.1.2-192.168.1.254
+.fi
+
+Then copy the contents of the file \fIAESKEYFILE\fP:
+
+.nf
+  cat AESKEYFILE
+  LUs7UPqmsocLHAdQMVmht4avPMvgSW4HtCybMGvKQoYn
+.fi
+
+Then run \fBcooledit\fP on, say \fI192.168.1.99\fP.
+Then select the menu option \fBFile -> Open\fP. Then select \fI192.168.1.1\fP in the \fIIP:\fP input in \fBcooledit\fP's file browser.
+The file browser will prompt you for an AES key. Hit \fBShit-Ins\fP (or mouse middle button) to paste the key.
+
+.PP
+.SH FILES
+.I AESKEYFILE
+.IP
+Contains the default AES key. This file is created when \fBremotefs\fP first starts up and will contain a strongly-random-generated key.
+.PP
+.SH AVAILABILITY
+The latest public release of this program can be found at
+.br
+\fBhttp://www.ibiblio.org/pub/Linux/apps/editors/X/cooledit/\fP
+.PP
+.SH SEE ALSO
+cooledit(1).
+.PP
+.SH AUTHORS
+Paul Sheer
+.PP
+

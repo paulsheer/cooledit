@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* cooledit.c - main file of cooledit
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,7 +29,12 @@
 #include "shell.h"
 #include "igloo.h"
 #include "widget/pool.h"
+#include "rxvt/rxvtexport.h"
+#include "debug.h"
+#include "find.h"
+#include "postscript.h"
 #include "remotefs.h"
+#include "remotefspassword.h"
 
 #if HAVE_DIRENT_H
 #include <dirent.h>
@@ -60,7 +67,7 @@ char *option_look = "cool";
 /* error handler */
 #ifdef DEBUG
 int er_handler (Display * c, XErrorEvent * e)
-{
+{E_
 /* NLS ? */
     char err[128];
     XGetErrorText (c, e->error_code, err, 128);
@@ -89,7 +96,7 @@ Window main_window;
 static void main_loop (void);
 
 static RETSIGTYPE userone_handler (int x)
-{
+{E_
     CErrorDialog (main_window, 20, 20, \
 /* heads the dialog box for when a SIGUSR1 Signal is recieved: SIGUSR1 */
 		  _(" Signal SIGUSR1 Recieved "), 
@@ -108,7 +115,7 @@ static RETSIGTYPE userone_handler (int x)
 }
 
 static RETSIGTYPE quit_handler (int x)
-{
+{E_
 /* %s = cooledit */
     fprintf (stderr, _("%s: quiting without saving\n"), argv_nought);
 #if 0
@@ -126,7 +133,7 @@ void set_to_kill (pid_t p);
 void shell_output_set_to_kill (pid_t p);
 
 static void set_signals (void)
-{
+{E_
     signal (SIGPIPE, SIG_IGN);
     signal (SIGHUP, SIG_IGN);
     signal (SIGSTOP, SIG_IGN);
@@ -189,7 +196,7 @@ struct linguas {
 /* {{{ hint message on title bar */
 
 void get_next_hint_message (void)
-{
+{E_
     static int i = -1;
     static int n;
     char label[128];
@@ -274,7 +281,7 @@ void get_next_hint_message (void)
 
 
 void edit_change_directory (void)
-{
+{E_
     char *new_dir;
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     char host[256] = REMOTEFS_LOCAL;
@@ -348,7 +355,7 @@ static char *option_server = NULL;
 
 
 void usage (void)
-{
+{E_
     printf ( \
 /* Translate only the description of what the options does, not the option itself */
 	    _("Cooledit version %s\n" \
@@ -425,7 +432,7 @@ void usage (void)
 }
 
 void version (void)
-{
+{E_
     printf (_("Cooledit version %s\n"), VERSION);
 }
 
@@ -503,7 +510,7 @@ struct prog_options cooledit_options[] =
 static struct cmdline_option_free cmdline_fl;
 
 static void process_command_line (int argc, char **argv)
-{
+{E_
     int error;
     error = get_cmdline_options (argc, argv, cooledit_options, &cmdline_fl);
 
@@ -555,8 +562,8 @@ void current_to_top (void);
 /* {{{ process make (and other shell) error message */
 
 /* returns -1 on not found and line numbner = -1. Could return only one as -1 */
-int get_file_and_line_from_error (char *message, int *line_number, char **new_file)
-{
+static int get_file_and_line_from_error (const char *host, char *message, int *line_number, char **new_file)
+{E_
     int i, l;
     char *p;
 
@@ -589,6 +596,7 @@ int get_file_and_line_from_error (char *message, int *line_number, char **new_fi
     if (p) {
 	p++;
 	if (!strncmp (p, "/", 1) || !strncmp (p, "./", 2)) {
+            char errmsg[REMOTEFS_ERR_MSG_LEN];
 	    char m[MAX_PATH_LEN], *c;
 	    message = p;
 	  try_new:
@@ -617,8 +625,9 @@ int get_file_and_line_from_error (char *message, int *line_number, char **new_fi
 		}
 		strncpy (m, message, (unsigned long) c - (unsigned long) message);
 	    }
-#warning handle host and remote host home_dir
-	    c = pathdup (0, m);
+	    c = pathdup (host, m, errmsg);
+            if (!c)
+	        return -1;
 	    for (i = 0; i < last_edit; i++)
 		if (edit[i]->editor->filename)
 		    if (*(edit[i]->editor->filename)) {
@@ -658,7 +667,7 @@ int get_file_and_line_from_error (char *message, int *line_number, char **new_fi
 static int new_file_callback (const char *host, const char *full_file_name,...);
 
 void edit_move_to_line_easy (WEdit *e, int l)
-{
+{E_
     edit_move_to_line (e, l - 1);
     if (edit_count_lines (e, e->start_display, e->curs1) < e->num_widget_lines / 4)
 	edit_move_display (e, l - e->num_widget_lines / 4 - 1);
@@ -669,7 +678,7 @@ void edit_move_to_line_easy (WEdit *e, int l)
 
 
 void insert_text_into_current (char *text, int len, int delete_word_left)
-{
+{E_
     WEdit *e;
     if (current_edit >= last_edit)
 	return;
@@ -700,14 +709,12 @@ void insert_text_into_current (char *text, int len, int delete_word_left)
 }
 
 int goto_error (char *message, int raise_wm_window)
-{
+{E_
     int ed, l;
     char *new_file = 0;
-    char host[256] = REMOTEFS_LOCAL;
-#warning what host to assume here?
-    ed = get_file_and_line_from_error (message, &l, &new_file);
+    ed = get_file_and_line_from_error (edit[current_edit]->editor->host, message, &l, &new_file);
     if (new_file) {
-	if (!new_file_callback (host, new_file)) {
+	if (!new_file_callback (edit[current_edit]->editor->host, new_file)) {
 	    edit_move_to_line_easy (edit[current_edit]->editor, l);
 	    CTryFocus (edit[current_edit], raise_wm_window);
 	    free (new_file);
@@ -728,7 +735,7 @@ int goto_error (char *message, int raise_wm_window)
 }
 
 static int bookmarks_select_callback (CWidget * w, XEvent * x, CEvent * c)
-{
+{E_
     if (c->double_click || (c->command == CK_Enter && !c->handled)) {
 	char *q;
         q = strdup(CGetTextBoxLine(w, w->cursor));
@@ -747,13 +754,13 @@ static int bookmarks_select_callback (CWidget * w, XEvent * x, CEvent * c)
 }
 
 static int bookmarks_done_callback (CWidget * w, XEvent * x, CEvent * c)
-{
+{E_
     CDestroyWidget ("bookmarks");
     return 1;
 }
 
 static CStr const_get_text_cb (void *hook1, void *hook2)
-{
+{E_
     CStr s;
     s.data = (char *) hook1;
     s.len = (int) (long) hook2;
@@ -761,12 +768,12 @@ static CStr const_get_text_cb (void *hook1, void *hook2)
 }
 
 static void const_free_text (void *hook1, void *hook2)
-{
+{E_
     free (hook1);
 }
 
 void goto_file_dialog (const char *heading, const char *tool_hint, const char *text)
-{
+{E_
     int x, y;
     Window win;
     CWidget *w;
@@ -794,14 +801,14 @@ void goto_file_dialog (const char *heading, const char *tool_hint, const char *t
 }
 
 void cooledit_appearance_modification (void)
-{
+{E_
     int i;
     for (i = 0; i < last_edit; i++)
         edit_appearance_modification (edit[i]->editor);
 }
 
 void bookmark_select (void)
-{
+{E_
     int i;
     POOL *p;
     p = pool_init ();
@@ -825,7 +832,7 @@ void bookmark_select (void)
 
 /* moves the current editor to the top of the stack */
 void current_to_top (void)
-{
+{E_
     CWidget *w = edit[current_edit];
     Cmemmove (&(edit[1]), &(edit[0]), current_edit * sizeof (CWidget *));
     edit[0] = w;
@@ -866,7 +873,7 @@ static char *toolbar_hints[NUM_TOOL_BUTTONS] =
 };
 
 int tool_bar_callback (CWidget * w, XEvent * xe, CEvent * ce)
-{
+{E_
     XEvent e;
     char ident[32], *p;
     strcpy (ident, ce->ident);
@@ -883,7 +890,7 @@ int tool_bar_callback (CWidget * w, XEvent * xe, CEvent * ce)
 void edit_man_cooledit (unsigned long ignored);
 
 int help_callback (CWidget * w, XEvent * xe, CEvent * ce)
-{
+{E_
     edit_man_cooledit (0);
     return 1;
 }
@@ -891,7 +898,7 @@ int help_callback (CWidget * w, XEvent * xe, CEvent * ce)
 #define VERT_TEXT_OFFSET 7
 
 int render_vert_text (CWidget * w)
-{
+{E_
     CWidget *wdt;
     wdt = CIdent (w->ident + 3);
     if (!wdt)
@@ -907,7 +914,7 @@ int render_vert_text (CWidget * w)
 }
 
 void change_syntax_type (CWidget * edi)
-{
+{E_
     CWidget *w;
     char x[34];
 #ifdef HAVE_PYTHON
@@ -929,7 +936,7 @@ void change_syntax_type (CWidget * edi)
 }
 
 int draw_vert_text (CWidget * w, XEvent * xe, CEvent * ce)
-{
+{E_
     if (xe->type == Expose) {
 	if (xe->xexpose.x > VERT_TEXT_OFFSET + 16)
 	    return 0;
@@ -943,7 +950,7 @@ int draw_vert_text (CWidget * w, XEvent * xe, CEvent * ce)
 /* creates a new editor at 'number' in the stack and shifts up the stack */
 /* returns one on success, 0 on error: usually file not found */
 static int new_editor (int number, int x, int y, int columns, int lines, const char *f, const char *start_host, const char *d,...)
-{
+{E_
     static int edit_count = 0;
     int xe, ye;
     int i, modified = 0;
@@ -1043,7 +1050,7 @@ static int new_editor (int number, int x, int y, int columns, int lines, const c
 
 /* removes the editor at 'current_edit' */
 void remove_current (int do_raise, int focus_next)
-{
+{E_
     CDestroyWidget (CWidgetOfWindow (edit[current_edit]->parentid)->ident);
     /* close up the hole in the stack: */
     Cmemmove (&(edit[current_edit]), &(edit[current_edit + 1]), (last_edit - current_edit) * sizeof (CWidget *));
@@ -1066,7 +1073,7 @@ void remove_current (int do_raise, int focus_next)
 /* }}}  window stack manipulation */
 
 void get_main_window_size (unsigned int *width, unsigned int *height)
-{
+{E_
     Window root;
     int x, y;
     unsigned int border, depth;
@@ -1076,18 +1083,21 @@ void get_main_window_size (unsigned int *width, unsigned int *height)
 
 /* {{{  'Window' menu call backs */
 
-extern int (*edit_file_is_open) (const char *, const char *, int);
-
 /* returns non-zero if alrady open. !new_window means the user could be re-opening
 the file currently under focus -- we don't want to annoy him by asking the obvious */
 static int file_is_open (const char *host, const char *p_, int new_window)
-{
+{E_
     char *p;
     char s[MAX_PATH_LEN];
+    char errmsg[REMOTEFS_ERR_MSG_LEN];
     int r = 0, i, found = -1;
     if (!host)
         host = REMOTEFS_LOCAL;
-    p = pathdup (host, p_);
+    p = pathdup (host, p_, errmsg);
+    if (!p) {
+        CErrorDialog (0, 0, 0, _ (" Resolving Path "), _ (" Error connecting to %s: %s "), host, errmsg);
+        return -1;
+    }
     for (i = 0; i < last_edit && !r; i++)
 	if (edit[i]->editor->dir && edit[i]->editor->filename && (new_window || i != current_edit)) {
 	    strcpy (s, edit[i]->editor->dir);
@@ -1118,7 +1128,7 @@ static int file_is_open (const char *host, const char *p_, int new_window)
 static int height_offset;
 
 void fit_into_main_window (int *lines, int *columns, int x, int y)
-{
+{E_
     unsigned int width, height, f;
     get_main_window_size (&width, &height);
     CPushFont ("widget", 0);
@@ -1138,16 +1148,21 @@ void fit_into_main_window (int *lines, int *columns, int x, int y)
 
 /* returns non-zero on error */
 static int new_file_callback (const char *host, const char *full_file_name,...)
-{
+{E_
     int x, y, columns, lines, result = 1;
     char *d = 0;
+    char errmsg[REMOTEFS_ERR_MSG_LEN];
 
     if (!full_file_name || full_file_name == NEW_WINDOW_FROM_TEXT) {
 	if (last_edit) {
 	    /* copy the current directory: */
-	    d = (char *) pathdup (host, edit[current_edit]->editor->dir);
+	    d = (char *) pathdup (host, edit[current_edit]->editor->dir, errmsg);
 	} else {
-	    d = (char *) pathdup (host, local_home_dir);
+	    d = (char *) pathdup (host, local_home_dir, errmsg);
+        }
+        if (!d) {
+            CErrorDialog (0, 0, 0, _ (" Resolving Path "), _ (" Error connecting to %s: %s "), host, errmsg);
+            return result;
         }
     }
 
@@ -1186,7 +1201,7 @@ static int new_file_callback (const char *host, const char *full_file_name,...)
 }
 
 void new_window_callback (unsigned long ignored)
-{
+{E_
     char *f = 0;
     char host[256];
     strcpy (host, edit[current_edit]->editor->host);
@@ -1198,7 +1213,7 @@ void new_window_callback (unsigned long ignored)
 }
 
 void window_cycle_callback (unsigned long ignored)
-{
+{E_
     current_edit = (current_edit + 1) % last_edit;
     CFocus (edit[current_edit]);
     XRaiseWindow (CDisplay, edit[current_edit]->parentid);
@@ -1207,7 +1222,7 @@ void window_cycle_callback (unsigned long ignored)
 }
 
 void save_desk_callback (unsigned long ignored)
-{
+{E_
     write_config (0);
 }
 
@@ -1218,7 +1233,7 @@ void put_all_lists (char *list);
 void complete_command (CWidget * e);
 
 void exit_app (unsigned long save)
-{
+{E_
     char *p;
     switch ((int) save) {
     case 0:
@@ -1252,31 +1267,45 @@ void exit_app (unsigned long save)
     edit_free_cache_lines ();
     postscript_clean ();
     get_cmdline_options_free_list (&cmdline_fl);
+    inspect_clean_exit ();
+    XAaCacheClean ();
     exit (0);
 }
 
 /* number of 'Window' menu items */
-#define WLIST_ITEMS 9
+#define WLIST_ITEMS 10
 
 void add_to_focus_stack (Window w);
 
-/* a file was selected in the menu, so focus and raise it */
-void wlist_callback (unsigned long ignored)
-{
-    current_edit = CIdent ("menu.wlist")->current - WLIST_ITEMS;
+static void set_current (int new_current)
+{E_
+    current_edit = new_current;
     current_to_top ();
     XRaiseWindow (CDisplay, edit[current_edit]->parentid);
     CRaiseWindows ();
     add_to_focus_stack (edit[current_edit]->winid);
 }
 
+/* a file was selected in the menu, so focus and raise it */
+void wlist_callback (unsigned long ignored)
+{E_
+    set_current (CIdent ("menu.wlist")->current - WLIST_ITEMS);
+}
+
 void close_window_callback (unsigned long ignored)
-{
+{E_
+    CEditMenuCommand (CK_Exit);
+}
+
+void close_last_callback (unsigned long ignored)
+{E_
+    if (last_edit >= 1)
+        set_current (last_edit - 1);
     CEditMenuCommand (CK_Exit);
 }
 
 void menu_browse_cmd (unsigned long ignored)
-{
+{E_
     char host[256] = REMOTEFS_LOCAL;
     int l;
     for (l = 0;; l++)
@@ -1288,7 +1317,7 @@ void menu_browse_cmd (unsigned long ignored)
 }
 
 void menu_jump_to_file (unsigned long ignored)
-{
+{E_
     long cursor, end_of_name;
     char *s, *f;
 
@@ -1317,7 +1346,7 @@ extern char *init_widget_font;
 extern char *init_bg_color;
 
 void run_main_callback (unsigned long ignored)
-{
+{E_
     char lines[10], columns[10];
     sprintf (lines, "%d", edit[current_edit]->editor->num_widget_lines);
     sprintf (columns, "%d", edit[current_edit]->editor->num_widget_columns);
@@ -1340,49 +1369,33 @@ void run_main_callback (unsigned long ignored)
 
 
 void init_usual_items (struct menu_item *m)
-{
-    m[0].text = (char *) strdup (_(" New window\tCtrl-F3 "));
-    m[0].hot_key = '~';
-    m[0].call_back = new_window_callback;
+{E_
+#define ADD_USUAL(t, h, cb, d)  \
+    do {    m[i].text = (char *) strdup (t); \
+            m[i].hot_key = (h); \
+            m[i].call_back = (cb); \
+            m[i].data = (d); \
+            i = i + 1;                    } while (0)
 
-    m[1].text = (char *) strdup (_(" New main window\tF13 "));
-    m[1].hot_key = '~';
-    m[1].call_back = run_main_callback;
+    int i = 0;
 
-    m[2].text = (char *) strdup (_(" Window cycle\tCtrl-F6/Shift-Tab "));
-    m[2].hot_key = '~';
-    m[2].call_back = window_cycle_callback;
+    ADD_USUAL(" New window\tCtrl-F3 ", '~', new_window_callback, 0);
+    ADD_USUAL(" New main window\tF13 ", '~', run_main_callback, 0);
+    ADD_USUAL(" Window cycle\tCtrl-F6/Shift-Tab ", '~', window_cycle_callback, 0);
+    ADD_USUAL(" Close window\tF10 ", '~', close_window_callback, 0);
+    ADD_USUAL(" Close deepest window\tAlt-F10 ", '~', close_last_callback, 0);
+    ADD_USUAL(" Close all and exit\t", 0, exit_app, 1);
+    ADD_USUAL(" Save all and exit\t", 0, exit_app, 2);
+    ADD_USUAL(" Save desktop\tCtrl-F2 ", '~', save_desk_callback, 0);
+    ADD_USUAL(" File browser...\t", '~', menu_browse_cmd, 0);
+    ADD_USUAL("  ", 0, NULL, 0);
 
-    m[3].text = (char *) strdup (_(" Close window\tF10 "));
-    m[3].hot_key = '~';
-    m[3].call_back = close_window_callback;
-
-    m[4].text = (char *) strdup (_(" Close all and exit\tCtrl-F10 "));
-    m[4].hot_key = '~';
-    m[4].call_back = exit_app;
-    m[4].data = 1;
-
-    m[5].text = (char *) strdup (_(" Save all and exit\tAlt-x "));
-    m[5].hot_key = '~';
-    m[5].call_back = exit_app;
-    m[5].data = 2;
-
-    m[6].text = (char *) strdup (_(" Save desktop\tCtrl-F2 "));
-    m[6].hot_key = '~';
-    m[6].call_back = save_desk_callback;
-    
-    m[7].text = (char *) strdup (_(" File browser...\t"));
-    m[7].hot_key = '~';
-    m[7].call_back = menu_browse_cmd;
-
-    m[WLIST_ITEMS - 1].text = (char *) strdup ("  ");
-    m[WLIST_ITEMS - 1].hot_key = 0;
-    m[WLIST_ITEMS - 1].call_back = 0;
+    assert (i == WLIST_ITEMS);
 }
 
 
 void update_wlist (void)
-{
+{E_
     struct menu_item *m;
     CWidget *w, *drop = 0;
     int i;
@@ -1432,7 +1445,7 @@ void update_wlist (void)
 #define SCANTYPE_STR            3
 
 static int scan_left (const char *s, int i, const char *field, const char *allowed, void *out, int scantype)
-{
+{E_
     int l, field_offset = 0, value_offset = 0;
     char *out_;
     i--;
@@ -1487,7 +1500,7 @@ static int scan_left (const char *s, int i, const char *field, const char *allow
 
 /* scan from right to left in case of spaces in the filename */
 static int scan_file_line(const char *s, char *d, char *f, float *x, float *y, long *w, long *h, long *c, long *l, char *host)
-{
+{E_
     int i, eol = 0, p, ret;
 
     while (s[eol] && s[eol] != '\n')
@@ -1550,7 +1563,7 @@ void edit_about_cmd (void);
 
 /* open all the files listed in the configuration file returns 0 on success */
 int read_config (void)
-{
+{E_
     char f[MAX_PATH_LEN];
     char d[MAX_PATH_LEN];
     char host[256] = REMOTEFS_LOCAL;
@@ -1605,8 +1618,8 @@ int read_config (void)
 
 
 /* format a line for the config file of the current editor */
-void print_stuff (char *s)
-{
+void print_stuff (char *s, int slen)
+{E_
     char hostconfig[256 + 64];
     CWidget *w;
     w = CWidgetOfWindow (edit[current_edit]->parentid);
@@ -1617,8 +1630,8 @@ void print_stuff (char *s)
                 char *host;
                 hostconfig[0] = '\0';
                 if ((host = edit[current_edit]->editor->host) && *host && strcmp (host, REMOTEFS_LOCAL))
-                    sprintf (hostconfig, "host=%s", host);
-		sprintf (s, "%s %s x=%f y=%f columns=%d lines=%d cursor=%ld topline=%ld%s\n",
+                    sprintf (hostconfig, " host=%s", host);
+		snprintf (s, slen, "%s %s x=%f y=%f columns=%d lines=%d cursor=%ld topline=%ld%s\n",
 			 edit[current_edit]->editor->dir,
 			 edit[current_edit]->editor->filename,
 			 (float) w->x / (float) FONT_MEAN_WIDTH, (float) w->y / (float) FONT_PIX_PER_LINE, edit[current_edit]->editor->num_widget_columns, edit[current_edit]->editor->num_widget_lines,
@@ -1632,7 +1645,7 @@ void print_stuff (char *s)
 /* write out the config file. clean = 1: also tries to exit each file. */
 /* clean = 2: saves every file before trying to exit. */
 static int write_config (int clean)
-{
+{E_
     char *f, *t;
     int result = 0;
     char s[1024];
@@ -1641,7 +1654,7 @@ static int write_config (int clean)
     current_to_top ();
     current_edit = 0;
     do {
-	print_stuff (s);
+	print_stuff (s, sizeof (s));
 	if (clean) {
 	    if (edit[current_edit]->editor->modified)
 		XRaiseWindow (CDisplay, edit[current_edit]->parentid);
@@ -1650,19 +1663,19 @@ static int write_config (int clean)
 	    edit_execute_command (edit[current_edit]->editor, CK_Exit, -1);
 	    if (edit[current_edit]->editor->stopped == 1) {
 		int ce = current_edit;
-		print_stuff (s);	/* user may have changed the filename on exit */
+		print_stuff (s, sizeof (s));	/* user may have changed the filename on exit */
 		remove_current (0, 0);
 		current_edit = ce;
 	    } else {
 		result = 2;
-		print_stuff (s);
+		print_stuff (s, sizeof (s));
 		current_edit++;
 	    }
 	} else {
 	    current_edit++;
 	}
 	if (*s) {
-	    sprintf (f, s);
+	    sprintf (f, "%s", s);
 	    f += strlen (s);
 	    *f = 0;
 	}
@@ -1696,7 +1709,7 @@ static int write_config (int clean)
    window with that file.
  */
 int open_drop_file (XEvent * xevent, CEvent * cwevent)
-{
+{E_
     unsigned char *data;
     unsigned long size;
     int data_type, xs, ys;
@@ -1736,8 +1749,8 @@ static struct drop {
     0, 0, 0
 };
 
-static int handle_drop (CWidget * w, Window from, unsigned char *data, int size, int xs, int ys, Atom type, Atom action)
-{
+static int handle_drop (void *w_, Window from, unsigned char *data, int size, int xs, int ys, Atom type, Atom action)
+{E_
     if (drop.data)
 	free (drop.data);
     drop.data = CMalloc (size + 1);
@@ -1755,7 +1768,7 @@ static int handle_drop (CWidget * w, Window from, unsigned char *data, int size,
 char *filename_from_url (char *data, int size, int i);
 
 static void open_drop_file (unsigned char *data, int size, Atom type)
-{
+{E_
     if (type == XInternAtom (CDisplay, "url/url", False)) {
 	if (!strncmp ((char *) data, "file:", 5)) {
 	    char *f;
@@ -1778,7 +1791,7 @@ static void open_drop_file (unsigned char *data, int size, Atom type)
 #endif
 
 int editors_modified (void)
-{
+{E_
     int i, r = 0;
     for (i = 0; i < last_edit; i++)
 	r |= edit[i]->editor->modified;
@@ -1786,7 +1799,7 @@ int editors_modified (void)
 }
 
 static void cooledit_init (void)
-{
+{E_
     CInitData cooledit_startup;
 
     memset (&cooledit_startup, 0, sizeof (cooledit_startup));
@@ -1826,7 +1839,7 @@ static XEvent cooledit_xevent;
 #define approx_equ(a,b) (((a) < (b) + FONT_HEIGHT) && (a) > (b) - FONT_HEIGHT)
 
 static int similar_size_to_main_window (CWidget * w)
-{
+{E_
     if (approx_equ (w->width, CIdent ("cooledit")->width) &&
       approx_equ (w->height, CIdent ("cooledit")->height - height_offset)
 	&& approx_equ (w->x, 0) && approx_equ (w->y, height_offset))
@@ -1835,7 +1848,7 @@ static int similar_size_to_main_window (CWidget * w)
 }
 
 static void maximise_window (char *ident)
-{
+{E_
     CWidget *w;
     int lines, columns, f;
     unsigned int wm, hm;
@@ -1857,13 +1870,11 @@ static void maximise_window (char *ident)
     CPopFont ();
 }
 
-void debug_key_command (int command);
-void edit_insert_shell_output (WEdit * edit);
 
 /* ----main_loop()--------------------------------------------------------- */
 
 static void main_loop (void)
-{
+{E_
     for (;;) {
 	CNextEvent (&cooledit_xevent, &cooledit_cevent);
 	if (cooledit_xevent.type == TickEvent) {
@@ -2049,6 +2060,9 @@ static void main_loop (void)
 	    case CK_Maximize:
 		maximise_window (cooledit_cevent.ident);
 		break;
+            case CK_Close_Last:
+                close_last_callback (0);
+                break;
 	    }
 	}
 	/* if an editor has been exitted out of, it must be destroyed: */
@@ -2080,7 +2094,7 @@ static void main_loop (void)
 }
 
 static void custom_keys (WEdit * e, int i)
-{
+{E_
     if (i < MAX_NUM_SCRIPTS)
 	execute_script (e, i);
 #ifdef HAVE_PYTHON
@@ -2108,7 +2122,7 @@ static struct mouse_funcs main_mouse_funcs =
     0,
     0,
     0,
-    (int (*)(void *, Window, unsigned char *, int, int, int, Atom, Atom)) handle_drop,
+    handle_drop,
     0,
     DndText,
     mime_majors
@@ -2143,6 +2157,8 @@ int main (int argc, char **argv)
 	"-winfonts-arial-bold-r-*-*-45-*-*-*-*-*-*-*"
     };
     int n;
+
+    init_inspect ();
 
     command_line_files = (char **) malloc ((argc + 1) * sizeof (char *));
     memset (command_line_files, 0, (argc + 1) * sizeof (char *));
@@ -2191,7 +2207,7 @@ int main (int argc, char **argv)
 	    printf ("\n");
 	    printf ("Examples using fonts on file on the local machine: \n");
 	    printf ("\tcooledit -font NotoSansMono-Bold.ttf:14\n");
-	    printf ("\tcooledit -font 8x13B.pcf.gz,NotoColorEmoji.ttf:55 --widget-font NotoEmoji-Regular.ttf:14     # then hit  Alt-I  then  End  then  PgDn  until 0x1F300\n");
+	    printf ("\tcooledit -font 8x13B.pcf.gz,NotoColorEmoji-OLD.ttf:35 --widget-font  NotoSans-Regular.ttf:14     # then hit  Alt-I  then  End  then  PgDn  until 0x1F300\n");
 	    printf ("\tcooledit -font /usr/share/fonts/truetype/ttf-dejavu/DejaVuSans-Bold.ttf:20\n");
 	    printf ("\n");
 	    printf ("The default font is:\n");
@@ -2203,6 +2219,7 @@ int main (int argc, char **argv)
 	}
 
     get_home_dir ();
+    password_init ();
 
     if (!editor_options_file)
 	editor_options_file = (char *) strdup (catstrs (DEFAULT_INI_FILE, NULL));

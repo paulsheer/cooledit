@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* disable.c - disabling and enabling widgets
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -22,7 +24,7 @@ extern char *regtools_old_pattern;
 
 
 void CSetDisable (const char *ident, int disable)
-{
+{E_
     int i = last_widget + 1;
     if (strcmp (ident, "*")) {
 	while (--i)
@@ -44,7 +46,7 @@ void CSetDisable (const char *ident, int disable)
 }
 
 void CDisable (const char *ident)
-{
+{E_
     if (!ident) {
 	if (regtools_old_pattern) {
 	    free (regtools_old_pattern);
@@ -55,7 +57,7 @@ void CDisable (const char *ident)
 }
 
 void CEnable (const char *ident)
-{
+{E_
     CSetDisable (ident, 0);
 }
 
@@ -65,7 +67,7 @@ do not destroy _and_ create, because these won't remember properly which
 are have gone and which are new. */
 
 void CBackupState(CState *s)
-{
+{E_
     int i = last_widget + 1;
     memset(s, 0, sizeof(CState));
     while (--i) {
@@ -78,7 +80,7 @@ void CBackupState(CState *s)
 }
 
 void CRestoreState (CState * s)
-{
+{E_
     int i = last_widget + 1;
     while (--i)
 	if (CIndex (i))

@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* pipe.c - for opening a process as a pipe and reading both stderr and stdout together
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include "global.h"
 #include "pipe-headers.h"
@@ -30,7 +32,7 @@ char *read_pipe (int fd, int *len, pid_t *child_pid);
 #define max(x,y)     (((x) > (y)) ? (x) : (y))
 
 void set_signal_handlers_to_default (void)
-{
+{E_
     signal (SIGHUP, SIG_DFL);
     signal (SIGQUIT, SIG_DFL);
     signal (SIGINT, SIG_DFL);
@@ -43,7 +45,7 @@ void set_signal_handlers_to_default (void)
 /* returns non-zero if the file exists in the PATH. mimicks the behavior
 of execvp */
 int PATH_search (const char *file)
-{
+{E_
     int fd;
     if (strchr (file, '/')) {
 	if ((fd = open (file, O_RDONLY)) >= 0) {
@@ -94,8 +96,8 @@ int PATH_search (const char *file)
    Returns -1 if the fork failed, and -2 if pipe() failed.
    Otherwise returns the pid of the child.
  */
-pid_t triple_pipe_open (int *in, int *out, int *err, int mix, const char *file, char *const argv[])
-{
+pid_t triple_pipe_open_env (int *in, int *out, int *err, int mix, const char *file, char *const argv[], char *const envp[])
+{E_
     pid_t p;
     int e;
     int f0[2], f1[2], f2[2];
@@ -186,10 +188,18 @@ fail for other reasons: */
 	close (nulldevice_rd);
 	close (nulldevice_wr);
 	set_signal_handlers_to_default ();
-	execvp (file, argv);
+        if (envp)
+	    execvpe (file, argv, envp);
+        else
+	    execvp (file, argv);
 	exit (1);
     }
     return 0; /* prevents warning */
+}
+
+pid_t triple_pipe_open (int *in, int *out, int *err, int mix, const char *file, char *const argv[])
+{E_
+    return triple_pipe_open_env (in, out, err, mix, file, argv, NULL);
 }
 
 #if 0
@@ -201,7 +211,7 @@ fail for other reasons: */
    actually work on these systems. */
 
 static int my_openpty (int *amaster, int *aslave, char *name)
-{
+{E_
     char line[] = _PATH_DEV_PTYXX;
     const char *p, *q;
     int master, slave, ttygid;
@@ -237,7 +247,7 @@ static int my_openpty (int *amaster, int *aslave, char *name)
 }
 
 static int forkpty (int *amaster, char *name,...)
-{
+{E_
     int master, slave;
     pid_t pid;
     if (my_openpty (&master, &slave, name) == -1)
@@ -281,7 +291,7 @@ static int forkpty (int *amaster, char *name,...)
 #endif				/* ! HAVE_FORKPTY */
 
 static void set_termios (int fd)
-{
+{E_
 #ifdef HAVE_TCGETATTR
     struct termios tios;
     memset (&tios, 0, sizeof (tios));
@@ -335,7 +345,7 @@ static void set_termios (int fd)
 }
 
 pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *const argv[])
-{
+{E_
     int master = 0;
     char l[80];
     pid_t p;
@@ -379,6 +389,8 @@ pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *con
 
 int CChildExitted (pid_t p, int *status);
 
+#define ERROR_EAGAIN()          (errno == EWOULDBLOCK || errno == EAGAIN || errno == EINPROGRESS)
+
 /*
    Reads all available data and mallocs space for it plus
    one byte, and sets that byte to zero. If len is non-NULL
@@ -386,7 +398,7 @@ int CChildExitted (pid_t p, int *status);
    reads that amount max.
  */
 char *read_pipe (int fd, int *len, pid_t *child_pid)
-{
+{E_
     POOL *p;
     int c, count = 0;
     int l = CHUNK;
@@ -398,11 +410,19 @@ char *read_pipe (int fd, int *len, pid_t *child_pid)
     for (;;) {
 	if (pool_freespace (p) < l + 1)
 	    pool_advance (p, l + 1);
-	do {
+	for (;;) {
 	    c = read (fd, pool_current (p), l);
-            if (c < 0 && errno == EINTR && child_pid && CChildExitted (*child_pid, 0))
-                break;
-	} while (c < 0 && errno == EINTR);
+            if (c < 0 && ERROR_EAGAIN()) {
+                fd_set rd;
+                if (child_pid && CChildExitted (*child_pid, 0))
+                    break;
+                FD_ZERO (&rd);
+                FD_SET (fd, &rd);
+                select (fd + 1, &rd, NULL, NULL, NULL);
+                continue;
+            }
+            break;
+	}
 	if (c <= 0)
 	    break;
 	count += c;
@@ -419,7 +439,7 @@ char *read_pipe (int fd, int *len, pid_t *child_pid)
 }
 
 int read_two_pipes (int fd1, int fd2, char **r1, int *len1, char **r2, int *len2, pid_t *child_pid)
-{
+{E_
     POOL *p1, *p2;
 
     p1 = pool_init ();

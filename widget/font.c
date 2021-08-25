@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* font.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include "coolwidget.h"
 #include "coollocal.h"
 #include "aafont.h"
@@ -25,25 +27,8 @@ static void utf8_to_wchar_t (const unsigned char *s, int l, C_wchar_t ** r_ret, 
 unsigned char *wcrtomb_wchar_to_utf8 (C_wchar_t c);
 int mbrtowc_utf8_to_wchar (C_wchar_t * c, const char *t, int n, void *x /* no shifting with utf8 */ );
 
-
-/*
-
-nice font list:
-
-8x13B.pcf.gz,NotoMono-Regular.ttf,NotoSans-Regular.ttf,NotoSansSyriacEstrangela-Regular.ttf,NotoSansThaana-Regular.ttf,NotoSansTagalog-Regular.ttf,NotoSansTeluguUI-Regular.ttf,NotoSansEthiopic-Regular.ttf,NotoSansOldPersian-Regular.ttf,NotoSansArmenian-Regular.ttf,NotoSansTamilUI-Regular.ttf,NotoSansPhagsPa-Regular.ttf,NotoSansTaiViet-Regular.ttf,NotoSansAdlam-Regular.ttf,NotoSansMalayalamUI-Regular.ttf,NotoSansSylotiNagri-Regular.ttf,NotoSansImperialAramaic-Regular.ttf,NotoSansCarian-Regular.ttf,NotoSansTagbanwa-Regular.ttf,NotoSansAnatolianHieroglyphs-Regular.ttf,NotoSansCanadianAboriginal-Regular.ttf,NotoSansMonoCJKtc-Regular.otf,NotoSansNewTaiLue-Regular.ttf,NotoSansAdlamUnjoined-Regular.ttf,NotoSansKharoshthi-Regular.ttf,NotoSansSymbols2-Regular.ttf,NotoSansOldTurkic-Regular.ttf,NotoSansSaurashtra-Regular.ttf,NotoSansOlChiki-Regular.ttf,NotoSansShavian-Regular.ttf,NotoSansGeorgian-Regular.ttf,NotoSansDevanagariUI-Regular.ttf,NotoSansThaiUI-Regular.ttf,NotoSansTibetan-Regular.ttf,NotoSansTifinagh-Regular.ttf,NotoSansUgaritic-Regular.ttf,NotoSansBatak-Regular.ttf,NotoSansLycian-Regular.ttf,NotoSansBuhid-Regular.ttf,NotoSansKaithi-Regular.ttf,NotoSansOgham-Regular.ttf,NotoSansCham-Regular.ttf,NotoSansSymbols-Regular.ttf,NotoSansRunic-Regular.ttf,NotoSansGothic-Regular.ttf,NotoSansOsmanya-Regular.ttf,NotoSansOldSouthArabian-Regular.ttf,NotoSansTaiTham-Regular.ttf,NotoSansLimbu-Regular.ttf,NotoSansCherokee-Regular.ttf,NotoSansOriyaUI-Regular.ttf,NotoSansGujaratiUI-Regular.ttf,NotoSansKhmerUI-Regular.ttf,NotoSansCuneiform-Regular.ttf,NotoSansOldItalic-Regular.ttf,NotoSansMandaic-Regular.ttf,NotoSansMonoCJKkr-Regular.otf,NotoSansPhoenician-Regular.ttf,NotoSansMonoCJKsc-Regular.otf,NotoSansBengaliUI-Regular.ttf,NotoSansGlagolitic-Regular.ttf,NotoSansGurmukhiUI-Regular.ttf,NotoSansJavanese-Regular.ttf,NotoSansSyriacEastern-Regular.ttf,NotoSansOsage-Regular.ttf,NotoSansKayahLi-Regular.ttf,NotoSansCypriot-Regular.ttf,NotoSansLinearB-Regular.ttf,NotoSansKannadaUI-Regular.ttf,NotoSansMonoCJKjp-Regular.otf,NotoSansMongolian-Regular.ttf,NotoSansBuginese-Regular.ttf,NotoSansEgyptianHieroglyphs-Regular.ttf,NotoSansSinhalaUI-Regular.ttf,NotoSansBrahmi-Regular.ttf,NotoSansInscriptionalPahlavi-Regular.ttf,NotoSansDeseret-Regular.ttf,NotoSansRejang-Regular.ttf,NotoSansYi-Regular.ttf,NotoSansBalinese-Regular.ttf,NotoSansLaoUI-Regular.ttf,NotoSansHanunoo-Regular.ttf,NotoSansMeeteiMayek-Regular.ttf,NotoSansLepcha-Regular.ttf,NotoSansSundanese-Regular.ttf,NotoSansLydian-Regular.ttf,NotoSansTaiLe-Regular.ttf,NotoSansSamaritan-Regular.ttf,NotoSansLisu-Regular.ttf,NotoSansNKo-Regular.ttf,NotoSansVai-Regular.ttf,NotoSansCoptic-Regular.ttf,NotoSansChakma-Regular.ttf,NotoSansInscriptionalParthian-Regular.ttf,NotoSansBamum-Regular.ttf,NotoSansMyanmarUI-Regular.ttf,NotoSansSyriacWestern-Regular.ttf,NotoSansAvestan-Regular.ttf,NotoSansHebrew-Regular.ttf,NotoColorEmoji.ttf,NotoEmoji-Regular.ttf,NotoKufiArabic-Regular.ttf,NotoNaskhArabicUI-Regular.ttf,NotoNastaliqUrdu-Regular.ttf
-
-Size:
- 22,254
- 107,848
- 455,188
-
-remainder:
- 81,889,920
-
-*/
-
 int load_one_freetype_font (FT_Face *face, const char *filename, int *desired_height, int *loaded_height)
-{
+{E_
     static FT_Library library;
     static int initialized = 0;
     int i, nominal_height, size_index = -1;
@@ -169,7 +154,7 @@ nominal_height = 48;
 
 
 static int load_font_from_file (const char *fname, struct aa_font *r, int desired_height)
-{
+{E_
     const char *arg = fname;
     const char *end_of_name, *next = fname;
 
@@ -306,13 +291,13 @@ static C_wchar_t *wchar_tmp_buf = 0;
 static int wchar_tmp_buf_len = 0;
 
 void utf_tmp_buf_free(void)
-{
+{E_
     if (wchar_tmp_buf)
         free(wchar_tmp_buf);
 }
 
 static void utf8_to_wchar_t (const unsigned char *s, int l, C_wchar_t ** r_ret, int *l_ret, enum font_encoding e)
-{
+{E_
     C_wchar_t *c;
     if (wchar_tmp_buf_len < l + 1) {
         wchar_tmp_buf_len = (l + 1) * 2;
@@ -394,7 +379,7 @@ static void utf8_to_wchar_t (const unsigned char *s, int l, C_wchar_t ** r_ret, 
 }
 
 int count_one_utf8_char (const char *s_)
-{
+{E_
     int n = 0, r = 0;
     const unsigned char *s = (const unsigned char *) s_;
     for (;;) {
@@ -443,14 +428,14 @@ int count_one_utf8_char (const char *s_)
 }
 
 int count_one_utf8_char_sloppy (const char *s)
-{
+{E_
     int r;
     r = count_one_utf8_char (s);
     return r > 0 ? r : 1;
 }
 
 unsigned char *font_wchar_to_charenc (C_wchar_t c, int *l)
-{
+{E_
     static char wr[32];
     static unsigned char ch;
     wchar_t wc = 0;
@@ -485,7 +470,7 @@ unsigned char *font_wchar_to_charenc (C_wchar_t c, int *l)
 }
 
 int utf8_to_wchar_t_one_char_safe (C_wchar_t * c, const char *t, int n)
-{
+{E_
     int r;
     if (!*t) {
 	*c = 0;
@@ -505,7 +490,7 @@ int utf8_to_wchar_t_one_char_safe (C_wchar_t * c, const char *t, int n)
 
 /* only ImageStrings can bee anti-aliased */
 int CImageTextWidth (const char *s, int l)
-{
+{E_
     C_wchar_t *t = 0;
     int n = 0;
     utf8_to_wchar_t((const unsigned char *) s, l, &t, &n, *current_font->encoding_interpretation);
@@ -516,13 +501,13 @@ static XChar2b *XChar2b_tmp_buf = 0;
 static int XChar2b_tmp_buf_len = 0;
 
 void XChar2b_tmp_buf_free(void)
-{
+{E_
     if (XChar2b_tmp_buf)
         free(XChar2b_tmp_buf);
 }
 
 static XChar2b *wchar_t_to_XChar2b (const C_wchar_t * s, int l)
-{
+{E_
     XChar2b *p, *ret;
     if (XChar2b_tmp_buf_len < l + 1) {
 	XChar2b_tmp_buf_len = (l + 1) * 2;
@@ -546,13 +531,13 @@ static wchar_t *wchar_t_tmp_buf = 0;
 static int wchar_t_tmp_buf_len = 0;
 
 void wchar_t_tmp_buf_free(void)
-{
+{E_
     if (wchar_t_tmp_buf)
         free(wchar_t_tmp_buf);
 }
 
 static wchar_t *Cwchar_to_wchar (const C_wchar_t * s, int l)
-{
+{E_
     wchar_t *p, *ret;
     if (wchar_t_tmp_buf_len < l + 1) {
 	wchar_t_tmp_buf_len = (l + 1) * 2;
@@ -571,7 +556,7 @@ static wchar_t *Cwchar_to_wchar (const C_wchar_t * s, int l)
 }
 
 int CImageTextWidthWC (XChar2b * s, C_wchar_t * swc, int l)
-{
+{E_
     if (FONT_USE_FONT_SET)
 	return XwcTextEscapement (current_font->f.font_set, Cwchar_to_wchar (swc, l), l);
     if (FONT_ANTIALIASING)
@@ -582,12 +567,12 @@ int CImageTextWidthWC (XChar2b * s, C_wchar_t * swc, int l)
 }
 
 int CImageStringWidth (const char *s)
-{
+{E_
     return CImageTextWidth (s, strlen (s));
 }
 
 int CImageText (Window w, int x, int y, const char *s, int l)
-{
+{E_
     C_wchar_t *t = 0;
     int n = 0;
     utf8_to_wchar_t((const unsigned char *) s, l, &t, &n, *current_font->encoding_interpretation);
@@ -595,7 +580,7 @@ int CImageText (Window w, int x, int y, const char *s, int l)
 }
 
 int CImageTextWC (Window w, int x, int y, XChar2b * s, C_wchar_t * swc, int l)
-{
+{E_
     if (FONT_USE_FONT_SET) {
         wchar_t *sw;
         sw = Cwchar_to_wchar (swc, l);
@@ -610,12 +595,12 @@ int CImageTextWC (Window w, int x, int y, XChar2b * s, C_wchar_t * swc, int l)
 }
 
 int CImageString (Window w, int x, int y, const char *s)
-{
+{E_
     return CImageText (w, x, y, s, strlen (s));
 }
 
 static struct font_object *find_font (const char *name)
-{
+{E_
     struct font_object *n;
     if (current_font)
 	if (!strcmp (current_font->name, name))
@@ -653,7 +638,7 @@ static struct font_object *find_font (const char *name)
 /* returns width. the descent is only ever used for drawing an underbar.
    the ascent is only ever used in calculating FONT_PIX_PER_LINE */
 static int get_wchar_dimension (C_wchar_t ch, int *height, int *ascent, int *ink_descent)
-{
+{E_
     int width, direction;
     XRectangle ink;
     XRectangle logical;
@@ -730,7 +715,7 @@ static int get_wchar_dimension (C_wchar_t ch, int *height, int *ascent, int *ink
 /* returns width. the descent is only ever used for drawing an underbar.
    the ascent is only ever used in calculating FONT_PIX_PER_LINE */
 static int get_string_dimensions (const char *s, int n, int *height, int *ascent, int *ink_descent)
-{
+{E_
     int width = 0, direction = 0;
     XRectangle ink;
     XRectangle logical;
@@ -786,7 +771,7 @@ static int get_string_dimensions (const char *s, int n, int *height, int *ascent
 }
 
 static int check_font_fixed (void)
-{
+{E_
     int m;
     char *p;
     m = get_string_dimensions ("M", 1, 0, 0, 0);
@@ -797,7 +782,7 @@ static int check_font_fixed (void)
 }
 
 static void get_font_dimensions (void)
-{
+{E_
     const char *p = TEST_FONT_STRING;
     FONT_MEAN_WIDTH = get_string_dimensions (p, strlen(p), &FONT_HEIGHT, &FONT_ASCENT, &FONT_DESCENT) / strlen(p);
 }
@@ -805,7 +790,7 @@ static void get_font_dimensions (void)
 /* this tries to keep the array of cached of font widths as small ever
    needed - i.e. only enlarges on lookups */
 static void _font_per_char (C_wchar_t c)
-{
+{E_
     if (!current_font->per_char) {
 	current_font->num_per_char = c + 1;
 	current_font->per_char = CMalloc (current_font->num_per_char * sizeof (fontdim_t));
@@ -839,7 +824,7 @@ static void _font_per_char (C_wchar_t c)
 }
 
 int font_per_char (C_wchar_t c)
-{
+{E_
     if ((unsigned long) c > FONT_LAST_UNICHAR)  /* catches c < 0 */
 	return 0;
     _font_per_char (c);
@@ -847,7 +832,7 @@ int font_per_char (C_wchar_t c)
 }
 
 int font_per_char_descent (C_wchar_t c)
-{
+{E_
     if ((unsigned long) c > FONT_LAST_UNICHAR)
 	return 0;
     _font_per_char (c);
@@ -857,11 +842,13 @@ int font_per_char_descent (C_wchar_t c)
 /* seems you cannot draw different fonts in the same GC. this is
    strange???, so we create a dummy GC for each font */
 static Window get_dummy_gc (void)
-{
+{E_
     static Window dummy_window = 0;
     XGCValues gcv;
+    memset (&gcv, '\0', sizeof (gcv));
     if (!dummy_window) {
 	XSetWindowAttributes xswa;
+        memset (&xswa, '\0', sizeof (xswa));
 	xswa.override_redirect = 1;
 	dummy_window =
 	    XCreateWindow (CDisplay, CRoot, 0, 0, 1, 1, 0, CDepth, InputOutput, CVisual,
@@ -878,7 +865,7 @@ static Window get_dummy_gc (void)
 }
 
 static XFontSet get_font_set (char *name)
-{
+{E_
     XFontSet fontset;
     char **a = 0;
     int b;
@@ -897,7 +884,7 @@ static XFontSet get_font_set (char *name)
 
 /* loads a font and sets the current font to it */
 static struct font_object *load_font (const char *name, const char *xname_, enum font_encoding *e)
-{
+{E_
     char compactname[80];
     char *xname;
     int aa = 0;
@@ -1033,7 +1020,7 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
 int font_depth = 0;
 
 int CPushFont (const char *name, ...)
-{
+{E_
     va_list ap;
     struct font_stack *p;
     struct font_object *f;
@@ -1082,7 +1069,7 @@ int CPushFont (const char *name, ...)
 }
 
 void CPopFont (void)
-{
+{E_
     struct font_stack *p;
     if (!font_stack) {
 	fprintf (stderr, "Huh\n?");
@@ -1122,7 +1109,7 @@ void CPopFont (void)
 }
 
 void CFreeAllFonts (void)
-{
+{E_
     int i = 0;
     while (font_stack) {
 	CPopFont ();
@@ -1132,7 +1119,7 @@ void CFreeAllFonts (void)
 }
 
 int CIsFixedFont (void)
-{
+{E_
     return FIXED_FONT;
 }
 

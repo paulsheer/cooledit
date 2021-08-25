@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* shell.c - user defined shell commands 
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <sys/types.h>
 #if HAVE_SYS_WAIT_H
@@ -88,7 +90,7 @@ struct modifier_map_ modifier_map[] = {
 static unsigned long shell_alt_mask = SHELL_ALT_MASK_UNSET;
 
 void shell_set_alt_modifier (unsigned long modifier)
-{
+{E_
     int i;
     shell_alt_mask = modifier;
     for (i = 0; i < sizeof (modifier_map) / sizeof (modifier_map[0]); i++)
@@ -99,7 +101,7 @@ void shell_set_alt_modifier (unsigned long modifier)
 }
 
 static char *shell_modifier_to_string (unsigned long modifiers)
-{
+{E_
     static char s[1024];
     int i, l;
     s[0] = '\0';
@@ -116,7 +118,7 @@ static char *shell_modifier_to_string (unsigned long modifiers)
 }
 
 static unsigned long shell_string_to_modifier (const char *s)
-{
+{E_
     int i;
     unsigned long r = 0;
     for (i = 0; i < sizeof (modifier_map) / sizeof (modifier_map[0]); i++)
@@ -455,7 +457,7 @@ static struct running_shell {
 } running_shell[MAX_RUNNING_SHELLS];
 
 static void kill_process (pid_t p)
-{
+{E_
     if (p)
 	kill (p, SIGTERM);
 }
@@ -463,7 +465,7 @@ static void kill_process (pid_t p)
 
 /* one of these must be non-zero */
 static int find_shell (pid_t p, const char *name, CWidget * w)
-{
+{E_
     int i;
     for (i = 0; i < MAX_RUNNING_SHELLS; i++) {
 	if (p)
@@ -481,7 +483,7 @@ static int find_shell (pid_t p, const char *name, CWidget * w)
 }
 
 static int new_shell (const char *name)
-{
+{E_
     int i;
     i = find_shell (0, name, 0);
     if (i < 0) {
@@ -497,7 +499,7 @@ static int new_shell (const char *name)
 }
 
 void text_free (void *x)
-{
+{E_
     if (x)
 	free (x);
 }
@@ -505,7 +507,7 @@ void text_free (void *x)
 static void shell_pool_update (int fd, fd_set * reading, fd_set * writing, fd_set * error, void *data);
 
 void shell_free_pool (int i)
-{
+{E_
     if (i < 0)
 	return;
     if (running_shell[i].shell_pipe >= 0) {
@@ -518,7 +520,7 @@ void shell_free_pool (int i)
 
 /* kills an executing shell whose output is being dynamically displayed */
 void set_to_kill (pid_t p)
-{
+{E_
     int i;
     i = find_shell (p, 0, 0);
     if (i >= 0)
@@ -527,7 +529,7 @@ void set_to_kill (pid_t p)
 
 /* kills an executing shell whose output is being dynamically displayed */
 static int kill_shell (pid_t p, char *name, CWidget * w)
-{
+{E_
     int i;
     i = find_shell (p, name, w);
     if (i < 0)
@@ -538,7 +540,7 @@ static int kill_shell (pid_t p, char *name, CWidget * w)
 }
 
 static int restart_shell (pid_t p, const char *name, CWidget * w)
-{
+{E_
     int i;
     i = find_shell (p, name, w);
     if (i < 0)
@@ -559,7 +561,7 @@ void insert_text_into_current (char *text, int len, int delete_word_left);
 #define COMPLETE_LIST_SEPARATOR         "  ==>  "
 
 static int complete_select_callback (CWidget * w, XEvent * x, CEvent * c)
-{
+{E_
     if (c->double_click || (c->command == CK_Enter && !c->handled)) {
 	char *q, *p;
         q = strdup(CGetTextBoxLine(w, w->cursor));
@@ -575,13 +577,13 @@ static int complete_select_callback (CWidget * w, XEvent * x, CEvent * c)
 }
 
 static int complete_done_callback (CWidget * w, XEvent * x, CEvent * c)
-{
+{E_
     CDestroyWidget ("complete");
     return 1;
 }
 
 static CStr const_get_text_cb (void *hook1, void *hook2)
-{
+{E_
     CStr s;
     s.data = (char *) hook1;
     s.len = (int) (long) hook2;
@@ -589,12 +591,12 @@ static CStr const_get_text_cb (void *hook1, void *hook2)
 }
 
 static void const_free_text (void *hook1, void *hook2)
-{
+{E_
     free (hook1);
 }
 
 static char *format_complete_list (const char *s, const char *token)
-{
+{E_
     int c, color = 0, newline = 1;
     POOL *p;
     p = pool_init ();
@@ -640,7 +642,7 @@ static char *format_complete_list (const char *s, const char *token)
 }
 
 static void complete_dialog (char *text, const char *token)
-{
+{E_
     const char *heading, *tool_hint, *formatted_text;
     int x, y;
     Window win;
@@ -676,7 +678,7 @@ void goto_error (char *message, int raise_wm_window);
 
 /* if you double click on a line of gcc output, this will take you to the file */
 static int goto_file_callback (CWidget * w, XEvent * x, CEvent * c)
-{
+{E_
     if (c->double_click || (c->command == CK_Enter && !c->handled)) {
 	int width;
 	char *q;
@@ -692,7 +694,7 @@ static int goto_file_callback (CWidget * w, XEvent * x, CEvent * c)
 }
 
 static char *nm (int i, char *a, char *b, char *c)
-{
+{E_
     static char id[36];
     sprintf (id, "%.3d%s", i, a);
     if (b) {
@@ -708,7 +710,7 @@ static char *nm (int i, char *a, char *b, char *c)
 
 /* if the dynamic output dialog's tick button is click, then terminate: */
 static int display_file_callback (CWidget * w, XEvent * x, CEvent * c)
-{
+{E_
     shell_free_pool (kill_shell (0, 0, CIdent (nm (atoi (w->ident), "shelldisplaytext", "text", 0))));
     CDestroyWidget (nm (atoi (w->ident), "shelldisplaytext", 0, 0));
     return 1;
@@ -717,7 +719,7 @@ static int display_file_callback (CWidget * w, XEvent * x, CEvent * c)
 #define CHUNK 8192
 
 static void shell_pool_update (int fd, fd_set * reading, fd_set * writing, fd_set * error, void *data)
-{
+{E_
     CWidget *w;
     struct running_shell *r;
     int i, count = 0, do_redraw = 0;
@@ -785,7 +787,7 @@ static void shell_pool_update (int fd, fd_set * reading, fd_set * writing, fd_se
 }
 
 static CStr shell_get_text_cb (void *hook1, void *hook2)
-{
+{E_
     POOL *shell_pool;
     CStr s;
     shell_pool = (POOL *) hook1;
@@ -806,7 +808,7 @@ static CStr shell_get_text_cb (void *hook1, void *hook2)
 }
 
 static void shell_free_text (void *hook1, void *hook2)
-{
+{E_
     POOL *shell_pool;
     shell_pool = (POOL *) hook1;
     if (shell_pool)
@@ -815,7 +817,7 @@ static void shell_free_text (void *hook1, void *hook2)
 
 /* draws a textbox dialog for showing the shells output */
 static void shell_display_output (int i, const char *heading, int (*select_line_callback) (CWidget *, XEvent *, CEvent *))
-{
+{E_
     if (CIdent (nm (i, "shelldisplaytext", 0, 0))) {	/* exists ? */
 	CRedrawTextboxManaged (nm (i, "shelldisplaytext", "text", 0), shell_get_text_cb, shell_free_text, (void *) running_shell[i].shell_pool, 0, 0);
 	CRedrawText (nm (i, "shelldisplaytext", "header", 0), heading);
@@ -850,7 +852,7 @@ static void shell_display_output (int i, const char *heading, int (*select_line_
 /* }}} dynamic display of shell output in a dialog box */
 
 static char *hme_i (char *h, int i)
-{
+{E_
     static char s[MAX_PATH_LEN];
     sprintf (s, "%s-%d", hme (h), i);
     return s;
@@ -858,7 +860,7 @@ static char *hme_i (char *h, int i)
 
 /* returns non-zero on error */
 int execute_background_display_output (const char *title, const char *s, const char *name)
-{
+{E_
     char *argv[] =
     {0, 0};
     pid_t p;
@@ -881,7 +883,7 @@ int execute_background_display_output (const char *title, const char *s, const c
    will be ignored if this is called.
  */
 static int execute_background_shell (struct shell_cmd *s, char *script, char *name)
-{
+{E_
     char *argv[] =
     {0, 0};
     pid_t p = 0;
@@ -938,7 +940,7 @@ int read_two_pipes (int fd1, int fd2, char **r1, int *len1, char **r2, int *len2
    Unlike the above routine, this blocks waiting for the shell to exit.
  */
 static char *execute_foreground_shell (struct shell_cmd *s, char *script, char **err)
-{
+{E_
     pid_t p = 0;
     char *argv[] =
     {0, 0};
@@ -988,7 +990,7 @@ static char *execute_foreground_shell (struct shell_cmd *s, char *script, char *
 #define UNCOMMON_FNAME_CHAR(c)          ((unsigned char) (c) <= ' ' || strchr("\"\\/:*[]()|<>", (c)))
 
 static const char *contains_whole_word (const char *s, const char *w)
-{
+{E_
     char c;
     const char *p = s;
     int l;
@@ -1006,7 +1008,7 @@ static const char *contains_whole_word (const char *s, const char *w)
 }
 
 static void shell_out_parse_for_bookmark (WEdit * edit, struct shell_cmd *s, const char *q, int height)
-{
+{E_
     int len, line = 0, column = 0;
 
     len = strlen (q);
@@ -1051,7 +1053,7 @@ static void shell_out_parse_for_bookmark (WEdit * edit, struct shell_cmd *s, con
 }
 
 static void shell_create_bookmarks (WEdit * edit, struct shell_cmd *s, const char *p)
-{
+{E_
     int h;
     book_mark_flush (edit, BOOK_MARK_NOTE_COLOR);
     book_mark_flush (edit, BOOK_MARK_WARNING_COLOR);
@@ -1080,7 +1082,7 @@ static void shell_create_bookmarks (WEdit * edit, struct shell_cmd *s, const cha
 
 
 static char *get_complete_word (WEdit *e, long *curs_return)
-{
+{E_
     int curs;
     static char s[256];
     char *p;
@@ -1109,8 +1111,8 @@ int edit_save_block (WEdit * edit, const char *filename, long start, long finish
 
 /* This is called from the envokation dialog below */
 static int run_shell (WEdit * e, struct shell_cmd *s, char *cmdline_options, char *name)
-{
-    char *complete_word;
+{E_
+    char *complete_word = "";
     long complete_column = 0;
     struct stat st;
     long start_mark, end_mark;
@@ -1256,7 +1258,7 @@ static int run_shell (WEdit * e, struct shell_cmd *s, char *cmdline_options, cha
    Returns 0 on success, -1 on error and 1 on cancel.
  */
 static int run_shell_dialog (WEdit * e, struct shell_cmd *s)
-{
+{E_
     char *cmdline_options;
     int r;
     long start_mark, end_mark;
@@ -1302,7 +1304,7 @@ static struct shell_cmd *scripts[MAX_NUM_SCRIPTS] =
 
 /* loads from options file */
 void load_scripts ()
-{
+{E_
     char *s = 0, *p, *q;
     unsigned char *r;
     int i = 0, n, upgrade = 0;
@@ -1447,7 +1449,7 @@ void load_scripts ()
 
 /* saves to options file */
 static void save_scripts (void)
-{
+{E_
     char *s, *p;
     int i = 0, n;
 
@@ -1490,7 +1492,7 @@ extern int current_edit;
 
 /* straight from the menu */
 static void script_menu_callback (unsigned long ignored)
-{
+{E_
     int i;
     i = (CIdent ("menu.scripts"))->current - N_ITEMS;
     run_shell_dialog (edit[current_edit]->editor, scripts[i]);
@@ -1498,7 +1500,7 @@ static void script_menu_callback (unsigned long ignored)
 
 /* this is called from edit_translate_key.c */
 int get_script_number_from_key (unsigned int state, KeySym keysym)
-{
+{E_
     int i;
     for (i = 0; i < MAX_NUM_SCRIPTS; i++) {
 	if (!scripts[i])
@@ -1513,13 +1515,13 @@ int get_script_number_from_key (unsigned int state, KeySym keysym)
 
 /* This is called from the editor: see main.c: edit_set_user_command (execute_script); */
 void execute_script (WEdit * e, int i)
-{
+{E_
     run_shell_dialog (e, scripts[i]);
 }
 
 /* Updates updates the menu when a new shell has been added or removed */
 void update_script_menu_items ()
-{
+{E_
     int i, n;
     n = (CIdent ("menu.scripts"))->numlines + 2;
     for (i = N_ITEMS; i < n; i++)
@@ -1615,7 +1617,7 @@ static const struct script_options options[] =
 };
 
 static char *shell_option_to_string (int option_flags)
-{
+{E_
     static char s[1024];
     int i, l;
     s[0] = '\0';
@@ -1631,7 +1633,7 @@ static char *shell_option_to_string (int option_flags)
 }
 
 static int shell_string_to_option (const char *s)
-{
+{E_
     int i, r = 0;
     for (i = 0; i < sizeof (options) / sizeof (options[0]); i++)
 	if (strstr (s, options[i].tag))
@@ -1641,7 +1643,7 @@ static int shell_string_to_option (const char *s)
 
 /* Edits a scripts: returns 1 on cancel, 0 on success, -1 on error */
 int edit_scripts_dialog (Window parent, int x, int y, struct shell_cmd *s)
-{
+{E_
     int i, r = 0;
     CState state;
     int xs, ys, x2, y2, yu;
@@ -1821,12 +1823,12 @@ int edit_scripts_dialog (Window parent, int x, int y, struct shell_cmd *s)
 }
 
 int edit_script (Window parent, int x, int y, int which_script)
-{
+{E_
     return edit_scripts_dialog (parent, x, y, scripts[which_script]);
 }
 
 static char *get_a_line (void *data, int line)
-{
+{E_
     static char t[128];
     struct shell_cmd **s;
     s = data;
@@ -1835,7 +1837,7 @@ static char *get_a_line (void *data, int line)
 }
 
 int script_list_box_dialog (Window parent, int x, int y, const char *heading)
-{
+{E_
     int n;
 
     for (n = 0; n < MAX_NUM_SCRIPTS; n++)
@@ -1847,7 +1849,7 @@ int script_list_box_dialog (Window parent, int x, int y, const char *heading)
 
 /* straight from menu */
 void edit_a_script_cmd (unsigned long ignored)
-{
+{E_
     int i;
     i = script_list_box_dialog (main_window, 40, 40, _ (" Pick a Script to Edit "));
     if (i >= 0) {
@@ -1858,7 +1860,7 @@ void edit_a_script_cmd (unsigned long ignored)
 }
 
 void delete_script (int i)
-{
+{E_
     if (scripts[i]) {
 	if (scripts[i]->script)
 	    free (scripts[i]->script);
@@ -1872,14 +1874,14 @@ void delete_script (int i)
 
 /* called on application shutdown */
 void free_all_scripts (void)
-{
+{E_
     while (scripts[0])
 	delete_script (0);
 }
 
 /* straight from menu */
 void delete_a_script_cmd (unsigned long ignored)
-{
+{E_
     int i;
     i = script_list_box_dialog (main_window, 20, 20, _ (" Pick a Script to Delete "));
     if (i >= 0) {
@@ -1891,7 +1893,7 @@ void delete_a_script_cmd (unsigned long ignored)
 
 /* straight from menu */
 void new_script_cmd (unsigned long ignored)
-{
+{E_
     int n;
     for (n = 0; n < MAX_NUM_SCRIPTS; n++)
 	if (!scripts[n])
@@ -1915,7 +1917,7 @@ void new_script_cmd (unsigned long ignored)
 }
 
 static CWidget *CDrawMiniSwitch (const char *identifier, Window parent, int x, int y, int d, int on)
-{
+{E_
     CWidget *w;
     w = CSetupWidget (identifier, parent, x, y, d, d, C_SWITCH_WIDGET, INPUT_BUTTON, COLOR_FLAT, 1);
     w->fg = COLOR_BLACK;
@@ -1933,7 +1935,7 @@ int option_shell_command_line_pty = 0;
 void shell_output_add_job (WEdit * edit, int in, int out, pid_t pid, char *name, int close_on_error);
 
 static struct shell_job *get_job (WEdit * edit, int n)
-{
+{E_
     struct shell_job *j;
     int i;
     for (i = 0, j = edit->jobs; j && i < n; j = j->next, i++);
@@ -1941,7 +1943,7 @@ static struct shell_job *get_job (WEdit * edit, int n)
 }
 
 static char *list_jobs_get_line (void *data, int line)
-{
+{E_
     struct shell_job *j;
     j = get_job ((WEdit *) data, line);
     if (j)
@@ -1950,7 +1952,7 @@ static char *list_jobs_get_line (void *data, int line)
 }
 
 static int list_jobs (void)
-{
+{E_
     struct shell_job *j;
     int i, c, n;
     WEdit *e;
@@ -1967,7 +1969,7 @@ static int list_jobs (void)
 }
 
 void edit_insert_shell_output (WEdit * edit)
-{
+{E_
     char id[33], q[1024], *p;
     CWidget *w, *v, *i, *b, *h, *c;
     int tolong = 0, done = 0;

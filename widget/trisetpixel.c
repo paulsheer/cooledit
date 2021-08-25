@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* trisetpixel.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -102,7 +103,7 @@ static void colhline_neg_setpixel24 (void)
 #if TRI_BPP==32
 static void colhline_neg_setpixel32 (void)
 #endif
-{
+{E_
     int count, y = py + dy0, x1 = px1 + dx0, x2 = px2 + dx0;
     if (__clip) {
 	if (y < __clipy1 || y > __clipy2)
@@ -152,7 +153,7 @@ static void colhline_pos_setpixel24 (void)
 #if TRI_BPP==32
 static void colhline_pos_setpixel32 (void)
 #endif
-{
+{E_
     int count, y = py + dy0, x1 = px1 + dx0, x2 = px2 + dx0;
     if (__clip) {
 	if (y < __clipy1 || y > __clipy2)
@@ -204,7 +205,7 @@ static void colhline_neg_paged24 (void)
 #if TRI_BPP==32
 static void colhline_neg_paged32 (void)
 #endif
-{
+{E_
     int count, y = py + dy0, x1 = px1 + dx0, x2 = px2 + dx0;
     unsigned short offst;
     int pg;
@@ -263,7 +264,7 @@ static void colhline_pos_paged24 (void)
 #if TRI_BPP==32
 static void colhline_pos_paged32 (void)
 #endif
-{
+{E_
     int count, y = py + dy0, x1 = px1 + dx0, x2 = px2 + dx0;
     unsigned short offst;
     int pg;
@@ -327,7 +328,7 @@ static void colhline_neg_paged24 (void)
 #if TRI_BPP==32
 static void colhline_neg_paged32 (void)
 #endif
-{
+{E_
 }
 
 
@@ -346,7 +347,7 @@ static void colhline_pos_paged24 (void)
 #if TRI_BPP==32
 static void colhline_pos_paged32 (void)
 #endif
-{
+{E_
 }
 
 
@@ -368,7 +369,7 @@ static void colhline_neg_direct24 (void)
 #if TRI_BPP==32
 static void colhline_neg_direct32 (void)
 #endif
-{
+{E_
     int count, y = py + dy0, x1 = px1 + dx0, x2 = px2 + dx0;
     declarevp;
     if (__clip) {
@@ -419,7 +420,7 @@ static void colhline_pos_direct24 (void)
 #if TRI_BPP==32
 static void colhline_pos_direct32 (void)
 #endif
-{
+{E_
     int count, y = py + dy0, x1 = px1 + dx0, x2 = px2 + dx0;
     declarevp;
     if (__clip) {

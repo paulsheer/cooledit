@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* aafont.h
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -8,6 +9,7 @@ struct aa_font;
 void XAaFree (int load_id);
 
 void XAaInit (Display * display, Visual * visual, int depth, Window root);
+void XAaCacheClean (void);
 
 int XAaTextWidth (const struct aa_font *f, const char *s, int length, int *descent, int scale);
 

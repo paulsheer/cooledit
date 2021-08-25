@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* mail.c - runs subject/to dialog, then pipes buffer through mail shell command
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include "coolwidget.h"
 
 CWidget * mail_editor = 0;
@@ -12,7 +14,7 @@ CWidget * mail_editor = 0;
 void do_mail (CWidget * edit);
 
 void pipe_mail (char *reply_to, char *from, char *to, char *subject, char *cc, char *bcc)
-{
+{E_
     FILE *p;
     p = (FILE *) popen ("sendmail -t", "w");
     if (!p)
@@ -53,7 +55,7 @@ void pipe_mail (char *reply_to, char *from, char *to, char *subject, char *cc, c
 #if 0
 
 void pipe_mail (char *to, char *subject, char *cc)
-{
+{E_
     long i;
     int mail_pipe, error_pipe, len;
     FILE *a, *b;
@@ -92,7 +94,7 @@ void pipe_mail (char *to, char *subject, char *cc)
 #endif
 
 void mail_subject_to_cc_dialog (Window in, int x, int y)
-{
+{E_
     Window win;
     CEvent cwevent;
     CState s;
@@ -188,7 +190,7 @@ void mail_subject_to_cc_dialog (Window in, int x, int y)
 
 
 void do_mail (CWidget * edit)
-{
+{E_
     mail_editor = edit;
     mail_subject_to_cc_dialog (edit->mainid, 20, 20);
 }

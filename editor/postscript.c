@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #ifdef HAVE_STDLIB_H
@@ -30,10 +32,13 @@
 #endif
 
 #include "stringtools.h"
+#include "coolwidget.h"
+
+
 
 
 static void zfree (unsigned char *s)
-{
+{E_
     memset (s, 0, strlen ((char *) s));
     free (s);
 }
@@ -72,7 +77,7 @@ unsigned char *option_continuation_string = 0;
 int postscript_option_tab_size = 8;
 
 void postscript_clean (void)
-{
+{E_
     if (postscript_option_title)
 	free (postscript_option_title);
     if (postscript_option_file)
@@ -91,7 +96,7 @@ unsigned char *(*postscript_get_next_line) (unsigned char *) = 0;
 /* utility functions */
 
 unsigned char *ps_string (unsigned char *text)
-{
+{E_
     unsigned char *r, *p, *q;
     int i = 0;
     for (i = 0, p = text; *p; p++, i++) {
@@ -117,7 +122,7 @@ unsigned char *ps_string (unsigned char *text)
 }
 
 static unsigned char *get_spaces (unsigned char *old, int l)
-{
+{E_
     if (old)
 	zfree (old);
     if (l < 0)
@@ -129,7 +134,7 @@ static unsigned char *get_spaces (unsigned char *old, int l)
 }
 
 static unsigned char *expand_tabs (unsigned char *old)
-{
+{E_
     int i;
     unsigned char *p, *r, *q, *spaces;
     spaces = get_spaces (0, postscript_option_tab_size);
@@ -154,7 +159,7 @@ static unsigned char *expand_tabs (unsigned char *old)
 
 /* globals */
 
-unsigned char filedate[80];
+char filedate[80];
 int page_no = 0, line_no = 0, cur_col = 100, total_pages = 0;
 double cur_pos = -1;
 double top = 0, right_edge = 0, no_columns = 0, home_pos = 0, bottom_pos = 0;
@@ -173,7 +178,7 @@ unsigned char *header = 0, *title = 0;
 int lineNoOut = 0;
 
 static void portrait_header (void)
-{
+{E_
     fprintf (outfile, "%s", top_box);
     fprintf (outfile, "%s", bot_box);
     /*  Then the banner or the filename */
@@ -192,7 +197,7 @@ static void portrait_header (void)
 }
 
 static void landscape_header (void)
-{
+{E_
     double y;
     if (postscript_option_footline_in_landscape) {
 	fprintf (outfile, "%s", bot_box);
@@ -211,7 +216,7 @@ static void landscape_header (void)
 }
 
 static void end_page (void)
-{
+{E_
     if (total_pages) {
 	fprintf (outfile, "page_save restore\n");
 	fprintf (outfile, "showpage\n");
@@ -219,7 +224,7 @@ static void end_page (void)
 }
 
 static void new_page (void)
-{
+{E_
     end_page ();
     page_no++;
     total_pages++;
@@ -249,7 +254,7 @@ static void new_page (void)
 }
 
 static void printLine (unsigned char *p)
-{
+{E_
     double x = 0;
     if (cur_pos < bottom_pos) {
 	cur_pos = home_pos;
@@ -280,7 +285,7 @@ static void printLine (unsigned char *p)
 }
 
 static void printLongLines (unsigned char *p)
-{
+{E_
     int maxLength;
     int lineLength = 0;
     int rightMargin = 0;
@@ -335,7 +340,7 @@ static void printLongLines (unsigned char *p)
 }
 
 static void prolog (void)
-{
+{E_
     struct tm *tm;
     time_t t;
     time (&t);
@@ -426,11 +431,10 @@ def %%ISOLatin1Encoding\n\
 
 
 void postscript_print (void)
-{
+{E_
     unsigned char *p = 0;
     double llx = 0.0, lly = 0.0, urx = 0.0, ury = 0.0;
     struct stat st;
-    struct tm *tm = 0;
 
     outfile = 0;
 
@@ -548,7 +552,6 @@ void postscript_print (void)
 
     filedate[0] = '\0';
     time (&st.st_mtime);
-    tm = localtime (&st.st_mtime);
     get_file_time (filedate, st.st_mtime, 1);
 
     if (title)

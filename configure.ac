@@ -1,6 +1,6 @@
 
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT([cooledit], [4.0.0])
+AC_INIT([cooledit], [4.1.0])
 
 dnl Identify target.
 AC_CANONICAL_SYSTEM
@@ -29,17 +29,30 @@ AC_PROG_MAKE_SET
 AC_PROG_CC
 AC_ISC_POSIX
 
-dnl Does man accept -a?
-echo $ac_n "checking whether man accepts -a... "
-man -a man 1>/dev/null 2>conftestman
-if test -n "`cat conftestman | grep '[[Uu]]sage'`" -o \
-		-n "`cat conftestman | grep '[[Ee]]rror'`" -o \
-		-n "`cat conftestman | grep '[[Ii]]llegal'`" ; then 
-	MAN_CMD="man %m" ;
-	echo "no" ;
+echo $ac_n "checking for grotty... "
+if which grotty 1>/dev/null 2>&1 ; then
+    echo "yes" ;
 else
-	MAN_CMD="man -a %m" ;
-	echo "yes" ;
+    echo "" ;
+    echo "Command 'which grotty' returned error. Aborting." ;
+    echo "" ;
+    echo "You need to install grotty for the man page feature to work" ;
+    echo "If you don't care about this then delete the exit command below" ;
+    echo "in the configure script" ;
+    echo "" ;
+    exit 1 ; 
+fi
+TST_MAN_CMD='for i in `man -a -w ls` ; do man -Tutf8 -Z $i | grotty ; echo ; echo --- ; echo ; done' ;
+THE_MAN_CMD='for i in `man -a -w %m` ; do man -Tutf8 -Z $i | grotty ; echo ; echo --- ; echo ; done' ;
+touch TESTTHIS ;
+echo $ac_n "checking whether '$TST_MAN_CMD' works... " ;
+sh -c "$TST_MAN_CMD" 1>conftestman 2>&1 ;
+if grep -q 'Copyright.*Free.Software.Foundation' conftestman ; then
+        MAN_CMD="$THE_MAN_CMD" ;
+        echo "yes" ;
+else
+        MAN_CMD='man %m' ;
+        echo "no, defaulting to just 'man %m'" ;
 fi
 rm -f conftestman
 AC_DEFINE_UNQUOTED(MAN_CMD, "${MAN_CMD}","man")
@@ -61,8 +74,9 @@ PKG_CHECK_MODULES(FREETYPE, [freetype2])
 dnl Checks for C compiler flags that X needs and the X linker flags
 AC_PATH_XTRA
 CFLAGS="$CFLAGS $X_CFLAGS $FREETYPE_CFLAGS"
-LDFLAGS="$LDFLAGS $X_LIBS $FREETYPE_LIBS"
+LDFLAGS="$LDFLAGS $X_LIBS"
 AC_SUBST(LDFLAGS)
+AC_SUBST(FREETYPE_LIBS)
 
 
 
@@ -333,7 +347,7 @@ LIBS="$withval $LIBS"
 ], AC_MSG_RESULT(no))
 
 dnl internationalization macros
-AC_OUTPUT([Makefile rxvt/Makefile widget/Makefile editor/Makefile \
+AC_OUTPUT([Makefile rxvt/Makefile widget/Makefile remotefs/Makefile editor/Makefile \
 	pixmap/Makefile lib/Makefile syntax/Makefile man/Makefile notosans/Makefile])
 
 echo ""

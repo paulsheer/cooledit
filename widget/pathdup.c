@@ -1,7 +1,9 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* pathdup.c - reproduces a path stripping /../ /./ and resolving symlinks
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
+#include "inspect.h"
 #include "global.h"
 #ifdef MSWIN
 #include <config-mswin.h>
@@ -24,21 +26,21 @@ struct comp {
 };
 
 static struct comp *comp_last (struct comp *p)
-{
+{E_
     while (p->next)
 	p = p->next;
     return p;
 }
 
 static struct comp *comp_first (struct comp *p)
-{
+{E_
     while (p->prev)
 	p = p->prev;
     return p;
 }
 
 static inline struct comp *comp_cat (struct comp *s, struct comp *t)
-{
+{E_
     s = comp_last (s);
     t = comp_first (t);
     s->next = t;
@@ -47,7 +49,7 @@ static inline struct comp *comp_cat (struct comp *s, struct comp *t)
 }
 
 static inline struct comp *comp_insert (struct comp *p, struct comp *s)
-{
+{E_
     struct comp *t;
     t = comp_last (s);
     s = comp_first (s);
@@ -63,7 +65,7 @@ static inline struct comp *comp_insert (struct comp *p, struct comp *s)
 }
 
 static inline struct comp *comp_replace (struct comp *p, struct comp *s)
-{
+{E_
     struct comp *t, *prev, *r;
     t = comp_last (s);
     if (p->next)
@@ -78,7 +80,7 @@ static inline struct comp *comp_replace (struct comp *p, struct comp *s)
 }
 
 static inline void comp_free (struct comp *p)
-{
+{E_
     struct comp *next;
     p = comp_first (p);
     for (; p; p = next) {
@@ -101,7 +103,7 @@ static inline void comp_free (struct comp *p)
 
 /* dump  ..  .  and nothings, but remember the place in the list of p */
 static struct comp *comp_strip (struct comp *p)
-{
+{E_
     struct comp *u, *next;
     u = comp_first (p);
     for (p = u; p; p = next) {
@@ -126,7 +128,7 @@ static struct comp *comp_strip (struct comp *p)
 
 /* split into a list along / */
 static char *comp_combine (struct comp *s)
-{
+{E_
     int n;
     struct comp *t, *f;
     char *p, *r;
@@ -144,7 +146,7 @@ static char *comp_combine (struct comp *s)
 
 /* split into a list along / */
 static struct comp *comp_tize (const char *s)
-{
+{E_
     struct comp *u, *p = 0;
     const char *t;
     int done = 0;
@@ -170,7 +172,7 @@ static struct comp *comp_tize (const char *s)
 }
 
 static inline char *comp_readlink (struct comp *p)
-{
+{E_
 #ifdef MSWIN
     return "";
 #else
@@ -195,7 +197,7 @@ static inline char *comp_readlink (struct comp *p)
 
 /* if there is an error, this just returns as far as it got */
 static inline struct comp *resolve_symlink (struct comp *path)
-{
+{E_
     int i;
     struct comp *t;
     path = comp_strip (comp_first (path));
@@ -232,7 +234,7 @@ static inline struct comp *resolve_symlink (struct comp *path)
 }
 
 static char *strdupextra (const char *s)
-{
+{E_
     int l;
     char *p;
     l = strlen (s);
@@ -241,12 +243,11 @@ static char *strdupextra (const char *s)
     return p;
 }
 
-char *pathdup_debug (const char *cfile, int cline, const char *host, const char *p)
-{
+char *pathdup_debug (const char *cfile, int cline, const char *host, const char *p, char *errmsg)
+{E_
     static char out[MAX_PATH_LEN] = "";
     static char in[MAX_PATH_LEN] = "";
     static char host_[MAX_PATH_LEN] = "";
-    char errmsg[REMOTEFS_ERR_MSG_LEN];
     struct remotefs *u;
 
     if (!host || !*host)
@@ -260,18 +261,14 @@ char *pathdup_debug (const char *cfile, int cline, const char *host, const char 
 
     strcpy (host_, host);
 
-    u = remotefs_lookup (host);
-
-    if ((*u->remotefs_realpathize) (u, p, remotefs_home_dir (u), out, MAX_PATH_LEN, errmsg)) {
-        strncpy (out, p, MAX_PATH_LEN);
-        out[MAX_PATH_LEN - 1] = '\0';
-        return strdupextra (p);
-    }
+    u = remotefs_lookup (host, NULL);
+    if ((*u->remotefs_realpathize) (u, p, remotefs_home_dir (u), out, MAX_PATH_LEN, errmsg))
+        return 0;
     return strdupextra (out);
 }
 
 char *pathdup_ (const char *p, const char *home_dir)
-{
+{E_
     char *r;
     struct comp *s;
     s = comp_tize (p);
@@ -293,7 +290,7 @@ char *pathdup_ (const char *p, const char *home_dir)
 char *home_dir = "/root";
 
 int main (int argc, char **argv)
-{
+{E_
     printf ("%s\n", pathdup (argv[1], home_dir));
     return 0;
 }

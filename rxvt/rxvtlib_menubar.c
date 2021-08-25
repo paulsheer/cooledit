@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
+#include "inspect.h"
 #include "rxvtlib.h"
 
 /*--------------------------------*-C-*---------------------------------*
@@ -42,7 +44,7 @@
  */
 /* INTPROTO */
 menuitem_t     *menuitem_find (const menu_t * menu, const char *name)
-{
+{E_
     menuitem_t     *item;
 
     assert (name != NULL);
@@ -67,7 +69,7 @@ menuitem_t     *menuitem_find (const menu_t * menu, const char *name)
  */
 /* INTPROTO */
 void            rxvtlib_menuitem_free (rxvtlib *o, menu_t * menu, menuitem_t * item)
-{
+{E_
 /* disconnect */
     menuitem_t     *prev, *next;
 
@@ -110,7 +112,7 @@ void            rxvtlib_menuitem_free (rxvtlib *o, menu_t * menu, menuitem_t * i
  */
 /* INTPROTO */
 int             action_type (action_t * action, unsigned char *str)
-{
+{E_
     unsigned int    len;
 
 #if defined (DEBUG_MENU) || defined (DEBUG_MENUARROWS)
@@ -148,7 +150,7 @@ int             action_type (action_t * action, unsigned char *str)
 #ifdef MENUBAR
 /* INTPROTO */
 int             rxvtlib_action_dispatch (rxvtlib *o, action_t * action)
-{
+{E_
     switch (action->type) {
     case MenuTerminalAction:
 	rxvtlib_cmd_write (o, action->str, action->len);
@@ -170,7 +172,7 @@ int             rxvtlib_action_dispatch (rxvtlib *o, action_t * action)
 /* return the arrow index corresponding to NAME */
 /* INTPROTO */
 int             rxvtlib_menuarrow_find (rxvtlib *o, char name)
-{
+{E_
     int             i;
 
     for (i = 0; i < NARROWS; i++)
@@ -184,7 +186,7 @@ int             rxvtlib_menuarrow_find (rxvtlib *o, char name)
 /* free the memory associated with arrow NAME of the current menubar */
 /* INTPROTO */
 void            rxvtlib_menuarrow_free (rxvtlib *o, char name)
-{
+{E_
     int             i;
 
     if (name) {
@@ -212,7 +214,7 @@ void            rxvtlib_menuarrow_free (rxvtlib *o, char name)
 #ifdef MENUBAR
 /* INTPROTO */
 void            rxvtlib_menuarrow_add (rxvtlib *o, char *string)
-{
+{E_
     int             i;
     unsigned        xtra_len;
     char           *p;
@@ -337,7 +339,7 @@ void            rxvtlib_menuarrow_add (rxvtlib *o, char *string)
 /* INTPROTO */
 menuitem_t     *rxvtlib_menuitem_add (rxvtlib *o, menu_t * menu, const char *name,
 			      const char *name2, const char *action)
-{
+{E_
     menuitem_t     *item;
     unsigned int    len;
 
@@ -450,7 +452,7 @@ menuitem_t     *rxvtlib_menuitem_add (rxvtlib *o, menu_t * menu, const char *nam
  */
 /* INTPROTO */
 char           *rxvtlib_menu_find_base (rxvtlib *o, menu_t ** menu, char *path)
-{
+{E_
     menu_t         *m = NULL;
     menuitem_t     *item;
 
@@ -528,7 +530,7 @@ char           *rxvtlib_menu_find_base (rxvtlib *o, menu_t ** menu, char *path)
  */
 /* INTPROTO */
 menu_t         *rxvtlib_menu_delete (rxvtlib *o, menu_t * menu)
-{
+{E_
     menu_t         *parent = NULL, *prev, *next;
     menuitem_t     *item;
 
@@ -589,7 +591,7 @@ menu_t         *rxvtlib_menu_delete (rxvtlib *o, menu_t * menu)
 #ifdef MENUBAR
 /* INTPROTO */
 menu_t         *rxvtlib_menu_add (rxvtlib *o, menu_t * parent, char *path)
-{
+{E_
     menu_t         *menu;
 
     assert (o->CurrentBar != NULL);
@@ -669,7 +671,7 @@ menu_t         *rxvtlib_menu_add (rxvtlib *o, menu_t * parent, char *path)
 #ifdef MENUBAR
 /* INTPROTO */
 void            rxvtlib_drawbox_menubar (rxvtlib *o, int x, int len, int state)
-{
+{E_
     GC              top, bot;
 
     x = Width2Pixel (x);
@@ -703,7 +705,7 @@ void            rxvtlib_drawbox_menubar (rxvtlib *o, int x, int len, int state)
 #ifdef MENUBAR
 /* INTPROTO */
 void            rxvtlib_drawtriangle (rxvtlib *o, int x, int y, int state)
-{
+{E_
     GC              top, bot;
     int             w;
 
@@ -736,7 +738,7 @@ void            rxvtlib_drawtriangle (rxvtlib *o, int x, int y, int state)
 #ifdef MENUBAR
 /* INTPROTO */
 void            rxvtlib_drawbox_menuitem (rxvtlib *o, int y, int state)
-{
+{E_
     GC              top, bot;
 
 #ifdef MENU_SHADOW_IN
@@ -768,7 +770,7 @@ void            rxvtlib_drawbox_menuitem (rxvtlib *o, int y, int state)
 #ifdef MENUBAR
 /* INTPROTO */
 void            rxvtlib_print_menu_ancestors (rxvtlib *o, menu_t * menu)
-{
+{E_
     if (menu == NULL) {
 	fprintf (stderr, "Top Level menu\n");
 	return;
@@ -796,7 +798,7 @@ void            rxvtlib_print_menu_ancestors (rxvtlib *o, menu_t * menu)
 #ifdef MENUBAR
 /* INTPROTO */
 void            rxvtlib_print_menu_descendants (rxvtlib *o, menu_t * menu)
-{
+{E_
     menuitem_t     *item;
     menu_t         *parent;
     int             i, level = 0;
@@ -838,7 +840,7 @@ void            rxvtlib_print_menu_descendants (rxvtlib *o, menu_t * menu)
 /* pop up/down the current menu and redraw the menuBar button */
 /* INTPROTO */
 void            rxvtlib_menu_show (rxvtlib *o)
-{
+{E_
     int             x, y, xright;
     menuitem_t     *item;
 
@@ -964,7 +966,7 @@ void            rxvtlib_menu_show (rxvtlib *o)
 #ifdef MENUBAR
 /* INTPROTO */
 void            rxvtlib_menu_display (rxvtlib *o, void (*update) (rxvtlib *))
-{
+{E_
     if (o->ActiveMenu == NULL)
 	return;
     if (o->ActiveMenu->win != None)
@@ -982,7 +984,7 @@ void            rxvtlib_menu_display (rxvtlib *o, void (*update) (rxvtlib *))
 #ifdef MENUBAR
 /* INTPROTO */
 void            rxvtlib_menu_hide_all (rxvtlib *o)
-{
+{E_
     rxvtlib_menu_display (o, rxvtlib_menu_hide_all);
 }
 
@@ -991,7 +993,7 @@ void            rxvtlib_menu_hide_all (rxvtlib *o)
 #ifdef MENUBAR
 /* INTPROTO */
 void            rxvtlib_menu_hide (rxvtlib *o)
-{
+{E_
     rxvtlib_menu_display (o, rxvtlib_menu_show);
 }
 
@@ -1000,7 +1002,7 @@ void            rxvtlib_menu_hide (rxvtlib *o)
 #ifdef MENUBAR
 /* INTPROTO */
 void            rxvtlib_menu_clear (rxvtlib *o, menu_t * menu)
-{
+{E_
     if (menu != NULL) {
 	menuitem_t     *item = menu->tail;
 
@@ -1019,7 +1021,7 @@ void            rxvtlib_menu_clear (rxvtlib *o, menu_t * menu)
 #ifdef MENUBAR
 /* INTPROTO */
 void            rxvtlib_menubar_clear (rxvtlib *o)
-{
+{E_
     if (o->CurrentBar != NULL) {
 	menu_t         *menu = o->CurrentBar->tail;
 
@@ -1046,7 +1048,7 @@ void            rxvtlib_menubar_clear (rxvtlib *o)
 /* find if menu already exists */
 /* INTPROTO */
 bar_t          *rxvtlib_menubar_find (rxvtlib *o, const char *name)
-{
+{E_
     bar_t          *bar = o->CurrentBar;
 
 #ifdef DEBUG_MENUBAR_STACKING
@@ -1079,7 +1081,7 @@ bar_t          *rxvtlib_menubar_find (rxvtlib *o, const char *name)
 #ifdef MENUBAR
 /* INTPROTO */
 int             rxvtlib_menubar_push (rxvtlib *o, const char *name)
-{
+{E_
     int             ret = 1;
     bar_t          *bar;
 
@@ -1148,7 +1150,7 @@ int             rxvtlib_menubar_push (rxvtlib *o, const char *name)
 /* switch to a menu called NAME and remove it */
 /* INTPROTO */
 void            rxvtlib_menubar_remove (rxvtlib *o, const char *name)
-{
+{E_
     bar_t          *bar;
 
     if ((bar = rxvtlib_menubar_find (o, name)) == NULL)
@@ -1184,7 +1186,7 @@ void            rxvtlib_menubar_remove (rxvtlib *o, const char *name)
 #ifdef MENUBAR
 /* INTPROTO */
 void            action_decode (FILE * fp, action_t * act)
-{
+{E_
     unsigned char  *str;
     short           len;
 
@@ -1257,7 +1259,7 @@ void            action_decode (FILE * fp, action_t * act)
 #ifdef MENUBAR
 /* INTPROTO */
 void            rxvtlib_menu_dump (rxvtlib *o, FILE * fp, menu_t * menu)
-{
+{E_
     menuitem_t     *item;
 
 /* create a new menu and clear it */
@@ -1294,7 +1296,7 @@ void            rxvtlib_menu_dump (rxvtlib *o, FILE * fp, menu_t * menu)
 #ifdef MENUBAR
 /* INTPROTO */
 void            rxvtlib_menubar_dump (rxvtlib *o, FILE * fp)
-{
+{E_
     bar_t          *bar = o->CurrentBar;
     time_t          t;
 
@@ -1356,7 +1358,7 @@ void            rxvtlib_menubar_dump (rxvtlib *o, FILE * fp)
  */
 /* EXTPROTO */
 void            rxvtlib_menubar_read (rxvtlib *o, const char *filename)
-{
+{E_
 #ifdef MENUBAR
 /* read in a menu from a file */
     FILE           *fp;
@@ -1462,7 +1464,7 @@ void            rxvtlib_menubar_read (rxvtlib *o, const char *filename)
  */
 /* EXTPROTO */
 void            rxvtlib_menubar_dispatch (rxvtlib *o, char *str)
-{
+{E_
 #ifdef MENUBAR
     int             n, cmd;
     char           *path, *name, *name2;
@@ -1794,7 +1796,7 @@ void            rxvtlib_menubar_dispatch (rxvtlib *o, char *str)
 #ifdef MENUBAR
 /* INTPROTO */
 void            rxvtlib_draw_Arrows (rxvtlib *o, int name, int state)
-{
+{E_
     GC              top, bot;
 
     int             i;
@@ -1833,7 +1835,7 @@ void            rxvtlib_draw_Arrows (rxvtlib *o, int name, int state)
 
 /* EXTPROTO */
 void            rxvtlib_menubar_expose (rxvtlib *o)
-{
+{E_
 #ifdef MENUBAR
     menu_t         *menu;
     int             x;
@@ -1952,7 +1954,7 @@ void            rxvtlib_menubar_expose (rxvtlib *o)
 
 /* EXTPROTO */
 int             rxvtlib_menubar_mapping (rxvtlib *o, int map)
-{
+{E_
 #ifdef MENUBAR
     int             change = 0;
 
@@ -1979,7 +1981,7 @@ int             rxvtlib_menubar_mapping (rxvtlib *o, int map)
 #ifdef MENUBAR
 /* INTPROTO */
 int             rxvtlib_menu_select (rxvtlib *o, XButtonEvent * ev)
-{
+{E_
     menuitem_t     *thisitem, *item = NULL;
     int             this_y, y;
 
@@ -2109,7 +2111,7 @@ int             rxvtlib_menu_select (rxvtlib *o, XButtonEvent * ev)
 #ifdef MENUBAR
 /* INTPROTO */
 void            rxvtlib_menubar_select (rxvtlib *o, XButtonEvent * ev)
-{
+{E_
     menu_t         *menu = NULL;
 
 /* determine the pulldown menu corresponding to the X index */
@@ -2192,7 +2194,7 @@ void            rxvtlib_menubar_select (rxvtlib *o, XButtonEvent * ev)
  */
 /* EXTPROTO */
 void            rxvtlib_menubar_control (rxvtlib *o, XButtonEvent * ev)
-{
+{E_
 #ifdef MENUBAR
     switch (ev->type) {
     case ButtonPress:
@@ -2231,7 +2233,7 @@ void            rxvtlib_menubar_control (rxvtlib *o, XButtonEvent * ev)
 
 /* EXTPROTO */
 void            rxvtlib_map_menuBar (rxvtlib *o, int map)
-{
+{E_
 #ifdef MENUBAR
     if (rxvtlib_menubar_mapping (o, map))
 	rxvtlib_resize_all_windows (o);
@@ -2240,7 +2242,7 @@ void            rxvtlib_map_menuBar (rxvtlib *o, int map)
 
 /* EXTPROTO */
 void            rxvtlib_create_menuBar (rxvtlib *o, Cursor cursor)
-{
+{E_
 #ifdef MENUBAR
 /* menuBar: size doesn't matter */
     o->menuBar.win = XCreateSimpleWindow (o->Xdisplay, o->TermWin.parent[0],
@@ -2260,7 +2262,7 @@ void            rxvtlib_create_menuBar (rxvtlib *o, Cursor cursor)
 /* EXTPROTO */
 void            rxvtlib_Resize_menuBar (rxvtlib *o, int x, int y, unsigned int width,
 				unsigned int height)
-{
+{E_
 #ifdef MENUBAR
     XMoveResizeWindow (o->Xdisplay, o->menuBar.win, x, y, width, height);
 #endif

@@ -1,14 +1,16 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* pixmap.c - creates XImages and pixmaps from XPM formats
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include "coolwidget.h"
 
 extern struct look *look;
 
 XImage *CCreateImage (const char *data[], int width, int height, char start_char)
-{
+{E_
     XImage *image;
     int bpp, x, y, u;
 
@@ -43,7 +45,7 @@ XImage *CCreateImage (const char *data[], int width, int height, char start_char
 }
 
 XImage *CCreateMaskImage (const char *data[], int width, int height, char backing_char)
-{
+{E_
     XImage *image;
     void *p;
     int x, y;
@@ -64,7 +66,7 @@ XImage *CCreateMaskImage (const char *data[], int width, int height, char backin
 }
 
 Pixmap CCreateClipMask (const char *data[], int width, int height, char backing_char)
-{
+{E_
     Pixmap pixmap;
     XImage *image;
     XGCValues gcv;
@@ -85,7 +87,7 @@ Pixmap CCreateClipMask (const char *data[], int width, int height, char backing_
 }
 
 Pixmap CCreatePixmap (const char *data[], int width, int height, char start_char)
-{
+{E_
     Pixmap pixmap;
     XImage *image;
     image = CCreateImage (data, width, height, start_char);

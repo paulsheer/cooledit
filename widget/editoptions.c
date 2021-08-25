@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* editoptions.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include "edit.h"
 
@@ -24,7 +26,7 @@ char *wrap_str[] =
 extern int option_syntax_highlighting;
 
 void i18n_translate_array (char *array[])
-{
+{E_
     size_t maxlen = 0;
 
     while (*array!=NULL) {
@@ -34,7 +36,7 @@ void i18n_translate_array (char *array[])
 }
 
 void edit_options_dialog (void)
-{
+{E_
     char wrap_length[32], tab_spacing[32], *p, *q;
     int wrap_mode = 0;
     int tedit_key_emulation = edit_key_emulation;

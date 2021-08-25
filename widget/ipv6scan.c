@@ -1,9 +1,11 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
+#include "inspect.h"
 #include <string.h>
 #include <stdlib.h>
 
 
 static void i_out (char **p, int i1, int i2, int base)
-{
+{E_
     const char *dig = "0123456789abcdef";
     char s[32], *q;
     i1 <<= 8;
@@ -21,7 +23,7 @@ static void i_out (char **p, int i1, int i2, int base)
 }
 
 void ip_to_text (const void *ip, int addrlen, char *out)
-{
+{E_
     const unsigned char *p;
     int i, n;
     p = (const unsigned char *) ip;
@@ -75,7 +77,7 @@ void ip_to_text (const void *ip, int addrlen, char *out)
 }
 
 static int hex_dig_ord (unsigned char c)
-{
+{E_
     if (c >= '0' && c <= '9')
         return c - '0' + 0;
     if (c >= 'a' && c <= 'f')
@@ -100,7 +102,7 @@ static int hex_dig_ord (unsigned char c)
 #define ER(en,x)                if(x) { res = -(en); goto errout; }
 
 int text_to_ip (const char *s, int *consumed_, void *out, int *addr_len)
-{
+{E_
     int res = 0;
     unsigned char *r;
     unsigned short *p, a[8], b[8];
@@ -247,12 +249,17 @@ struct iprange_list {
 };
 
 void iprange_free (struct iprange_list *l)
-{
-    (void) l;
+{E_
+    struct iprange_item *p, *next;
+    for (p = l->first; p; p = next) {
+        next = p->next;
+        free (p);
+    }
+    free (l);
 }
 
 int iprange_match (struct iprange_list *l, const void *a, int addrlen)
-{
+{E_
     struct iprange_item *p;
     int c = 0;
     for (p = l->first; p; p = p->next) {
@@ -266,7 +273,7 @@ int iprange_match (struct iprange_list *l, const void *a, int addrlen)
 }
 
 void iprange_to_text (struct iprange_list *l, char *out, int outlen)
-{
+{E_
     struct iprange_item *p;
 
     for (p = l->first; p; p = p->next) {
@@ -298,7 +305,7 @@ void iprange_to_text (struct iprange_list *l, char *out, int outlen)
 }
 
 struct iprange_list *iprange_parse (const char *text, int *consumed__)
-{
+{E_
     struct iprange_list *l = NULL;
     struct iprange_item n, *p, *last = NULL;
     int consumed_ = 0;
@@ -383,7 +390,7 @@ struct iprange_list *iprange_parse (const char *text, int *consumed__)
 
 #include <stdio.h>
 #include <assert.h>
-#include <string.h>
+#include <arpa/inet.h>
 
 #define E(in,out_) \
     do { \
@@ -422,7 +429,7 @@ struct iprange_list *iprange_parse (const char *text, int *consumed__)
 
 
 int main (int argc, char **argv)
-{
+{E_
     int e;
     char *in_;
     char out[64];
@@ -440,6 +447,20 @@ int main (int argc, char **argv)
             ip_to_text (ip, l, out);
             printf ("%s\n[%s]\n", out, &argv[1][consumed]);
         }
+        printf ("\n");
+    }
+
+    {
+        const char *ex;
+        int c, j;
+        unsigned short y[8];
+        ex = "fe80:0:0:0:b7f9:119e:1e73:d230";
+//            fe80:0:0:0:b7f9:119e:1e73:d230
+        c = sscanf (ex, "%hx:%hx:%hx:%hx:%hx:%hx:%hx:%hx", &y[0], &y[1], &y[2], &y[3], &y[4], &y[5], &y[6], &y[7]);
+        printf ("c=%d\n", c);
+        for (j = 0; j < 8; j++)
+            y[j] = htons (y[j]);
+        printf ("%hx:%hx:%hx:%hx:%hx:%hx:%hx:%hx", ntohs (y[0]), ntohs (y[1]), ntohs (y[2]), ntohs (y[3]), ntohs (y[4]), ntohs (y[5]), ntohs (y[6]), ntohs (y[7]));
         printf ("\n");
     }
 

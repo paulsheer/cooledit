@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* grlib.c - skeleton svgalib
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 
 /* this is a stripped version of gl from svgalib-1.2.10
@@ -58,7 +60,7 @@ GraphicsContext currentcontext;
 /* Initialization and graphics contexts */
 
 void gl_setcontextvirtual(int w, int h, int bpp, int bitspp, void *v)
-{
+{E_
     memset(&currentcontext, 0, sizeof(GraphicsContext));
     WIDTH = w;
     HEIGHT = h;
@@ -73,35 +75,35 @@ void gl_setcontextvirtual(int w, int h, int bpp, int bitspp, void *v)
 }
 
 GraphicsContext * gl_allocatecontext()
-{
+{E_
     return malloc(sizeof(GraphicsContext));
 }
 
 void gl_setcontext(GraphicsContext * gc)
-{
+{E_
     currentcontext = *gc;
 }
 
 void gl_getcontext(GraphicsContext * gc)
-{
+{E_
     *gc = __currentcontext;
 }
 
 void gl_freecontext(GraphicsContext * gc)
-{
+{E_
     if (gc->modetype == CONTEXT_VIRTUAL)
 	free(gc->vbuf);
 }
 
 void gl_setcontextwidth(int w)
-{
+{E_
     __currentcontext.width = currentcontext.width = w;
     __currentcontext.bytewidth = currentcontext.bytewidth =
 	w * BYTESPERPIXEL;
 }
 
 void gl_setcontextheight(int h)
-{
+{E_
     __currentcontext.height = currentcontext.height = h;
 }
 
@@ -109,7 +111,7 @@ void gl_setcontextheight(int h)
 /* Clipping */
 
 void gl_setclippingwindow(int x1, int y1, int x2, int y2)
-{
+{E_
     __clip = 1;
     __clipx1 = x1;
     __clipy1 = y1;
@@ -118,7 +120,7 @@ void gl_setclippingwindow(int x1, int y1, int x2, int y2)
 }
 
 void gl_enableclipping()
-{
+{E_
     __clip = 1;
     __clipx1 = 0;
     __clipy1 = 0;
@@ -127,17 +129,17 @@ void gl_enableclipping()
 }
 
 void gl_disableclipping()
-{
+{E_
     __clip = 0;
 }
 
 
 void gl_setpixel(int x, int y, int c)
-{
+{E_
     return;
 }
 
 void gl_line(int x1, int y1, int x2, int y2, int c)
-{
+{E_
     return;
 }

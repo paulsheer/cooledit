@@ -1,9 +1,11 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* menu.c - proper 3D menus
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -29,7 +31,7 @@ void CMenuSelectionDialog (CWidget * button);
 static void render_menu_button (CWidget * wdt);
 
 static int get_dropped (CWidget **r, CWidget *w)
-{
+{E_
     *r = 0;
     if (!w->droppedmenu[0])
 	return 0;
@@ -40,7 +42,7 @@ static int get_dropped (CWidget **r, CWidget *w)
 }
 
 void destroy_menu (CWidget * w)
-{
+{E_
     int i;
     if (!w)
 	return;
@@ -58,7 +60,7 @@ void destroy_menu (CWidget * w)
    relative to the top left corner of the pulled-down menu window.
  */
 void get_menu_item_extents (int n, int j, struct menu_item m[], int *border, int *relief, int *y1, int *y2)
-{
+{E_
     (*look->get_menu_item_extents) (n, j, m, border, relief, y1, y2);
 }
 
@@ -68,7 +70,7 @@ void get_menu_item_extents (int n, int j, struct menu_item m[], int *border, int
    -1 if out of bounds or between menu items.
  */
 int whereis_pointer (int x, int y, int w, int n, struct menu_item m[])
-{
+{E_
     int i, y1, y2, border, relief;
     CPushFont ("widget");
     for (i = 0; i < n; i++) {
@@ -91,7 +93,7 @@ int whereis_pointer (int x, int y, int w, int n, struct menu_item m[])
 }
 
 int find_menu_hotkey (struct menu_item m[], int this, int num)
-{
+{E_
     unsigned char used_keys[256];
     int n = 0, j;
     if (!num)
@@ -103,12 +105,12 @@ int find_menu_hotkey (struct menu_item m[], int this, int num)
 }
 
 void menu_draw (Window win, int w, int h, struct menu_item m[], int n, int light)
-{
+{E_
     (*look->menu_draw) (win, w, h, m, n, light);
 }
 
 void render_menu (CWidget * w)
-{
+{E_
     CWidget *drop;
     int n, border, relief, y1, y2, i;
     unsigned new_width, new_height;
@@ -163,7 +165,7 @@ void render_menu (CWidget * w)
 /* gets a windows position relative to the origin if some ancestor windows,
    window can be of a widget or not */
 void CGetWindowPosition (Window win, Window ancestor, int *x_return, int *y_return)
-{
+{E_
     CWidget *w = (CWidget *) 1;
     int x = 0, y = 0;
     Window root, parent, *children;
@@ -199,7 +201,7 @@ void CGetWindowPosition (Window win, Window ancestor, int *x_return, int *y_retu
 void focus_stack_remove_window (Window w);
 
 void pull_up (CWidget * button)
-{
+{E_
     if (!button)
 	return;
     if (button->kind != C_MENU_BUTTON_WIDGET)
@@ -216,19 +218,19 @@ void pull_up (CWidget * button)
 static CWidget *last_menu = 0;
 
 void CSetLastMenu (CWidget *button)
-{
+{E_
     last_menu = button;
 }
 
 CWidget *CGetLastMenu (void)
-{
+{E_
     return last_menu;
 }
 
 void menu_hand_cursor (Window win);
 
 static CWidget *pull_down (CWidget * button) /* must create a new widget */
-{
+{E_
     CWidget *menu;
     CWidget *sib;
     int width, height, n;
@@ -275,22 +277,22 @@ static CWidget *pull_down (CWidget * button) /* must create a new widget */
 }
 
 void CPullDown (CWidget * button)
-{
+{E_
     pull_down (button);
 }
 
 CWidget *get_pulled_menu (void)
-{
+{E_
     return CIdent (current_pulled_button);
 }
 
 void CPullUp (CWidget * button)
-{
+{E_
     pull_up (button);
 }
 
 int execute_item (CWidget * menu, int item)
-{
+{E_
     CWidget *drop = 0;
     int r = 0;
     char ident[33];
@@ -315,7 +317,7 @@ int execute_item (CWidget * menu, int item)
 }
 
 static void render_menu_button (CWidget * wdt)
-{
+{E_
     (*look->render_menu_button) (wdt);
 }
 
@@ -324,7 +326,7 @@ int is_focus_change_key (KeySym k, int command);
 int is_focus_prev_key (KeySym k, int command, unsigned int state);
 
 int eh_menubutton (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     int c;
     CWidget *f, *drop;
     switch (xevent->type) {
@@ -442,7 +444,7 @@ int eh_menubutton (CWidget * w, XEvent * xevent, CEvent * cwevent)
 
 
 int eh_menu (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     CWidget *drop;
     static Window win = 0;
     static int current = -30000;
@@ -475,7 +477,7 @@ int eh_menu (CWidget * w, XEvent * xevent, CEvent * cwevent)
 
 CWidget *CDrawMenuButton (const char *ident, Window parent, Window focus_return,
    int x, int y, int width, int height, int num_items, const char *label,...)
-{
+{E_
     va_list ap;
     CWidget *wdt;
     struct menu_item *m;
@@ -524,7 +526,7 @@ CWidget *CDrawMenuButton (const char *ident, Window parent, Window focus_return,
 }
 
 void insert_menu_item (CWidget * w, int i, const char *text, int hot_key, callfn call_back, unsigned long data)
-{
+{E_
     struct menu_item *m;
     CWidget *drop;
 
@@ -549,7 +551,7 @@ void insert_menu_item (CWidget * w, int i, const char *text, int hot_key, callfn
 }
 
 void CAddMenuItem (const char *ident, const char *text, int hot_key, callfn call_back, unsigned long data)
-{
+{E_
     CWidget *w;
     w = CIdent (ident);
     if (!w) {
@@ -560,7 +562,7 @@ void CAddMenuItem (const char *ident, const char *text, int hot_key, callfn call
 }
 
 void CInsertMenuItem (const char *ident, const char *after, const char *text, int hot_key, callfn call_back, unsigned long data)
-{
+{E_
     int i;
     CWidget *w;
     w = CIdent (ident);
@@ -577,7 +579,7 @@ void CInsertMenuItem (const char *ident, const char *after, const char *text, in
 }
 
 void CInsertMenuItemAfter (const char *ident, const char *after, const char *text, int hot_key, callfn call_back, unsigned long data)
-{
+{E_
     int i;
     CWidget *w;
     w = CIdent (ident);
@@ -594,7 +596,7 @@ void CInsertMenuItemAfter (const char *ident, const char *after, const char *tex
 }
 
 static void remove_item (CWidget * w, int i)
-{
+{E_
     CWidget *drop;
     if (!w)
 	return;
@@ -615,7 +617,7 @@ static void remove_item (CWidget * w, int i)
 }
 
 void CRemoveMenuItemNumber (const char *ident, int i)
-{
+{E_
     CWidget *w;
     w = CIdent (ident);
     remove_item (w, i);
@@ -627,7 +629,7 @@ void CRemoveMenuItemNumber (const char *ident, int i)
    integer.
  */
 int CHasMenuItem (const char *ident, const char *text)
-{
+{E_
     CWidget *w;
     int i;
     w = CIdent (ident);
@@ -645,12 +647,12 @@ int CHasMenuItem (const char *ident, const char *text)
    menu item containing text (strstr != NULL), and deletes it.
  */
 void CRemoveMenuItem (const char *ident, const char *text)
-{
+{E_
     remove_item (CIdent (ident), CHasMenuItem (ident, text));
 }
 
 void CReplaceMenuItem (const char *ident, const char *old_text, const char *new_text, int hot_key, callfn call_back, unsigned long data)
-{
+{E_
     struct menu_item *m;
     CWidget *w, *drop;
     int i;
@@ -677,7 +679,7 @@ void CReplaceMenuItem (const char *ident, const char *old_text, const char *new_
 }
 
 void CMenuSelectionDialog (CWidget * button)
-{
+{E_
     CEvent cwevent;
     XEvent xevent;
 

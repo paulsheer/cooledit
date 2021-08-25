@@ -1,9 +1,11 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* propfont.c - editor text drawing for proportional fonts.
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 
+#include "inspect.h"
 #include <config.h>
 #include "edit.h"
 #ifdef HAVE_WCHAR_H
@@ -39,7 +41,7 @@ int utf8_to_wchar_t_one_char_safe (C_wchar_t * c, const char *t, int n);
 
 
 int set_style_color (cache_type s, unsigned long *fg, unsigned long *bg)
-{
+{E_
     int fgp, bgp, underlined = 0;
     fgp = s.c.fg;
 /* NO_COLOR would give fgp == 255 */
@@ -84,13 +86,13 @@ int set_style_color (cache_type s, unsigned long *fg, unsigned long *bg)
 int tab_width = 1;
 
 static inline int next_tab_pos (int x)
-{
+{E_
     return x += tab_width - x % tab_width;
 }
 
 /* this now properly uses ctypes */
 static inline int convert_to_long_printable (C_wchar_t c, C_wchar_t * t, int *n)
-{
+{E_
     c &= 0x7FFFFFFFUL;
     if (c == ' ') {
 	if (option_long_whitespace) {
@@ -164,7 +166,7 @@ static inline int convert_to_long_printable (C_wchar_t c, C_wchar_t * t, int *n)
 
 
 int propfont_convert_to_long_printable (C_wchar_t c, C_wchar_t * t)
-{
+{E_
     int n = 0, r;
     r = convert_to_long_printable (c, t, &n);
     t[n] = 0;
@@ -174,7 +176,7 @@ int propfont_convert_to_long_printable (C_wchar_t c, C_wchar_t * t)
 
 /* same as above but just gets the length */
 static inline int width_of_long_printable (C_wchar_t c)
-{
+{E_
     c &= 0x7FFFFFFFUL;
     if (c == ' ') {
 	if (option_long_whitespace)
@@ -215,19 +217,19 @@ static inline int width_of_long_printable (C_wchar_t c)
 
 
 int propfont_width_of_long_printable (C_wchar_t c)
-{
+{E_
     return width_of_long_printable (c);
 }
 
 
 int edit_width_of_long_printable (C_wchar_t c)
-{
+{E_
     return width_of_long_printable (c);
 }
 
 /* returns x pixel pos of char at offset *q with x not more than l */
 static int calc_text_pos (WEdit * edit, long b, long *q, int l)
-{
+{E_
     int x = 0, xn = 0;
     C_wchar_t c;
     for (;;) {
@@ -262,7 +264,7 @@ static int calc_text_pos (WEdit * edit, long b, long *q, int l)
 
 /* calcs pixel length of the line beginning at b up to upto */
 static int calc_text_len (WEdit * edit, long b, long upto)
-{
+{E_
     int x = 0;
     C_wchar_t c;
     for (;;) {
@@ -295,7 +297,7 @@ static int calc_text_len (WEdit * edit, long b, long upto)
 /* If pixels is zero this returns the count of pixels from current to upto. */
 /* If upto is zero returns index of pixels across from current. */
 long edit_move_forward3 (WEdit * edit, long current, int pixels, long upto)
-{
+{E_
     CPushFont ("editor", 0);
     if (upto) {
 	current = calc_text_len (edit, current, upto);
@@ -312,7 +314,7 @@ extern int column_highlighting;
 
 /* gets the characters style (eg marked, highlighted) from its position in the edit buffer */
 static inline cache_type get_style_fast (WEdit * edit, long q, C_wchar_t c)
-{
+{E_
     cache_type s;
     unsigned int fg, bg;
     s.c.ch = s._style = 0;
@@ -327,7 +329,7 @@ static inline cache_type get_style_fast (WEdit * edit, long q, C_wchar_t c)
 
 /* gets the characters style (eg marked, highlighted) from its position in the edit buffer */
 static inline cache_type get_style (WEdit * edit, long q, C_wchar_t c, long m1, long m2, int x)
-{
+{E_
     cache_type s;
     unsigned int fg, bg;
     s.c.ch = s._style = 0;
@@ -356,7 +358,7 @@ static inline cache_type get_style (WEdit * edit, long q, C_wchar_t c, long m1, 
 }
 
 static void convert_text (WEdit * edit, long bol, long q, cache_type * p, cache_type * eol, int x, int x_max, int row, struct _book_mark **book_mark_all, int all_bookmarks)
-{
+{E_
     C_wchar_t c;
     cache_type s;
     long m1, m2, last;
@@ -556,7 +558,7 @@ static void convert_text (WEdit * edit, long bol, long q, cache_type * p, cache_
 }
 
 static void edit_set_cursor (Window win, int x, int y, int bg, int fg, int width, C_wchar_t t, int style)
-{
+{E_
     CSetColor (edit_cursor_color);
     if (style & MOD_REVERSE)
 	CLine (win, x + width - 1, y + FONT_OVERHEAD, x + width - 1, y + FONT_HEIGHT - 1);	/* non focussed cursor form */
@@ -567,12 +569,12 @@ static void edit_set_cursor (Window win, int x, int y, int bg, int fg, int width
 }
 
 static inline int next_tab (int x, int scroll_right)
-{
+{E_
     return next_tab_pos (x - scroll_right - EDIT_TEXT_HORIZONTAL_OFFSET) - x + scroll_right + EDIT_TEXT_HORIZONTAL_OFFSET;
 }
 
 static int draw_tab (Window win, int x, int y, cache_type s, int scroll_right)
-{
+{E_
     int l;
     unsigned long fg, bg;
     l = next_tab (x, scroll_right);
@@ -587,7 +589,7 @@ static int draw_tab (Window win, int x, int y, cache_type s, int scroll_right)
 
 
 static inline void draw_space (Window win, int x, int y, cache_type s, int l)
-{
+{E_
     unsigned long fg, bg;
     set_style_color (s, &fg, &bg);
     CSetColor (bg);
@@ -599,7 +601,7 @@ static inline void draw_space (Window win, int x, int y, cache_type s, int l)
 
 
 static int draw_string (Window win, int x, int y, cache_type s, XChar2b *text, C_wchar_t *textwc, int length)
-{
+{E_
     unsigned long fg, bg;
     int underlined, l;
     underlined = set_style_color (s, &fg, &bg);
@@ -629,7 +631,7 @@ static int draw_string (Window win, int x, int y, cache_type s, XChar2b *text, C
 	    || !(cache->c.ch | cache->_style) || !(line->c.ch | line->_style))
 
 int get_ignore_length (cache_type *cache, cache_type *line)
-{
+{E_
     int i;
     for (i = 0; i < cache_width; i++, line++, cache++) {
 	if (STYLE_DIFF)
@@ -639,21 +641,21 @@ int get_ignore_length (cache_type *cache, cache_type *line)
 }
 
 static inline size_t lwstrnlen (const cache_type * s, size_t count)
-{
+{E_
     const cache_type *sc;
     for (sc = s; count-- && (sc->c.ch | sc->_style) != 0; ++sc);
     return sc - s;
 }
 
 static inline size_t lwstrlen (const cache_type * s)
-{
+{E_
     const cache_type *sc;
     for (sc = s; (sc->c.ch | sc->_style) != 0; ++sc);
     return sc - s;
 }
 
 int get_ignore_trailer (cache_type *cache, cache_type *line, int length)
-{
+{E_
     int i;
     int cache_len, line_len;
     cache_len = lwstrnlen (cache, cache_width);
@@ -674,7 +676,7 @@ int get_ignore_trailer (cache_type *cache, cache_type *line, int length)
 
 /* erases trailing bit of old line if a new line is printed over a longer old line */
 static void cover_trail (Window win, int x_start, int x_new, int x_old, int y, int cover_up)
-{
+{E_
     if (x_new < EDIT_TEXT_HORIZONTAL_OFFSET)
 	x_new = EDIT_TEXT_HORIZONTAL_OFFSET;
     if (x_new < x_old || cover_up) {	/* no need to print */
@@ -704,7 +706,7 @@ struct cache_line {
 struct cache_line *cache_lines = 0;
 
 void edit_free_cache_lines (void)
-{
+{E_
     int i;
     if (cache_lines) {
 	for (i = 0; i < cache_height; i++)
@@ -715,7 +717,7 @@ void edit_free_cache_lines (void)
 }
 
 static void edit_realloc_cache_lines (int width, int height)
-{
+{E_
     if (width > cache_width || height > cache_height) {
 	int i;
 	edit_free_cache_lines ();
@@ -806,7 +808,7 @@ This macro is correct for every code point in unicode 10 except for:
 int option_reverse_levant = 1;
 
 static void reverse_text (cache_type * line)
-{
+{E_
     int i, n;
     if (option_reverse_levant) {
 	while (line->c.ch | line->_style) {
@@ -833,7 +835,7 @@ static void reverse_text (cache_type * line)
 #define HASH401(c)      ((((c) + 9) * ((c) + 2) * 401) >> 1)
 
 static unsigned int book_marks_calc_hash (struct _book_mark **book_marks, int n_book_marks, int undercaret_offset)
-{
+{E_
     unsigned int v, r = 3182;
     int i;
     if (!n_book_marks)
@@ -867,7 +869,7 @@ static unsigned int book_marks_calc_hash (struct _book_mark **book_marks, int n_
 }
 
 void edit_draw_proportional_invalidate (int row_start, int row_end, int x_max)
-{
+{E_
     int i;
     for (i = row_start; i <= row_end && i < cache_height; i++) {
 	cache_lines[i].x0 = NOT_VALID;
@@ -890,7 +892,7 @@ int edit_draw_proportional (void *data,
 				int tabwidth,
                                 struct _book_mark **book_marks,
                                 int n_book_marks)
-{
+{E_
     static Window last = 0;
     cache_type style, line[MAX_LINE_LEN], *p, *eol;
     XChar2b text[128];
@@ -1096,7 +1098,7 @@ int edit_draw_proportional (void *data,
 int edit_row_to_ypixel (WEdit * edit, int row_search);
 
 int edit_draw_this_line_proportional (WEdit * edit, long b, int row, int y, int start_column, int end_column, struct _book_mark **book_marks, int n_book_marks)
-{
+{E_
     int fg, bg;
     if (row < 0 || row >= edit->num_widget_lines)
 	return 0;
@@ -1126,7 +1128,7 @@ int edit_draw_this_line_proportional (WEdit * edit, long b, int row, int y, int 
 /*********************************************************************************/
 
 static int calc_text_pos_str (unsigned char *text, long b, long *q, int l)
-{
+{E_
     int x = 0, xn = 0;
     C_wchar_t c = 0, d;
     for (;;) {
@@ -1172,7 +1174,7 @@ static int calc_text_pos_str (unsigned char *text, long b, long *q, int l)
 }
 
 int prop_font_strcolmove (unsigned char *str, int i, int column)
-{
+{E_
     long q;
     CPushFont ("editor", 0);
     calc_text_pos_str (str, i, &q, column * FONT_MEAN_WIDTH);
@@ -1185,7 +1187,7 @@ int prop_font_strcolmove (unsigned char *str, int i, int column)
    on some character which is unknown. The character pos is returned in
    *q and the characters pixel x pos from b is return'ed. */
 int calc_text_pos2 (CWidget * w, long b, long *q, int l)
-{
+{E_
     int r;
     CStr s;
     s = w->textbox_funcs ? ((*w->textbox_funcs->textbox_text_cb) (w->textbox_funcs->hook1, w->textbox_funcs->hook2)) : w->text;
@@ -1199,7 +1201,7 @@ int highlight_this_line;
 
 /* this is for the text widget (i.e. nroff formatting) */
 void convert_text2 (CWidget * w, long b, long q, cache_type * line, cache_type * eol, int x, int x_max, int row, struct _book_mark *bookmarks_not_used, int n_bookmarks_not_used)
-{
+{E_
     C_wchar_t c = 0, d;
     cache_type *p, *bol;
     long m1, m2;

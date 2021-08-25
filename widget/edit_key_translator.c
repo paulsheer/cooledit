@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* edit_key_translator.c - does key to command translation
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -48,6 +49,7 @@
    by the user. For brevity, it has a lookup table for basic key presses.
  */
 
+#include "inspect.h"
 #include <config.h>
 #include "edit.h"
 #include "app_glob.c"
@@ -59,15 +61,30 @@
 int (*user_defined_key_function) (unsigned int state, unsigned int keycode, KeySym keysym) = 0;
 
 int option_interpret_numlock = 0;
-extern int option_latin2;
 
 void edit_set_user_key_function (int (*user_def_key_func) (unsigned int, unsigned int, KeySym))
-{
+{E_
     user_defined_key_function = user_def_key_func;
 }
 
+static int compose = 0;
+static int last_compose = 0;
+
+int edit_translate_key_in_key_compose (void)
+{E_
+    return compose;
+}
+
+int edit_translate_key_exit_keycompose (void)
+{E_
+    int r;
+    r = (last_compose && !compose);
+    last_compose = compose;
+    return r;
+}
+
 int edit_translate_key (unsigned int x_keycode, long x_key, int x_state, int *cmd, char *xlat, int *xlat_len)
-{
+{E_
     int command = -1;
     long char_for_insertion = -1;
 
@@ -90,109 +107,49 @@ int edit_translate_key (unsigned int x_keycode, long x_key, int x_state, int *cm
 
     static int num_lock = DEFAULT_NUM_LOCK;
     static int raw = 0;
-    static int compose = 0;
     static long decimal = 0;
     static long hex = 0;
     int i = 0;
     int h;
 
-#if 0
-if (x_key != 65513) {
-printf("%d\n", (int) x_key);
-}
-#endif
+    if (x_key == '\\' && (x_state & (MyAltMask))) {
+        get_international_character (GET_INTL_CHAR_RESET_COMPOSE);
+        compose = 1;
+        *xlat_len = 0;
+        *cmd = 0;
+        return 0;
+    }
 
-if (option_latin2) {
-    {
-    extern int compose_key_pressed;
-    extern int compose_key_which;
-    if (compose_key_pressed) 
-	{
-		if (x_key == XK_Shift_L ||
- 		    x_key == XK_Shift_R ||
-	            x_key == XK_Alt_L ||
-	            x_key == XK_Alt_R ||
-		    x_key == XK_Mode_switch )
-		   goto fin;
-#ifdef XK_dead_acute
-	    if (compose_key_which == XK_dead_acute)
-    		(void) get_international_character('\'');
-#endif
-#ifdef XK_dead_caron
-	    if (compose_key_which == XK_dead_caron)
-    		(void) get_international_character('?');
-#endif
-#ifdef XK_dead_circumflex
-	    if (compose_key_which == XK_dead_circumflex)
-    		(void) get_international_character('^');
-#endif
-#ifdef XK_dead_diaeresis
-	    if (compose_key_which == XK_dead_diaeresis)
-    		(void) get_international_character('"');
-#endif
-#ifdef XK_dead_tilde
-	    if (compose_key_which == XK_dead_tilde)
-		(void) get_international_character('~');
-#endif
-#ifdef XK_dead_abovering
-	    if (compose_key_which == XK_dead_abovering)
-		(void) get_international_character('o');
-#endif
-#ifdef XK_dead_cedilla
-	    if (compose_key_which == XK_dead_cedilla)
-		(void) get_international_character(',');
-#endif
-	    compose = 1;
-	}
-    }
-    
-    if ((x_key > 255) && (x_key < 512))
-    {
-	int q = 256;	/* lcc breaks on x_key -= 256 */
-	x_key -= q;
-    }
-}
-
-    if (compose) {
-	if (mod_type_key (x_key)) {
-	    goto fin;
-	} else {
-	    int c;
-	    compose = 0;
-	    c = get_international_character (x_key);
-	    if (c == 1) {
-		(void) get_international_character (0);
-		goto fin;
-	    } else if (c) {
-		char_for_insertion = c;
-		goto fin;
-	    }
-	    goto fin;
-	}
-    }
-    if (!option_latin2) {
-	if (x_key >= ' ' && x_key <= '~') {
-	    extern int compose_key_pressed;
-	    if (compose_key_pressed) {
-		int c;
-		c = my_lower_case (x_key);
-		c = get_international_character ((x_state & ShiftMask) ?
-			     ((c >= 'a' && c <= 'z') ? c + 'A' - 'a' : c)
-						 : c);
-		if (c == 1) {
-		    compose = 1;
-		    goto fin;
-		}
-		compose = 0;
-		if (c)
-		    char_for_insertion = c;
-		else
-		    goto fin;
-	    }
-	}
-    }
     if (x_key <= 0 || mod_type_key (x_key))
 	goto fin;
+
+    if (compose) {
+        int v;
+        if (x_key == XK_Escape) {
+            get_international_character (GET_INTL_CHAR_RESET_COMPOSE);
+            compose = 0;
+            *xlat_len = 0;
+            *cmd = 0;
+            return 0;
+        }
+        v = get_international_character (x_key);
+        if (v == GET_INTL_CHAR_BUSY) {
+            *xlat_len = 0;
+            *cmd = 0;
+            return 0;
+        }
+        if (v == GET_INTL_CHAR_ERROR) {
+            compose = 0;
+            *xlat_len = 0;
+            *cmd = 0;
+            return 0;
+        }
+        compose = 0;
+	*xlat_len = 0;
+        command = 0;
+        char_for_insertion = v;
+        goto fin;
+    }
 
     if (raw) {
 	*xlat_len = 0;
@@ -300,10 +257,12 @@ if (option_latin2) {
 	case XK_M:
 	    command = CK_Mail;
 	    goto fin;
+#if 0
 	case XK_x:
 	case XK_X:
 	    command = CK_Save_And_Quit;
 	    goto fin;
+#endif
 	case XK_p:
 	case XK_P:
 	    command = CK_Paragraph_Format;
@@ -343,6 +302,9 @@ if (option_latin2) {
 	    goto fin;
 	case XK_F1:
 	    command = CK_Debug_Enter_Command;
+	    goto fin;
+	case XK_F10:
+	    command = CK_Close_Last;
 	    goto fin;
 	}
     }
@@ -607,9 +569,11 @@ if (option_latin2) {
 	    case XK_F6:
 		command = CK_Cycle;
 		goto fin;
+#if 0
 	    case XK_F10:
 		command = CK_Check_Save_And_Quit;
 		goto fin;
+#endif
 	    case XK_Tab:
 	    case XK_KP_Tab:
 		command = CK_Complete;

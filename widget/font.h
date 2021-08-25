@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* font.h - multiple font handling
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -13,6 +14,7 @@ typedef struct {
 
 struct freetype_cache {
     char *freetype_fname;
+    int load_logged;
     int load_failed;
     int loaded_height;
     void *face;

@@ -1,3 +1,12 @@
+Version 4.1.0
+
+    * Update to latest unicode NotoSans fonts (🫎)
+    * Remotefs tool for editting on Windows and remote Unix/Linux systems
+        with secure cryptography.
+    * New key Alt-F10 to close the edit window at the BOTTOM of the stack.
+    * New compose key Alt-\ for Latín1/2, mäth, and typõgraphic characters.
+    * Text input for Chinese now works on Ubuntu.
+
 Version 4.0.0
 
     * Truetype, OpenType, PCF fonts-on-file support.

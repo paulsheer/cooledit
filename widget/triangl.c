@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* triangl.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 
 #ifndef DO_NOT_USE_VGALIB
@@ -146,7 +148,7 @@ long color_lookup[TRIANGLE_COLOR_LOOKUP_TABLE_SIZE];
 static long *_color_lookup;
 
 void gl_trisetcolorlookup (int i, long color)
-{
+{E_
     if(i < TRIANGLE_COLOR_LOOKUP_TABLE_SIZE)
 	color_lookup[i] = color;
 }
@@ -155,7 +157,7 @@ void (*tri_drawpoint) (int, int, int);
 static void (*_tri_drawpoint) (int, int, int);
 
 void gl_trisetdrawpoint(void (*draw_point) (int, int, int))
-{
+{E_
     tri_drawpoint = draw_point;
 }
 
@@ -204,7 +206,7 @@ extern int override_8bit_non_lookup;
  */
 
 static void (*linefuncs[80]) (void) =
-{
+{E_
 	colhline_pos_direct8,
 	colhline_neg_direct8,
 	colhline_pos_paged8,

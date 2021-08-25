@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* find.c - find files as a front end to find ... -exec grep ...
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,7 +56,7 @@ int CInputsWithOptions (Window parent, int x, int y, const char *heading, \
 	    char **inputs[], char *input_labels[], char *input_names[], \
     char *input_tool_hint[], int *check_values[], char *check_labels[], \
 			char *check_tool_hints[], int options, int width)
-{
+{E_
     char *f = 0;
     Window win;
     XEvent xev;
@@ -225,7 +227,7 @@ int CInputsWithOptions (Window parent, int x, int y, const char *heading, \
 }
 
 void find_file (void)
-{
+{E_
     char s[4096] = "#!/bin/sh\n";
     char *inputs[10] =
     {
@@ -337,7 +339,7 @@ void find_file (void)
 }
 
 void ctags (void)
-{
+{E_
     char s[4096] = "#!/bin/sh\n";
     char types[20] = "";
     char *inputs[20] =

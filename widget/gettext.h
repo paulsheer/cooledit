@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* gettext.h
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -38,9 +39,9 @@
     ((N) == 1 ? (const char *) (Msgid1) : (const char *) (Msgid2))
 # define dcngettext(Domainname, Msgid1, Msgid2, N, Category) \
     ((N) == 1 ? (const char *) (Msgid1) : (const char *) (Msgid2))
-# define textdomain(Domainname) ((const char *) (Domainname))
-# define bindtextdomain(Domainname, Dirname) ((const char *) (Dirname))
-# define bind_textdomain_codeset(Domainname, Codeset) ((const char *) (Codeset))
+# define textdomain(Domainname) do { (void) (Domainname); } while (0)
+# define bindtextdomain(Domainname, Dirname) do { (void) (Dirname); } while (0)
+# define bind_textdomain_codeset(Domainname, Codeset) do { (void) (Codeset); } while (0)
 
 #endif
 

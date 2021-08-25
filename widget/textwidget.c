@@ -1,9 +1,11 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* textwidget.c - for drawing a scrollable text window widget
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -39,7 +41,7 @@ extern void convert_text2 (CWidget * w, long bol, long from, cache_type *line, c
 void edit_translate_xy (int xs, int ys, int *x, int *y);
 
 static int text_ypixel_to_row (int y)
-{
+{E_
     int row;
     row = y / FONT_PIX_PER_LINE + 1;
     return row;
@@ -47,7 +49,7 @@ static int text_ypixel_to_row (int y)
 
 /* returns the position in the edit buffer of a window click */
 long text_get_click_pos (CWidget * w, int x, int y)
-{
+{E_
     CStr s;
     long click, c, q;
     int width;
@@ -73,12 +75,12 @@ long text_get_click_pos (CWidget * w, int x, int y)
 }
 
 static void xy (int x, int y, int *x_return, int *y_return)
-{
+{E_
     edit_translate_xy (x, y, x_return, y_return);
 }
 
 static long cp (CWidget * w, int x, int y)
-{
+{E_
     int row;
     row = text_ypixel_to_row (y);
     return text_get_click_pos (w, --x, --row);
@@ -86,7 +88,7 @@ static long cp (CWidget * w, int x, int y)
 
 /* return 1 if not marked */
 static int marks (CWidget * w, long *start, long *end)
-{
+{E_
     if (w->mark1 ==  w->mark2)
 	return 1;
     *start = min (w->mark1, w->mark2);
@@ -95,22 +97,22 @@ static int marks (CWidget * w, long *start, long *end)
 }
 
 int range (CWidget * w, long start, long end, int click)
-{
+{E_
     return (start <= click && click < end);
 }
 
 static void move_mark (CWidget * w)
-{
+{E_
     w->mark2 = w->mark1 = current;
 }
 
 static void fin_mark (CWidget * w)
-{
+{E_
     w->mark2 = w->mark1 = -1;
 }
 
 static void release_mark (CWidget * w, XEvent * event)
-{
+{E_
     w->mark2 = current;
     if (w->mark2 != w->mark1 && event) {
 	selection_clear ();
@@ -120,7 +122,7 @@ static void release_mark (CWidget * w, XEvent * event)
 }
 
 static char *get_block (CWidget * w, long start_mark, long end_mark, int *type, int *l)
-{
+{E_
     CStr s;
     char *t, *t2;
     *l = abs (w->mark2 - w->mark1);
@@ -157,7 +159,7 @@ static char *get_block (CWidget * w, long start_mark, long end_mark, int *type, 
 }
 
 static void move (CWidget * w, long click, int y)
-{
+{E_
     int h, row;
     row = text_ypixel_to_row (y);
     current = click;
@@ -172,7 +174,7 @@ static void move (CWidget * w, long click, int y)
 }
 
 static void motion (CWidget * w, long click)
-{
+{E_
     w->mark2 = click;
 }
 
@@ -197,7 +199,7 @@ struct mouse_funcs textbox_mouse_mark = {
 
 
 static CStr CDrawTextbox_basic_text_cb (void *hook1, void *hook2)
-{
+{E_
     CStr r;
     r.data = (char *) hook1;
     r.len = strlen(r.data);
@@ -205,14 +207,14 @@ static CStr CDrawTextbox_basic_text_cb (void *hook1, void *hook2)
 }
 
 static void CDrawTextbox_basic_free_cb (void *hook1, void *hook2)
-{
+{E_
     (void) hook2;
     free(hook1);
 }
 
 CWidget *CDrawTextbox (const char *identifier, Window parent, int x, int y, int width, int height, int line,
 		       int column, const char *text, long options)
-{
+{E_
     return CDrawTextboxManaged (identifier, parent, x, y, width, height, line, column,
 				CDrawTextbox_basic_text_cb, CDrawTextbox_basic_free_cb,
 				(char *) strdup (text), 0, options);
@@ -223,7 +225,7 @@ CWidget *CDrawTextboxManaged (const char *identifier, Window parent, int x, int 
                        CStr (*get_cb) (void *, void *),
                        void (*free_cb) (void *, void *),
                        void *hook1, void *hook2, int options)
-{
+{E_
     char *scroll;
     int numlines;
     CWidget *wdt;
@@ -282,7 +284,7 @@ CWidget *CDrawTextboxManaged (const char *identifier, Window parent, int x, int 
 int CSetTextboxPos (CWidget * w, int which, long p);
 
 CWidget *CRedrawTextbox (const char *identifier, const char *text, int preserve)
-{
+{E_
     CWidget *w = CIdent (identifier);
     if (!w)
 	return 0;
@@ -298,7 +300,7 @@ CWidget *CRedrawTextboxManaged (const char *identifier,
                         void (*free_cb) (void *, void *),
                         void *hook1, void *hook2,
                         int preserve)
-{
+{E_
     CStr s;
     CWidget *w = CIdent (identifier);
     int numlines, firstline, firstcolumn, cursor;
@@ -338,13 +340,13 @@ CWidget *CRedrawTextboxManaged (const char *identifier,
 }
 
 CStr CGetTextBoxText (CWidget * w)
-{
+{E_
     return (*w->textbox_funcs->textbox_text_cb) (w->textbox_funcs->hook1, w->textbox_funcs->hook2);
 }
 
 /* result must not be free'd, and must be used immediately */
 char *CGetTextBoxLine (CWidget * w, int i)
-{
+{E_
     CStr s;
     int width;
     char *r;
@@ -358,7 +360,7 @@ char *CGetTextBoxLine (CWidget * w, int i)
 
 /* clears the text box */
 CWidget *CClearTextbox (const char *identifier)
-{
+{E_
     CWidget *w;
     w = CIdent (identifier);
     if (w) {
@@ -376,7 +378,7 @@ CWidget *CClearTextbox (const char *identifier)
 
 CWidget *CDrawManPage (const char *identifier, Window parent, int x, int y,
 	   int width, int height, int line, int column, const char *text)
-{
+{E_
     CWidget *w;
     w = CDrawTextbox (identifier, parent, x, y, width, height, line, column, text, TEXTBOX_MAN_PAGE);
     return w;
@@ -390,7 +392,7 @@ CWidget *CDrawManPage (const char *identifier, Window parent, int x, int y,
    returns non-zero if anything actually changed.
  */
 int CSetTextboxPos (CWidget * wdt, int which, long p)
-{
+{E_
     long q;
     int width, i, j;
     if (p < 0)
@@ -457,7 +459,7 @@ int CSetTextboxPos (CWidget * wdt, int which, long p)
 
 
 static void text_print_line (CWidget * w, long b, int row)
-{
+{E_
     edit_draw_proportional (w,
                      (converttext_cb_t) convert_text2,
 		     (calctextpos_cb_t) calc_text_pos2,
@@ -483,7 +485,7 @@ extern int highlight_this_line;
 extern unsigned long edit_normal_background_color;
 
 long render_textbox (CWidget * w, int redrawall)
-{
+{E_
     CStr s;
     long b;
     int c = 0, r = 0, row, height, isfocussed, wrap_width = 32000,
@@ -552,7 +554,7 @@ long render_textbox (CWidget * w, int redrawall)
    If all is non-zero then count all the lines.
  */
 long count_textbox_lines (CWidget * wdt, int all)
-{
+{E_
     CStr s;
     int nroff, col = 0, row = 0, height, width;
     long from;
@@ -600,7 +602,7 @@ long count_textbox_lines (CWidget * wdt, int all)
 
 /* move the text box cursor or the text window if there isn't one */
 int CTextboxCursorMove (CWidget * wdt, KeySym key)
-{
+{E_
     int handled = 0;
     CPushFont ("editor", 0);
 /* when text is highlighted, the cursor must be off */
@@ -686,7 +688,7 @@ int CTextboxCursorMove (CWidget * wdt, KeySym key)
 }
 
 static void text_mouse_mark (CWidget * w, XEvent * event, CEvent * ce)
-{
+{E_
     CPushFont ("editor", 0);
     mouse_mark (event, ce->double_click, w->funcs);
     CPopFont ();
@@ -694,7 +696,7 @@ static void text_mouse_mark (CWidget * w, XEvent * event, CEvent * ce)
 
 /* gets selected text into selection structure, stripping nroff */
 static void text_get_selection (CWidget * w)
-{
+{E_
     CStr s, r;
     char *t;
     int len;
@@ -715,7 +717,7 @@ static void text_get_selection (CWidget * w)
 void selection_send (XSelectionRequestEvent * rq);
 
 int eh_textbox (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     int handled = 0, redrawall, count;
 
     redrawall = 0;
@@ -749,6 +751,18 @@ int eh_textbox (CWidget * w, XEvent * xevent, CEvent * cwevent)
 	if (!xevent->xmotion.state && xevent->type == MotionNotify)
 	    return 0;
 	resolve_button (xevent, cwevent);
+	if ((cwevent->button == Button4 || cwevent->button == Button5)
+	    && (xevent->type == ButtonRelease)) {
+	    /* ahaack: wheel mouse mapped as button 4 and 5 */
+	    CPushFont ("editor", 0);
+            if (cwevent->button == Button5)
+	        CSetTextboxPos (w, TEXT_SET_LINE, w->firstline + (w->height / 6 / FONT_PIX_PER_LINE - 1));
+            else
+	        CSetTextboxPos (w, TEXT_SET_LINE, w->firstline - (w->height / 6 / FONT_PIX_PER_LINE - 1));
+	    CPopFont ();
+            handled = 1;
+	    break;
+	}
 	text_mouse_mark (w, xevent, cwevent);
 	break;
     case FocusIn:
@@ -779,7 +793,7 @@ int eh_textbox (CWidget * w, XEvent * xevent, CEvent * cwevent)
 }
 
 void link_scrollbar_to_textbox (CWidget * scrollbar, CWidget * textbox, XEvent * xevent, CEvent * cwevent, int whichscrbutton)
-{
+{E_
     int redrawtext = 0, count = -1, c;
     static int r = 0;
     CPushFont ("editor", 0);

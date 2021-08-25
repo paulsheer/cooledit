@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 
+#include "inspect.h"
 #include "redblack.h"
 
 static void __redblack_rotate_left (struct redblack_node *node, struct redblack_root *root)
-{
+{E_
     struct redblack_node *right = node->right;
     struct redblack_node *parent = node->parent;
 
@@ -23,7 +25,7 @@ static void __redblack_rotate_left (struct redblack_node *node, struct redblack_
 }
 
 static void __redblack_rotate_right (struct redblack_node *node, struct redblack_root *root)
-{
+{E_
     struct redblack_node *left = node->left;
     struct redblack_node *parent = node->parent;
 
@@ -44,7 +46,7 @@ static void __redblack_rotate_right (struct redblack_node *node, struct redblack
 }
 
 void redblack_insert_color (struct redblack_node *node, struct redblack_root *root)
-{
+{E_
     struct redblack_node *parent, *gparent;
 
 /*    assert (node->color); */
@@ -106,7 +108,7 @@ void redblack_insert_color (struct redblack_node *node, struct redblack_root *ro
 
 
 static void __redblack_erase_color (struct redblack_node *node, struct redblack_node *parent, struct redblack_root *root)
-{
+{E_
     struct redblack_node *other;
 
     while ((!node || node->color == REDBLACK_BLACK) && node != root->redblack_node) {
@@ -177,7 +179,7 @@ static void __redblack_erase_color (struct redblack_node *node, struct redblack_
 }
 
 void redblack_erase (struct redblack_node *node, struct redblack_root *root)
-{
+{E_
     struct redblack_node *child, *parent;
     int color;
 
@@ -243,7 +245,7 @@ void redblack_erase (struct redblack_node *node, struct redblack_root *root)
 }
 
 struct redblack_node *redblack_first (struct redblack_root *root)
-{
+{E_
     struct redblack_node *n;
 
     n = root->redblack_node;
@@ -256,7 +258,7 @@ struct redblack_node *redblack_first (struct redblack_root *root)
 
 
 struct redblack_node *redblack_last (struct redblack_root *root)
-{
+{E_
     struct redblack_node *n;
 
     n = root->redblack_node;
@@ -269,7 +271,7 @@ struct redblack_node *redblack_last (struct redblack_root *root)
 
 
 struct redblack_node *redblack_next (struct redblack_node *node)
-{
+{E_
     struct redblack_node *parent;
 
     if (node->right) {
@@ -287,7 +289,7 @@ struct redblack_node *redblack_next (struct redblack_node *node)
 
 
 struct redblack_node *redblack_prev (struct redblack_node *node)
-{
+{E_
     struct redblack_node *parent;
 
     if (node->left) {
@@ -304,7 +306,7 @@ struct redblack_node *redblack_prev (struct redblack_node *node)
 }
 
 void redblack_replace_node (struct redblack_node *victim, struct redblack_node *new_node, struct redblack_root *root)
-{
+{E_
     struct redblack_node *parent = victim->parent;
 
     if (parent) {
@@ -324,7 +326,7 @@ void redblack_replace_node (struct redblack_node *victim, struct redblack_node *
 }
 
 void redblack_link_node (struct redblack_node *node, struct redblack_node *parent, struct redblack_node **redblack_link)
-{
+{E_
     node->color = REDBLACK_RED;
     node->parent = parent;
     node->left = node->right = (struct redblack_node *) 0UL;

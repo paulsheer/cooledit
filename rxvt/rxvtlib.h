@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /*--------------------------------*-C-*---------------------------------*
  * File:	rxvtlib.h
  *----------------------------------------------------------------------*
@@ -24,7 +25,7 @@
  * Copyright (C) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
  * Copyright (C) 1998      Geoff Wing <gcw@pobox.com>
  * Copyright (C) 1998      Alfredo K. Kojima <kojima@windowmaker.org>
- * Copyright (C) 1996-2017 Paul Sheer
+ * Copyright (C) 1996-2022 Paul Sheer
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,6 +50,7 @@
 
 #include "_rxvtlib.h"
 #include "rxvtlibtypedef.h"
+#include "rxvtexport.h"
 
 /* #if (XtSpecificationRelease >= 6) */
 /* #undef USE_XIM */
@@ -574,7 +576,7 @@ struct _TermWin_t {
                     saveLines;	/* number of lines that fit in scrollback   */
     unsigned short  nscrolled,	/* number of line actually scrolled         */
                     view_start;	/* scrollback view starts here              */
-    Window          parent[KNOW_PARENTS],	/* parent[0] is our window        */
+    Window          parent[6],	/* parent[0] is our window                 */
                     vt;		/* vt100 window                             */
     GC              gc;		/* GC for drawing text                      */
     XFontStruct    *font;	/* main font structure                      */

@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* cursor.c - initialise mouse cursors
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <my_string.h>
 #include <stdlib.h>
@@ -51,31 +53,31 @@ static CursorData cool_cursor[] =
 static int num_cursors = sizeof (cool_cursor) / sizeof (CursorData);
 
 void CHourGlass (Window win)
-{
+{E_
     XDefineCursor (CDisplay, win, cool_cursor[CURSOR_HOUR].cursor);
     XSync (CDisplay, 0);
 }
 
 void CUnHourGlass (Window win)
-{
+{E_
     XUndefineCursor (CDisplay, win);
     XSync (CDisplay, 0);
 }
 
 void edit_tri_cursor (Window win)
-{
+{E_
     XDefineCursor (CDisplay, win, cool_cursor[CURSOR_LEFT].cursor);
     XSync (CDisplay, 0);
 }
 
 void menu_hand_cursor (Window win)
-{
+{E_
     XDefineCursor (CDisplay, win, cool_cursor[CURSOR_MENU].cursor);
     XSync (CDisplay, 0);
 }
 
 void init_cursors (void)
-{
+{E_
     int screen, i;
     Colormap colormap;
     Window root;
@@ -111,7 +113,7 @@ void init_cursors (void)
 }
 
 Cursor CGetCursorID (int i)
-{
+{E_
     if (i < 0 || i >= num_cursors) {
 	CErrorDialog (CRoot, 20, 20, "Error", "\nCGetCursorID called with parameter out of range.\n");
 	return 0;

@@ -1,11 +1,14 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* stringtools.c - convenient string utility functions
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 
+#include "inspect.h"
 #include <config.h>
 #include "global.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "my_string.h"
@@ -39,7 +42,7 @@ struct garbage {
 static struct garbage stacked[NUM_STORED];
 
 char *catstrs (const char *first,...)
-{
+{E_
     static int i = -1;
     va_list ap;
     int len;
@@ -95,7 +98,7 @@ char *catstrs (const char *first,...)
 }
 
 void catstrs_clean (void)
-{
+{E_
     int i;
     for (i = 0; i < NUM_STORED; i++)
 	if (stacked[i].alloced) {
@@ -104,8 +107,27 @@ void catstrs_clean (void)
 	}
 }
 
+int strlcpy (char *dst, const char *src, int siz)
+{E_
+    char *d = dst;
+    const char *s = src;
+    int n = siz;
+    if (n != 0) {
+        while (--n != 0) {
+            if ((*d++ = *s++) == '\0')
+                break;
+        }
+    }
+    if (n == 0) {
+        if (siz != 0)
+            *d = '\0';
+        while (*s++);
+    }
+    return (s - src - 1);
+}
+
 char *space_string (const char *s)
-{
+{E_
     char *r, *p;
     int i;
     if (!s)
@@ -128,10 +150,25 @@ char *space_string (const char *s)
     return p;
 }
 
+#define ISSPACE(c)              ((c) <= ' ')
+void string_chomp (char *_p)
+{E_
+    unsigned char *p, *q, *t;
+    p = (unsigned char *) _p;
+    assert (p);
+    for (q = p; *q; q++)
+        if (!ISSPACE (*q))
+            break;
+    for (t = p; *q;)
+        if (!ISSPACE (*p++ = *q++))
+            t = p;
+    *t = '\0';
+}
+
 #define Ctolower(c)             (((c) >= 'A' && (c) <= 'Z') ? ((c) + 'a' - 'A') : (c))
 
 int Cstrncasecmp (const char *p1, const char *p2, size_t n)
-{
+{E_
     unsigned char *s1 = (unsigned char *) p1, *s2 = (unsigned char *) p2;
     signed int c = 0;
     while (n--)
@@ -142,7 +179,7 @@ int Cstrncasecmp (const char *p1, const char *p2, size_t n)
 
 
 void *Cmemmove (void *dest, const void *src, size_t n)
-{
+{E_
     char *t, *s;
 
     if (dest <= src) {
@@ -161,7 +198,7 @@ void *Cmemmove (void *dest, const void *src, size_t n)
 
 
 int Cstrcasecmp (const char *p1, const char *p2)
-{
+{E_
     unsigned char *s1 = (unsigned char *) p1, *s2 = (unsigned char *) p2;
     signed int c;
     for (;;)
@@ -171,7 +208,7 @@ int Cstrcasecmp (const char *p1, const char *p2)
 }
 
 char *Cstrdup (const char *p)
-{
+{E_
     char *s;
     int l;
     l = strlen ((char *) p);
@@ -182,7 +219,7 @@ char *Cstrdup (const char *p)
 }
 
 CStr CStr_dup (const char *s)
-{
+{E_
     CStr r;
     r.len = strlen (s);
     r.data = (char *) malloc (r.len + 1);
@@ -192,7 +229,7 @@ CStr CStr_dup (const char *s)
 }
 
 CStr CStr_const (const char *s, int l)
-{
+{E_
     CStr r;
     r.data = (char *) s;
     r.len = l;
@@ -200,7 +237,7 @@ CStr CStr_const (const char *s, int l)
 }
 
 CStr CStr_cpy (const char *s, int l)
-{
+{E_
     CStr r;
     r.len = l;
     r.data = (char *) malloc (r.len + 1);
@@ -210,20 +247,53 @@ CStr CStr_cpy (const char *s, int l)
 }
 
 CStr CStr_dupstr (CStr s)
-{
+{E_
     return CStr_cpy(s.data, s.len);
 }
 
 void CStr_free(CStr *s)
-{
+{E_
     if (s->data)
         free(s->data);
     s->data = 0;
     s->len = 0;
 }
 
+char *replace_str (const char *in, const char *a, const char *b)
+{E_
+    char *out;
+    int found = 0;
+    const char *p;
+    char *q;
+    int al, bl, outl;
+    al = strlen (a);
+    bl = strlen (b);
+    for (p = in; *p;) {
+        if (!memcmp (p, a, al)) {
+            p += al;
+            found++;
+        } else {
+            p++;
+        }
+    }
+    outl = strlen (in) + found * (bl - al) + 1;
+    out = (char *) malloc (outl);
+    for (p = in, q = out; *p;) {
+        if (!memcmp (p, a, al)) {
+            memcpy (q, b, bl);
+            p += al;
+            q += bl;
+        } else {
+            *q++ = *p++;
+        }
+    }
+    *q++ = '\0';
+    assert (q == out + outl);
+    return out;
+}
+
 int strendswith(const char *s, const char *p)
-{
+{E_
     int sl, pl;
     sl = strlen(s);
     pl = strlen(p);
@@ -234,7 +304,7 @@ int strendswith(const char *s, const char *p)
 
 /* alternative to free() */
 void destroy (void **p)
-{
+{E_
     if (*p) {
 	free (*p);
 	*p = 0;
@@ -242,7 +312,7 @@ void destroy (void **p)
 }
 
 char *strcasechr (const char *p, int c)
-{
+{E_
     unsigned char *s = (unsigned char *) p;
     for (; my_lower_case ((int) *s) != my_lower_case ((int) c); ++s)
 	if (*s == '\0')
@@ -251,7 +321,7 @@ char *strcasechr (const char *p, int c)
 }
 
 char *Citoa (int i)
-{
+{E_
     static char t[20];
     char *s = t + 19;
     int j = i;
@@ -271,7 +341,7 @@ char *Citoa (int i)
  */
 extern char current_dir[];
 int change_directory (const char *path, char *errmsg)
-{
+{E_
     struct remotefs *u;
     u = the_remotefs_local;
     return (*u->remotefs_chdir) (u, path, current_dir, MAX_PATH_LEN, errmsg);
@@ -279,7 +349,7 @@ int change_directory (const char *path, char *errmsg)
 
 
 short *shortset (short *s, int c, size_t n)
-{
+{E_
     short *r = s;
     while (n--)
 	*s++ = c;
@@ -287,7 +357,7 @@ short *shortset (short *s, int c, size_t n)
 }
 
 char *name_trunc (const char *txt, int trunc_len)
-{
+{E_
     static char x[1024];
     int txt_len, y;
     int mid;
@@ -309,14 +379,14 @@ char *name_trunc (const char *txt, int trunc_len)
 int prop_font_strcolmove (unsigned char *str, int i, int column);
 
 int strcolmove (unsigned char *str, int i, int column)
-{
+{E_
     return prop_font_strcolmove (str, i, column);
 }
 
 /*move to col character from beginning of line with i in the line somewhere. */
 /*If col is past the end of the line, it returns position of end of line */
 long strfrombeginline (const char *s, int i, int col)
-{
+{E_
     unsigned char *str = (unsigned char *) s;
     if (i < 0) {
 /* NLS ? */
@@ -340,7 +410,7 @@ long strfrombeginline (const char *s, int i, int col)
    returns strlen(result) if l is non null
  */
 char *str_strip_nroff (char *t, int *l)
-{
+{E_
     unsigned char *s = (unsigned char *) t;
     unsigned char *r, *q;
     int p;
@@ -361,7 +431,7 @@ char *str_strip_nroff (char *t, int *l)
 }
 
 long countlinesforward (const char *text, long from, long amount, long lines, int width)
-{
+{E_
     if (amount) {
 	int i = 0;
 	amount += from;
@@ -389,7 +459,7 @@ long countlinesforward (const char *text, long from, long amount, long lines, in
 /* returns pos of begin of line moved to */
 /* move forward from i, `lines' can be negative --- moveing backward */
 long strmovelines (const char *str, long from, long lines, int width)
-{
+{E_
     int p, q;
     if (lines > 0)
 	return countlinesforward (str, from, 0, lines, width);
@@ -415,7 +485,7 @@ long strmovelines (const char *str, long from, long lines, int width)
 
 /*returns a positive or negative count of lines */
 long strcountlines (const char *str, long i, long amount, int width)
-{
+{E_
     int lines, p;
     if (amount > 0) {
 	return countlinesforward (str, i, amount, 0, width);
@@ -437,7 +507,7 @@ long strcountlines (const char *str, long i, long amount, int width)
    four results.
  */
 char *strline (const char *src, int p)
-{
+{E_
     static char line[4][1024];
     static int last = 0;
     int i = 0;
@@ -454,7 +524,7 @@ char *strline (const char *src, int p)
 }
 
 size_t strnlen (const char *s, size_t count)
-{
+{E_
     const char *sc;
 
     for (sc = s; count-- && *sc != '\0'; ++sc)
@@ -463,7 +533,7 @@ size_t strnlen (const char *s, size_t count)
 }
 
 static void fmt_tool (char **cpy, int *len, const char *fmt, va_list ap)
-{
+{E_
     static char *tmp = NULL;
     static int tmp_alloc = 0;
     int l;
@@ -483,21 +553,21 @@ static void fmt_tool (char **cpy, int *len, const char *fmt, va_list ap)
 }
 
 size_t vfmtlen (const char *fmt, va_list ap)
-{
+{E_
     int l;
     fmt_tool (NULL, &l, fmt, ap);
     return (size_t) l;
 }
 
 char *vsprintf_alloc (const char *fmt, va_list ap)
-{
+{E_
     char *s;
     fmt_tool (&s, NULL, fmt, ap);
     return s;
 }
 
 char *sprintf_alloc (const char *fmt,...)
-{
+{E_
     char *s;
     va_list ap;
     va_start (ap, fmt);
@@ -507,7 +577,7 @@ char *sprintf_alloc (const char *fmt,...)
 }
 
 int readall (int fd, char *buf, int len)
-{
+{E_
     int count;
     int total = 0;
     if (len <= 0)
@@ -531,7 +601,7 @@ int readall (int fd, char *buf, int len)
 }
 
 int writeall (int fd, char *buf, int len)
-{
+{E_
     int count;
     int total = 0;
     if (len <= 0)
@@ -539,6 +609,7 @@ int writeall (int fd, char *buf, int len)
     for (;;) {
 	count = write (fd, buf, len);
 	if (count == -1) {
+printf("count=%d fd=%d len=%d\n", count, fd, len);
 	    if (errno == EINTR || errno == EAGAIN)
 		continue;
 	    return -1;
@@ -556,7 +627,7 @@ int writeall (int fd, char *buf, int len)
 
 
 void free_shell_cmdline (char **r)
-{
+{E_
     int i;
     for (i = 0; r[i]; i++)
         free (r[i]);
@@ -564,7 +635,7 @@ void free_shell_cmdline (char **r)
 }
 
 static char translate_escape (char c)
-{
+{E_
     char *p;
     static const char *out = "\a\b\t\n\v\f\r\\\"\000";
     static const char *in = "abtnvfr\\\"0";
@@ -577,7 +648,7 @@ static char translate_escape (char c)
 /* returns NULL terminated list of char *.
   free each element */
 char **interpret_shell_cmdline (const char *s)
-{
+{E_
     char **r;
     char *t;
     int n = 0;
@@ -673,7 +744,7 @@ char **interpret_shell_cmdline (const char *s)
 
 #if 0
 void check(const char *in)
-{
+{E_
     int i;
     char **r;
     r = interpret_shell_cmdline (in);
@@ -685,7 +756,7 @@ void check(const char *in)
 }
 
 int main()
-{
+{E_
     check("       ");
     check("   a    ");
     check("   a  b  ");

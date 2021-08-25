@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* wordproc.c - word-processor mode for the editor: does dynamic
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include "edit.h"
 
@@ -15,7 +17,7 @@ int line_is_blank (WEdit * edit, long line);
 #define NO_FORMAT_CHARS_START "-+*\\,.;:&>"
 
 static long line_start (WEdit * edit, long line)
-{
+{E_
     static long p = -1, l = 0;
     int c;
     if (p == -1 || abs (l - line) > abs (edit->curs_line - line)) {
@@ -34,7 +36,7 @@ static long line_start (WEdit * edit, long line)
 }
 
 static int bad_line_start (WEdit * edit, long p)
-{
+{E_
     int c;
     c = edit_get_byte (edit, p);
     if (c == '.') {		/* `...' is acceptable */
@@ -55,7 +57,7 @@ static int bad_line_start (WEdit * edit, long p)
 }
 
 static long begin_paragraph (WEdit * edit, long p, int force)
-{
+{E_
     int i;
     for (i = edit->curs_line - 1; i > 0; i--) {
 	if (line_is_blank (edit, i)) {
@@ -73,7 +75,7 @@ static long begin_paragraph (WEdit * edit, long p, int force)
 }
 
 static long end_paragraph (WEdit * edit, long p, int force)
-{
+{E_
     int i;
     for (i = edit->curs_line + 1; i < edit->total_lines; i++) {
 	if (line_is_blank (edit, i)) {
@@ -90,7 +92,7 @@ static long end_paragraph (WEdit * edit, long p, int force)
 }
 
 static unsigned char *get_paragraph (WEdit * edit, long p, long q, int indent, int *size)
-{
+{E_
     unsigned char *s, *t;
 #if 0
     t = malloc ((q - p) + 2 * (q - p) / option_word_wrap_line_length + 10);
@@ -112,7 +114,7 @@ static unsigned char *get_paragraph (WEdit * edit, long p, long q, int indent, i
 }
 
 static void strip_newlines (unsigned char *t, int size)
-{
+{E_
     unsigned char *p = t;
     while (size--) {
         int c;
@@ -132,11 +134,11 @@ int edit_width_of_long_printable (int c);
  */
 extern int tab_width;
 static inline int next_tab_pos (int x)
-{
+{E_
     return x += tab_width - x % tab_width;
 }
 static int line_pixel_length (unsigned char *t, long b, int l)
-{
+{E_
     int x = 0, c, xn = 0;
     for (;;) {
 	c = t[b];
@@ -164,7 +166,7 @@ static int line_pixel_length (unsigned char *t, long b, int l)
 
 /* find the start of a word */
 static int next_word_start (unsigned char *t, int q, int size)
-{
+{E_
     int i;
     for (i = q;; i++) {
 	switch (t[i]) {
@@ -185,7 +187,7 @@ static int next_word_start (unsigned char *t, int q, int size)
 
 /* find the start of a word */
 static int word_start (unsigned char *t, int q, int size)
-{
+{E_
     int i = q;
     if (t[q] == ' ' || t[q] == '\t')
 	return next_word_start (t, q, size);
@@ -204,7 +206,7 @@ static int word_start (unsigned char *t, int q, int size)
 
 /* replaces ' ' with '\n' to properly format a paragraph */
 static void format_this (unsigned char *t, int size, int indent)
-{
+{E_
     int q = 0, ww;
     strip_newlines (t, size);
     ww = option_word_wrap_line_length * FONT_MEAN_WIDTH - indent;
@@ -232,7 +234,7 @@ static void format_this (unsigned char *t, int size, int indent)
 }
 
 static void replace_at (WEdit * edit, long q, int c)
-{
+{E_
     edit_cursor_move (edit, q - edit->curs1);
     edit_delete (edit);
     edit_insert_ahead (edit, c);
@@ -242,7 +244,7 @@ void edit_insert_indent (WEdit * edit, int indent);
 
 /* replaces a block of text */
 static void put_paragraph (WEdit * edit, unsigned char *t, long p, long q, int indent, int size)
-{
+{E_
     long cursor;
     int i, c = 0;
     cursor = edit->curs1;
@@ -282,7 +284,7 @@ static void put_paragraph (WEdit * edit, unsigned char *t, long p, long q, int i
 int edit_indent_width (WEdit * edit, long p);
 
 static int test_indent (WEdit * edit, long p, long q)
-{
+{E_
     int indent;
     indent = edit_indent_width (edit, p++);
     if (!indent)
@@ -295,7 +297,7 @@ static int test_indent (WEdit * edit, long p, long q)
 }
 
 static void new_behaviour_message (WEdit * edit)
-{
+{E_
     char *filename;
     int fd;
     filename = catstrs (local_home_dir, PARMESS_FILE, NULL);
@@ -313,7 +315,7 @@ current paragraph using heuristics.");
 }
 
 void format_paragraph (WEdit * edit, int force)
-{
+{E_
     long p, q;
     int size;
     unsigned char *t;

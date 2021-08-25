@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 #ifndef LOAD_FILE_H
 #define LOAD_FILE_H
 

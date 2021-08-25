@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /*--------------------------------*-C-*---------------------------------*
  * File:	rxvtlibproto.h
  *----------------------------------------------------------------------*
@@ -24,7 +25,7 @@
  * Copyright (C) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
  * Copyright (C) 1998      Geoff Wing <gcw@pobox.com>
  * Copyright (C) 1998      Alfredo K. Kojima <kojima@windowmaker.org>
- * Copyright (C) 1996-2017 Paul Sheer
+ * Copyright (C) 1996-2022 Paul Sheer
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

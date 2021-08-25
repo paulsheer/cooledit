@@ -1,11 +1,13 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* xim.c - XIM handlers, for multiple locale input methods.
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 /* #define DEBUG */
 /* #define DEBUG_ENTRY */
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -82,7 +84,7 @@ int option_use_xim = 0;
 #define MAX_KBUF        128
 
 static void xim_print_error (char *s,...)
-{
+{E_
     char k[1024];
     va_list ap;
     va_start (ap, s);
@@ -98,7 +100,7 @@ static XPoint hold_spot;
 static void IMInstantiateCallback (Display * display, XPointer client_data, XPointer call_data);
 
 void init_xlocale (void)
-{
+{E_
 #ifdef LC_CTYPE
     char *xim_locale = NULL;
     xim_locale = setlocale (LC_CTYPE, 0);
@@ -120,7 +122,7 @@ void init_xlocale (void)
 }
 
 void shutdown_xlocale(void)
-{
+{E_
     if (option_use_xim) {
         if (CIM) {
             XCloseIM (CIM);
@@ -130,7 +132,7 @@ void shutdown_xlocale(void)
 }
 
 static void setPosition (Window win, XPoint * pos)
-{
+{E_
 #if 0
     XWindowAttributes xwa;
     memset(pos, '\0', sizeof (XPoint));
@@ -141,7 +143,7 @@ static void setPosition (Window win, XPoint * pos)
 }
 
 static XIC get_window_ic (Window win, CWidget **child_return, CWidget **mainw_return)
-{
+{E_
     CWidget *child, *mainw;
     if (!win)
 	return 0;
@@ -167,7 +169,7 @@ static XPoint new_spot;
 #endif
 
 void CRefreshSpot (void)
-{
+{E_
 #ifdef USE_XIM
     new_spot.x = -30000;
     new_spot.y = 0;
@@ -175,7 +177,7 @@ void CRefreshSpot (void)
 }
 
 void cim_send_spot (Window window)
-{
+{E_
 #ifdef USE_XIM
     XIMStyle input_style;
     input_style = get_input_style ();
@@ -192,17 +194,17 @@ void cim_send_spot (Window window)
 static int xim_enabled = 1;
 
 void CDisableXIM(void)
-{
+{E_
     xim_enabled = 0;
 }
 
 void CEnableXIM(void)
-{
+{E_
     xim_enabled = 1;
 }
 
 void cim_check_spot_change (Window win)
-{
+{E_
 #ifdef USE_XIM
     XIC ic = 0;
     if (new_spot.x != hold_spot.x || new_spot.y != hold_spot.y) {
@@ -222,7 +224,7 @@ void cim_check_spot_change (Window win)
 }
 
 KeySym key_sym_xlat (XEvent * ev, char *xlat, int *xlat_len)
-{
+{E_
 #ifdef USE_XIM
     XIC ic = 0;
     static wchar_t kbuf_wchar[MAX_KBUF];
@@ -297,7 +299,7 @@ KeySym key_sym_xlat (XEvent * ev, char *xlat, int *xlat_len)
 #ifdef USE_XIM
 
 void setSize (CWidget * w, XRectangle * size)
-{
+{E_
     size->x = 0;
     size->y = 0;
     size->width = 1600;
@@ -305,14 +307,14 @@ void setSize (CWidget * w, XRectangle * size)
 }
 
 void setColor (CWidget * w, unsigned long *fg, unsigned long *bg)
-{
+{E_
     *fg = COLOR_BLACK;
     *bg = COLOR_WHITE;
 }
 
 
 static long destroy_input_context (CWidget * w)
-{
+{E_
     if (w->input_context) {
         XDestroyIC (w->input_context);
         w->input_context = 0;
@@ -321,7 +323,7 @@ static long destroy_input_context (CWidget * w)
 }
 
 void IMDestroyCallback (XIM xim, XPointer client_data, XPointer call_data)
-{
+{E_
     XRegisterIMInstantiateCallback (CDisplay, NULL, NULL, NULL, IMInstantiateCallback, NULL);
     for_all_widgets ((for_all_widgets_cb_t) destroy_input_context, 0, 0);
     x_server_xim_reported_enabled = 0;
@@ -329,7 +331,7 @@ void IMDestroyCallback (XIM xim, XPointer client_data, XPointer call_data)
 
 /* returns zero on error */
 XIMStyle get_input_style (void)
-{
+{E_
     int found = 0, i;
     XIMStyle input_style = 0;
     XIMStyles *xim_styles = NULL;
@@ -369,7 +371,7 @@ XIMStyle get_input_style (void)
 }
 
 long create_input_context (CWidget * w, XIMStyle input_style)
-{
+{E_
     XVaNestedList preedit_attr = 0;
     XPoint spot;
     XRectangle rect;
@@ -431,12 +433,12 @@ printf("w->input_context = %p\n", (void *) w->input_context);
 }
 
 long set_status_position (CWidget * w)
-{
+{E_
     return 0;
 }
 
 static void IMInstantiateCallback (Display * display, XPointer client_data, XPointer call_data)
-{
+{E_
     char *p;
     XIMStyle input_style = 0;
     XIMCallback ximcallback;

@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* vertchar.c - draws text vertically
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <X11/Xlib.h>
 
@@ -876,7 +878,7 @@ static unsigned int vertical_chars[96][8] =
 
 void XDrawVericalString8x16 (Display * display, Drawable d, GC gc,
 			 int x, int y, char *string, int length)
-{
+{E_
     int i;
     for (i = 0; i < length; i++) {
 	XPoint points[128];

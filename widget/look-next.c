@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* look-next.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -34,7 +36,7 @@ extern int replace_backwards;
 extern int search_create_bookmark;
 
 static void look_next_search_replace_dialog (Window parent, int x, int y, char **search_text, char **replace_text, char **arg_order, const char *heading, int option)
-{
+{E_
     Window win;
     XEvent xev;
     CEvent cev;
@@ -233,7 +235,7 @@ void get_file_time (char *timestr, time_t file_time, int l);
 
 #if 0
 static char **get_filelist_line (void *data, int line_number, int *num_fields, int *tagged)
-{
+{E_
     struct file_entry *directentry;
     static char *fields[10], size[24], mode[12], timestr[32];
     static char name[520], *n;
@@ -321,7 +323,7 @@ static char **get_filelist_line (void *data, int line_number, int *num_fields, i
 #endif
 
 static char *get_filelist_line_short (void *data, int line_number, char buffer[512])
-{
+{E_
     struct file_entry *directentry;
     static char ctimestr[32], mtimestr[32];
     mode_t m;
@@ -389,7 +391,7 @@ static char *get_filelist_line_short (void *data, int line_number, char buffer[5
 }
 
 static Bool is_directory (struct file_entry * directentry, int line_number)
-{
+{E_
     if (directentry[line_number].options & FILELIST_LAST_ENTRY)
 	return False;
     switch ((int) (directentry[line_number].stat.st_mode) & S_IFMT) {
@@ -412,7 +414,7 @@ typedef struct FilelistCache {
 } FilelistCache;
 
 static void free_filelist_cache (void *vcache)
-{
+{E_
     if (vcache) {
 	FilelistCache *cache = (FilelistCache *) vcache;
 	if (cache->cache) {
@@ -427,7 +429,7 @@ static void free_filelist_cache (void *vcache)
 #define NEXT_ARROW_FIELD 	(NEXT_ARROW_SIZE*2)
 
 static void restrict_text_area (FilelistCache * cache)
-{
+{E_
     XRectangle clip_rec;
     clip_rec.x = 1;
     clip_rec.y = 1;
@@ -437,7 +439,7 @@ static void restrict_text_area (FilelistCache * cache)
 }
 
 static void push_filelist_line (FilelistCache * cache, Bool pushed)
-{
+{E_
     int y1, y2;
     if (cache->current < 0)
 	return;
@@ -462,7 +464,7 @@ static void push_filelist_line (FilelistCache * cache, Bool pushed)
 }
 
 static void hilite_filelist_line (FilelistCache * cache, int color, struct file_entry *directentry)
-{
+{E_
     int y1, y2, x2;
     y1 = (cache->hilited - cache->firstline) * cache->rowheight;
     y2 = y1 + (cache->rowheight / 2 - 4);
@@ -491,7 +493,7 @@ static void hilite_filelist_line (FilelistCache * cache, int color, struct file_
 }
 
 static void scroll_cache (FilelistCache * cache, unsigned int new_first, int *start, int *end)
-{
+{E_
     int good_start, good_end, scroll_to;
 
     if (cache->firstline > new_first) {		/* scrolling up */
@@ -525,7 +527,7 @@ static void scroll_cache (FilelistCache * cache, unsigned int new_first, int *st
 }
 
 static void check_filelist_cache (CWidget * wdt, unsigned int w, unsigned int h, FilelistCache * cache)
-{
+{E_
     struct file_entry *directentry = (struct file_entry *) wdt->hook;
     int y, x, start_y;
     int i, start = 0, end = 0;
@@ -608,7 +610,7 @@ static void check_filelist_cache (CWidget * wdt, unsigned int w, unsigned int h,
 }
 
 static void render_NeXT_filelist (CWidget * wdt)
-{
+{E_
     FilelistCache *cache;
 
     if (wdt->hook == NULL) {
@@ -631,7 +633,7 @@ static void render_NeXT_filelist (CWidget * wdt)
 }
 
 static void link_scrollbar_to_NeXT_filelist (CWidget * scrollbar, CWidget * w, XEvent * xevent, CEvent * cwevent, int whichscrbutton)
-{
+{E_
     /* fix me : add stuf */
     int redrawtext = 0;
     int new_first = w->firstline;
@@ -684,7 +686,7 @@ static CWidget *look_next_draw_file_list (const char *identifier, Window parent,
 			int width, int height, int line, int column,
 			struct file_entry *directentry,
 			long options)
-{
+{E_
     struct file_entry e;
     CWidget *w;
     int x_hint;
@@ -728,7 +730,7 @@ static CWidget *look_next_draw_file_list (const char *identifier, Window parent,
 }
 
 CWidget *look_next_redraw_file_list (const char *identifier, struct file_entry * directentry, int preserve)
-{
+{E_
     CWidget *w = CIdent (identifier);
 
     if (w) {
@@ -762,7 +764,7 @@ CWidget *look_next_redraw_file_list (const char *identifier, struct file_entry *
 }
 
 void CSetFilelistPosition (const char *identifier, long current, long cursor, long firstline)
-{
+{E_
     CWidget *w = CIdent (identifier);
 
     if (w) {
@@ -794,7 +796,7 @@ void CSetFilelistPosition (const char *identifier, long current, long cursor, lo
 }
 
 struct file_entry *look_next_get_file_list_line (CWidget * w, int line)
-{
+{E_
     struct file_entry *e;
     static struct file_entry r;
 
@@ -808,7 +810,7 @@ struct file_entry *look_next_get_file_list_line (CWidget * w, int line)
 }
 
 int filelist_handle_mouse (CWidget * wdt, FilelistCache * cache, int y)
-{
+{E_
     int new_hilite;
     new_hilite = (int) (wdt->firstline) + y / (int) (cache->rowheight);
     if (y < 0)
@@ -822,7 +824,7 @@ int filelist_handle_mouse (CWidget * wdt, FilelistCache * cache, int y)
 }
 
 int filelist_handle_keypress (CWidget * wdt, FilelistCache * cache, KeySym key)
-{
+{E_
     int new_cursor = wdt->cursor;
 
 /* when text is highlighted, the cursor must be off */
@@ -856,7 +858,7 @@ int filelist_handle_keypress (CWidget * wdt, FilelistCache * cache, KeySym key)
 }
 
 int change_hilite (CWidget * w, int new_hilite)
-{
+{E_
     FilelistCache *cache = (FilelistCache *) (w->user);
     if (new_hilite >= w->numlines)
 	new_hilite = w->numlines - 1;
@@ -884,7 +886,7 @@ int change_hilite (CWidget * w, int new_hilite)
 void selection_send (XSelectionRequestEvent * rq);
 
 int eh_NeXT_filelist (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
 #if 0
     int xevent_xbutton_y;
 #endif
@@ -990,7 +992,7 @@ int eh_NeXT_filelist (CWidget * w, XEvent * xevent, CEvent * cwevent)
 /*****************************************************************/
 
 static void render_dyn_text (CWidget * wdt)
-{
+{E_
     Window win = wdt->winid;
     char text[1024], *p, *q;
     int y, x = 0, w = wdt->width;
@@ -1051,7 +1053,7 @@ static void render_dyn_text (CWidget * wdt)
 
 /*-----------------------------------------------------------------------*/
 static int eh_dyn_text (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     switch (xevent->type) {
     case Expose:
 	if (!xevent->xexpose.count)
@@ -1063,7 +1065,7 @@ static int eh_dyn_text (CWidget * w, XEvent * xevent, CEvent * cwevent)
 
 static CWidget *CDrawDynText (const char *identifier, Window parent,
 		  int x, int y, int width, int rows, const char *fmt,...)
-{
+{E_
     va_list pa;
     char *str;
     int w, h;
@@ -1097,7 +1099,7 @@ static CWidget *CDrawDynText (const char *identifier, Window parent,
 }
 
 static CWidget *CRedrawDynText (const char *identifier, const char *fmt,...)
-{
+{E_
     va_list pa;
     char *str;
     CWidget *wdt;
@@ -1153,7 +1155,7 @@ typedef struct NeXTDirTree {
 extern Bool is_directory (struct file_entry *directentry, int line_number);
 
 static NeXTDir *create_dir_elem (char *name, int name_len)
-{
+{E_
     NeXTDir *dir;
     dir = (NeXTDir *) calloc (sizeof (NeXTDir), 1);
     dir->prev = dir->next = NULL;
@@ -1171,7 +1173,7 @@ static NeXTDir *create_dir_elem (char *name, int name_len)
 }
 
 static void destroy_dir_elem (NeXTDir ** dir)
-{
+{E_
     if (dir) {
 	if (*dir) {
 	    if ((*dir)->filter)
@@ -1188,7 +1190,7 @@ static void destroy_dir_elem (NeXTDir ** dir)
 }
 
 static NeXTDirTree *create_dir_tree (const char *path, int numpanes)
-{
+{E_
     NeXTDirTree *tree = NULL;
     char *ptr = 0;
 
@@ -1242,7 +1244,7 @@ static NeXTDirTree *create_dir_tree (const char *path, int numpanes)
 }
 
 static void destroy_dir_chain (NeXTDir ** start)
-{
+{E_
     NeXTDir *dir;
     for (dir = *start; dir; dir = *start) {
 	*start = dir->next;
@@ -1251,7 +1253,7 @@ static void destroy_dir_chain (NeXTDir ** start)
 }
 
 static void destroy_dir_tree (NeXTDirTree ** tree)
-{
+{E_
     if (tree) {
 	destroy_dir_chain (&((*tree)->first));
 	destroy_dir_chain (&((*tree)->discarded));
@@ -1261,7 +1263,7 @@ static void destroy_dir_tree (NeXTDirTree ** tree)
 }
 
 static char *get_dir_path (NeXTDirTree * tree, NeXTDir * dir, char *buffer)
-{
+{E_
     register NeXTDir *d;
     register char *ptr1 = buffer, *ptr2;
     if (!ptr1 || !tree || !dir)
@@ -1281,7 +1283,7 @@ static char *get_dir_path (NeXTDirTree * tree, NeXTDir * dir, char *buffer)
 }
 
 static struct file_entry *read_dir_filelist (NeXTDir * dir, char *path)
-{
+{E_
     if (dir && path) {
 	register int k;
 	char *next_dir = NULL;
@@ -1307,7 +1309,7 @@ static struct file_entry *read_dir_filelist (NeXTDir * dir, char *path)
 }
 
 static void update_tree_integrity (NeXTDirTree * tree, NeXTDir * selected)
-{
+{E_
     NeXTDir *t;
     tree->selected = NULL;
     tree->numdirs = 0;
@@ -1332,7 +1334,7 @@ static void update_tree_integrity (NeXTDirTree * tree, NeXTDir * selected)
 }
 
 static void change_dir (NeXTDirTree * tree, NeXTDir * dir, long item_num)
-{
+{E_
     struct file_entry *item;
     NeXTDir *tmp;
 
@@ -1384,7 +1386,7 @@ static void change_dir (NeXTDirTree * tree, NeXTDir * dir, long item_num)
 }
 
 static char *get_full_filename (NeXTDirTree * tree, NeXTDir * dir, long item)
-{
+{E_
     char *buffer, *path_tail;
     if (!tree || item < 0 || !dir || !(dir->list))
 	return NULL;
@@ -1438,7 +1440,7 @@ typedef struct NeXTFileBrowser {
 } NeXTFileBrowser;
 
 static void clear_partial_buffer (NeXTFileBrowser * browser)
-{
+{E_
     if (browser) {
 	browser->partial_end = 0;
     }
@@ -1448,14 +1450,14 @@ static void clear_partial_buffer (NeXTFileBrowser * browser)
 extern void CSetFilelistPosition (const char *identifier, long current, long cursor, long firstline);
 
 static void dir_save_position (NeXTDir * dir, long cursor, long current, long firstline)
-{
+{E_
     dir->cursor = cursor;
     dir->current = current;
     dir->firstline = firstline;
 }
 
 static void destroy_next_filebrowser (CWidget * w)
-{
+{E_
     if (w->hook) {
 	NeXTFileBrowser *browser = (NeXTFileBrowser *) w->hook;
 	int i;
@@ -1487,7 +1489,7 @@ static void destroy_next_filebrowser (CWidget * w)
 }
 
 static NeXTDir *get_dir_by_num (NeXTDirTree * tree, int num)
-{
+{E_
     NeXTDir *dir = NULL;
     register int i;
     if (tree)
@@ -1500,7 +1502,7 @@ static NeXTDir *get_dir_by_num (NeXTDirTree * tree, int num)
 static void update_filter (NeXTFileBrowser * browser, NeXTDir * dir);
 
 static void link_browser_to_data (NeXTFileBrowser * browser, int start)
-{
+{E_
     NeXTDir *dir;
     char *path = NULL, *path_tail = 0;
     int i, todo = browser->numpanes;
@@ -1548,7 +1550,7 @@ static void link_browser_to_data (NeXTFileBrowser * browser, int start)
 }
 
 static void update_scrollbar (CWidget * scrollbar, NeXTFileBrowser * browser, int redraw)
-{
+{E_
     scrollbar->firstline = (double) 65535.0 *browser->tree->pos / (browser->tree->numdirs ? browser->tree->numdirs : 1);
     scrollbar->numlines = (double) 65535.0 *browser->numpanes / (browser->tree->numdirs ? browser->tree->numdirs : 1);
     if (redraw)
@@ -1556,7 +1558,7 @@ static void update_scrollbar (CWidget * scrollbar, NeXTFileBrowser * browser, in
 }
 
 static void link_scrollbar_to_NeXT_browser (CWidget * scrollbar, CWidget * w, XEvent * xevent, CEvent * cwevent, int whichscrbutton)
-{
+{E_
     /* fix me : add stuf */
     int redraw = 0;
     int new_first = w->firstline;
@@ -1605,7 +1607,7 @@ static void link_scrollbar_to_NeXT_browser (CWidget * scrollbar, CWidget * w, XE
 }
 
 static void update_input (NeXTFileBrowser * browser, NeXTDir * dir)
-{
+{E_
     char *text = NULL;
     CWidget *inp_w = CIdent (browser->name);
 
@@ -1621,7 +1623,7 @@ static void update_input (NeXTFileBrowser * browser, NeXTDir * dir)
 }
 
 static void filter_changed (NeXTFileBrowser * browser, NeXTDir * dir)
-{
+{E_
     CWidget *inp_w = CIdent (browser->filter);
     char *new_filter = "*";
     if (inp_w->text)
@@ -1643,7 +1645,7 @@ static void filter_changed (NeXTFileBrowser * browser, NeXTDir * dir)
 }
 
 static void update_filter (NeXTFileBrowser * browser, NeXTDir * dir)
-{
+{E_
     CWidget *inp_w = CIdent (browser->filter);
 
     if (strcmp (dir->filter, inp_w->text) == 0)
@@ -1658,7 +1660,7 @@ static void update_filter (NeXTFileBrowser * browser, NeXTDir * dir)
 
 /* returns 0 on fail */
 static int goto_partial_file_name (NeXTFileBrowser * browser, NeXTDir * dir, int new_char)
-{
+{E_
     int success = 0;
     if (browser && dir && dir->list && browser->partial_end < MAX_PARTIAL_NAME - 1) {
 	register int i;
@@ -1687,7 +1689,7 @@ static int goto_partial_file_name (NeXTFileBrowser * browser, NeXTDir * dir, int
 
 static Window draw_file_browser (const char *identifier, Window parent, int x, int y,
 	      const char *directory, const char *file, const char *label)
-{
+{E_
     CWidget *w, *tmp = 0;
     int y2, x2, x3, btn_width, btn_height;
     int text_w1, text_w2;
@@ -1873,7 +1875,7 @@ static Window draw_file_browser (const char *identifier, Window parent, int x, i
 void input_insert (CWidget * w, int c);
 
 static void run_cmd (const char *fmt,...)
-{
+{E_
     signal (SIGCHLD, SIG_IGN);
     if (!fork ()) {		/* child process */
 	va_list pa;
@@ -1895,7 +1897,7 @@ static void run_cmd (const char *fmt,...)
 static char *empty_line = "";
 
 static char *item_selected (const char *identifier, NeXTFileBrowser * browser, NeXTDir * dir)
-{
+{E_
     char *ptr = NULL;
     CWidget *w;
 
@@ -1940,7 +1942,7 @@ static char *item_selected (const char *identifier, NeXTFileBrowser * browser, N
 char *get_filelist_line_short (void *data, int line_number, char buffer[1024]);
 
 static void cursor_moved (NeXTFileBrowser * browser, NeXTDir * dir, CWidget * list_w)
-{
+{E_
     if (browser && dir && list_w) {
 	dir_save_position (dir, list_w->cursor, list_w->current, list_w->firstline);
 	if (dir->cursor >= 0) {
@@ -1961,7 +1963,7 @@ static void cursor_moved (NeXTFileBrowser * browser, NeXTDir * dir, CWidget * li
    Result must not be free'd.
  */
 static char *handle_browser (const char *identifier, CEvent * cwevent, int options)
-{
+{E_
 #if 0
     int i;
 #endif
@@ -2092,7 +2094,7 @@ Window find_mapped_window (Window w);
 /* result must be free'd */
 static char *look_next_get_file_or_dir (Window parent, int x, int y,
        const char *dir, const char *file, const char *label, int options)
-{
+{E_
     CEvent cwevent;
     XEvent xevent;
     CState s;
@@ -2167,7 +2169,7 @@ static char *look_next_get_file_or_dir (Window parent, int x, int y,
  */
 
 static char *get_browser_name (char *ident, char *buffer)
-{
+{E_
     char *start = buffer;
     while (*ident && *ident != '.')
 	*(buffer++) = *(ident++);
@@ -2177,7 +2179,7 @@ static char *get_browser_name (char *ident, char *buffer)
 }
 
 static int cb_browser (CWidget * w, XEvent * x, CEvent * c)
-{
+{E_
     char id[32];
     get_browser_name (w->ident, id);
     if (!handle_browser (id, c, GETFILE_BROWSER)) {
@@ -2194,7 +2196,7 @@ static int cb_browser (CWidget * w, XEvent * x, CEvent * c)
 
 static void look_next_draw_browser (const char *ident, Window parent, int x, int y,
 		   const char *dir, const char *file, const char *label)
-{
+{E_
     CWidget *w;
 
     if (!(parent | x | y)) {
@@ -2248,7 +2250,7 @@ static void look_next_draw_browser (const char *ident, Window parent, int x, int
 #define Xdepth   CDepth
 
 static char *SCROLLER_DIMPLE[] =
-{
+{E_
     ".%###.",
     "%#%%%%",
     "#%%...",
@@ -2261,7 +2263,7 @@ static char *SCROLLER_DIMPLE[] =
 #define SCROLLER_DIMPLE_HEIGHT  6
 
 static char *SCROLLER_ARROW[4][13] =
-{
+{E_
     {".............",
      ".............",
      "......%......",
@@ -2377,7 +2379,7 @@ typedef struct {
 
 #if 0
 static unsigned char stp_bits[] =
-{
+{E_
     0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa};
 #endif
 
@@ -2394,7 +2396,7 @@ typedef struct {
 } IconGC;
 
 static void init_scroll_size (ScrollIcons * next_icons)
-{
+{E_
     ARROW_WIDTH = (SB_WIDTH - BEVEL_SIZE - SB_BORDER_SIZE - SIDE_STEP_WIDTH);
     ARROW_WIDTH = min (ARROW_WIDTH, ARROW_SOURCE_WIDTH);
 
@@ -2408,14 +2410,14 @@ static void init_scroll_size (ScrollIcons * next_icons)
 
 /* PROTO */
 unsigned GetScrollArrowsHeight (ScrollIcons * next_icons)
-{
+{E_
     if (!next_icons->bValid)
 	init_scroll_size (next_icons);
     return (SB_BUTTONS_HEIGHT);
 }
 
 static void CheckIconGC (IconGC * igc, Pixmap icon, Pixmap icon_mask)
-{
+{E_
     XGCValues values;
     unsigned long valuemask = GCForeground | GCGraphicsExposures;
 
@@ -2446,7 +2448,7 @@ static void CheckIconGC (IconGC * igc, Pixmap icon, Pixmap icon_mask)
 }
 
 static void FreeIconGC (IconGC * igc)
-{
+{E_
     if (igc) {
 	if (igc->maskGC != None) {
 	    XFreeGC (Xdisplay, igc->maskGC);
@@ -2472,7 +2474,7 @@ static void FreeIconGC (IconGC * igc)
 }
 
 static void renderIcon (Window win, char **data, Icon * pIcon, IconGC * igc, Bool rotate)
-{
+{E_
     Pixmap d, mask;
     register int i, k;
     int x, y, max_x, max_y;
@@ -2532,7 +2534,7 @@ static void renderIcon (Window win, char **data, Icon * pIcon, IconGC * igc, Boo
 
 static ScrollIcons *
  init_next_icons (Window win)
-{
+{E_
     unsigned arrow_x_offset, arrow_y_offset;
     IconGC icongc =
     {None, None, None, None};
@@ -2585,7 +2587,7 @@ static ScrollIcons *
 }
 
 void free_next_icons (void *ptr)
-{
+{E_
     ScrollIcons *next_icons = (ScrollIcons *) ptr;
     if (next_icons) {
 	register int i;
@@ -2610,7 +2612,7 @@ void free_next_icons (void *ptr)
 }
 
 static void render_next_icon (Drawable d, Icon * i, int x, int y)
-{
+{E_
 #ifdef TRANSPARENT
     if (IS_TRANSP_SCROLL) {
 	XSetClipMask (Xdisplay, CGC, i->icon_mask);
@@ -2629,7 +2631,7 @@ static void render_next_icon (Drawable d, Icon * i, int x, int y)
 
 /* Draw bezel & arrows */
 static void render_next_button (Drawable d, XRectangle * rec, Icon * icon, Bool pressed)
-{
+{E_
     int x2 = rec->x + rec->width - 1, y2 = rec->y + rec->height - 1;
     CSetColor ((pressed) ? COLOR_BLACK : COLOR_WHITE);
 
@@ -2650,7 +2652,7 @@ static void render_next_button (Drawable d, XRectangle * rec, Icon * icon, Bool 
 }
 
 Bool check_cache (ScrollIcons * next_icons, Window win, int width, int height, int pos, int prop, int flags)
-{
+{E_
     unsigned int l, wl, thumb_start, thumb_length;
     unsigned int button_arrow[2];
 #if 0
@@ -2758,7 +2760,7 @@ Bool check_cache (ScrollIcons * next_icons, Window win, int width, int height, i
 }
 
 void scrollbar_fill_back (ScrollIcons * next_icons)
-{
+{E_
     int x2, y2;
     register int i;
 
@@ -2794,7 +2796,7 @@ void scrollbar_fill_back (ScrollIcons * next_icons)
 }
 
 int render_next_scrollbar (ScrollIcons * next_icons, Window win, int x, int y, int width, int height, int pos, int prop, int flags)
-{
+{E_
     int cache_valid;
 
     cache_valid = check_cache (next_icons, win, width, height, pos, prop, flags);
@@ -2855,12 +2857,12 @@ int find_menu_hotkey (struct menu_item m[], int this, int num);
 #define B		BAR_HEIGHT
 
 static char *look_next_get_default_widget_font (void)
-{
+{E_
     return "-*-fixed-medium-r-normal--%d-*-*-*-*-*-*";
 }
 
 static void look_next_get_menu_item_extents (int n, int j, struct menu_item m[], int *border, int *relief, int *y1, int *y2)
-{
+{E_
     int i, n_items = 0, n_bars = 0;
 
     *border = O;
@@ -2883,7 +2885,7 @@ static void look_next_get_menu_item_extents (int n, int j, struct menu_item m[],
 }
 
 static void look_next_menu_draw (Window win, int w, int h, struct menu_item m[], int n, int light)
-{
+{E_
     int i, y1, y2, offset = 0;
     static int last_light = 0, last_n = 0;
     static Window last_win = 0;
@@ -2934,7 +2936,7 @@ static void look_next_menu_draw (Window win, int w, int h, struct menu_item m[],
 }
 
 static void look_next_render_menu_button (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     int x = 0, y = 0;
 
@@ -2964,7 +2966,7 @@ static void look_next_render_menu_button (CWidget * wdt)
 }
 
 static void look_next_render_button (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     int x = 0, y = 0;
 
@@ -2990,7 +2992,7 @@ static void look_next_render_button (CWidget * wdt)
 }
 
 static void look_next_render_bar (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
 
     Window win = wdt->winid;
@@ -3002,7 +3004,7 @@ static void look_next_render_bar (CWidget * wdt)
 
 static void look_next_render_sunken_bevel (Window win, int x1, int y1, int x2, int y2, int thick,
 					   int sunken)
-{
+{E_
     int i;
     if ((sunken & 2) && (y2 - y1 - 2 * thick + 1 > 0) && (x2 - x1 - 2 * thick + 1 > 0)) {
 	CSetColor (COLOR_FLAT);
@@ -3037,7 +3039,7 @@ static void look_next_render_sunken_bevel (Window win, int x1, int y1, int x2, i
 
 static void look_next_render_raised_bevel (Window win, int x1, int y1, int x2, int y2, int thick,
 					   int sunken)
-{
+{E_
     int i;
     if ((sunken & 2) && (y2 - y1 - 2 * thick + 1 > 0) && (x2 - x1 - 2 * thick + 1 > 0)) {
 	CSetColor (COLOR_FLAT);
@@ -3071,14 +3073,14 @@ static void look_next_render_raised_bevel (Window win, int x1, int y1, int x2, i
 }
 
 static void look_next_draw_hotkey_understroke (Window win, int x, int y, int hotkey)
-{
+{E_
     CLine (win, x+1, y , x + FONT_PER_CHAR (hotkey) - 2, y);
     y++;
     CLine (win, x+1, y, x + FONT_PER_CHAR (hotkey) - 2, y);
 }
 
 static void look_next_render_text (CWidget * wdt)
-{
+{E_
     Window win = wdt->winid;
     char text[1024], *p, *q;
     int hot, y, w = wdt->width, center = 0;
@@ -3121,7 +3123,7 @@ static void look_next_render_text (CWidget * wdt)
 #define NEXT_LOWBAR       7
 
 static void look_next_render_window (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
 
     Window win = wdt->winid;
@@ -3142,7 +3144,7 @@ static void look_next_render_window (CWidget * wdt)
 }
 
 static void look_next_render_scrollbar (CWidget * wdt)
-{
+{E_
     int pos, prop;
     int flags = wdt->options;
     if (!wdt)
@@ -3172,7 +3174,7 @@ static void look_next_render_scrollbar (CWidget * wdt)
    Which scrollbar button was pressed: 3 is the middle button ?
  */
 static int look_next_which_scrollbar_button (int bx, int by, CWidget * wdt)
-{
+{E_
 #if 0
     int pos;
     int prop;
@@ -3217,7 +3219,7 @@ static int look_next_which_scrollbar_button (int bx, int by, CWidget * wdt)
 }
 
 static int look_next_scrollbar_handler (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     static int buttonypos, y, offset, whichscrbutton = 0;	/* which of the five scroll bar buttons was pressed */
     int xevent_xbutton_y, length, width, thumb_pos;
     ScrollIcons *next_icons = (ScrollIcons *) w->user;
@@ -3316,25 +3318,25 @@ static int look_next_scrollbar_handler (CWidget * w, XEvent * xevent, CEvent * c
 }
 
 static void look_next_init_scrollbar_icons (CWidget * w)
-{
+{E_
     w->user = init_next_icons (w->winid);
     w->free_user = free_next_icons;
 }
 
 static int look_next_get_scrollbar_size (int type)
-{
+{E_
     return SB_WIDTH + SB_BORDER_SIZE;
 }
 
 static void look_next_get_button_color (XColor * color, int i)
-{
+{E_
     color->red = color->green = (i * 4) * 65535 / 63;
     color->blue = (i * 4) * 65535 / 63;
     color->flags = DoRed | DoBlue | DoGreen;
 }
 
 static int look_next_window_handler (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     static Window window_is_resizing = 0;
     static int windowx, windowy;
     static int wx = 0, wy = 0;
@@ -3449,7 +3451,7 @@ extern Pixmap Cswitchon;
 extern Pixmap Cswitchoff;
 
 static void look_next_render_switch (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     Window win = wdt->winid;
     int x = 0, y = 0;
@@ -3490,7 +3492,7 @@ static void look_next_render_switch (CWidget * wdt)
 }
 
 static void look_next_edit_render_tidbits (CWidget * wdt)
-{
+{E_
     int isfocussed;
     int w = wdt->width, h = wdt->height;
     Window win;
@@ -3502,7 +3504,7 @@ static void look_next_edit_render_tidbits (CWidget * wdt)
 }
 
 static CWidget *look_next_draw_cancel_button (char *ident, Window win, int x, int y)
-{
+{E_
     CWidget *wdt;
 #if 0
     CGetHintPos (&x, 0);
@@ -3516,7 +3518,7 @@ static CWidget *look_next_draw_cancel_button (char *ident, Window win, int x, in
 }
 
 static CWidget *look_next_draw_ok_button (char *ident, Window win, int x, int y)
-{
+{E_
     CWidget *wdt;
 #if 0
     CGetHintPos (&x, 0);
@@ -3530,12 +3532,12 @@ static CWidget *look_next_draw_ok_button (char *ident, Window win, int x, int y)
 }
 
 static void look_next_render_fielded_textbox_tidbits (CWidget *w, int isfocussed)
-{
+{E_
     render_bevel (w->winid, 0, 0, w->width - 1, w->height - 1, 1, 1);	/*most outer border bevel */
 }
 
 static void look_next_render_textbox_tidbits (CWidget * w, int isfocussed)
-{
+{E_
     if (isfocussed) {
 	render_bevel (w->winid, 0, 0, w->width - 1, w->height - 1, 1, 1);	/*most outer border bevel */
     } else {
@@ -3544,7 +3546,7 @@ static void look_next_render_textbox_tidbits (CWidget * w, int isfocussed)
 }
 
 static void look_next_render_passwordinput_tidbits (CWidget * wdt, int isfocussed)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     Window win = wdt->winid;
     CSetColor (COLOR_WHITE);
@@ -3558,7 +3560,7 @@ static void look_next_render_passwordinput_tidbits (CWidget * wdt, int isfocusse
 }
 
 static void look_next_render_textinput_tidbits (CWidget * wdt, int isfocussed)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     Window win = wdt->winid;
     CSetColor (COLOR_WHITE);
@@ -3585,7 +3587,7 @@ static void look_next_render_textinput_tidbits (CWidget * wdt, int isfocussed)
 extern struct focus_win focus_border;
 
 static void render_focus_border_n (Window win, int i)
-{
+{E_
     int j;
     j = (i > 3) + 1;
     if (win == focus_border.top) {
@@ -3604,42 +3606,42 @@ static void render_focus_border_n (Window win, int i)
 }
 
 static void look_next_render_focus_border (Window win)
-{
+{E_
     render_focus_border_n (win, focus_border.border);
 }
 
 static int look_next_get_extra_window_spacing (void)
-{
+{E_
     return 3;
 }
 
 static int look_next_get_default_interwidget_spacing (void)
-{
+{E_
     return 1;
 }
 
 static int look_next_get_focus_ring_size (void)
-{
+{E_
     return 1;
 }
 
 static int look_next_get_window_resize_bar_thickness (void)
-{
+{E_
     return 7;
 }
 
 static unsigned long look_next_get_button_flat_color (void)
-{
+{E_
     return color_widget(10);
 }
 
 static int look_next_get_switch_size (void)
-{
+{E_
     return 16;
 }
 
 static int look_next_get_fielded_textbox_hscrollbar_width (void)
-{
+{E_
     return AUTO_WIDTH;
 }
 

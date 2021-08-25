@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* trivoptions.c - loads some trivial options from the ini file
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,7 +54,7 @@ struct options_struct {
 char *loadfile (const char *filename, long *filelen);
 
 void load_trivial_options (void)
-{
+{E_
     char *f, *s, *e, *p;
     int i;
     f = loadfile (catstrs (getenv ("HOME"), OPTIONS_FILE, NULL), 0);

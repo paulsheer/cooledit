@@ -1,9 +1,11 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* options.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 
+#include "inspect.h"
 #include <config.h>
 #include "stringtools.h"
 #include "edit.h"
@@ -34,7 +36,6 @@ extern int option_edit_left_extreme;
 extern int option_edit_top_extreme;
 extern int option_edit_bottom_extreme;
 extern int option_typing_replaces_selection;
-extern int option_latin2;
 extern int option_locale_encoding;
 extern int option_utf_interpretation2;
 extern int option_locale_encoding;
@@ -110,6 +111,7 @@ extern int option_color_24;
 extern int option_color_25;
 extern int option_color_26;
 
+static int dummy = 0;
 
 static struct {
     char *name;
@@ -119,6 +121,7 @@ static struct {
 #define TYPE_VALUE		2
 #define TYPE_HIDDEN_VALUE	3
 #define TYPE_HIDDEN_HEX_VALUE	4
+#define TYPE_BLANK		5
     int type;
 } integer_options [] = {
 /* The following are check box labels */
@@ -167,7 +170,7 @@ static struct {
 	{"option_new_window_ask_for_file", &option_new_window_ask_for_file, gettext_noop(" New windows ask for file "), TYPE_ON_OFF},
 	{"option_smooth_scrolling", &option_smooth_scrolling, gettext_noop(" Smooth scrolling "), TYPE_ON_OFF},
 	{"option_typing_replaces_selection", &option_typing_replaces_selection, gettext_noop(" Typing replaces selection "), TYPE_ON_OFF},
-	{"option_latin2", &option_latin2, gettext_noop(" Latin 2 composing "), TYPE_ON_OFF},
+	{"", &dummy, NULL, TYPE_BLANK},
 	{"option_utf_interpretation2", &option_utf_interpretation2, gettext_noop(" UTF8 Interpretation "), TYPE_ON_OFF},
 	{"option_reverse_levant", &option_reverse_levant, gettext_noop(" Reverse Hebrew/Arabic/etc. "), TYPE_ON_OFF},
 	{"last_unichar_left", &last_unichar_left, 0, TYPE_HIDDEN_VALUE},
@@ -244,10 +247,10 @@ static struct {
 	{"option_foreground_red", &option_foreground_red},
 	{"option_foreground_green", &option_foreground_green},
 	{"option_foreground_blue", &option_foreground_blue},
-	{"option_font2", &option_font2},
-	{"option_widget_font2", &option_widget_font2},
+	{"option_font4", &option_font2},
+	{"option_widget_font4", &option_widget_font2},
 	{"option_backup_ext", &option_backup_ext},
-	{"option_man_cmdline", &option_man_cmdline},
+	{"option_man_cmdline3", &option_man_cmdline},
 	{"option_preferred_visual", &option_preferred_visual}, 
 	{"option_alternate_dictionary", &option_alternate_dictionary}, 
 	{0, 0}
@@ -280,7 +283,7 @@ static struct {
 int save_options_section (const char *file, const char *section, const char *text);
 
 int load_setup (const char *file)
-{
+{E_
     static char *options_section = 0;
     char *p, *q;
     int fin = 0;
@@ -317,6 +320,8 @@ int load_setup (const char *file)
 	    }
 	    for (i = 0; integer_options[i].name; i++) {
 		int l;
+                if (integer_options[i].type == TYPE_BLANK)
+                    continue;
 		l = strlen (integer_options[i].name);
 		l = strnlen (p, l);
 		if (p[l] && strchr ("\t =", p[l])) {
@@ -347,7 +352,7 @@ int load_setup (const char *file)
 }
 
 void get_main_window_geometry (void)
-{
+{E_
     int x, y;
     unsigned int width, height, d;
     Window win, root;
@@ -382,7 +387,7 @@ void get_main_window_geometry (void)
 
 /* option_geometry is not strdup'ed here so don't free it */
 int save_setup (const char *file)
-{
+{E_
     char *p, *s;
     int r, i;
 
@@ -397,6 +402,8 @@ int save_setup (const char *file)
 	}
     }
     for (i = 0; integer_options[i].name; i++) {
+        if (integer_options[i].type == TYPE_BLANK)
+            continue;
 	if (integer_options[i].type == TYPE_HIDDEN_HEX_VALUE)
 	    sprintf (p, "%s = 0x%X\n%n", integer_options[i].name, *integer_options[i].value, &r);
 	else
@@ -418,14 +425,14 @@ int save_setup (const char *file)
 }
 
 void save_options (void)
-{
+{E_
     if (save_setup (editor_options_file) < 0)
 	CErrorDialog (main_window, 20, 20, _(" Save Options "), "%s", get_sys_error (
 	catstrs (_(" Error trying to save : "), editor_options_file, " ", NULL)));
 }
 
 static char *short_name (char *a, char *b)
-{
+{E_
     static char r[128];
     strcpy (r, a);
     strcat (r, b);
@@ -437,13 +444,16 @@ static char *short_name (char *a, char *b)
 #define WHICH_GENERAL	2
 
 static void assign_options (int which)
-{
+{E_
     int i = 0;
     static char whole_chars_search[128];
     static char whole_chars_move[128];
     static char alternate_dictionary[MAX_PATH_LEN];
 
     while (integer_options[i].value) {
+        if (integer_options[i].type == TYPE_BLANK) {
+            /* pass */
+	} else
 	if (integer_options[i].prompt) {
 	    if (which == WHICH_SWITCHES) {
 		if (integer_options[i].type == TYPE_ON_OFF)
@@ -481,7 +491,7 @@ static void assign_options (int which)
 }
 
 void draw_options_dialog (Window parent, int x, int y)
-{
+{E_
     Window win;
     XEvent xev;
     CEvent cev;
@@ -570,11 +580,12 @@ int set_editor_encoding (int utf_encoding, int locale_encoding);
 void cooledit_appearance_modification (void);
 
 void draw_switches_dialog (Window parent, int x, int y)
-{
+{E_
     Window win;
     XEvent xev;
     CEvent cev;
     int xh, yh;
+    int dy = 0;
     int i, n;
     CState s;
     CWidget *w;
@@ -603,9 +614,13 @@ void draw_switches_dialog (Window parent, int x, int y)
 		yh = y;
 	    }
 	    CDrawSwitch (short_name (integer_options[i].name, ""), win, xh, yh, *integer_options[i].value, _ (integer_options[i].prompt), 0);
+            dy = yh;
 	    CGetHintPos (0, &yh);
+            dy = yh - dy;
 	    n -= 2;
-	}
+	} else if (integer_options[i].type == TYPE_BLANK) {
+            yh += 40;
+        }
 	i++;
     }
 
@@ -707,7 +722,7 @@ void draw_switches_dialog (Window parent, int x, int y)
 
 
 void save_mode_options_dialog (Window parent, int x, int y)
-{
+{E_
     Window win;
     XEvent xev;
     CEvent cev;
@@ -783,14 +798,14 @@ void save_mode_options_dialog (Window parent, int x, int y)
 
 
 static char *syntax_get_line (void *data, int line)
-{
+{E_
     char **names;
     names = (char **) data;
     return names[line];
 }
 
 void menu_syntax_highlighting_dialog (Window parent, int x, int y)
-{
+{E_
     char *names[1024] =
     {"None", 0};
     int i, n;

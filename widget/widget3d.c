@@ -1,9 +1,11 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* widget3d.c - draws a graphics box with a rotatable 3D object
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -38,7 +40,7 @@ static Pixmap widget3d_currentpixmap;
 static long widget3d_thres;
 
 void destroy_solid (CWidget * w)
-{
+{E_
     if (!w->solid)
 	return;
     CClearAllSurfaces (w->ident);
@@ -55,7 +57,7 @@ void destroy_solid (CWidget * w)
 }
 
 int eh_threed (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     switch (xevent->type) {
     case Expose:
 	render_3d_object (w, xevent->xexpose.x, xevent->xexpose.y, xevent->xexpose.width, xevent->xexpose.height);
@@ -77,7 +79,7 @@ extern int override_8bit_non_lookup;
 void local_striangle (int x0, int y0,
 		      int x1, int y1,
 		      int x2, int y2, int z0, int bf)
-{
+{E_
     long n;
     XPoint p[3];
     p[0].x = x0;
@@ -103,7 +105,7 @@ void local_striangle (int x0, int y0,
 
 
 void local_drawline (int x1, int y1, int x2, int y2, int c)
-{
+{E_
     CSetColor(c);
     if(abs(x1) + abs(x2) + abs(y1) + abs(y2) < 32000)
 	    CLine(widget3d_currentpixmap, x1, y1, x2, y2);
@@ -111,7 +113,7 @@ void local_drawline (int x1, int y1, int x2, int y2, int c)
 
 
 void local_setpixel (int x, int y, int c)
-{
+{E_
     CSetColor(c);
     XDrawPoint(CDisplay, widget3d_currentpixmap, CGC, x, y);
 }
@@ -122,7 +124,7 @@ void local_setpixel (int x, int y, int c)
    be redrawn. If not the routine checks if there are any events in the
    event queue and only redraws if the event queue is empty. */
 CWidget *CRedraw3DObject (const char *ident, int force)
-{
+{E_
     CWidget *w = CIdent (ident);
     Window win = w->winid;
     TD_Solid *object = w->solid;
@@ -146,7 +148,7 @@ CWidget *CRedraw3DObject (const char *ident, int force)
 
 /* Allocates memory for the TD_Solid structure. returns 0 on error */
 TD_Solid *TD_allocate_solid (int max_num_surfaces)
-{
+{E_
     TD_Solid *object;
 
     if ((object = CMalloc (sizeof (TD_Solid))) == NULL)
@@ -167,7 +169,7 @@ TD_Solid *TD_allocate_solid (int max_num_surfaces)
 
 /*returns NULL on error, else returns a pointer to the surface points */
 TD_Surface *Calloc_surf (const char *ident, int surf_width, int surf_height, int *surf)
-{
+{E_
     int j = 0;
     CWidget *w = CIdent (ident);
 
@@ -187,7 +189,7 @@ TD_Surface *Calloc_surf (const char *ident, int surf_width, int surf_height, int
 
 /* free the i'th surface if widget ident */
 void Cfree_surf (CWidget *w, int i)
-{
+{E_
 
     if(w->solid->surf[i].point) {
 	free(w->solid->surf[i].point);
@@ -198,7 +200,7 @@ void Cfree_surf (CWidget *w, int i)
 /* free the last surface of widget ident, returns first available surface in surf */
 /* returns 1 if there are any remaining unfree'd surfaces */
 int Cfree_last_surf (CWidget *w, int *surf)
-{
+{E_
     int j = 0;
     for (; j < w->solid->num_surfaces; j++)
 	if (!w->solid->surf[j].point)		/* find the first unused surface */
@@ -213,13 +215,13 @@ int Cfree_last_surf (CWidget *w, int *surf)
 }
 
 void CClearAllSurfaces(const char *ident)
-{
+{E_
     CWidget *w = CIdent(ident);
     while(Cfree_last_surf (w, NULL));
 }
 
 void CInitSurfacePoints (const char *ident, int width, int height, TD_Point data[])
-{
+{E_
     TD_Surface *s = Calloc_surf (ident, width, height, NULL);
     memcpy (s->point, data, width * height * sizeof (TD_Point));
     TD_initcolor (s, -256);
@@ -228,7 +230,7 @@ void CInitSurfacePoints (const char *ident, int width, int height, TD_Point data
 #ifdef USING_MATRIXLIB
 
 void CMatrixToSurface (const char *ident, int surf_width, int surf_height, Matrix * x, Matrix * offset, double scale)
-{
+{E_
     TD_Point *p = CMalloc (x->columns * sizeof (TD_Point));
     int i;
 
@@ -249,7 +251,7 @@ void CMatrixToSurface (const char *ident, int surf_width, int surf_height, Matri
 
 CWidget * CDraw3DObject (const char *identifier, Window parent, int x, int y,
 	       int width, int height, int defaults, int max_num_surfaces)
-{
+{E_
     int i, j, n = 0;
     CWidget *w;
 
@@ -362,7 +364,7 @@ CWidget * CDraw3DObject (const char *identifier, Window parent, int x, int y,
 
 
 void render_3d_object (CWidget *wdt, int x, int y, int rendw, int rendh)
-{
+{E_
     int w = wdt->width;
     int h = wdt->height;
     Window win = wdt->winid;

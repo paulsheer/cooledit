@@ -1,10 +1,12 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* rxvtwidget.c - terminal emulator widget
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 #if 0
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -27,7 +29,7 @@
 
 
 CWidget *CDrawRxvt (const char *identifier, Window parent, int x, int y, char **argv)
-{
+{E_
     char **a;
     int i;
     XWindowAttributes wattr;

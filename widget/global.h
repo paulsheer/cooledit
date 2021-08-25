@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 #ifndef __CW_GLOBAL_H
 #define __CW_GLOBAL_H
 
@@ -13,20 +14,6 @@
 /* #define MyAltMask Mod3Mask */
 /* #define MyAltMask Mod4Mask */
 /* #define MyAltMask Mod5Mask */
-
-/* Some servers don't have a right Control key: */
-#define MyComposeKey XK_Control_R
-/* #define MyComposeKey XK_Shift_L */
-/* #define MyComposeKey XK_Shift_R */
-/* #define MyComposeKey XK_Meta_L */
-/* #define MyComposeKey XK_Meta_R */
-/* #define MyComposeKey XK_Alt_L */
-/* #define MyComposeKey XK_Alt_R */
-/* #define MyComposeKey XK_Super_L */
-/* #define MyComposeKey XK_Super_R */
-/* #define MyComposeKey XK_Hyper_L */
-/* #define MyComposeKey XK_Hyper_R */
-
 
 /* u_32bit_t should be four bytes */
 #define u_32bit_t unsigned int

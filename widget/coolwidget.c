@@ -1,10 +1,12 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* coolwidget.c - routines for simple widgets. Widget setup and destruction
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 #define COOL_WIDGET_C
 
+#include "inspect.h"
 #include <X11/Xatom.h>
 #include "coolwidget.h"
 #include "coollocal.h"
@@ -16,7 +18,7 @@ extern struct look *look;
 
 /* call this for fatal errors */
 void CError (const char *fmt,...)
-{
+{E_
     va_list s;
     char *str;
     va_start (s, fmt);
@@ -32,7 +34,7 @@ void CError (const char *fmt,...)
 
 #ifndef CMalloc
 void *CMalloc (size_t size)
-{
+{E_
     void *p;
     if ((p = malloc (size + 8)) == NULL)
 /* Not essential to translate */
@@ -43,7 +45,7 @@ void *CMalloc (size_t size)
 
 #ifdef DEBUG
 void *CDebugMalloc (size_t x, int line, const char *file)
-{
+{E_
     void *p;
     if ((p = malloc (x)) == NULL)
 /* Not essential to translate */
@@ -54,7 +56,7 @@ void *CDebugMalloc (size_t x, int line, const char *file)
 
 
 int allocate_color (char *color)
-{
+{E_
     if (!color)
 	return NO_COLOR;
     if (*color >= '0' && *color <= '9') {
@@ -95,12 +97,12 @@ static struct cursor_state CursorState;
 void render_cursor (struct cursor_state c);
 
 void init_cursor_state(void)
-{
+{E_
     memset(&CursorState, '\0', sizeof(CursorState));
 }
 
 void set_cursor_position (Window win, int x, int y, int w, int h, int type, C_wchar_t chr, unsigned long bg, unsigned long fg, int style)
-{
+{E_
     if (win == CGetFocus ()) {
 	CursorState.x = x;
 	CursorState.y = y;
@@ -129,7 +131,7 @@ int option_flashing_cursor = 1;
 unsigned long option_cursor_color;
 
 void render_cursor (struct cursor_state c)
-{
+{E_
     if (!CursorState.window)
 	return;
     if (c.type == CURSOR_TYPE_EDITOR) {
@@ -175,30 +177,35 @@ void render_cursor (struct cursor_state c)
 
 
 void CSetCursorColor (unsigned long c)
-{
+{E_
     option_cursor_color = c;
 }
 
 /* this is called from CNextEvent if an alarm event comes */
 void toggle_cursor (void)
-{
+{E_
     CursorState.state = 1 - CursorState.state;
     render_cursor (CursorState);
 }
 
 void set_cursor_visible (void)
-{
+{E_
     CursorState.state = 1;
     render_cursor (CursorState);
 }
 
 void set_cursor_invisible (void)
-{
+{E_
     CursorState.state = 0;
     render_cursor (CursorState);
 }
 
 
+union search_hack {
+    char shc[4];
+    u_32bit_t shi;
+    word shw;
+};
 
 /*
    These three routines are not much slower than doing the same
@@ -207,51 +214,46 @@ void set_cursor_invisible (void)
    the widget named ident. Returns 0 if not found.
  */
 static int find_ident (const char *ident)
-{
+{E_
     int i = last_widget + 1;
-    u_32bit_t p;
+    union search_hack d;
 
     if (!ident)
 	return 0;
     if (!ident[0])
 	return 0;
-    memcpy (&p, ident, sizeof (u_32bit_t));	/* we need four byte alignment for some machines */
+    strncpy (d.shc, ident, 4);
 
-    if (!ident[1])
-	goto word_search;
-    if (ident[2]) {		/* can compare first four bytes at once */
+    if (ident[1] && ident[2]) {
+/* can compare first four bytes at once */
 	while (--i)
 	    if (CIndex (i))
-		if (*((u_32bit_t *) CIndex (i)->ident) == p)
+		if (((union search_hack *) CIndex (i)->ident)->shi == d.shi)
 		    if (!strcmp (CIndex (i)->ident, ident))
 			return i;
 	return 0;
     } else {
-	word s;
-      word_search:
-	s = *((word *) (&p));
 	while (--i)
 	    if (CIndex (i))
-		if (*((word *) CIndex (i)->ident) == s)
+		if (((union search_hack *) CIndex (i)->ident)->shw == d.shw)
 		    if (!strcmp (CIndex (i)->ident, ident))
 			return i;
-
     }
     return 0;
 }
 
 CWidget *CIdent (const char *ident)
-{
+{E_
     return CIndex (find_ident (ident));
 }
 
 CWidget *CWidgetOfWindow (Window win)
-{
+{E_
     return CIndex (widget_of_window (win));
 }
 
 int CSystem (const char *string)
-{
+{E_
     int r;
     CDisableAlarm ();
     r = system (string);
@@ -262,7 +264,7 @@ int CSystem (const char *string)
 extern int (*global_alarm_callback[33]) (CWidget *, XEvent *, CEvent *);
 
 void CAddCallback (const char *ident, int (*callback) (CWidget *, XEvent *, CEvent *))
-{
+{E_
     CWidget *w = CIdent (ident);
     if (w)
 	w->callback = callback;
@@ -275,7 +277,7 @@ void CAddCallback (const char *ident, int (*callback) (CWidget *, XEvent *, CEve
 }
 
 void CAddBeforeCallback (const char *ident, int (*callback) (CWidget *, XEvent *, CEvent *))
-{
+{E_
     CWidget *w = CIdent (ident);
     if (w)
 	w->callback_before = callback;
@@ -284,7 +286,7 @@ void CAddBeforeCallback (const char *ident, int (*callback) (CWidget *, XEvent *
 #ifdef DEBUG_DOUBLE
 /* checks the magic numbers */
 int widget_check_magic ()
-{
+{E_
     int i = 0;
 
     while (last_widget > i++)
@@ -298,7 +300,7 @@ int widget_check_magic ()
 
 /* sends a full expose event to the widget */
 void CExpose (const char *ident)
-{
+{E_
     CWidget *w = CIdent (ident);
     if (w)
 	CSendExpose (w->winid, 0, 0, w->width, w->height);
@@ -306,7 +308,7 @@ void CExpose (const char *ident)
 
 /* Returns the widgets window or 0 if not found */
 Window CWindowOfWidget (const char *ident)
-{
+{E_
     CWidget *w = CIdent (ident);
     if (w)
 	return w->winid;
@@ -316,7 +318,7 @@ Window CWindowOfWidget (const char *ident)
 
 /* send an expose event to the internel queue */
 void CExposeWindowArea (Window win, int count, int x, int y, int w, int h)
-{
+{E_
     if (x < 0) {
 	w = x + w;
 	x = 0;
@@ -334,7 +336,7 @@ void CExposeWindowArea (Window win, int count, int x, int y, int w, int h)
 
 /* Returns the first NULL list entry. Exits if list full. */
 CWidget **find_empty_widget_entry ()
-{
+{E_
     int i = 0;
 
 /* widget can be added to an empty point in the list (created from an
@@ -358,7 +360,7 @@ CWidget **find_empty_widget_entry ()
 /* Fills in the widget structure. */
 CWidget *allocate_widget (Window newwin, const char *ident, Window parent, int x, int y,
 			  int width, int height, int kindofwidget)
-{
+{E_
     CWidget *w = CMalloc (sizeof (CWidget));
     memset (w, 0, sizeof (CWidget));	/*: important, 'cos free's check if NULL before freeing many parems */
 
@@ -379,12 +381,12 @@ CWidget *allocate_widget (Window newwin, const char *ident, Window parent, int x
 static int override_redirect = 0;
 
 void CSetOverrideRedirect (void)
-{
+{E_
     override_redirect = 1;
 }
 
 void CClearOverrideRedirect (void)
-{
+{E_
     override_redirect = 0;
 }
 
@@ -399,10 +401,12 @@ void CClearOverrideRedirect (void)
 CWidget *CSetupWidget (const char *identifier, Window parent, int x, int y,
 	    int width, int height, int kindofwidget, unsigned long input,
 		       unsigned long bgcolor, int takes_focus)
-{
+{E_
     XSetWindowAttributes xswa;
     Window newwin;
     CWidget **w;
+
+    memset (&xswa, '\0', sizeof (xswa));
 
 /* NLS ? */
     if (CIdent (identifier) && kindofwidget == C_BUTTON_WIDGET)
@@ -458,7 +462,7 @@ CWidget *CSetupWidget (const char *identifier, Window parent, int x, int y,
 extern Atom ATOM_WM_PROTOCOLS, ATOM_WM_DELETE_WINDOW, ATOM_WM_TAKE_FOCUS, ATOM_WM_NAME, ATOM_WM_NORMAL_HINTS;
 
 void CSetWindowSizeHints (CWidget * wdt, int min_w, int min_h, int max_w, int max_h)
-{
+{E_
     XSizeHints size_hints;
     long d;
     size_hints.min_width = min_w;
@@ -491,7 +495,7 @@ void CSetWindowSizeHints (CWidget * wdt, int min_w, int min_h, int max_w, int ma
 }
 
 void CSetWindowResizable (const char *ident, int min_width, int min_height, int max_width, int max_height)
-{
+{E_
     Window w;
     int width, height;
     CWidget *wdt;
@@ -537,7 +541,7 @@ void CSetWindowResizable (const char *ident, int min_width, int min_height, int 
 extern char *init_geometry;
 
 Window CDrawHeadedDialog (const char *identifier, Window parent, int x, int y, const char *label)
-{
+{E_
     Window win;
     CWidget *wdt;
 
@@ -604,7 +608,7 @@ Window CDrawHeadedDialog (const char *identifier, Window parent, int x, int y, c
 }
 
 Window CDrawDialog (const char *identifier, Window parent, int x, int y)
-{
+{E_
     Window w;
     CWidget *wdt;
     w = (wdt = CSetupWidget (identifier, parent, x, y,
@@ -617,7 +621,7 @@ Window CDrawDialog (const char *identifier, Window parent, int x, int y)
 /* this is not the same as a main window, since the WM places each */
 /* main window inside a cosmetic window */
 Window CGetWMWindow (Window win)
-{
+{E_
     Window root, parent, *children;
     unsigned int nchildren;
 
@@ -635,7 +639,7 @@ Window CGetWMWindow (Window win)
 
 /* I tested this procedure with kwm, fvwm95, fvwm, twm, olwm, without problems */
 void CRaiseWMWindow (char *ident)
-{
+{E_
     Window wm_win;
     CWidget *w;
     XWindowChanges c;
@@ -652,7 +656,7 @@ void CRaiseWMWindow (char *ident)
 }
 
 void CSetBackgroundPixmap (const char *ident, const char *data[], int w, int h, char start_char)
-{
+{E_
     XSetWindowAttributes xswa;
     CWidget *wdt;
     wdt = CIdent (ident);
@@ -666,7 +670,7 @@ void CSetBackgroundPixmap (const char *ident, const char *data[], int w, int h, 
 #define MAX_KEYS_IN_DIALOG 64
 
 int find_letter_at_word_start (unsigned char *label, unsigned char *used_keys, int n)
-{
+{E_
     int c, j;
     for (j = 0; label[j]; j++) {	/* check for letters with an & in front of them */
 	c = my_lower_case (label[j + 1]);
@@ -696,7 +700,7 @@ int find_letter_at_word_start (unsigned char *label, unsigned char *used_keys, i
 }
 
 int find_hotkey (CWidget * w)
-{
+{E_
     unsigned char used_keys[MAX_KEYS_IN_DIALOG + 3];
     const char *label;
     int n = 0;
@@ -721,7 +725,7 @@ int find_hotkey (CWidget * w)
 
 CWidget *CDrawButton (const char *identifier, Window parent, int x, int y,
 		      int width, int height, const char *label)
-{
+{E_
     CWidget *wdt;
     int w, h;
     CPushFont ("widget", 0);
@@ -749,7 +753,7 @@ CWidget *CDrawButton (const char *identifier, Window parent, int x, int y,
 
 CWidget *CDrawProgress (const char *identifier, Window parent, int x, int y,
 			int width, int height, int p)
-{
+{E_
     CWidget *w;
     if ((w = CIdent (identifier))) {
 	w->cursor = p;
@@ -766,7 +770,7 @@ CWidget *CDrawProgress (const char *identifier, Window parent, int x, int y,
 }
 
 CWidget *CDrawBar (Window parent, int x, int y, int w)
-{
+{E_
     CWidget *wdt;
     wdt = CSetupWidget ("hbar", parent, x, y,
 			 w, 3, C_BAR_WIDGET, INPUT_EXPOSE, COLOR_FLAT, 0);
@@ -776,7 +780,7 @@ CWidget *CDrawBar (Window parent, int x, int y, int w)
 
 /* returns the text size. The result is one descent greater than the actual size */
 void CTextSize (int *w, int *h, const char *str)
-{
+{E_
     char *p, *q = (char *) str;
     int w1, h1;
     if (!w)
@@ -797,7 +801,7 @@ void CTextSize (int *w, int *h, const char *str)
 
 
 CWidget *CDrawText (const char *identifier, Window parent, int x, int y, const char *fmt,...)
-{
+{E_
     va_list pa;
     char *str;
     int w, h;
@@ -821,7 +825,7 @@ CWidget *CDrawText (const char *identifier, Window parent, int x, int y, const c
 }
 
 CWidget *CDrawTextFixed (const char *identifier, Window parent, int x, int y, const char *fmt,...)
-{
+{E_
     va_list pa;
     char *str;
     int w, h;
@@ -846,7 +850,7 @@ CWidget *CDrawTextFixed (const char *identifier, Window parent, int x, int y, co
 }
 
 CWidget *CDrawStatus (const char *identifier, Window parent, int x, int y, int w, char *str)
-{
+{E_
     CWidget *wdt;
     int h;
     h = FONT_PIX_PER_LINE + TEXT_RELIEF * 2 + 2;
@@ -860,7 +864,7 @@ CWidget *CDrawStatus (const char *identifier, Window parent, int x, int y, int w
 void render_text (CWidget * w);
 
 CWidget *CRedrawText (const char *identifier, const char *fmt,...)
-{
+{E_
     va_list pa;
     char *str;
     CWidget *wdt;
@@ -897,7 +901,7 @@ void selection_clear (void);
    Only for a widget that has no children.
  */
 int free_single_widget (int i_)
-{
+{E_
     const int i = i_;
     if (i && CIndex (i)) {
         CWidget *w = CIndex (i);
@@ -975,7 +979,7 @@ int free_single_widget (int i_)
 /*searches for the first widget in the list that has win as its parent
    and returns index */
 int find_first_child_of (Window win)
-{
+{E_
     int i = 0;
     while (last_widget > i++)
 	if (CIndex (i) != NULL)
@@ -985,7 +989,7 @@ int find_first_child_of (Window win)
 }
 
 int find_last_child_of (Window win)
-{
+{E_
     int i = last_widget;
     while (--i > 0)
 	if (CIndex (i) != NULL)
@@ -996,7 +1000,7 @@ int find_last_child_of (Window win)
 
 /* int for_all_widgets (int (callback *) (CWidget *, void *, void *), void *data1, void *data2) */
 long for_all_widgets (for_all_widgets_cb_t call_back, void *data1, void *data2)
-{
+{E_
     long (*callback) (CWidget *, void *, void *) = (for_all_widgets_cb_t) call_back;
     int i = last_widget;
     while (--i > 0)
@@ -1007,7 +1011,7 @@ long for_all_widgets (for_all_widgets_cb_t call_back, void *data1, void *data2)
 }
 
 int widget_of_window (Window win)
-{
+{E_
     int i = 0;
     while (last_widget > i++)
 	if (CIndex (i) != NULL)
@@ -1017,7 +1021,7 @@ int widget_of_window (Window win)
 }
 
 int find_next_child_of (Window win, Window child)
-{
+{E_
     int i = widget_of_window (child);
     if (i)
 	while (last_widget > i++)
@@ -1028,7 +1032,7 @@ int find_next_child_of (Window win, Window child)
 }
 
 int find_previous_child_of (Window win, Window child)
-{
+{E_
     int i = widget_of_window (child);
     if (i)
 	while (--i > 0)
@@ -1039,7 +1043,7 @@ int find_previous_child_of (Window win, Window child)
 }
 
 CWidget *CDialogOfWindow (Window window)
-{
+{E_
     for (;;) {
 	CWidget *w;
 	w = CWidgetOfWindow (window);
@@ -1053,7 +1057,7 @@ CWidget *CDialogOfWindow (Window window)
 }
 
 Window CFindParentMainWindow (Window parent)
-{
+{E_
     int i;
     if (parent == CRoot)
 	return 0;
@@ -1066,7 +1070,7 @@ Window CFindParentMainWindow (Window parent)
 
 /*recursively destroys a widget and all its descendants */
 static void recursive_destroy_widgets (int i)
-{
+{E_
     int j;
     while ((j = find_first_child_of (CIndex (i)->winid)))
 	recursive_destroy_widgets (j);
@@ -1078,7 +1082,7 @@ void CFocusLast (void);
 /*returns 1 on error --- not found. Destroys a widget by name and all its
    descendents */
 int CDestroyWidget (const char *identifier)
-{
+{E_
     int i = find_ident (identifier);
 
     if (i) {
@@ -1091,7 +1095,7 @@ int CDestroyWidget (const char *identifier)
 
 
 void CDestroyAll ()
-{
+{E_
     int j;
     while ((j = find_first_child_of (CRoot)))
 	recursive_destroy_widgets (j);
@@ -1107,7 +1111,7 @@ void XChar2b_tmp_buf_free(void);
 void wchar_t_tmp_buf_free(void);
 
 void CShutdown (void)
-{
+{E_
     remove_all_watch ();
     CDestroyAll ();
 #ifdef USE_XIM
@@ -1131,7 +1135,7 @@ void CShutdown (void)
 }
 
 void drawstring_xy (Window win, int x, int y, const char *text)
-{
+{E_
     if (!text)
 	return;
     if (!*text)
@@ -1141,7 +1145,7 @@ void drawstring_xy (Window win, int x, int y, const char *text)
 
 
 char *whereis_hotchar (const char *labl, int hotkey)
-{
+{E_
     unsigned char *label = (unsigned char *) labl;
     int i;
     if (hotkey <= ' ' || hotkey > 255)
@@ -1155,7 +1159,7 @@ char *whereis_hotchar (const char *labl, int hotkey)
 }
 
 void underline_hotkey (Window win, int x, int y, const char *text, int hotkey)
-{
+{E_
     char *p;
     if (hotkey <= ' ' || hotkey > 255)
 	return;
@@ -1167,18 +1171,18 @@ void underline_hotkey (Window win, int x, int y, const char *text, int hotkey)
 }
 
 void drawstring_xy_hotkey (Window win, int x, int y, const char *text, int hotkey)
-{
+{E_
     drawstring_xy (win, x, y, text);
     underline_hotkey (win, x, y, text, hotkey);
 }
 
 void render_button (CWidget * wdt)
-{
+{E_
     (*look->render_button) (wdt);
 }
 
 void render_bar (CWidget * wdt)
-{
+{E_
     (*look->render_bar) (wdt);
 }
 
@@ -1186,7 +1190,7 @@ void render_bar (CWidget * wdt)
 #define FS (TEXT_RELIEF + 1)
 
 static int menu_width_calc (const unsigned char *p, const unsigned char *matching, int x, int *color, int *first_control, int *count)
-{
+{E_
     const unsigned char *q;
     q = matching ? matching : p;
     while (*q == *p && *q && *p) {
@@ -1220,7 +1224,7 @@ static int menu_width_calc (const unsigned char *p, const unsigned char *matchin
 
 /* this is a zero flicker routine */
 void render_status (CWidget * wdt, int expose)
-{
+{E_
     static Window lastwin = 0;
     static unsigned char lasttext[1024 + MAX_PATH_LEN] = "";
     Window win = CWindowOf (wdt);
@@ -1278,17 +1282,17 @@ void render_status (CWidget * wdt, int expose)
 }
 
 void render_text (CWidget * wdt)
-{
+{E_
     (*look->render_text) (wdt);
 }
 
 void render_window (CWidget * wdt)
-{
+{E_
     (*look->render_window) (wdt);
 }
 
 void render_progress (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     int p = wdt->cursor;
 
@@ -1307,14 +1311,14 @@ void render_progress (CWidget * wdt)
 }
 
 void render_sunken (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     Window win = wdt->winid;
     render_bevel (win, 0, 0, w - 1, h - 1, 2, 1);
 }
 
 void render_bevel (Window win, int x1, int y1, int x2, int y2, int thick, int sunken)
-{
+{E_
     if (option_low_bandwidth)
 	return;
     if (sunken & 1)
@@ -1327,7 +1331,7 @@ void render_bevel (Window win, int x1, int y1, int x2, int y2, int thick, int su
 void expose_picture (CWidget * w);
 
 void set_widget_position (CWidget * w, int x, int y)
-{
+{E_
     if (w->winid) {		/*some widgets have no window of there own */
 	w->x = x;
 	w->y = y;
@@ -1343,7 +1347,7 @@ void set_widget_position (CWidget * w, int x, int y)
 }
 
 void CSetWidgetPosition (const char *ident, int x, int y)
-{
+{E_
     CWidget *w = CIdent (ident);
     if (!w)
 	return;
@@ -1351,7 +1355,7 @@ void CSetWidgetPosition (const char *ident, int x, int y)
 }
 
 void configure_children (CWidget * wt, int w, int h)
-{
+{E_
     CWidget *wdt;
     int new_w, new_h, new_x, new_y, i;
     i = find_first_child_of (wt->winid);
@@ -1387,7 +1391,7 @@ void configure_children (CWidget * wt, int w, int h)
 }
 
 void CSetSize (CWidget * wt, int w, int h)
-{
+{E_
     int w_min, h_min;
     if (!wt)
 	return;
@@ -1426,7 +1430,7 @@ void CSetSize (CWidget * wt, int w, int h)
 }
 
 void CSetWidgetSize (const char *ident, int w, int h)
-{
+{E_
     CWidget *wt = CIdent (ident);
     if (!wt)
 	return;
@@ -1434,7 +1438,7 @@ void CSetWidgetSize (const char *ident, int w, int h)
 }
 
 void CSetMovement (const char *ident, unsigned long position)
-{
+{E_
     CWidget *w;
     w = CIdent (ident);
     if (!w)
@@ -1443,13 +1447,13 @@ void CSetMovement (const char *ident, unsigned long position)
 }
 
 void CCentre (char *ident)
-{
+{E_
     CSetMovement (ident, POSITION_CENTRE);
 }
 
 /* does a map as well */
 void CSetSizeHintPos (const char *ident)
-{
+{E_
     int x, y;
     CWidget *w;
     get_hint_limits (&x, &y);
@@ -1466,7 +1470,7 @@ void CSetSizeHintPos (const char *ident)
 
 /* for mapping a main window. other widgets are mapped when created */
 void CMapDialog (const char *ident)
-{
+{E_
     CWidget *w;
     w = CIdent (ident);
     if (!w)

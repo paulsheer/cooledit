@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
+#include "inspect.h"
 #include "rxvtlib.h"
 #include "stringtools.h"
 
@@ -29,7 +31,7 @@
 /*----------------------------------------------------------------------*/
 /* EXTPROTO */
 const char     *my_basename (const char *str)
-{
+{E_
     const char     *base = strrchr (str, '/');
 
     return (base ? base + 1 : str);
@@ -40,7 +42,7 @@ const char     *my_basename (const char *str)
  */
 /* EXTPROTO */
 void            print_error (const char *fmt, ...)
-{
+{E_
     va_list         arg_ptr;
 
     va_start (arg_ptr, fmt);
@@ -60,7 +62,7 @@ void            print_error (const char *fmt, ...)
  */
 /* EXTPROTO */
 int             Str_match (const char *s1, const char *s2)
-{
+{E_
     int             n;
 
     if (s1 == NULL || s2 == NULL)
@@ -73,7 +75,7 @@ int             Str_match (const char *s1, const char *s2)
 
 /* EXTPROTO */
 const char     *Str_skip_space (const char *str)
-{
+{E_
     if (str)
 	while (*str && isspace (*str))
 	    str++;
@@ -86,7 +88,7 @@ const char     *Str_skip_space (const char *str)
  */
 /* EXTPROTO */
 char           *Str_trim (char *str)
-{
+{E_
     char           *r, *s;
     int             n;
 
@@ -134,7 +136,7 @@ char           *Str_trim (char *str)
  */
 /* EXTPROTO */
 int             Str_escaped (char *str)
-{
+{E_
     char            ch, *s, *d;
     int             i, num, append = 0;
 
@@ -227,7 +229,7 @@ int             Str_escaped (char *str)
 /* INTPROTO */
 char           *File_search_path (const char *pathlist, const char *file,
 				  const char *ext)
-{
+{E_
     int             maxpath, len;
     const char     *p, *path;
     char            name[256];
@@ -295,7 +297,7 @@ char           *File_search_path (const char *pathlist, const char *file,
 
 /* EXTPROTO */
 char           *rxvtlib_File_find (rxvtlib *o, const char *file, const char *ext)
-{
+{E_
     char           *f;
 
     if (file == NULL || *file == '\0')
@@ -328,7 +330,7 @@ char           *rxvtlib_File_find (rxvtlib *o, const char *file, const char *ext
 /* EXTPROTO */
 void            rxvtlib_Draw_Shadow (rxvtlib *o, Window win, GC topShadow, GC botShadow, int x,
 			     int y, int w, int h)
-{
+{E_
     int             x1, y1, w1, h1, shadow;
 
     shadow = (w == 0 || h == 0) ? 1 : SHADOW;
@@ -358,7 +360,7 @@ void            rxvtlib_Draw_Shadow (rxvtlib *o, Window win, GC topShadow, GC bo
 /* EXTPROTO */
 void            rxvtlib_Draw_Triangle (rxvtlib *o, Window win, GC topShadow, GC botShadow, int x,
 			       int y, int w, int type)
-{
+{E_
     switch (type) {
     case 'r':			/* right triangle */
 	XDrawLine (o->Xdisplay, win, topShadow, x, y, x, y + w);

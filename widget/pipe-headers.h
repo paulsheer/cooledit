@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
 #endif

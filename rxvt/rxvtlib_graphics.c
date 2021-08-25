@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
+#include "inspect.h"
 #include "rxvtlib.h"
 
 /*--------------------------------*-C-*---------------------------------*
@@ -43,7 +45,7 @@
 /* ARGSUSED */
 /* INTPROTO */
 void            rxvtlib_Gr_NewWindow (rxvtlib *o, int nargs, int args[])
-{
+{E_
     int             x, y;
     unsigned int    w, h;
     Window          win;
@@ -89,7 +91,7 @@ void            rxvtlib_Gr_NewWindow (rxvtlib *o, int nargs, int args[])
 /* ARGSUSED */
 /* INTPROTO */
 void            rxvtlib_Gr_ClearWindow (rxvtlib *o, grwin_t * grwin)
-{
+{E_
     grcmd_t        *cmd, *next;
 
     for (cmd = grwin->graphics; cmd != NULL; cmd = next) {
@@ -112,7 +114,7 @@ void            rxvtlib_Gr_ClearWindow (rxvtlib *o, grwin_t * grwin)
 /* ARGSUSED */
 /* INTPROTO */
 void            rxvtlib_Gr_Text (rxvtlib *o, grwin_t * grwin, grcmd_t * data)
-{
+{E_
     int             x, y, align;
 
     if (data->ncoords < 4 || data->text == NULL || *(data->text) == '\0')
@@ -147,7 +149,7 @@ void            rxvtlib_Gr_Text (rxvtlib *o, grwin_t * grwin, grcmd_t * data)
 /* ARGSUSED */
 /* INTPROTO */
 void            rxvtlib_Gr_Geometry (rxvtlib *o, grwin_t * grwin, grcmd_t * data)
-{
+{E_
     if (grwin)
 	rxvtlib_tt_printf (o, "\033G%ld %d %d %u %u %d %d %ld %ld %d\n",
 		   (long)grwin->win,
@@ -171,7 +173,7 @@ void            rxvtlib_Gr_Geometry (rxvtlib *o, grwin_t * grwin, grcmd_t * data
 /* ARGSUSED */
 /* INTPROTO */
 void            rxvtlib_Gr_DestroyWindow (rxvtlib *o, grwin_t * grwin)
-{
+{E_
     grcmd_t        *cmd, *next;
 
     if (grwin == NULL)
@@ -200,7 +202,7 @@ void            rxvtlib_Gr_DestroyWindow (rxvtlib *o, grwin_t * grwin)
 /* ARGSUSED */
 /* INTPROTO */
 void            rxvtlib_Gr_Dispatch (rxvtlib *o, grwin_t * grwin, grcmd_t * data)
-{
+{E_
     int             i, n;
     union {
 	XPoint          pt[NGRX_PTS / 2];
@@ -278,7 +280,7 @@ void            rxvtlib_Gr_Dispatch (rxvtlib *o, grwin_t * grwin, grcmd_t * data
 /* ARGSUSED */
 /* INTPROTO */
 void            rxvtlib_Gr_Redraw (rxvtlib *o, grwin_t * grwin)
-{
+{E_
     grcmd_t        *cmd;
 
     for (cmd = grwin->graphics; cmd != NULL; cmd = cmd->next)
@@ -292,7 +294,7 @@ void            rxvtlib_Gr_Redraw (rxvtlib *o, grwin_t * grwin)
 /* ARGSUSED */
 /* EXTPROTO */
 void            rxvtlib_Gr_ButtonReport (rxvtlib *o, int but, int x, int y)
-{
+{E_
 #ifdef RXVT_GRAPHICS
     grwin_t        *grwin;
 
@@ -316,7 +318,7 @@ void            rxvtlib_Gr_ButtonReport (rxvtlib *o, int but, int x, int y)
 /* EXTPROTO */
 void            rxvtlib_Gr_do_graphics (rxvtlib *o, int cmd, int nargs, int args[],
 				unsigned char *text)
-{
+{E_
 #ifdef RXVT_GRAPHICS
     static Window   last_id = None;
     long            win_id;
@@ -405,7 +407,7 @@ void            rxvtlib_Gr_do_graphics (rxvtlib *o, int cmd, int nargs, int args
 /* ARGSUSED */
 /* EXTPROTO */
 void            rxvtlib_Gr_scroll (rxvtlib *o, int count)
-{
+{E_
 #ifdef RXVT_GRAPHICS
     static short    prev_start = 0;
     grwin_t        *grwin, *next;
@@ -430,7 +432,7 @@ void            rxvtlib_Gr_scroll (rxvtlib *o, int count)
 
 /* EXTPROTO */
 void            rxvtlib_Gr_ClearScreen (rxvtlib *o)
-{
+{E_
 #ifdef RXVT_GRAPHICS
     grwin_t        *grwin, *next;
 
@@ -448,7 +450,7 @@ void            rxvtlib_Gr_ClearScreen (rxvtlib *o)
 
 /* EXTPROTO */
 void            rxvtlib_Gr_ChangeScreen (rxvtlib *o)
-{
+{E_
 #ifdef RXVT_GRAPHICS
     grwin_t        *grwin, *next;
 
@@ -470,7 +472,7 @@ void            rxvtlib_Gr_ChangeScreen (rxvtlib *o)
 /* ARGSUSED */
 /* EXTPROTO */
 void            rxvtlib_Gr_expose (rxvtlib *o, Window win)
-{
+{E_
 #ifdef RXVT_GRAPHICS
     grwin_t        *grwin;
 
@@ -486,7 +488,7 @@ void            rxvtlib_Gr_expose (rxvtlib *o, Window win)
 /* ARGSUSED */
 /* EXTPROTO */
 void            rxvtlib_Gr_Resize (rxvtlib *o, int w, int h)
-{
+{E_
 #ifdef RXVT_GRAPHICS
     grwin_t        *grwin;
 
@@ -504,7 +506,7 @@ void            rxvtlib_Gr_Resize (rxvtlib *o, int w, int h)
 
 /* EXTPROTO */
 void            rxvtlib_Gr_reset (rxvtlib *o)
-{
+{E_
 #ifdef RXVT_GRAPHICS
     grwin_t        *grwin, *next;
 
@@ -519,7 +521,7 @@ void            rxvtlib_Gr_reset (rxvtlib *o)
 
 /* EXTPROTO */
 int             rxvtlib_Gr_Displayed (rxvtlib *o)
-{
+{E_
 #ifdef RXVT_GRAPHICS
     return o->graphics_up;
 #else

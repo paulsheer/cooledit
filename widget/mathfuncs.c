@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* mathfuncs.c: standalone log(), sqrt(), pow() functions not requiring libm
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -15,7 +17,7 @@
 #define floating_p_error(x) float_error(__FILE__, __LINE__)
 
 static void float_error (char *file, int line)
-{
+{E_
     fprintf (stderr, "%s:%d: floating point error\n", file, line);
     abort ();
 }
@@ -57,7 +59,7 @@ static void float_error (char *file, int line)
 #define my_fabs(t) ((t) >= 0 ? (t) : -(t))
 
 double my_log (double x)
-{
+{E_
     int i = 1, j;
     double t, q = 1, ans = 0;
 
@@ -106,7 +108,7 @@ double my_log (double x)
 
 
 double my_sqrt (double x)
-{
+{E_
     double last_ans, ans = 2;
 
     if (x < 0.0)
@@ -124,7 +126,7 @@ double my_sqrt (double x)
 
 
 double my_pow (double x, double y)
-{
+{E_
     double z, ans = 1, ans2 = 1, t;
     long i, j, inv = 0;
     unsigned long max, negative = 0;
@@ -209,7 +211,7 @@ double my_pow (double x, double y)
 
 
 double my_log (double x)
-{
+{E_
     if (x <= 0.0)
 	floating_p_error(0);
 
@@ -221,7 +223,7 @@ double my_log (double x)
 }
 
 double my_sqrt (double x)
-{
+{E_
     const double zero = 0.0;
 
     if (x >= zero) {
@@ -236,7 +238,7 @@ double my_sqrt (double x)
 }
 
 double my_pow (double x, double y)
-{
+{E_
     int negative;
     __volatile__ unsigned short cw, saved_cw;
 
@@ -286,7 +288,7 @@ double my_pow (double x, double y)
 #ifdef TEST_MY_POW
 
 void main (void)
-{
+{E_
     int i = 0;
     double p, q, h, g;
     for (q = -10; q < 10; q += 0.23) {

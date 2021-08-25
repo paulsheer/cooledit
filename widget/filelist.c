@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* filelist.c - for drawing a scrollable filelist with size, permissions etc.
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,7 +51,7 @@ extern struct look *look;
 
 /* reset with timestr = 0 */
 void get_file_time (char *timestr, time_t file_time, int l)
-{
+{E_
 #ifndef HAVE_STRFTIME
     static char monthstr[12][8] =
     {
@@ -107,18 +109,18 @@ void get_file_time (char *timestr, time_t file_time, int l)
 CWidget *CDrawFilelist (const char *identifier, Window parent, int x, int y,
 			int width, int height, int line, int column,
 			struct file_entry *directentry, long options)
-{
+{E_
     return (*look->draw_file_list) (identifier, parent, x, y, width, height, line, column,
 				    directentry, options);
 }
 
 CWidget *CRedrawFilelist (const char *identifier, struct file_entry *directentry, int preserve)
-{
+{E_
     return (*look->redraw_file_list) (identifier, directentry, preserve);
 }
 
 struct file_entry *CGetFilelistLine (CWidget * w, int line)
-{
+{E_
     return (*look->get_file_list_line) (w, line);
 }
 

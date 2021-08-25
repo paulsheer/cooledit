@@ -1,10 +1,13 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* editdraw.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include "edit.h"
+#include "remotefs.h"
 
 #define MAX_LINE_LEN 8192
 
@@ -20,7 +23,7 @@ extern struct look *look;
 #if defined (MIDNIGHT) || defined (GTK)
 
 void status_string (WEdit * edit, char *s, int w, int fill, int font_width)
-{
+{E_
 #ifdef MIDNIGHT
     int i;
 #endif
@@ -57,7 +60,7 @@ void status_string (WEdit * edit, char *s, int w, int fill, int font_width)
 
 /* how to get as much onto the status line as is numerically possible :) */
 void edit_status (WEdit * edit)
-{
+{E_
     int w, i, t;
     char *s;
     w = edit->widget.cols - (edit->have_frame * 2);
@@ -93,7 +96,7 @@ void render_status (CWidget * wdt, int expose);
 #ifdef GTK
 
 void edit_status (WEdit *edit)
-{
+{E_
     GtkEntry *entry;
     int w, i, t;
     char s[160];
@@ -124,12 +127,13 @@ void edit_status (WEdit *edit)
 #else
 
 void edit_status (WEdit * edit)
-{
+{E_
     int status_text_width;
     int name_trunc_len = 3;
     long start_mark, end_mark;
     CWidget *wdt;
     char *p;
+    char *host = NULL;
     char id[33];
     char s[4096];
     char block[32] = "";
@@ -165,8 +169,15 @@ void edit_status (WEdit * edit)
     if (end_mark - start_mark && !column_highlighting)
         sprintf(block, "  \034\001%ld\033\035", end_mark - start_mark);
     pstat_to_mode_string (&edit->stat, mode);
-    sprintf (s,
-	     "\034%c%s\033\035  \034%s\035  \034%s%s%s%c\035  \034\014%02ld\033\035  \034%-4ld+%2ld=\014%4ld\033/%3ld\035  \034*%-5ld/%5ldb=%s\035%s  \034%s\035",
+    if (edit->host && *edit->host && strcmp(edit->host, REMOTEFS_LOCAL))
+        host = sprintf_alloc ("\021%s:\033", edit->host);
+    else
+        host = (char *) strdup ("");
+    if (edit_translate_key_in_key_compose ()) {
+        snprintf (s, sizeof (s), "\034\030%s\033\035", possible_char ());
+    } else {
+        sprintf (s,
+	     "\034%c%s\033\035  \034%s\035  \034%s%s%s%c\035  \034\030%02ld\033\035  \034%-4ld+%2ld=\030%4ld\033/%3ld\035  \034*%-5ld/%5ldb=%s\035%s  \034%s%s\035",
 	     *p ? '\033' : '\003', *p ? (char *) name_trunc (p, name_trunc_len) : _("<unnamed>"),
              mode,
 	     end_mark - start_mark || (edit->mark2 == -1
@@ -175,7 +186,9 @@ void edit_status (WEdit * edit)
 	     edit->modified ? "\012M\033" : "-", edit->macro.macro_i < 0 ? "-" : "\023R\033",
 	     edit->overwrite == 0 ? '-' : 'O', edit->curs_col / FONT_MEAN_WIDTH,
 	     edit->start_line + 1, edit->curs_row, edit->curs_line + 1, edit->total_lines + 1,
-	     edit->curs1, edit->last_byte, b, block, edit->dir);
+	     edit->curs1, edit->last_byte, b, block, host, edit->dir);
+    }
+    free (host);
     strcpy (id, CIdentOf (edit->widget));
     strcat (id, ".text");
     wdt = CIdent (id);
@@ -193,7 +206,7 @@ void edit_status (WEdit * edit)
 
 /* boolean */
 int cursor_in_screen (WEdit * edit, long row)
-{
+{E_
     if (row < 0 || row >= edit->num_widget_lines)
 	return 0;
     else
@@ -202,7 +215,7 @@ int cursor_in_screen (WEdit * edit, long row)
 
 /* returns rows from the first displayed line to the cursor */
 int cursor_from_display_top (WEdit * edit)
-{
+{E_
     if (edit->curs1 < edit->start_display)
 	return -edit_move_forward (edit, edit->curs1, 0, edit->start_display);
     else
@@ -211,7 +224,7 @@ int cursor_from_display_top (WEdit * edit)
 
 /* returns how far the cursor is out of the screen */
 int cursor_out_of_screen (WEdit * edit)
-{
+{E_
     int row = cursor_from_display_top (edit);
     if (row >= edit->num_widget_lines)
 	return row - edit->num_widget_lines + 1;
@@ -221,7 +234,7 @@ int cursor_out_of_screen (WEdit * edit)
 }
 
 int edit_get_line_height (WEdit * edit, int row)
-{
+{E_
     int n, i, h = 0;
     struct _book_mark *book_marks[10];
     n = book_mark_query_all (edit, row, book_marks);
@@ -232,7 +245,7 @@ int edit_get_line_height (WEdit * edit, int row)
 }
 
 int edit_get_line_height_and_bookmarks (WEdit * edit, int row, struct _book_mark **book_marks, int *n)
-{
+{E_
     int i, h = 0;
     *n = book_mark_query_all (edit, row, book_marks);
     for (i = 0; i < *n; i++)
@@ -247,7 +260,7 @@ int edit_width_of_long_printable (int c);
 
 /* this scrolls the text so that cursor is on the screen */
 void edit_scroll_screen_over_cursor (WEdit * edit)
-{
+{E_
     int p;
     int outby;
     int b_extreme, t_extreme, l_extreme, r_extreme;
@@ -340,14 +353,14 @@ unsigned long edit_italic_color;
 unsigned long edit_cursor_color;
 
 void edit_set_foreground_colors (unsigned long normal, unsigned long bold, unsigned long italic)
-{
+{E_
     edit_normal_foreground_color = normal;
     edit_bold_color = bold;
     edit_italic_color = italic;
 }
 
 void edit_set_background_colors (unsigned long normal, unsigned long abnormal, unsigned long marked, unsigned long marked_abnormal, unsigned long highlighted)
-{
+{E_
     edit_abnormal_color = abnormal;
     edit_marked_abnormal_color = marked_abnormal;
     edit_marked_color = marked;
@@ -356,21 +369,21 @@ void edit_set_background_colors (unsigned long normal, unsigned long abnormal, u
 }
 
 void edit_set_cursor_color (unsigned long c)
-{
+{E_
     edit_cursor_color = c;
 }
 
 #else
 
 static void set_color (int font)
-{
+{E_
     attrset (font);
 }
 
 #define edit_move(x,y) widget_move(edit, y, x);
 
 static void print_to_widget (WEdit * edit, long row, int start_col, float start_col_real, long end_col, unsigned int line[])
-{
+{E_
     int x = (float) start_col_real + EDIT_TEXT_HORIZONTAL_OFFSET;
     int x1 = start_col + EDIT_TEXT_HORIZONTAL_OFFSET;
     int y = row + EDIT_TEXT_VERTICAL_OFFSET;
@@ -413,7 +426,7 @@ static void print_to_widget (WEdit * edit, long row, int start_col, float start_
 
 /* b pointer to begining of line */
 static void edit_draw_this_line_proportional (WEdit * edit, long b, long row, long start_col, long end_col)
-{
+{E_
     static unsigned int line[MAX_LINE_LEN];
     unsigned int *p = line;
     unsigned int *eol = &line[MAX_LINE_LEN - 1];
@@ -524,7 +537,7 @@ static void edit_draw_this_line_proportional (WEdit * edit, long b, long row, lo
 int option_smooth_scrolling = 0;
 
 static int key_pending (WEdit * edit)
-{
+{E_
     static int flush = 0, line = 0;
 #ifdef GTK
     /* ******* */
@@ -546,7 +559,7 @@ static int key_pending (WEdit * edit)
 #endif
 
 static int edit_height_delta (WEdit * edit, int row1, int row2)
-{
+{E_
     int y;
     for (y = 0; row1 < row2; row1++)
         y += edit_get_line_height (edit, row1);
@@ -554,7 +567,7 @@ static int edit_height_delta (WEdit * edit, int row1, int row2)
 }
 
 static int edit_row_to_ypixel (WEdit * edit, int row_search)
-{
+{E_
     int row, y;
     for (y = 0, row = 0; row < row_search; row++)
         y += edit_get_line_height (edit, edit->start_line + row);
@@ -563,7 +576,7 @@ static int edit_row_to_ypixel (WEdit * edit, int row_search)
 
 /* b for pointer to begining of line */
 static int edit_draw_this_char (WEdit * edit, long curs, long row)
-{
+{E_
     int b = edit_bol (edit, curs);
 #ifdef MIDNIGHT
     edit_draw_this_line_proportional (edit, b, row, 0, edit->num_widget_columns - 1);
@@ -580,7 +593,7 @@ void edit_draw_proportional_invalidate (int row_start, int row_end, int x_max);
 /* cursor must be in screen for other than REDRAW_PAGE passed in force */
 static int render_edit_text (WEdit * edit, long start_y, long start_x, long end_y,
 		       long end_x)
-{
+{E_
     int drawn_extents_y = 0;
     static int prev_curs_row = 0;
     static long prev_curs = 0;
@@ -794,7 +807,7 @@ static int render_edit_text (WEdit * edit, long start_y, long start_x, long end_
 #ifndef MIDNIGHT
 
 void edit_convert_expose_to_area (XExposeEvent * xexpose, int *y1, int *x1, int *y2, int *x2)
-{
+{E_
     *x1 = xexpose->x - EDIT_TEXT_HORIZONTAL_OFFSET;
     *y1 = xexpose->y - EDIT_TEXT_VERTICAL_OFFSET;
     *x2 = xexpose->x + xexpose->width + EDIT_TEXT_HORIZONTAL_OFFSET + 3;
@@ -804,14 +817,14 @@ void edit_convert_expose_to_area (XExposeEvent * xexpose, int *y1, int *x1, int 
 #ifdef GTK
 
 void edit_render_tidbits (GtkEdit * edit)
-{
+{E_
     gtk_widget_draw_focus (GTK_WIDGET (edit));
 }
 
 #else
 
 void edit_render_tidbits (CWidget * wdt)
-{
+{E_
     (*look->edit_render_tidbits) (wdt);
 }
 
@@ -823,7 +836,7 @@ extern int option_long_whitespace;
 #endif
 
 void edit_render (WEdit * edit, int page, int y_start, int x_start, int y_end, int x_end)
-{
+{E_
     int f = 0, drawn_extents_y;
     if (y_start < 0)
 	y_start = 0;
@@ -891,7 +904,7 @@ void edit_render (WEdit * edit, int page, int y_start, int x_start, int y_end, i
 
 #ifndef MIDNIGHT
 void edit_render_expose (WEdit * edit, XExposeEvent * xexpose)
-{
+{E_
     CPushFont ("editor", 0);
     EditExposeRedraw = 1;
     edit->num_widget_lines = (CHeightOf (edit->widget) - EDIT_FRAME_H) / FONT_PIX_PER_LINE;
@@ -909,7 +922,7 @@ void edit_render_expose (WEdit * edit, XExposeEvent * xexpose)
 }
 
 void edit_render_keypress (WEdit * edit)
-{
+{E_
     CPushFont ("editor", 0);
     edit_render (edit, 0, 0, 0, 0, 0);
     CPopFont ();
@@ -918,7 +931,7 @@ void edit_render_keypress (WEdit * edit)
 #else
 
 void edit_render_keypress (WEdit * edit)
-{
+{E_
     edit_render (edit, 0, 0, 0, 0, 0);
 }
 

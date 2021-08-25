@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
+#include "inspect.h"
 #include "rxvtlib.h"
 #include "stringtools.h"
 
@@ -274,7 +276,7 @@ static struct _optList optList[] = {
 /*----------------------------------------------------------------------*/
 /* EXTPROTO */
 void            rxvtlib_usage (rxvtlib *o, int type)
-{
+{E_
     int             i, col;
 
     fprintf (stderr, "\nUsage v%s : (", VERSION);
@@ -403,7 +405,7 @@ void            rxvtlib_usage (rxvtlib *o, int type)
 /*{{{ get command-line options before getting resources */
 /* EXTPROTO */
 void            rxvtlib_get_options (rxvtlib *o, int argc, const char *const *argv)
-{
+{E_
     int             i, bad_option = 0;
     static const char On[3] = "ON", Off[4] = "OFF";
 
@@ -541,7 +543,7 @@ void            rxvtlib_get_options (rxvtlib *o, int argc, const char *const *ar
 Bool            rxvtlib_define_key (rxvtlib *o, XrmDatabase * database, XrmBindingList bindings,
 			    XrmQuarkList quarks, XrmRepresentation * type,
 			    XrmValue * value, XPointer closure)
-{
+{E_
     int             last;
 
     for (last = 0; quarks[last] != NULLQUARK; last++)	/* look for last quark in list */
@@ -561,7 +563,7 @@ Bool            rxvtlib_define_key (rxvtlib *o, XrmDatabase * database, XrmBindi
  */
 /* INTPROTO */
 int             rxvtlib_parse_keysym (rxvtlib *o, const char *str, const char *arg)
-{
+{E_
     int             n, sym;
     char           *key_string, *newarg = NULL;
     char            newargstr[NEWARGLIM];
@@ -634,7 +636,7 @@ int             rxvtlib_parse_keysym (rxvtlib *o, const char *str, const char *a
  */
 /* INTPROTO */
 void            rxvtlib_get_xdefaults (rxvtlib *o, FILE * stream, const char *name)
-{
+{E_
     unsigned int    len;
     char           *str, buffer[256];
 
@@ -703,7 +705,7 @@ void            rxvtlib_get_xdefaults (rxvtlib *o, FILE * stream, const char *na
 /* ARGSUSED */
 /* EXTPROTO */
 void            rxvtlib_extract_resources (rxvtlib *o, Display * display, const char *name)
-{
+{E_
 #ifndef NO_RESOURCES
 # ifdef USE_XGETDEFAULT
 /*

@@ -1,9 +1,11 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* unicodedialog.c - draw a unicode selector
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -39,7 +41,7 @@ int last_unichar_right = 0;
 int last_unichar_focussed = 0;
 
 static void render_unicode (CWidget * wdt, int force_full)
-{
+{E_
     int w, h, isfocussed, i, j, col_spacing;
     Window win, temp_win;
 
@@ -122,7 +124,7 @@ scale larger glyphs */
    so you can draw the same widget over and over without flicker
  */
 CWidget *CDrawUnicodeInput (const char *identifier, Window parent, int x, int y, C_wchar_t start_char)
-{
+{E_
     CWidget *wdt;
     int w, h;
 
@@ -143,7 +145,7 @@ CWidget *CDrawUnicodeInput (const char *identifier, Window parent, int x, int y,
 }
 
 int eh_unicode (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     int handled = 0;
     int i, j;
     long cursor;
@@ -237,7 +239,7 @@ int eh_unicode (CWidget * w, XEvent * xevent, CEvent * cwevent)
 }
 
 long CUnicodeDialog (Window in, int x, int y, char *heading)
-{
+{E_
     Window win;
     CEvent cwevent;
     CState s;
@@ -293,7 +295,7 @@ long CUnicodeDialog (Window in, int x, int y, char *heading)
 }
 
 unsigned char *CGetUnichar (Window in, char *heading)
-{
+{E_
     long r;
     r = CUnicodeDialog (in, MID_X, MID_Y, heading);
     if (r == -1)

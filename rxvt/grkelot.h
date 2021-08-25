@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /*
  * File:	grkelot.h
  * $Id: grkelot.h,v 1.4 1998/11/12 04:37:05 mason Exp $

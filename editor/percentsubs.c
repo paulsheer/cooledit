@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* percentsubs.c - perform % substitution in shell script
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
    
+#include "inspect.h"
 #include <config.h>
 #include <sys/types.h>
 #if HAVE_SYS_WAIT_H
@@ -25,7 +27,7 @@ extern char *init_font;
 
 #warning needs to distinguish between local and remote home directories
 char *hme (char *text)
-{
+{E_
     return catstrs (local_home_dir, text, NULL);
 }
 
@@ -35,7 +37,7 @@ char *hme (char *text)
    or filenames
  */
 char *substitute_strings (char *text, char *cmdline_options, char *editor_file, int current_line, int current_column)
-{
+{E_
     char *result, *p, *q, *r;
 
     r = result = CMalloc (8192 + strlen (text));

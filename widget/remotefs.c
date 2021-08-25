@@ -1,7 +1,9 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* remotefs.c - remote fs access
-   Copyright (C) 1996-2020 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
+#include "inspect.h"
 #include "global.h"
 #ifdef MSWIN
 #include <config-mswin.h>
@@ -63,6 +65,9 @@
 
 #include "remotefs.h"
 #include "dirtools.h"
+#include "aes.h"
+#include "sha256.h"
+#include "symauth.h"
 
 
 #ifdef MSWIN
@@ -93,6 +98,8 @@
 
 
 int option_remote_timeout = 2000;
+int option_no_crypto = 0;
+int option_force_crypto = 0;
 
 
 char *pathdup_ (const char *p, const char *home_dir);
@@ -102,7 +109,7 @@ static int translate_unix_errno (int err);
 #ifdef MSWIN
 
 static int windows_rename (const char *a, const char *b)
-{
+{E_
     if (!MoveFileExA (a, b, MOVEFILE_REPLACE_EXISTING)) {
         errno = GetLastError ();
         return -1;
@@ -115,7 +122,7 @@ static int windows_rename (const char *a, const char *b)
 #define TOUPPER(a)              ((a >= 'A' && a <= 'Z') ? (a) : ((a) - ('a' - 'A')))
 
 static const char *translate_path_sep (const char *p)
-{
+{E_
     char *s;
     static unsigned int rotate = 0;
     static char r_[2][MAX_PATH_LEN * 2];
@@ -142,6 +149,8 @@ static const char *translate_path_sep (const char *p)
             r[1] = ':';
             strcpy (r + 2, p);
         }
+    } else {
+        strcpy (r, p);
     }
     if (!r[0])
         return "\\";
@@ -153,7 +162,7 @@ static const char *translate_path_sep (const char *p)
 }
 
 static char *windows_path_to_unix (const char *p)
-{
+{E_
     int l;
     char *r, *q;
 
@@ -180,7 +189,7 @@ static char *windows_path_to_unix (const char *p)
 }
 
 static int translate_mswin_lasterror (int mswin_error)
-{
+{E_
     switch (mswin_error) {
     case ERROR_INVALID_FUNCTION:
         return RFSERR_MSWIN_ERROR_INVALID_FUNCTION;
@@ -489,7 +498,7 @@ static int translate_mswin_lasterror (int mswin_error)
 }
 
 static char *wchar_to_char (const wchar_t * w)
-{
+{E_
     char *r;
     size_t c, n;
 
@@ -503,7 +512,7 @@ static char *wchar_to_char (const wchar_t * w)
 }
 
 static const char *mswin_error_to_text (long error)
-{
+{E_
     wchar_t *s = NULL;
     static char r[1024];
     char *p;
@@ -527,7 +536,7 @@ static const char *mswin_error_to_text (long error)
 }
 
 static int portable_stat (int link, const char *fname, struct portable_stat *p, int *just_not_there, enum remotefs_error_code *remotefs_error_code_, char *errmsg)
-{
+{E_
     WIN32_FILE_ATTRIBUTE_DATA a;
     int r;
     memset (p, '\0', sizeof (*p));
@@ -581,7 +590,7 @@ static int portable_stat (int link, const char *fname, struct portable_stat *p, 
     p->wattr.file_size <<= 32;
     p->wattr.file_size |= a.nFileSizeLow;
 
-    if ((r = stat (fname, &p->ustat))) {
+    if ((r = my_stat (fname, &p->ustat))) {
         if (errmsg) {
             strncpy (errmsg, strerror (errno), REMOTEFS_ERR_MSG_LEN);
             errmsg[REMOTEFS_ERR_MSG_LEN - 1] = '\0';
@@ -598,7 +607,7 @@ static int portable_stat (int link, const char *fname, struct portable_stat *p, 
 #define ERROR_EAGAIN()          (WSAGetLastError () == WSAEWOULDBLOCK || WSAGetLastError () == WSAEINPROGRESS)
 
 static void exitmsg (int c)
-{
+{E_
     printf ("exitting %d\n", c);
     exit (c);
 }
@@ -606,12 +615,12 @@ static void exitmsg (int c)
 #define exit(c)     exitmsg(c)
 
 static const char *strerrorsocket (void)
-{
+{E_
     return mswin_error_to_text (WSAGetLastError ());
 }
 
 static void perrorsocket (const char *msg)
-{
+{E_
     fprintf (stderr, "%s: %s\n", msg, strerrorsocket ());
 }
 
@@ -622,7 +631,7 @@ static void perrorsocket (const char *msg)
 #define translate_path_sep(s)   (s)
 
 static int portable_stat (int link, const char *fname, struct portable_stat *p, int *just_not_there, enum remotefs_error_code *remotefs_error_code_, char *errmsg)
-{
+{E_
     int r;
     if (just_not_there)
         *just_not_there = 0;
@@ -634,9 +643,9 @@ static int portable_stat (int link, const char *fname, struct portable_stat *p, 
         *remotefs_error_code_ = RFSERR_SUCCESS;
 
     if (link)
-        r = lstat (fname, &p->ustat);
+        r = my_lstat (fname, &p->ustat);
     else
-        r = stat (fname, &p->ustat);
+        r = my_stat (fname, &p->ustat);
     if (r) {
         if (errno == ENOENT)
             if (just_not_there)
@@ -657,12 +666,12 @@ static int portable_stat (int link, const char *fname, struct portable_stat *p, 
 #define wchar_to_char(s)        (s)
 
 static const char *strerrorsocket (void)
-{
+{E_
     return strerror (errno);
 }
 
 static void perrorsocket (const char *msg)
-{
+{E_
     perror (msg);
 }
 
@@ -684,7 +693,7 @@ static void perrorsocket (const char *msg)
 
 
 static int translate_unix_errno (int err)
-{
+{E_
     switch (err) {
 
 #if defined(EAGAIN) && defined(EWOULDBLOCK) && EAGAIN == EWOULDBLOCK
@@ -1323,23 +1332,92 @@ static int translate_unix_errno (int err)
     return RFSERR_UNIX_ERROR_WITHOUT_TRANSLATION;
 }
 
+struct replay_attack {
+    unsigned long long startup_time_sec;
+    unsigned long startup_time_usec;
+    unsigned long message_counter;
+};
 
+struct crypto_packet_field_header {
+    unsigned char startup_time_sec[6];
+    unsigned char startup_time_usec[4];
+    unsigned char message_counter[4];
+    unsigned char pad_bytes[2];
+};
+
+struct crypto_packet_first_block {
+    unsigned char challenge[16];
+    struct crypto_packet_field_header fields;
+};
+
+struct crypto_packet_error {
+    unsigned char error_magic[2];
+    unsigned char __future[4];
+    unsigned char read_error[4];
+};
+
+struct crypto_packet_header {
+    unsigned char block_count[2];
+    unsigned char iv[16];
+    struct crypto_packet_first_block first_block;
+};
+
+struct crypto_packet_trailer {
+    unsigned char sig[16];
+};
+
+#define SYMAUTH_ADMIN_BLOCKS            4  /* iv + challenge + header(time,pad) + trailer */
+#define SYMAUTH_PREQUEL_BYTES           2  /* 16-bit length */
+#define SYMAUTH_ENCRYPT_LEN(blocks)     ((blocks - 2) * SYMAUTH_BLOCK_SIZE)
+
+#define READER_CHUNK            65536
+#define CRYPTO_CHUNK            (READER_CHUNK + SYMAUTH_ADMIN_BLOCKS * SYMAUTH_BLOCK_SIZE + SYMAUTH_PREQUEL_BYTES + /* fudge */ 1024)
+
+#define CRYPTO_ERROR_MAGIC      0xffff
+
+struct crypto_buf {
+    unsigned char buf[CRYPTO_CHUNK * 2];
+    int avail;
+    int written;
+};
+
+struct crypto_data {
+    unsigned char challenge[SYMAUTH_BLOCK_SIZE];
+    struct replay_attack local_counter;
+    struct replay_attack remote_counter;
+    struct crypto_buf read_buf;
+    unsigned char write_buf[CRYPTO_CHUNK];
+    int busy_enabling_crypto;
+    struct symauth *symauth;
+};
+
+struct sock_data {
+    int ref;
+    SOCKET sock;
+    unsigned char password[REMOTEFS_MAX_PASSWORD_LEN];
+    int crypto;
+    int enable_crypto;
+    struct crypto_data crypto_data;
+};
 
 struct remotefs_private {
-    SOCKET sock;
+    struct sock_data *sock_data;
     char remote[256];
 };
 
 
-#define SHUTSOCK(sock)  \
-        do { \
-            if ((sock) != INVALID_SOCKET) { \
-                shutdown ((sock), 2); \
-                closesocket (sock); \
-                (sock) = INVALID_SOCKET; \
-            } \
-        } while(0)
+void SHUTSOCK (struct sock_data *p)
+{E_
+    if (p->sock != INVALID_SOCKET) {
+        p->crypto = 0;
+        p->crypto_data.read_buf.avail = 0;
+        p->crypto_data.read_buf.written = 0;
 
+        shutdown (p->sock, 2);
+        closesocket (p->sock);
+        p->sock = INVALID_SOCKET;
+    }
+}
 
 #define MSG_VERSION                             1
 #define FILE_PROTO_MAGIC                        0x726f
@@ -1354,6 +1432,7 @@ struct remotefs_private {
 #define REMOTEFS_ACTION_CHDIR                   6
 #define REMOTEFS_ACTION_REALPATHIZE             7
 #define REMOTEFS_ACTION_GETHOMEDIR              8
+#define REMOTEFS_ACTION_ENABLECRYPTO            9
 
 const char *action_descr[] = {
     "NOTIMPLEMENTED",
@@ -1365,20 +1444,23 @@ const char *action_descr[] = {
     "CHDIR",
     "REALPATHIZE",
     "GETHOMEDIR",
+    "ENABLECRYPTO",
 };
 
-const char *error_code_descr[] = {
-    "success",                                  /* 0 */
-    "unix error without translation",           /* 1 */
-    "mswin error without translation",          /* 2 */
-    "unimplemented function",                   /* 3 */
-    "bad version",                              /* 4 */
-    "server closed idle client",                /* 5 */
-    "early terminate from write",               /* 6 */
-    "other error",                              /* 7 */
-    "endoffile",                                /* 8 */
-    "pathname too long",                        /* 9 */
-    "last internal error",                      /* 10 */
+
+const char *error_code_descr[RFSERR_LAST_INTERNAL_ERROR + 1] = {
+    "success",                                  /* 0   RFSERR_SUCCESS                               */
+    "unix error without translation",           /* 1   RFSERR_UNIX_ERROR_WITHOUT_TRANSLATION        */
+    "mswin error without translation",          /* 2   RFSERR_MSWIN_ERROR_WITHOUT_TRANSLATION       */
+    "unimplemented function",                   /* 3   RFSERR_UNIMPLEMENTED_FUNCTION                */
+    "bad version",                              /* 4   RFSERR_BAD_VERSION                           */
+    "server closed idle client",                /* 5   RFSERR_SERVER_CLOSED_IDLE_CLIENT             */
+    "early terminate from write",               /* 6   RFSERR_EARLY_TERMINATE_FROM_WRITE_FILE       */
+    "other error",                              /* 7   RFSERR_OTHER_ERROR                           */
+    "endoffile",                                /* 8   RFSERR_ENDOFFILE                             */
+    "pathname too long",                        /* 9   RFSERR_PATHNAME_TOO_LONG                     */
+    "non-crypto op attempted",                  /* 10  RFSERR_NON_CRYPTO_OP_ATTEMPTED               */
+    "last internal error",                      /* 11  RFSERR_LAST_INTERNAL_ERROR                   */
 };
 
 
@@ -1398,17 +1480,16 @@ struct cooledit_remote_msg_ack {
     unsigned char version[2];
 };
 
-#define READER_CHUNK            65536
 
 struct reader_data {
-    SOCKET *sock;
+    struct sock_data *sock_data;
     unsigned char buf[READER_CHUNK];
     int avail;
     int written;
 };
 
 static void decode_uint48 (const unsigned char *p, unsigned long long *i_)
-{
+{E_
     unsigned long long i;
 
     i = p[0];
@@ -1427,7 +1508,7 @@ static void decode_uint48 (const unsigned char *p, unsigned long long *i_)
 }
 
 static void encode_uint48 (unsigned char *p, unsigned long long i)
-{
+{E_
     p[5] = i & 0xff;
     i >>= 8;
     p[4] = i & 0xff;
@@ -1441,8 +1522,34 @@ static void encode_uint48 (unsigned char *p, unsigned long long i)
     p[0] = i & 0xff;
 }
 
+static void decode_uint32 (const unsigned char *p, unsigned long *i_)
+{E_
+    unsigned long long i;
+
+    i = p[0];
+    i <<= 8;
+    i |= p[1];
+    i <<= 8;
+    i |= p[2];
+    i <<= 8;
+    i |= p[3];
+
+    *i_ = i;
+}
+
+static void encode_uint32 (unsigned char *p, unsigned long i)
+{E_
+    p[3] = i & 0xff;
+    i >>= 8;
+    p[2] = i & 0xff;
+    i >>= 8;
+    p[1] = i & 0xff;
+    i >>= 8;
+    p[0] = i & 0xff;
+}
+
 static void decode_uint16 (const unsigned char *p, unsigned long *i_)
-{
+{E_
     unsigned int i;
 
     i = p[0];
@@ -1453,14 +1560,14 @@ static void decode_uint16 (const unsigned char *p, unsigned long *i_)
 }
 
 static void encode_uint16 (unsigned char *p, unsigned long i)
-{
+{E_
     p[1] = i & 0xff;
     i >>= 8;
     p[0] = i & 0xff;
 }
 
 static int encode_sint (unsigned char **p_, long long v)
-{
+{E_
     int r = 0, sign = 0;
     if (v < 0LL) {
         sign = 0x40;
@@ -1494,7 +1601,7 @@ static int encode_sint (unsigned char **p_, long long v)
 }
 
 static int decode_sint (const unsigned char **p, const unsigned char *end, long long *v_)
-{
+{E_
     int i = 0, sign = 0;
     long long v = 0ULL;
     const unsigned char *q = *p;
@@ -1531,7 +1638,7 @@ static int decode_sint (const unsigned char **p, const unsigned char *end, long 
 
 /* decode arbitrary precision signed integer */
 static int decode_apsint (const unsigned char **p, const unsigned char *end, int *exponent, long long *v_)
-{
+{E_
     int i = 0, sign = 0;
     long long v = 0ULL;
     const unsigned char *q = *p;
@@ -1568,6 +1675,161 @@ static int decode_apsint (const unsigned char **p, const unsigned char *end, int
     *p = e;
     return 0;
 }
+
+static void init_random (void);
+static void get_next_iv (unsigned char *iv);
+
+unsigned char the_key[REMOTEFS_MAX_PASSWORD_LEN] = "";
+
+
+static int log_base (unsigned long long v)
+{E_
+    int r;
+    for (r = 0; v; r++)
+        v >>= 1;
+    return r;
+}
+
+void password_to_key (unsigned char *aeskey, int *aeskey_len, const unsigned char *password, int password_len, int *bits_of_complexity)
+{E_
+    int base, i, j, k, n;
+    unsigned long long w, v, ws, vs;
+    unsigned char dict[256];
+
+    *aeskey_len = 0;
+    memset (dict, '\0', sizeof (dict));
+
+    for (i = 0; i < password_len; i++)
+        dict[password[i]] = 1;
+
+    memset (aeskey, '\0', password_len);
+
+    for (base = 0, i = 0; i < 256; i++)
+        if (dict[i])
+            dict[i] = base++;
+
+    *bits_of_complexity = password_len * log_base (base);
+
+    vs = v = 0;
+    for (i = 0, k = 0;;) {
+        int c;
+        w = v;
+        ws = vs;
+        if (i == password_len)
+            goto here;
+        c = dict[password[i]];
+        w = (w * base) + c;
+        ws = (ws * base) + (base - 1);
+        if ((ws - (base - 1)) / base != vs) {
+          here:
+            n = log_base (vs);
+            for (j = n - 1; j >= 0; j--, k++)
+                if ((v & (0x1ULL << j)))
+                    aeskey[k / 8] |= (unsigned char) (0x80 >> (k % 8));
+            if (i == password_len)
+                break;
+            v = 0;
+            vs = 0;
+        } else {
+            v = w;
+            vs = ws;
+            i++;
+        }
+    }
+
+    *aeskey_len = (k + 7) / 8;
+}
+
+
+static remotfs_password_cb_t remotefs_password_cb_fn = NULL;
+static void *remotefs_password_cb_user_data = NULL;
+
+void remotefs_set_password_cb (remotfs_password_cb_t f, void *d)
+{E_
+    remotefs_password_cb_fn = f;
+    remotefs_password_cb_user_data = d;
+}
+
+
+static int configure_crypto_data (int server, struct crypto_data *c, const unsigned char *password, int password_len, const unsigned char *challenge_local, const unsigned char *challenge_remote, char *errmsg)
+{E_
+    sha256_context_t sha256;
+    unsigned char aeskey1[SYMAUTH_SHA256_SIZE];
+    unsigned char aeskey2[SYMAUTH_SHA256_SIZE];
+    static int init_random_done = 0;
+    struct timeval now;
+    int i;
+
+    if (!init_random_done) {
+        init_random ();
+        init_random_done = 1;
+    }
+
+    sha256_reset (&sha256);
+    sha256_update (&sha256, password, password_len);
+    sha256_finish (&sha256, aeskey1);
+
+    sha256_reset (&sha256);
+    sha256_update (&sha256, password, password_len);
+    sha256_update (&sha256, aeskey1, SYMAUTH_SHA256_SIZE);
+    sha256_finish (&sha256, aeskey2);
+
+    c->symauth = symauth_new (server, aeskey1, aeskey2);
+
+    gettimeofday (&now, NULL);
+    c->local_counter.startup_time_sec = now.tv_sec;
+    c->local_counter.startup_time_usec = now.tv_usec;
+    c->local_counter.message_counter = 1;
+
+    for (i = 0; i < SYMAUTH_BLOCK_SIZE; i++)
+        c->challenge[i] = challenge_local[i] ^ challenge_remote[i];
+
+    return 0;
+}
+
+static void encode_crypto_packet_header (struct crypto_packet_header *h, struct crypto_data *c, const unsigned long block_count, const unsigned long pad_bytes, const unsigned char *challenge)
+{E_
+    c->local_counter.message_counter++;
+    encode_uint16 (h->block_count, block_count);
+    get_next_iv (h->iv);
+    memcpy (h->first_block.challenge, challenge, SYMAUTH_BLOCK_SIZE);
+    encode_uint48 (h->first_block.fields.startup_time_sec, c->local_counter.startup_time_sec);
+    encode_uint32 (h->first_block.fields.startup_time_usec, c->local_counter.startup_time_usec);
+    encode_uint32 (h->first_block.fields.message_counter, c->local_counter.message_counter);
+    encode_uint16 (h->first_block.fields.pad_bytes, pad_bytes);
+}
+
+static int decode_crypto_packet_first_block (struct crypto_packet_field_header *h, struct crypto_data *c, unsigned long *pad_bytes)
+{E_
+    struct replay_attack r, *p;
+
+    decode_uint48 (h->startup_time_sec, &r.startup_time_sec);
+    decode_uint32 (h->startup_time_usec, &r.startup_time_usec);
+    decode_uint32 (h->message_counter, &r.message_counter);
+    decode_uint16 (h->pad_bytes, pad_bytes);
+
+    p = &c->remote_counter;
+
+/* check for replay attack */
+    if (r.startup_time_sec < p->startup_time_sec)
+        return -1;
+    if (r.startup_time_sec > p->startup_time_sec) {
+        *p = r;
+        return 0;
+    }
+    if (r.startup_time_usec < p->startup_time_usec)
+        return -1;
+    if (r.startup_time_usec > p->startup_time_usec) {
+        *p = r;
+        return 0;
+    }
+    if (r.message_counter <= p->message_counter)
+        return -1;
+
+    *p = r;
+    return 0;
+}
+
 
 union float_conv {
     double f;
@@ -1627,7 +1889,7 @@ union float_conv {
 #define REMOTEFS_MAX_EXP        (1000000)
 
 static void fix_endianness (union float_conv *c)
-{
+{E_
     const union float_conv t = { 1002.00006103515625 }; /* 40 8f 50 00 20 00 00 00 */
     assert (sizeof (t) == sizeof (t.f));
     assert (sizeof (t) == sizeof (t.l));
@@ -1656,7 +1918,7 @@ static void fix_endianness (union float_conv *c)
 }
 
 static int encode_float (unsigned char **p_, double v)
-{
+{E_
     int r;
     long long mantissa, exponent;
     union float_conv d;
@@ -1732,7 +1994,7 @@ static int encode_float (unsigned char **p_, double v)
 }
 
 static int decode_float (const unsigned char **p, const unsigned char *end, double *v_)
-{
+{E_
     union float_conv d;
     long long mantissa, exponent;
     int adj = 0;
@@ -1825,7 +2087,7 @@ static int decode_float (const unsigned char **p, const unsigned char *end, doub
 }
 
 static int encode_uint (unsigned char **p_, unsigned long long v)
-{
+{E_
     int r = 0;
     if (!p_) {
         for (;;) {
@@ -1855,7 +2117,7 @@ static int encode_uint (unsigned char **p_, unsigned long long v)
 }
 
 static int decode_uint (const unsigned char **p, const unsigned char *end, unsigned long long *v_)
-{
+{E_
     int i = 0;
     unsigned long long v = 0ULL;
     const unsigned char *q = *p;
@@ -1886,7 +2148,7 @@ static int decode_uint (const unsigned char **p, const unsigned char *end, unsig
 }
 
 static int encode_str (unsigned char **p_, const char *str, int len)
-{
+{E_
     int r;
     r = encode_uint (p_, len);
     r += len;
@@ -1898,7 +2160,7 @@ static int encode_str (unsigned char **p_, const char *str, int len)
 }
 
 static int decode_cstr (const unsigned char **p, const unsigned char *end, CStr * str)
-{
+{E_
     unsigned long long v;
     v = 0ULL;
     if (decode_uint (p, end, &v))
@@ -1915,7 +2177,7 @@ static int decode_cstr (const unsigned char **p, const unsigned char *end, CStr 
 }
 
 static int decode_str (const unsigned char **p, const unsigned char *end, char *str, int buflen)
-{
+{E_
     unsigned long long v;
     assert (buflen >= 1);
     buflen--;
@@ -1938,7 +2200,7 @@ static int decode_str (const unsigned char **p, const unsigned char *end, char *
 }
 
 static void decode_msg_header (const struct cooledit_remote_msg_header *m, unsigned long long *msglen, unsigned long *version, unsigned long *action, unsigned long *magic)
-{
+{E_
     decode_uint48 (m->msglen, msglen);
     decode_uint16 (m->version, version);
     decode_uint16 (m->action, action);
@@ -1946,7 +2208,7 @@ static void decode_msg_header (const struct cooledit_remote_msg_header *m, unsig
 }
 
 static void encode_msg_header (struct cooledit_remote_msg_header *m, unsigned long long msglen, unsigned long version, unsigned long action, unsigned long magic)
-{
+{E_
     encode_uint48 (m->msglen, msglen);
     encode_uint16 (m->version, version);
     encode_uint16 (m->action, action);
@@ -1954,13 +2216,13 @@ static void encode_msg_header (struct cooledit_remote_msg_header *m, unsigned lo
 }
 
 static void decode_msg_ack (const struct cooledit_remote_msg_ack *m, remotefs_error_code_t *error_code, unsigned long *version)
-{
+{E_
     decode_uint48 (m->error_code, error_code);
     decode_uint16 (m->version, version);
 }
 
 static void encode_msg_ack (struct cooledit_remote_msg_ack *m, remotefs_error_code_t error_code, unsigned long version)
-{
+{E_
     encode_uint48 (m->error_code, error_code);
     encode_uint16 (m->version, version);
 }
@@ -2033,7 +2295,7 @@ struct storage_hook {
 static int decode_struct (const unsigned char **p_, const unsigned char *end, struct storage_hook *hook, const int depth);
 
 static int decode_thing (const unsigned char **p_, const unsigned char *end, const int the_type, struct storage_hook *hook, const int depth)
-{
+{E_
     unsigned long long v, n;
     long long sv;
     unsigned long long extended_type;
@@ -2148,7 +2410,7 @@ static int decode_thing (const unsigned char **p_, const unsigned char *end, con
 
 
 static int decode_struct (const unsigned char **p_, const unsigned char *end, struct storage_hook *hook, const int depth)
-{
+{E_
     int field;
     CStr f;
     if (depth >= MAX_PATH_DEPTH)
@@ -2176,10 +2438,10 @@ static int decode_struct (const unsigned char **p_, const unsigned char *end, st
 #define N_WINDOWS_FIELDS        5
 
 static int encode_stat (unsigned char **p_, const struct portable_stat *ps)
-{
+{E_
     int r, i;
     unsigned char enclose[3];
-    const struct stat *s;
+    const struct stat_posix_or_mswin *s;
 #ifdef MSWIN
     const struct windows_file_attributes *w;
 #endif
@@ -2272,7 +2534,7 @@ struct decode_stat_data {
 #define FLD(t,a)        case t: a = v; break
 
 int stat_store_int (void *user_data_, const unsigned short *path, const int depth, unsigned long long v)
-{
+{E_
     struct decode_stat_data *user_data;
     struct portable_stat *s;
 
@@ -2325,7 +2587,7 @@ int stat_store_int (void *user_data_, const unsigned short *path, const int dept
 }
 
 static int decode_stat (const unsigned char **p, const unsigned char *end, struct portable_stat *s)
-{
+{E_
     struct storage_hook hook;
     struct decode_stat_data user_data;
 
@@ -2350,7 +2612,7 @@ static int decode_stat (const unsigned char **p, const unsigned char *end, struc
 #define FORCE_SHUTDOWN          1
 
 static int encode_error (unsigned char **p_, remotefs_error_code_t error_code, const char *msg, const int force_shutdown)
-{
+{E_
     int l, r;
     r = encode_uint (p_, REMOTEFS_ERROR);
     r += encode_uint (p_, error_code);
@@ -2363,7 +2625,7 @@ static int encode_error (unsigned char **p_, remotefs_error_code_t error_code, c
 }
 
 static int decode_error (const unsigned char **p, const unsigned char *end, remotefs_error_code_t *error_code, char *msg, int *force_shutdown)
-{
+{E_
     unsigned long long v;
     *msg = '\0';
     v = 0ULL;
@@ -2385,7 +2647,7 @@ static int decode_error (const unsigned char **p, const unsigned char *end, remo
 }
 
 static char *dname (struct dirent *directentry)
-{
+{E_
     int l;
     static char t[MAX_PATH_LEN];
     l = NAMLEN (directentry);
@@ -2402,7 +2664,7 @@ struct file_entry_item {
 };
 
 static int encode_filelist (unsigned char **p_, struct file_entry_item *list)
-{
+{E_
     struct file_entry_item *i;
     int r, n = 0;
     for (i = list; i; i = i->next)
@@ -2417,7 +2679,7 @@ static int encode_filelist (unsigned char **p_, struct file_entry_item *list)
 }
 
 static int decode_filelist (const unsigned char **p, const unsigned char *end, struct file_entry **r, int *n)
-{
+{E_
     unsigned long long v;
     unsigned int i;
     *r = NULL;
@@ -2443,7 +2705,7 @@ static int decode_filelist (const unsigned char **p, const unsigned char *end, s
 }
 
 static void alloc_encode_error (CStr * r, remotefs_error_code_t error_code, const char *errstr, const int force_shutdown)
-{
+{E_
     unsigned char *p;
     r->len = encode_error (NULL, error_code, errstr, force_shutdown);
     r->data = (char *) malloc (r->len);
@@ -2452,12 +2714,12 @@ static void alloc_encode_error (CStr * r, remotefs_error_code_t error_code, cons
 }
 
 static void alloc_encode_errno_strerror (CStr * r, const int force_shutdown)
-{
+{E_
     alloc_encode_error (r, translate_unix_errno (errno), strerror (errno), force_shutdown);
 }
 
 static void alloc_encode_success (CStr * r)
-{
+{E_
     unsigned char *p;
     r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
     r->data = (char *) malloc (r->len);
@@ -2465,8 +2727,73 @@ static void alloc_encode_success (CStr * r)
     encode_uint (&p, REMOTEFS_SUCCESS);
 }
 
-static void set_sockerrmsg_to_errno (char *errmsg, int the_errno)
-{
+enum reader_error {
+    READER_ERROR_NOERROR = 0,
+
+    READER_ERROR_TIMEOUT = 1,
+    READER_ERROR_CHECKSUM = 2,
+    READER_ERROR_BADCHALLENGE = 3,
+    READER_ERROR_REPLAY = 4,
+    READER_ERROR_BADBLOCKSIZE = 5,
+    READER_ERROR_PKTSIZETOOLONG = 6,
+    READER_ERROR_BADPADBYTES = 7,
+
+    READER_REMOTEERROR = 100,
+
+    READER_REMOTEERROR_TIMEOUT = READER_REMOTEERROR + READER_ERROR_TIMEOUT,
+    READER_REMOTEERROR_CHECKSUM = READER_REMOTEERROR + READER_ERROR_CHECKSUM,
+    READER_REMOTEERROR_BADCHALLENGE = READER_REMOTEERROR + READER_ERROR_BADCHALLENGE,
+    READER_REMOTEERROR_REPLAY = READER_REMOTEERROR + READER_ERROR_REPLAY,
+    READER_REMOTEERROR_BADBLOCKSIZE = READER_REMOTEERROR + READER_ERROR_BADBLOCKSIZE,
+    READER_REMOTEERROR_PKTSIZETOOLONG = READER_REMOTEERROR + READER_ERROR_PKTSIZETOOLONG,
+    READER_REMOTEERROR_BADPADBYTES = READER_REMOTEERROR + READER_ERROR_BADPADBYTES,
+};
+
+static const char *reader_error_to_str (enum reader_error e)
+{E_
+    switch (e) {
+    case READER_ERROR_NOERROR:
+        return "no error";
+    case READER_ERROR_TIMEOUT:
+        return "timeout waiting for response";
+    case READER_ERROR_CHECKSUM:
+        return "invalid checksum in crypto packet";
+    case READER_ERROR_BADCHALLENGE:
+        return "crypto key/pass does not match";
+    case READER_ERROR_REPLAY:
+        return "replay attack detected";
+    case READER_ERROR_BADBLOCKSIZE:
+        return "bad crypto packet size";
+    case READER_ERROR_PKTSIZETOOLONG:
+        return "crypto packet size too long";
+    case READER_ERROR_BADPADBYTES:
+        return "crypto packet bad pad bytes";
+    case READER_REMOTEERROR:
+        return "<invalid-error>";
+    case READER_REMOTEERROR_TIMEOUT:
+        return "remote: " "timeout waiting for response";
+    case READER_REMOTEERROR_CHECKSUM:
+        return "remote: " "invalid checksum in crypto packet";
+    case READER_REMOTEERROR_BADCHALLENGE:
+        return "remote: " "crypto key/pass does not match";
+    case READER_REMOTEERROR_REPLAY:
+        return "remote: " "replay attack detected";
+    case READER_REMOTEERROR_BADBLOCKSIZE:
+        return "remote: " "bad crypto packet size";
+    case READER_REMOTEERROR_PKTSIZETOOLONG:
+        return "remote: " "crypto packet size too long";
+    case READER_REMOTEERROR_BADPADBYTES:
+        return "remote: " "crypto packet bad pad bytes";
+    }
+    return "<unknown-error>";
+}
+
+static void set_sockerrmsg_to_errno (char *errmsg, int the_errno, enum reader_error reader_error)
+{E_
+    if (reader_error != READER_ERROR_NOERROR) {
+        strcpy (errmsg, reader_error_to_str (reader_error));
+        return;
+    }
     if (!the_errno) {
         strcpy (errmsg, "Remote closed connection");
     } else {
@@ -2475,13 +2802,13 @@ static void set_sockerrmsg_to_errno (char *errmsg, int the_errno)
     }
 }
 
-static int writer (SOCKET sock, const void *p_, long l)
-{
+static int writer_ (struct sock_data *sock_data, const void *p_, long l)
+{E_
     const unsigned char *p;
     p = (const unsigned char *) p_;
     while (l > 0) {
         int c;
-        c = send (sock, (void *) p, MIN (l, READER_CHUNK), 0);
+        c = send (sock_data->sock, (void *) p, MIN (l, READER_CHUNK), 0);
         if (!c) {
             errno = 0;
             return -1;
@@ -2494,8 +2821,8 @@ static int writer (SOCKET sock, const void *p_, long l)
             tv.tv_usec = 0;
             fd_set wr;
             FD_ZERO (&wr);
-            FD_SET (sock, &wr);
-            sr = select (sock + 1, NULL, &wr, NULL, &tv);
+            FD_SET (sock_data->sock, &wr);
+            sr = select (sock_data->sock + 1, NULL, &wr, NULL, &tv);
             if (sr == SOCKET_ERROR && !(ERROR_EINTR() || ERROR_EAGAIN()))
                 return -1;
             c = 0;
@@ -2508,8 +2835,61 @@ static int writer (SOCKET sock, const void *p_, long l)
     return 0;
 }
 
+static int writervec (struct sock_data *sock_data, CStr *v, int n)
+{E_
+    unsigned long blocks, pad_bytes;
+    unsigned char *p, *q;
+    struct crypto_packet_header *h;
+    int l, i;
+
+#define LOOP(u, init)       for ((u) = (init), i = 0; i < n; (u) += v[i].len, i++)
+    assert (n > 0);
+    LOOP (l, 0);
+    assert (l > 0);
+
+    if (!sock_data->crypto) {
+        int c, dummy;
+        LOOP (dummy, 0) {
+            if ((c = writer_ (sock_data, v[i].data, v[i].len)))
+                return c;
+        }
+        return 0;
+    }
+
+    assert (l + SYMAUTH_PREQUEL_BYTES + SYMAUTH_ADMIN_BLOCKS * SYMAUTH_BLOCK_SIZE <= sizeof (sock_data->crypto_data.write_buf));
+
+    p = sock_data->crypto_data.write_buf;
+
+    blocks = SYMAUTH_ADMIN_BLOCKS + (l + (SYMAUTH_BLOCK_SIZE - 1)) / SYMAUTH_BLOCK_SIZE;
+    pad_bytes = ((blocks - SYMAUTH_ADMIN_BLOCKS) * SYMAUTH_BLOCK_SIZE) - l;
+
+    h = (struct crypto_packet_header *) p;
+
+    encode_crypto_packet_header (h, &sock_data->crypto_data, blocks, pad_bytes, sock_data->crypto_data.challenge);
+
+    LOOP (q, (unsigned char *) (h + 1)) {
+        memcpy (q, v[i].data, v[i].len);
+    }
+    memset (q, '\0', pad_bytes);
+
+    symauth_encrypt (sock_data->crypto_data.symauth, (unsigned char *) &h->first_block, SYMAUTH_ENCRYPT_LEN(blocks), (unsigned char *) &h->first_block, (unsigned char *) h->iv, ((unsigned char *) (h + 1)) + (blocks - SYMAUTH_ADMIN_BLOCKS) * SYMAUTH_BLOCK_SIZE);
+
+    return writer_ (sock_data, p, SYMAUTH_PREQUEL_BYTES + blocks * SYMAUTH_BLOCK_SIZE);
+}
+
+static int writer (struct sock_data *sock_data, const void *p, long l)
+{E_
+    CStr v;
+    assert (sock_data);
+    assert (p);
+    assert (l > 0);
+    v.data = (char *) p;
+    v.len = l;
+    return writervec (sock_data, &v, 1);
+}
+
 static int wait_for_read (SOCKET sock, long msecond)
-{
+{E_
     struct timeval tv;
     int sr;
     tv.tv_sec = msecond / 1000;
@@ -2527,12 +2907,121 @@ static int wait_for_read (SOCKET sock, long msecond)
 
 #define TV_DELTA(t1, t2) ((long) (((long long) t2.tv_sec * 1000ULL + (long long) t2.tv_usec / 1000ULL) - ((long long) t1.tv_sec * 1000ULL + (long long) t1.tv_usec / 1000ULL)))
 
-static int reader_timeout (struct reader_data *d, void *buf_, int buflen, long milliseconds, int *timeout)
-{
+static int recv_crypto_ (struct sock_data *sock_data, struct crypto_buf *d, unsigned char *out, int outsz, int *waiting, enum reader_error *reader_error)
+{E_
+    unsigned long blocks;
+    int plaintextlen;
+    const struct crypto_packet_header *h;
+    struct crypto_packet_first_block *b;
+    unsigned long pad_bytes;
+
+    if (d->avail - d->written < SYMAUTH_PREQUEL_BYTES) {
+        *waiting = 1;
+        return SOCKET_ERROR;
+    }
+
+    decode_uint16 (d->buf + d->written, &blocks);
+
+    if (blocks == CRYPTO_ERROR_MAGIC) {
+/* The remote wants to pass to us an error he had trying to decrypt our packets: */
+        unsigned long remote_reader_error;
+        struct crypto_packet_error *e;
+        if (d->avail - d->written < sizeof (struct crypto_packet_error)) {
+            *waiting = 1;
+            return SOCKET_ERROR;
+        }
+        e = (struct crypto_packet_error *) (d->buf + d->written);
+        decode_uint32 (e->read_error, &remote_reader_error);
+        *reader_error = READER_REMOTEERROR + remote_reader_error;
+        return SOCKET_ERROR;
+    }
+
+    if (blocks < (SYMAUTH_ADMIN_BLOCKS + 1) || blocks > 10000) {
+        *reader_error = READER_ERROR_BADBLOCKSIZE;
+        return SOCKET_ERROR;
+    }
+
+    plaintextlen = (blocks - SYMAUTH_ADMIN_BLOCKS) * SYMAUTH_BLOCK_SIZE;
+
+    if (plaintextlen > outsz) {
+        *reader_error = READER_ERROR_PKTSIZETOOLONG;
+        return SOCKET_ERROR;
+    }
+
+    if (d->avail - d->written < SYMAUTH_PREQUEL_BYTES + blocks * SYMAUTH_BLOCK_SIZE) {
+        *waiting = 1;
+        return SOCKET_ERROR;
+    }
+
+    h = (struct crypto_packet_header *) (d->buf + d->written);
+    b = (struct crypto_packet_first_block *) (d->buf + d->written);
+
+    if (symauth_decrypt (sock_data->crypto_data.symauth, (unsigned char *) &h->first_block, SYMAUTH_ENCRYPT_LEN (blocks), (unsigned char *) b, plaintextlen, ((unsigned char *) &h->first_block) + SYMAUTH_ENCRYPT_LEN (blocks), h->iv)) {
+        *reader_error = READER_ERROR_BADCHALLENGE;
+        return SOCKET_ERROR;
+    }
+    if (memcmp (sock_data->crypto_data.challenge, b->challenge, SYMAUTH_BLOCK_SIZE)) {
+        /* the most common case of a wrong password happens here */
+        *reader_error = READER_ERROR_BADCHALLENGE;
+        return SOCKET_ERROR;
+    }
+    if (decode_crypto_packet_first_block (&b->fields, &sock_data->crypto_data, &pad_bytes)) {
+        *reader_error = READER_ERROR_REPLAY;
+        return SOCKET_ERROR;
+    }
+    if (pad_bytes >= SYMAUTH_BLOCK_SIZE) {
+        *reader_error = READER_ERROR_BADPADBYTES;
+        return SOCKET_ERROR;
+    }
+
+    memcpy (out, (void *) (b + 1), plaintextlen - pad_bytes);
+    d->written += SYMAUTH_PREQUEL_BYTES + blocks * SYMAUTH_BLOCK_SIZE;
+    if (d->written == d->avail)
+        d->written = d->avail = 0;
+
+    return plaintextlen - pad_bytes;
+}
+
+static int recv_crypto (struct sock_data *sock_data, unsigned char *out, int outsz, int *waiting, enum reader_error *reader_error)
+{E_
+    int c;
+    int _waiting = 0;
+    struct crypto_buf *d;
+
+    d = &sock_data->crypto_data.read_buf;
+
+    c = recv_crypto_ (sock_data, d, out, outsz, &_waiting, reader_error);
+    if (c > 0)
+        return c;
+
+    if (_waiting) {
+        assert (d->avail >= d->written);
+        if (d->avail == sizeof(d->buf)) {
+            memmove (d->buf, d->buf + d->written, d->avail - d->written);
+            d->avail -= d->written;
+            d->written = 0;
+        }
+        assert (d->avail < sizeof(d->buf));
+        c = recv (sock_data->sock, (void *) (d->buf + d->avail), sizeof(d->buf) - d->avail, 0);
+        if (c > 0) {
+            d->avail += c;
+            return recv_crypto_ (sock_data, d, out, outsz, waiting, reader_error);
+        }
+    }
+
+    return c;
+}
+
+static int reader_timeout (struct reader_data *d, void *buf_, int buflen, long milliseconds, enum reader_error *reader_error)
+{E_
     struct timeval t1, t2;
     unsigned char *buf;
+    enum reader_error _reader_error = READER_ERROR_NOERROR;
 
     gettimeofday (&t1, NULL);
+
+    if (!reader_error)
+        reader_error = &_reader_error;
 
     buf = (unsigned char *) buf_;
     while (buflen) {
@@ -2546,22 +3035,27 @@ static int reader_timeout (struct reader_data *d, void *buf_, int buflen, long m
             buflen -= n;
             buf += n;
         } else {
-            int c;
-            c = recv (*d->sock, (void *) (d->buf + d->avail), READER_CHUNK - d->avail, 0);
+            int c, waiting = 0;
+            if (d->sock_data->crypto)
+                c = recv_crypto (d->sock_data, d->buf + d->avail, READER_CHUNK - d->avail, &waiting, reader_error);
+            else
+                c = recv (d->sock_data->sock, (void *) (d->buf + d->avail), READER_CHUNK - d->avail, 0);
             if (!c) {
                 errno = 0;
                 return -1;
-            } else if (c == SOCKET_ERROR && ERROR_EINTR()) {
-                c = 0;
-            } else if (c == SOCKET_ERROR && ERROR_EAGAIN()) {
+            } else if (c == SOCKET_ERROR && *reader_error != READER_ERROR_NOERROR) {
+                return -1;
+            } else if (waiting || (c == SOCKET_ERROR && ERROR_EAGAIN())) {
                 long elapsed;
-                wait_for_read (*d->sock, milliseconds);
+                wait_for_read (d->sock_data->sock, milliseconds);
                 gettimeofday (&t2, NULL);
                 elapsed = TV_DELTA (t1, t2);
                 if (milliseconds > 0 && elapsed > milliseconds) {
-                    *timeout = 1;
+                    *reader_error = READER_ERROR_TIMEOUT;
                     return -1;
                 }
+                c = 0;
+            } else if (c == SOCKET_ERROR && ERROR_EINTR()) {
                 c = 0;
             } else if (c == SOCKET_ERROR) {
                 return -1;
@@ -2572,14 +3066,14 @@ static int reader_timeout (struct reader_data *d, void *buf_, int buflen, long m
     return 0;
 }
 
-static int reader (struct reader_data *d, void *buf, int buflen)
-{
-    return reader_timeout (d, buf, buflen, 0, NULL);
+static int reader (struct reader_data *d, void *buf, int buflen, enum reader_error *reader_error)
+{E_
+    return reader_timeout (d, buf, buflen, 0, reader_error);
 }
 
 
 static void remotefs_listdir_ (const char *directory, unsigned long options, char *filter, CStr *r)
-{
+{E_
     struct file_entry_item *first = NULL, *i, *next;
     struct dirent *directentry;
     struct portable_stat stats;
@@ -2677,18 +3171,18 @@ static void remotefs_listdir_ (const char *directory, unsigned long options, cha
     }
 }
 
-static void remotefs_readfile_ (int (*chunk_cb) (void *, const unsigned char *, int, long, char *), int (*start_cb) (void *, long, char *), void *hook, const char *filename, CStr * r)
-{
+static void remotefs_readfile_ (int (*chunk_cb) (void *, const unsigned char *, int, long long, char *), int (*start_cb) (void *, long long, char *), void *hook, const char *filename, CStr * r)
+{E_
     unsigned char chunk[READER_CHUNK];
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     HANDLE fd = INVALID_HANDLE_VALUE;
-    struct stat st;
+    struct stat_posix_or_mswin st;
     unsigned long long progress = 0ULL;
 
     memset (&st, '\0', sizeof (st));
 
     fd = open (translate_path_sep (filename), O_RDONLY | _O_BINARY);
-    if (fd == INVALID_HANDLE_VALUE || fstat (fd, &st)) {
+    if (fd == INVALID_HANDLE_VALUE || my_fstat (fd, &st)) {
         alloc_encode_errno_strerror (r, 0);
         return;
     }
@@ -2730,77 +3224,83 @@ static void remotefs_readfile_ (int (*chunk_cb) (void *, const unsigned char *, 
     return;
 }
 
-#define HASH(c)         (((c + 9UL) * (c + 2UL) * 401UL) >> 1)
-static unsigned long long random_seed = 0L;
+static unsigned char random_seed[SYMAUTH_SHA256_SIZE];
 
 static void scramble_random (void)
-{
-    unsigned long long c;
-
-    random_seed ^= (unsigned long long) getpid ();
-    c = random_seed % 214480403ULL;
-    random_seed ^= HASH (c);
-
-    random_seed ^= (unsigned long long) time (NULL);
-    c = random_seed % 214480403ULL;
-    random_seed ^= HASH (c);
-
-    random_seed ^= (unsigned long long) clock ();
-    c = random_seed % 214480403ULL;
-    random_seed ^= HASH (c);
+{E_
+    unsigned long long t;
+    sha256_context_t sha256;
+    sha256_reset (&sha256);
+    t = (unsigned long long) time (NULL);
+    sha256_update (&sha256, &t, sizeof (t));
+    t = (unsigned long long) clock ();
+    sha256_update (&sha256, &t, sizeof (t));
+    sha256_update (&sha256, random_seed, sizeof (random_seed));
+    sha256_finish (&sha256, random_seed);
 }
 
-static void init_random (void)
-{
-    unsigned long long t;
-    FILE *p;
 #ifdef MSWIN
-#define SHELLRND	"DIR C:\\Windows\\System32"
+int windows_get_random (unsigned char *out, const int outlen);
+
+static void init_random (void)
+{E_
+    memset (random_seed, '\0', sizeof (random_seed));
+    if (windows_get_random (random_seed, SYMAUTH_SHA256_SIZE)) {
+        perror ("Windows Crypto provider");
+        exit (1);
+    }
+    scramble_random ();
+}
 #else
-#define SHELLRND	"ls -al /etc/ /tmp/ 2>/dev/null"
-#endif
+static void init_random (void)
+{E_
+    sha256_context_t sha256;
+    unsigned char buf[1024];
+    int c;
+    FILE *p;
+#define SHELLRND	"ls -al /etc/ /tmp/ 2>/dev/null ; dd if=/dev/urandom bs=1024 count=1 2>/dev/null"
     p = popen (SHELLRND, "r");
     if (!p) {
         perror ("could not execute '" SHELLRND "'");
-        return;
+        exit (1);
     }
-    while (fread (&t, 1, sizeof (t), p) == sizeof (t)) {
-        unsigned long long c;
-// printf ("%.8s", (char *) &t);
-        random_seed ^= t;
-        c = random_seed % 214480403ULL;
-        random_seed ^= HASH (c);
-    }
+    sha256_reset (&sha256);
+    while ((c = fread (buf, 1, sizeof (buf), p)) > 0)
+        sha256_update (&sha256, buf, c);
+    sha256_finish (&sha256, random_seed);
     pclose (p);
     scramble_random ();
 }
+#endif
 
 struct randblock {
-    unsigned int d[2];
+    unsigned int d[SYMAUTH_SHA256_SIZE / sizeof (unsigned int)];
 };
 
 static void get_random (struct randblock *r)
-{
-    unsigned long long v;
+{E_
+    sha256_context_t sha256;
+    sha256_reset (&sha256);
+    sha256_update (&sha256, random_seed, sizeof (random_seed));
+    sha256_finish (&sha256, random_seed);
 
-    random_seed ^= random ();
-    random_seed ^= random_seed << 22;
-    random_seed ^= random ();
-    random_seed ^= random_seed << 22;
-    random_seed ^= random ();
-
-    if (!(random_seed & 0x1f))
+    if (!(random_seed[0] & 0x3f))
         scramble_random ();
 
-/* make sure there are 16 hex digits and more than zero if cast to signed: */
-    v = (random_seed >> 2) | (1ULL << 62);
-
-    r->d[0] = (v >> 32);
-    r->d[1] = (v & 0xFFFFFFFF);
+    memcpy (&r->d[0], random_seed, SYMAUTH_SHA256_SIZE);
 }
 
-static void remotefs_writefile_ (void (*intermediate_ack_cb) (void *, int), int (*chunk_cb) (void *, unsigned char *, int *, char *), void *hook, const char *filename, long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, CStr * r)
-{
+static void get_next_iv (unsigned char *iv)
+{E_
+    struct randblock r;
+    assert (sizeof (r) >= SYMAUTH_BLOCK_SIZE);
+
+    get_random (&r);
+    memcpy (iv, &r, SYMAUTH_BLOCK_SIZE);
+}
+
+static void remotefs_writefile_ (void (*intermediate_ack_cb) (void *, int), int (*chunk_cb) (void *, unsigned char *, int *, char *), void *hook, const char *filename, long long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, CStr * r)
+{E_
     struct portable_stat st, st_orig;
     unsigned char *p;
     unsigned char chunk[READER_CHUNK];
@@ -2940,7 +3440,7 @@ static void remotefs_writefile_ (void (*intermediate_ack_cb) (void *, int), int 
 }
 
 static void remotefs_checkordinaryfileaccess_ (const char *filename, unsigned long long sizelimit, CStr * r)
-{
+{E_
     struct portable_stat st;
     unsigned char *p;
     char errmsg_[REMOTEFS_ERR_MSG_LEN] = "";
@@ -2949,15 +3449,28 @@ static void remotefs_checkordinaryfileaccess_ (const char *filename, unsigned lo
 
     HANDLE fd = INVALID_HANDLE_VALUE;
     memset (&st, '\0', sizeof (st));
+
+/* For windows we must use both OpenFile() and open(). I am not clear if one might fail and the other succeed. */
 #ifdef MSWIN
-#warning must use OpenFile to get full errors
+    {
+        HFILE h;
+        OFSTRUCT c;
+        if ((h = OpenFile (translate_path_sep (filename), &c, OF_READ | OF_SHARE_DENY_NONE)) == HFILE_ERROR) {
+            const char *winerror;
+            winerror = mswin_error_to_text (GetLastError ());
+            snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, " Failed trying to open file for reading: %s \n [%s] ", filename, winerror);
+            goto errout;
+        }
+        CloseHandle ((void *) (unsigned long long) h);
+    }
 #endif
+
     if ((fd = open ((char *) translate_path_sep (filename), O_RDONLY | _O_BINARY)) == INVALID_HANDLE_VALUE) {
         snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, " Failed trying to open file for reading: %s \n [%s] ", filename, strerror (errno));
         goto errout;
     }
     if (portable_stat (0, translate_path_sep (filename), &st, NULL, &remotefs_error_code_, errmsg_) < 0) {
-        snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, " Cannot get size/permissions info on file: %s \n [%.*s] ", filename, REMOTEFS_ERR_MSG_LEN - 58, errmsg_);
+        snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, " Cannot get size/permissions info on file: %s \n [%.*s] ", filename, REMOTEFS_ERR_MSG_LEN - 64, errmsg_);
         goto errout;
     }
     if (S_ISDIR (st.ustat.st_mode) || S_ISSOCK (st.ustat.st_mode) || S_ISFIFO (st.ustat.st_mode)) {
@@ -2986,7 +3499,7 @@ static void remotefs_checkordinaryfileaccess_ (const char *filename, unsigned lo
 }
 
 static void remotefs_stat_ (const char *pathname, int handle_just_not_there, CStr * r)
-{
+{E_
     char errmsg[REMOTEFS_ERR_MSG_LEN] = "";
     enum remotefs_error_code remotefs_error_code_ = RFSERR_SUCCESS;
     struct portable_stat st;
@@ -3017,7 +3530,7 @@ static void remotefs_stat_ (const char *pathname, int handle_just_not_there, CSt
 }
 
 char *get_current_wd (char *p, int size)
-{
+{E_
     char *q = NULL;
     char *d;
 
@@ -3045,7 +3558,7 @@ char *get_current_wd (char *p, int size)
 }
 
 static void remotefs_chdir_ (const char *dirname, CStr * r)
-{
+{E_
     unsigned char *p;
     char current_dir[MAX_PATH_LEN];
 
@@ -3067,7 +3580,7 @@ static void remotefs_chdir_ (const char *dirname, CStr * r)
 }
 
 static void remotefs_realpathize_ (const char *path, const char *homedir, CStr * r)
-{
+{E_
     unsigned char *p;
     char *out = NULL;
 
@@ -3088,7 +3601,7 @@ static void remotefs_realpathize_ (const char *path, const char *homedir, CStr *
 }
 
 static void remotefs_gethomedir_ (CStr * r)
-{
+{E_
     unsigned char *p;
     static char *homedir = NULL;
 
@@ -3104,6 +3617,7 @@ static void remotefs_gethomedir_ (CStr * r)
         homedir = getenv ("HOME");
         if (!homedir || !*homedir) {
             struct passwd *pe;
+#warning dynamic modules that lookup the home directory from a network service need to be loaded here. this does work with /etc/passwd home directories. it is not currently called by cooledit.
             pe = getpwuid (geteuid ());
             if (!pe) {
                 alloc_encode_errno_strerror (r, 0);
@@ -3125,6 +3639,29 @@ static void remotefs_gethomedir_ (CStr * r)
     p = (unsigned char *) r->data;
     encode_uint (&p, REMOTEFS_SUCCESS);
     encode_str (&p, homedir, strlen (homedir));
+}
+
+static int remotefs_enablecrypto_ (CStr * r, struct crypto_data *crypto_data, const unsigned char *challenge_local, const unsigned char *challenge_remote)
+{E_
+    char errmsg[REMOTEFS_ERR_MSG_LEN];
+    unsigned char *p;
+
+    if (configure_crypto_data (1, crypto_data, the_key, strlen ((char *) the_key), challenge_local, challenge_remote, errmsg)) {
+        alloc_encode_error (r, RFSERR_OTHER_ERROR, errmsg, 0);
+        goto errout;
+    }
+
+    r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
+    r->len += encode_str (NULL, (const char *) challenge_local, SYMAUTH_BLOCK_SIZE);
+    r->data = (char *) malloc (r->len);
+    p = (unsigned char *) r->data;
+    encode_uint (&p, REMOTEFS_SUCCESS);
+    encode_str (&p, (const char *) challenge_local, SYMAUTH_BLOCK_SIZE);
+
+    return 0;
+
+  errout:
+    return -1;
 }
 
 
@@ -3169,13 +3706,13 @@ static void remotefs_gethomedir_ (CStr * r)
         decode_error (&p, (const unsigned char *) s.data + s.len, error_code_, errmsg, &force_shutdown); \
         free (s.data); \
         if (force_shutdown) \
-            SHUTSOCK (rfs->remotefs_private->sock); \
+            SHUTSOCK (rfs->remotefs_private->sock_data); \
         return -1; \
     }
 
 
 static int local_listdir (struct remotefs *rfs, const char *directory, unsigned long options, char *filter, struct file_entry **r, int *n, char *errmsg)
-{
+{E_
     CStr s;
     remotefs_listdir_ (directory, options, filter, &s);
 
@@ -3187,8 +3724,8 @@ static int local_listdir (struct remotefs *rfs, const char *directory, unsigned 
     MARSHAL_END_LOCAL(NULL);
 }
 
-static int local_chunk_reader_cb (void *hook, const unsigned char *chunk, int chunklen, long filelen, char *errmsg)
-{
+static int local_chunk_reader_cb (void *hook, const unsigned char *chunk, int chunklen, long long filelen, char *errmsg)
+{E_
     struct action_callbacks *o;
     o = (struct action_callbacks *) hook;
 
@@ -3196,7 +3733,7 @@ static int local_chunk_reader_cb (void *hook, const unsigned char *chunk, int ch
 }
 
 static int local_readfile (struct remotefs *rfs, struct action_callbacks *o, const char *filename, char *errmsg)
-{
+{E_
     CStr s;
     *errmsg = '\0';
     remotefs_readfile_ (local_chunk_reader_cb, NULL, (void *) o, filename, &s);
@@ -3207,7 +3744,7 @@ static int local_readfile (struct remotefs *rfs, struct action_callbacks *o, con
 }
 
 static int local_chunk_writer_cb (void *hook, unsigned char *chunk, int *chunklen, char *errmsg)
-{
+{E_
     struct action_callbacks *o;
     o = (struct action_callbacks *) hook;
 
@@ -3215,12 +3752,12 @@ static int local_chunk_writer_cb (void *hook, unsigned char *chunk, int *chunkle
 }
 
 static void local_intermediate_ack_cb (void *hook, int got_error)
-{
+{E_
     /* only used for remote connections */
 }
 
-static int local_writefile (struct remotefs *rfs, struct action_callbacks *o, const char *filename, long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg)
-{
+static int local_writefile (struct remotefs *rfs, struct action_callbacks *o, const char *filename, long long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg)
+{E_
     CStr s;
     *errmsg = '\0';
     remotefs_writefile_ (local_intermediate_ack_cb, local_chunk_writer_cb, (void *) o, filename, filelen, overwritemode, permissions, backup_extension, &s);
@@ -3234,7 +3771,7 @@ static int local_writefile (struct remotefs *rfs, struct action_callbacks *o, co
 }
 
 static int local_checkordinaryfileaccess (struct remotefs *rfs, const char *filename, unsigned long long sizelimit, struct portable_stat *st, char *errmsg)
-{
+{E_
     CStr s;
     *errmsg = '\0';
     remotefs_checkordinaryfileaccess_ (filename, sizelimit, &s);
@@ -3248,7 +3785,7 @@ static int local_checkordinaryfileaccess (struct remotefs *rfs, const char *file
 }
 
 static int local_stat (struct remotefs *rfs, const char *pathname, struct portable_stat *st, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg)
-{
+{E_
     CStr s;
     unsigned long long just_not_there_;
     unsigned long long error_code_;
@@ -3273,7 +3810,7 @@ static int local_stat (struct remotefs *rfs, const char *pathname, struct portab
 }
 
 static int local_chdir (struct remotefs *rfs, const char *dirname, char *cwd, int cwdlen, char *errmsg)
-{
+{E_
     CStr s;
     *errmsg = '\0';
     remotefs_chdir_ (dirname, &s);
@@ -3287,7 +3824,7 @@ static int local_chdir (struct remotefs *rfs, const char *dirname, char *cwd, in
 }
 
 static int local_realpathize (struct remotefs *rfs, const char *path, const char *homedir, char *out, int outlen, char *errmsg)
-{
+{E_
     CStr s;
     *errmsg = '\0';
     remotefs_realpathize_ (path, homedir, &s);
@@ -3301,7 +3838,7 @@ static int local_realpathize (struct remotefs *rfs, const char *path, const char
 }
 
 static int local_gethomedir (struct remotefs *rfs, char *out, int outlen, char *errmsg)
-{
+{E_
     CStr s;
     *errmsg = '\0';
     remotefs_gethomedir_ (&s);
@@ -3314,8 +3851,14 @@ static int local_gethomedir (struct remotefs *rfs, char *out, int outlen, char *
     MARSHAL_END_LOCAL(NULL);
 }
 
+static int local_enablecrypto (struct remotefs *rfs, const unsigned char *challenge_local, unsigned char *challenge_remote, char *errmsg)
+{E_
+    *errmsg = '\0';
+    return 0;
+}
+
 static int encode_listdir_params (unsigned char **p_, const char *directory, unsigned long options, char *filter)
-{
+{E_
     int r;
     r = encode_str (p_, directory, strlen (directory));
     r += encode_uint (p_, options);
@@ -3324,14 +3867,14 @@ static int encode_listdir_params (unsigned char **p_, const char *directory, uns
 }
 
 
-static int send_recv_mesg (struct remotefs *rfs, CStr *msg, CStr *response, int action, char *errmsg);
+static int send_recv_mesg (struct remotefs *rfs, CStr *msg, CStr *response, int action, char *errmsg, int *no_such_action);
 static int send_mesg (struct remotefs *rfs, struct reader_data *d, CStr * msg, int action, char *errmsg);
-static int recv_mesg (struct remotefs *rfs, struct reader_data *d, CStr * response, int action, char *errmsg);
-static int reader (struct reader_data *d, void *buf_, int buflen);
+static int recv_mesg (struct remotefs *rfs, struct reader_data *d, CStr * response, int action, char *errmsg, int *no_such_action);
+static int reader (struct reader_data *d, void *buf_, int buflen, enum reader_error *reader_error);
 
 
 static int remote_listdir (struct remotefs *rfs, const char *directory, unsigned long options, char *filter, struct file_entry **r, int *n, char *errmsg)
-{
+{E_
     CStr s, msg;
     unsigned char *q;
     *errmsg = '\0';
@@ -3341,7 +3884,7 @@ static int remote_listdir (struct remotefs *rfs, const char *directory, unsigned
     q = (unsigned char *) msg.data;
     msg.len = encode_listdir_params (&q, directory, options, filter);
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_READDIR, errmsg)) {
+    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_READDIR, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -3357,7 +3900,7 @@ static int remote_listdir (struct remotefs *rfs, const char *directory, unsigned
 
 
 static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, const char *filename, char *errmsg)
-{
+{E_
     char throw_away[REMOTEFS_ERR_MSG_LEN];
     CStr s, msg;
     unsigned char *q;
@@ -3366,6 +3909,7 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
     unsigned char buf[READER_CHUNK];
     unsigned char t[6];
     int err = 0;
+    enum reader_error reader_error = READER_ERROR_NOERROR;
 
     *errmsg = '\0';
 
@@ -3375,7 +3919,7 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
     encode_str (&q, filename, strlen (filename));
 
     memset (&d, '\0', sizeof (d));
-    d.sock = &rfs->remotefs_private->sock;
+    d.sock_data = rfs->remotefs_private->sock_data;
 
     if (send_mesg (rfs, &d, &msg, REMOTEFS_ACTION_READFILE, errmsg)) {
         free (msg.data);
@@ -3385,8 +3929,8 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
     free (msg.data);
     msg.data = NULL;
 
-    if (reader (&d, t, 6)) {
-        set_sockerrmsg_to_errno (errmsg, errno);
+    if (reader (&d, t, 6, &reader_error)) {
+        set_sockerrmsg_to_errno (errmsg, errno, reader_error);
         return -1;
     }
 
@@ -3398,8 +3942,8 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
     while (remaining > 0) {
         int c;
         c = (MIN ((unsigned long long) READER_CHUNK, remaining));
-        if (reader (&d, buf, c)) {
-            set_sockerrmsg_to_errno (errmsg, errno);
+        if (reader (&d, buf, c, &reader_error)) {
+            set_sockerrmsg_to_errno (errmsg, errno, reader_error);
             return -1;
         }
         if (!err)
@@ -3408,7 +3952,7 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
         remaining -= c;
     }
 
-    if (recv_mesg (rfs, &d, &s, REMOTEFS_ACTION_READFILE, err ? throw_away : errmsg))
+    if (recv_mesg (rfs, &d, &s, REMOTEFS_ACTION_READFILE, err ? throw_away : errmsg, NULL))
         return -1;
 
     MARSHAL_START_REMOTE;
@@ -3416,8 +3960,8 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
     MARSHAL_END_REMOTE(NULL);
 }
 
-static int recv_ack (struct reader_data *d, int *got_ack, int *got_stop)
-{
+static int recv_ack (struct reader_data *d, int *got_ack, int *got_stop, enum reader_error *reader_error)
+{E_
     struct cooledit_remote_msg_ack ack;
     unsigned long version;
     remotefs_error_code_t error_code;
@@ -3425,7 +3969,7 @@ static int recv_ack (struct reader_data *d, int *got_ack, int *got_stop)
     if (*got_ack)
         return 0;
 
-    if (reader (d, &ack, sizeof (ack)))
+    if (reader (d, &ack, sizeof (ack), reader_error))
         return -1;
 
     decode_msg_ack (&ack, &error_code, &version);
@@ -3436,8 +3980,8 @@ static int recv_ack (struct reader_data *d, int *got_ack, int *got_stop)
     return 0;
 }
 
-static int maybe_see_ack (struct reader_data *d, int *got_ack, int *got_stop)
-{
+static int maybe_see_ack (struct reader_data *d, int *got_ack, int *got_stop, enum reader_error *reader_error)
+{E_
     fd_set rd;
     struct timeval tv;
 
@@ -3447,17 +3991,17 @@ static int maybe_see_ack (struct reader_data *d, int *got_ack, int *got_stop)
     tv.tv_sec = 0;
     tv.tv_usec = 0;
     FD_ZERO (&rd);
-    FD_SET (*d->sock, &rd);
+    FD_SET (d->sock_data->sock, &rd);
 
-    if (select (*d->sock + 1, &rd, NULL, NULL, &tv) == 1 && FD_ISSET (*d->sock, &rd))
-        if (recv_ack (d, got_ack, got_stop))
+    if (select (d->sock_data->sock + 1, &rd, NULL, NULL, &tv) == 1 && FD_ISSET (d->sock_data->sock, &rd))
+        if (recv_ack (d, got_ack, got_stop, reader_error))
             return -1;
 
     return 0;
 }
 
-static int remote_writefile (struct remotefs *rfs, struct action_callbacks *o, const char *filename, long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg)
-{
+static int remote_writefile (struct remotefs *rfs, struct action_callbacks *o, const char *filename, long long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg)
+{E_
     CStr s, msg;
     unsigned char *q;
     unsigned long long remaining;
@@ -3465,6 +4009,7 @@ static int remote_writefile (struct remotefs *rfs, struct action_callbacks *o, c
     unsigned char buf[READER_CHUNK];
     int got_ack = 0;
     int got_stop = 0;
+    enum reader_error reader_error = READER_ERROR_NOERROR;
 
 /* Network could hang up in the middle of a write, so do "safe saves" only: */
     if (overwritemode == REMOTEFS_WRITEFILE_OVERWRITEMODE_QUICK)
@@ -3488,7 +4033,7 @@ static int remote_writefile (struct remotefs *rfs, struct action_callbacks *o, c
     encode_str (&q, backup_extension, strlen (backup_extension));
 
     memset (&d, '\0', sizeof (d));
-    d.sock = &rfs->remotefs_private->sock;
+    d.sock_data = rfs->remotefs_private->sock_data;
 
     if (send_mesg (rfs, &d, &msg, REMOTEFS_ACTION_WRITEFILE, errmsg)) {
         free (msg.data);
@@ -3507,8 +4052,8 @@ static int remote_writefile (struct remotefs *rfs, struct action_callbacks *o, c
     while (remaining > 0) {
         int c;
 
-        if (maybe_see_ack (&d, &got_ack, &got_stop)) {
-            set_sockerrmsg_to_errno (errmsg, errno);
+        if (maybe_see_ack (&d, &got_ack, &got_stop, &reader_error)) {
+            set_sockerrmsg_to_errno (errmsg, errno, reader_error);
             return -1;
         }
         if (got_stop)
@@ -3516,27 +4061,27 @@ static int remote_writefile (struct remotefs *rfs, struct action_callbacks *o, c
 
         c = (MIN ((unsigned long long) READER_CHUNK, remaining));
         if ((*o->sock_writer) (o, buf, &c, errmsg)) {
-            SHUTSOCK (rfs->remotefs_private->sock);
+            SHUTSOCK (rfs->remotefs_private->sock_data);
             strcpy (errmsg, "Ran out of data to write");
             return -1;
         }
         assert (c > 0);
 
-        if (writer (*d.sock, buf, c)) {
-            set_sockerrmsg_to_errno (errmsg, errno);
-            if (!maybe_see_ack (&d, &got_ack, &got_stop) && got_stop)
+        if (writer (d.sock_data, buf, c)) {
+            set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
+            if (!maybe_see_ack (&d, &got_ack, &got_stop, &reader_error) && got_stop)
                 break;
             return -1;
         }
         remaining -= c;
     }
 
-    if (recv_ack (&d, &got_ack, &got_stop)) {
-        set_sockerrmsg_to_errno (errmsg, errno);
+    if (recv_ack (&d, &got_ack, &got_stop, &reader_error)) {
+        set_sockerrmsg_to_errno (errmsg, errno, reader_error);
         return -1;
     }
 
-    if (recv_mesg (rfs, &d, &s, REMOTEFS_ACTION_WRITEFILE, errmsg))
+    if (recv_mesg (rfs, &d, &s, REMOTEFS_ACTION_WRITEFILE, errmsg, NULL))
         return -1;
 
     MARSHAL_START_REMOTE;
@@ -3548,7 +4093,7 @@ static int remote_writefile (struct remotefs *rfs, struct action_callbacks *o, c
 }
 
 static int remote_checkordinaryfileaccess (struct remotefs *rfs, const char *filename, unsigned long long sizelimit, struct portable_stat *st, char *errmsg)
-{
+{E_
     CStr s, msg;
     unsigned char *q;
     *errmsg = '\0';
@@ -3560,7 +4105,7 @@ static int remote_checkordinaryfileaccess (struct remotefs *rfs, const char *fil
     encode_str (&q, filename, strlen (filename));
     encode_uint (&q, sizelimit);
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_CHECKORDINARYFILEACCESS, errmsg)) {
+    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_CHECKORDINARYFILEACCESS, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -3575,7 +4120,7 @@ static int remote_checkordinaryfileaccess (struct remotefs *rfs, const char *fil
 }
 
 static int remote_stat (struct remotefs *rfs, const char *pathname, struct portable_stat *st, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg)
-{
+{E_
     CStr s, msg;
     unsigned char *q;
     unsigned long long just_not_there_;
@@ -3590,7 +4135,7 @@ static int remote_stat (struct remotefs *rfs, const char *pathname, struct porta
     encode_str (&q, pathname, strlen (pathname));
     encode_uint (&q, (just_not_there != NULL));
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_STAT, errmsg)) {
+    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_STAT, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -3614,7 +4159,7 @@ static int remote_stat (struct remotefs *rfs, const char *pathname, struct porta
 }
 
 static int remote_chdir (struct remotefs *rfs, const char *dirname, char *cwd, int cwdlen, char *errmsg)
-{
+{E_
     CStr s, msg;
     unsigned char *q;
     *errmsg = '\0';
@@ -3624,7 +4169,7 @@ static int remote_chdir (struct remotefs *rfs, const char *dirname, char *cwd, i
     q = (unsigned char *) msg.data;
     encode_str (&q, dirname, strlen (dirname));
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_CHDIR, errmsg)) {
+    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_CHDIR, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -3639,7 +4184,7 @@ static int remote_chdir (struct remotefs *rfs, const char *dirname, char *cwd, i
 }
 
 static int remote_realpathize (struct remotefs *rfs, const char *path, const char *homedir, char *out, int outlen, char *errmsg)
-{
+{E_
     CStr s, msg;
     unsigned char *q;
     *errmsg = '\0';
@@ -3651,7 +4196,7 @@ static int remote_realpathize (struct remotefs *rfs, const char *path, const cha
     encode_str (&q, path, strlen (path));
     encode_str (&q, homedir, strlen (homedir));
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_REALPATHIZE, errmsg)) {
+    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_REALPATHIZE, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -3666,20 +4211,52 @@ static int remote_realpathize (struct remotefs *rfs, const char *path, const cha
 }
 
 static int remote_gethomedir (struct remotefs *rfs, char *out, int outlen, char *errmsg)
-{
+{E_
     CStr s, msg;
     *errmsg = '\0';
 
     memset (&msg, '\0', sizeof (msg));
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_GETHOMEDIR, errmsg)) {
+    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_GETHOMEDIR, errmsg, NULL)) {
+        free (msg.data);
+        return -1;
+    }
+
+    free (msg.data);
+
+    MARSHAL_START_REMOTE;
+    if (decode_str (&p, end, out, outlen)) {
+        free (s.data);
+        return -1;
+    }
+    MARSHAL_END_REMOTE(NULL);
+}
+
+static int remote_enablecrypto (struct remotefs *rfs, const unsigned char *challenge_local, unsigned char *challenge_remote, char *errmsg)
+{E_
+    CStr s, msg;
+    unsigned char *q;
+    int no_such_action = 0;
+    *errmsg = '\0';
+
+    if (rfs->remotefs_private->sock_data->sock == INVALID_SOCKET)
+        return -1;
+
+    msg.len = encode_str (NULL, (const char *) challenge_local, SYMAUTH_BLOCK_SIZE);
+    msg.data = (char *) malloc (msg.len);
+    q = (unsigned char *) msg.data;
+    encode_str (&q, (const char *) challenge_local, SYMAUTH_BLOCK_SIZE);
+
+    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_ENABLECRYPTO, errmsg, &no_such_action)) {
+        if (no_such_action)
+            strcpy (errmsg, "crypto not supported by remote");
         free (msg.data);
         return -1;
     }
     free (msg.data);
 
     MARSHAL_START_REMOTE;
-    if (decode_str (&p, end, out, outlen)) {
+    if (decode_str (&p, end, (char *) challenge_remote, SYMAUTH_BLOCK_SIZE + 1)) {
         free (s.data);
         return -1;
     }
@@ -3705,7 +4282,7 @@ struct remotefs_sockaddr_s_ {
 typedef struct remotefs_sockaddr_s_ remotefs_sockaddr_t;
 
 static void *remotefs_sockaddr_t_address (remotefs_sockaddr_t * a)
-{
+{E_
     struct sockaddr_in *sa4;
 #ifndef LEGACY_IP4_ONLY
     if (a->ss.ss_family == AF_INET6) {
@@ -3719,7 +4296,7 @@ static void *remotefs_sockaddr_t_address (remotefs_sockaddr_t * a)
 }
 
 static int remotefs_sockaddr_t_addresslen (remotefs_sockaddr_t *a)
-{
+{E_
 #ifndef LEGACY_IP4_ONLY
     if (a->ss.ss_family == AF_INET6)
         return 16;
@@ -3728,7 +4305,7 @@ static int remotefs_sockaddr_t_addresslen (remotefs_sockaddr_t *a)
 }
 
 static int remotefs_sockaddr_t_addressfamily (remotefs_sockaddr_t *a)
-{
+{E_
 #ifndef LEGACY_IP4_ONLY
     if (a->ss.ss_family == AF_INET6)
         return AF_INET6;
@@ -3737,7 +4314,7 @@ static int remotefs_sockaddr_t_addressfamily (remotefs_sockaddr_t *a)
 }
 
 static int ipaddress_port_to_remotefs_sockaddr_t (remotefs_sockaddr_t *a, const char *addr, int port)
-{
+{E_
     struct sockaddr_in sa4;
     char s[16];
     int addr_len;
@@ -3771,7 +4348,7 @@ static int ipaddress_port_to_remotefs_sockaddr_t (remotefs_sockaddr_t *a, const 
 }
 
 static SOCKET listen_socket (const char *listen_address, int listen_port)
-{
+{E_
     remotefs_sockaddr_t a;
     SOCKET s;
     int yes = 1;
@@ -3809,7 +4386,7 @@ static SOCKET listen_socket (const char *listen_address, int listen_port)
 #define LOG(s)  do { } while(0)
 
 static int connection_check (const SOCKET s, int write_set)
-{
+{E_
     int r;
     char c = '\0';
 #ifdef MSWIN
@@ -3879,38 +4456,37 @@ static int connection_check (const SOCKET s, int write_set)
 #endif
 }
 
-static SOCKET connect_socket (const char *address, int port, char *errmsg)
-{
+static SOCKET connect_socket (struct sock_data *sock_data, const char *address, int port, char *errmsg)
+{E_
     time_t t1, t2;
     remotefs_sockaddr_t a;
     int yes = 1;
     int r;
-    SOCKET s;
 #ifdef MSWIN
     u_long nbio_yes = 1;
 #else
     int nbio_yes = 1;
 #endif
 
-    if ((s = socket (AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+    if ((sock_data->sock = socket (AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
         snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "socket: %s", strerrorsocket ());
         return INVALID_SOCKET;
     }
 
-    if (ioctlsocket (s, FIONBIO, &nbio_yes))  {
+    if (ioctlsocket (sock_data->sock, FIONBIO, &nbio_yes))  {
         snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "ioctl FIONBIO: %s", strerrorsocket ());
-        SHUTSOCK (s);
+        SHUTSOCK (sock_data);
         return INVALID_SOCKET;
     }
 
     if (ipaddress_port_to_remotefs_sockaddr_t (&a, address, port)) {
         snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "invalid address: %s", address);
-        SHUTSOCK (s);
+        SHUTSOCK (sock_data);
         return INVALID_SOCKET;
     }
 
   try_again:
-    r = connect (s, (struct sockaddr *) &a, sizeof (a));
+    r = connect (sock_data->sock, (struct sockaddr *) &a, sizeof (a));
 
 LOG(r);
 
@@ -3936,7 +4512,7 @@ LOG(r);
 
     if (r == SOCKET_ERROR) {
         snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "connect: %s", strerrorsocket ());
-        SHUTSOCK (s);
+        SHUTSOCK (sock_data);
         return INVALID_SOCKET;
     }
 
@@ -3952,15 +4528,15 @@ LOG(t1);
         if (t2 - t1 > 5) {
 LOG(t2);
             snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "timeout waiting for response from remote");
-            SHUTSOCK (s);
+            SHUTSOCK (sock_data);
             return INVALID_SOCKET;
         }
 
         tv.tv_sec = 1;
         tv.tv_usec = 0;
         FD_ZERO (&wr);
-        FD_SET (s, &wr);
-        sr = select (s + 1, NULL, &wr, NULL, &tv);
+        FD_SET (sock_data->sock, &wr);
+        sr = select (sock_data->sock + 1, NULL, &wr, NULL, &tv);
         if (sr != 1) {
             FD_ZERO (&wr);
         }
@@ -3968,95 +4544,177 @@ LOG(sr);
 LOG(errno);
         if (sr == SOCKET_ERROR && !(ERROR_EINTR() || ERROR_EAGAIN())) {
             snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "select(): %s", strerrorsocket ());
-            SHUTSOCK (s);
+            SHUTSOCK (sock_data);
             return INVALID_SOCKET;
         }
 
-        sr = connection_check (s, FD_ISSET (s, &wr));
+        sr = connection_check (sock_data->sock, FD_ISSET (sock_data->sock, &wr));
 LOG(sr);
 
         if (sr == CONNCHECK_SUCCESS)
             break;
         if (sr == CONNCHECK_ERROR) {
             snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "connect(): %s", strerrorsocket ());
-            SHUTSOCK (s);
+            SHUTSOCK (sock_data);
             return INVALID_SOCKET;
         }
     }
 
 LOG(0);
 
-    if (setsockopt (s, IPPROTO_TCP, TCP_NODELAY, (char *) &yes, sizeof (yes))) {
+    if (setsockopt (sock_data->sock, IPPROTO_TCP, TCP_NODELAY, (char *) &yes, sizeof (yes))) {
         snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "setsockopt(TCP_NODELAY): %s", strerrorsocket ());
-        SHUTSOCK (s);
+        SHUTSOCK (sock_data);
         return INVALID_SOCKET;
     }
 
-    return s;
+    return 0;
 }
 
 
 static int do_connect (struct remotefs *rfs, char *errmsg)
-{
-    SHUTSOCK (rfs->remotefs_private->sock);
+{E_
+    SHUTSOCK (rfs->remotefs_private->sock_data);
 
-    rfs->remotefs_private->sock = connect_socket (rfs->remotefs_private->remote, 50095, errmsg);
-
-    if (rfs->remotefs_private->sock == INVALID_SOCKET)
+    if (connect_socket (rfs->remotefs_private->sock_data, rfs->remotefs_private->remote, 50095, errmsg) == INVALID_SOCKET)
         return -1;
 
     return 0;
 }
 
+/* FIXME handle hangup in here */
+static int remotefs_enable_crypto (struct remotefs *rfs, char *errmsg)
+{E_
+    unsigned char challenge_local[SYMAUTH_BLOCK_SIZE + 1];
+    unsigned char challenge_remote[SYMAUTH_BLOCK_SIZE + 1];
+    unsigned char *k;
+    int klen;
+
+    k = rfs->remotefs_private->sock_data->password;
+    klen = strlen ((char *) k);
+
+    get_next_iv (challenge_local);
+    *errmsg = '\0';
+    if ((*rfs->remotefs_enablecrypto) (rfs, challenge_local, challenge_remote, errmsg)) {
+        goto err;
+    } else {
+        if (configure_crypto_data (0, &rfs->remotefs_private->sock_data->crypto_data, k, klen, challenge_local, challenge_remote, errmsg))
+            goto err;
+        rfs->remotefs_private->sock_data->crypto = 1;
+    }
+    return 0;
+
+  err:
+    rfs->remotefs_private->sock_data->crypto = 0;
+    return -1;
+}
+
 static int send_mesg (struct remotefs *rfs, struct reader_data *d, CStr * msg, int action, char *errmsg)
-{
+{E_
     struct cooledit_remote_msg_header m;
     struct cooledit_remote_msg_ack ack;
     unsigned long version;
     remotefs_error_code_t error_code;
-    int timeout = 0;
+    enum reader_error reader_error;
     int retries = 0;
+    int password_attempts = 0;
+    int crypto_enabled = 1;
+    char user_msg[REMOTEFS_ERR_MSG_LEN] = "";
+
+    assert (remotefs_password_cb_fn != NULL);
 
   retry:
 
     retries++;
 
-    if (rfs->remotefs_private->sock == INVALID_SOCKET)
+    if (rfs->remotefs_private->sock_data->sock == INVALID_SOCKET) {
+        int enable_error;
+        int *recursive;
         if (do_connect (rfs, errmsg))
             return -1;
+        if (crypto_enabled) {
+            if (!rfs->remotefs_private->sock_data->password[0]) {
+              password_again:
+                *errmsg = '\0';
+                if ((*remotefs_password_cb_fn) (remotefs_password_cb_user_data, password_attempts++, rfs->remotefs_private->remote, &crypto_enabled, rfs->remotefs_private->sock_data->password,
+                    user_msg, errmsg)
+                    != REMOTFS_PASSWORD_RETURN_SUCCESS) {
+                    SHUTSOCK (rfs->remotefs_private->sock_data);
+                    return -1;
+                }
+            }
+            if (crypto_enabled) {
+                recursive = &rfs->remotefs_private->sock_data->crypto_data.busy_enabling_crypto;
+                enable_error = 0;
+                *errmsg = '\0';
+                if (!*recursive) {
+                    *recursive = 1;
+                    if ((enable_error = remotefs_enable_crypto (rfs, errmsg)))
+                        strcpy (user_msg, errmsg);
+                    *recursive = 0;
+                }
+                if (rfs->remotefs_private->sock_data->sock == INVALID_SOCKET) {
+                    retries = 0;
+                    goto retry;
+                }
+                if (enable_error)
+                    goto password_again;
+            }
+        }
+    }
 
     memset (&m, '\0', sizeof (m));
 
     encode_msg_header (&m, msg->len, MSG_VERSION, action, FILE_PROTO_MAGIC);
 
-    if (writer (rfs->remotefs_private->sock, &m, sizeof (m))) {
-        set_sockerrmsg_to_errno (errmsg, errno);
-        SHUTSOCK (rfs->remotefs_private->sock);
+    if (writer (rfs->remotefs_private->sock_data, &m, sizeof (m))) {
+        set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
+        SHUTSOCK (rfs->remotefs_private->sock_data);
         return -1;
     }
 
 /* See note (*1*) below. */
-    if (reader_timeout (d, &ack, sizeof (ack), option_remote_timeout, &timeout)) {
-        if (timeout) {
-            strcpy (errmsg, "timeout waiting for response");
-            SHUTSOCK (rfs->remotefs_private->sock);
+    reader_error = READER_ERROR_NOERROR;
+
+    if (reader_timeout (d, &ack, sizeof (ack), option_remote_timeout, &reader_error)) {
+        if (reader_error == READER_REMOTEERROR_BADCHALLENGE) {
+            SHUTSOCK (rfs->remotefs_private->sock_data);
+            if ((*remotefs_password_cb_fn) (remotefs_password_cb_user_data, password_attempts++, rfs->remotefs_private->remote, &crypto_enabled, rfs->remotefs_private->sock_data->password,
+                reader_error_to_str (reader_error), errmsg)
+                != REMOTFS_PASSWORD_RETURN_SUCCESS)
+                return -1;
+            retries = 0;
+            goto retry;
+        }
+        if (reader_error != READER_ERROR_NOERROR) {
+            strcpy (errmsg, reader_error_to_str (reader_error));
+            SHUTSOCK (rfs->remotefs_private->sock_data);
             return -1;
         }
         if (retries < 3) {
-            SHUTSOCK (rfs->remotefs_private->sock);
+            SHUTSOCK (rfs->remotefs_private->sock_data);
             goto retry;
         }
         if (!errno)
             strcpy (errmsg, "remote hangs up");
         else
-            set_sockerrmsg_to_errno (errmsg, errno);
-        SHUTSOCK (rfs->remotefs_private->sock);
+            set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
+        SHUTSOCK (rfs->remotefs_private->sock_data);
         return -1;
     }
 
     decode_msg_ack (&ack, &error_code, &version);
+    if (error_code == RFSERR_NON_CRYPTO_OP_ATTEMPTED) {
+        SHUTSOCK (rfs->remotefs_private->sock_data);
+        if ((*remotefs_password_cb_fn) (remotefs_password_cb_user_data, password_attempts++, rfs->remotefs_private->remote, &crypto_enabled, rfs->remotefs_private->sock_data->password,
+            "This remote host has --force-crypto enabled. You must specify a password.", errmsg)
+            != REMOTFS_PASSWORD_RETURN_SUCCESS)
+            return -1;
+        retries = 0;
+        goto retry;
+    }
     if (error_code == RFSERR_SERVER_CLOSED_IDLE_CLIENT) {
-        SHUTSOCK (rfs->remotefs_private->sock);
+        SHUTSOCK (rfs->remotefs_private->sock_data);
         goto retry;
     }
     if (error_code) {
@@ -4064,28 +4722,29 @@ static int send_mesg (struct remotefs *rfs, struct reader_data *d, CStr * msg, i
             strcpy (errmsg, error_code_descr[error_code]);
         else
             strcpy (errmsg, "remote returned invalid error");
-        SHUTSOCK (rfs->remotefs_private->sock);
+        SHUTSOCK (rfs->remotefs_private->sock_data);
         return -1;
     }
 
-    if (writer (rfs->remotefs_private->sock, msg->data, msg->len)) {
-        set_sockerrmsg_to_errno (errmsg, errno);
-        SHUTSOCK (rfs->remotefs_private->sock);
+    if (msg->len && writer (rfs->remotefs_private->sock_data, msg->data, msg->len)) {
+        set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
+        SHUTSOCK (rfs->remotefs_private->sock_data);
         return -1;
     }
 
     return 0;
 }
 
-static int recv_mesg (struct remotefs *rfs, struct reader_data *d, CStr * response, int action, char *errmsg)
-{
+static int recv_mesg (struct remotefs *rfs, struct reader_data *d, CStr * response, int action, char *errmsg, int *no_such_action)
+{E_
     unsigned long long msglen;
     unsigned long version, msgtype_response, magic;
     struct cooledit_remote_msg_header m;
+    enum reader_error reader_error = READER_ERROR_NOERROR;
 
-    if (reader (d, &m, sizeof (m))) {
-        set_sockerrmsg_to_errno (errmsg, errno);
-        SHUTSOCK (rfs->remotefs_private->sock);
+    if (reader (d, &m, sizeof (m), &reader_error)) {
+        set_sockerrmsg_to_errno (errmsg, errno, reader_error);
+        SHUTSOCK (rfs->remotefs_private->sock_data);
         return -1;
     }
 
@@ -4095,7 +4754,22 @@ static int recv_mesg (struct remotefs *rfs, struct reader_data *d, CStr * respon
         const char *remote;
         remote = rfs->remotefs_private->remote;
         snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "invalid magic response from %s", remote);
-        SHUTSOCK (rfs->remotefs_private->sock);
+        SHUTSOCK (rfs->remotefs_private->sock_data);
+        return -1;
+    }
+
+    if (msgtype_response == REMOTEFS_ACTION_NOTIMPLEMENTED) {
+        /* read the whole message because we may want to continue with the connection: */
+        response->len = msglen;
+        response->data = (char *) malloc (response->len);
+        if (reader (d, response->data, response->len, &reader_error)) {
+            set_sockerrmsg_to_errno (errmsg, errno, reader_error);
+            free (response->data);
+            return -1;
+        }
+        free (response->data);
+        if (no_such_action)
+            *no_such_action = 1;
         return -1;
     }
 
@@ -4103,14 +4777,16 @@ static int recv_mesg (struct remotefs *rfs, struct reader_data *d, CStr * respon
         const char *remote;
         remote = rfs->remotefs_private->remote;
         snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "invalid action response %ld from %s", msgtype_response, remote);
-        SHUTSOCK (rfs->remotefs_private->sock);
+        SHUTSOCK (rfs->remotefs_private->sock_data);
+        if (no_such_action)
+            *no_such_action = 1;
         return -1;
     }
 
     response->len = msglen;
     response->data = (char *) malloc (response->len);
-    if (reader (d, response->data, response->len)) {
-        set_sockerrmsg_to_errno (errmsg, errno);
+    if (reader (d, response->data, response->len, &reader_error)) {
+        set_sockerrmsg_to_errno (errmsg, errno, reader_error);
         free (response->data);
         return -1;
     }
@@ -4118,17 +4794,17 @@ static int recv_mesg (struct remotefs *rfs, struct reader_data *d, CStr * respon
     return 0;
 }
 
-static int send_recv_mesg (struct remotefs *rfs, CStr * msg, CStr * response, int action, char *errmsg)
-{
+static int send_recv_mesg (struct remotefs *rfs, CStr * msg, CStr * response, int action, char *errmsg, int *no_such_action)
+{E_
     struct reader_data d;
 
     memset (&d, '\0', sizeof (d));
-    d.sock = &rfs->remotefs_private->sock;
+    d.sock_data = rfs->remotefs_private->sock_data;
 
     if (send_mesg (rfs, &d, msg, action, errmsg))
         return -1;
 
-    if (recv_mesg (rfs, &d, response, action, errmsg))
+    if (recv_mesg (rfs, &d, response, action, errmsg, no_such_action))
         return -1;
 
     return 0;
@@ -4138,48 +4814,53 @@ static int send_recv_mesg (struct remotefs *rfs, CStr * msg, CStr * response, in
 static char remotefs_error_return_[REMOTEFS_ERR_MSG_LEN];
 
 static int remotefs_error_return (char *errmsg)
-{
+{E_
     strcpy (errmsg, remotefs_error_return_);
     return -1;
 }
 
 static int dummyerr_listdir (struct remotefs *rfs, const char *directory, unsigned long options, char *filter, struct file_entry **r, int *n, char *errmsg)
-{
+{E_
     return remotefs_error_return (errmsg);
 }
 
 static int dummyerr_readfile (struct remotefs *rfs, struct action_callbacks *o, const char *filename, char *errmsg)
-{
+{E_
     return remotefs_error_return (errmsg);
 }
 
-static int dummyerr_writefile (struct remotefs *rfs, struct action_callbacks *o, const char *filename, long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg)
-{
+static int dummyerr_writefile (struct remotefs *rfs, struct action_callbacks *o, const char *filename, long long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg)
+{E_
     return remotefs_error_return (errmsg);
 }
 
 static int dummyerr_checkordinaryfileaccess (struct remotefs *rfs, const char *filename, unsigned long long sizelimit, struct portable_stat *st, char *errmsg)
-{
+{E_
     return remotefs_error_return (errmsg);
 }
 
 static int dummyerr_stat (struct remotefs *rfs, const char *path, struct portable_stat *st, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg)
-{
+{E_
     return remotefs_error_return (errmsg);
 }
 
 static int dummyerr_chdir (struct remotefs *rfs, const char *dirname, char *cwd, int cwdlen, char *errmsg)
-{
+{E_
     return remotefs_error_return (errmsg);
 }
 
 static int dummyerr_realpathize (struct remotefs *rfs, const char *path, const char *homedir, char *out, int outlen, char *errmsg)
-{
+{E_
     return remotefs_error_return (errmsg);
 }
 
 static int dummyerr_gethomedir (struct remotefs *rfs, char *out, int outlen, char *errmsg)
-{
+{E_
+    return remotefs_error_return (errmsg);
+}
+
+static int dummyerr_enablecrypto (struct remotefs *rfs, const unsigned char *challenge_local, unsigned char *challenge_remote, char *errmsg)
+{E_
     return remotefs_error_return (errmsg);
 }
 
@@ -4195,6 +4876,7 @@ struct remotefs remotefs_dummyerr = {
     dummyerr_chdir,
     dummyerr_realpathize,
     dummyerr_gethomedir,
+    dummyerr_enablecrypto,
     NULL,
 };
 
@@ -4208,6 +4890,7 @@ struct remotefs remotefs_local = {
     local_chdir,
     local_realpathize,
     local_gethomedir,
+    local_enablecrypto,
     NULL
 };
 
@@ -4221,6 +4904,7 @@ struct remotefs remotefs_socket = {
     remote_chdir,
     remote_realpathize,
     remote_gethomedir,
+    remote_enablecrypto,
     NULL
 };
 
@@ -4244,16 +4928,15 @@ struct remotefs_item *remotefs_list = NULL;
 
 
 const char *remotefs_home_dir (struct remotefs *rfs)
-{
+{E_
     struct remotefs_item *i;
     i = (struct remotefs_item *) (void *) rfs;
     assert (i->impl.magic == REMOTEFS_ITEM_MAGIC);
     return i->home_dir;
 }
 
-
 static int remotefs_start (struct remotefs_item *i, const char *host, char *errmsg)
-{
+{E_
     memset (i, '\0', sizeof (*i));
     strcpy (i->host, host);
     if (!strcmp (host, REMOTEFS_LOCAL)) {
@@ -4264,26 +4947,37 @@ static int remotefs_start (struct remotefs_item *i, const char *host, char *errm
         i->impl.remotefs_private = (struct remotefs_private *) malloc (sizeof (struct remotefs_private));
         memset (i->impl.remotefs_private, '\0', sizeof (struct remotefs_private));
         strcpy (i->impl.remotefs_private->remote, host);
-        i->impl.remotefs_private->sock = INVALID_SOCKET;
+        i->impl.remotefs_private->sock_data = (struct sock_data *) malloc (sizeof (struct sock_data));
+        memset (i->impl.remotefs_private->sock_data, '\0', sizeof (struct sock_data));
+        i->impl.remotefs_private->sock_data->sock = INVALID_SOCKET;
     }
     i->impl.magic = REMOTEFS_ITEM_MAGIC;
     if ((*i->impl.remotefs_gethomedir) (&i->impl, i->home_dir, sizeof (i->home_dir), errmsg)) {
-        if (i->impl.remotefs_private)
+        if (i->impl.remotefs_private) {
+            if (i->impl.remotefs_private->sock_data) {
+                if (i->impl.remotefs_private->sock_data->crypto_data.symauth) {
+                    symauth_free (i->impl.remotefs_private->sock_data->crypto_data.symauth);
+                }
+                free (i->impl.remotefs_private->sock_data);
+            }
             free (i->impl.remotefs_private);
+        }
         return -1;
     }
     return 0;
 }
 
 
-struct remotefs *remotefs_lookup (const char *host_)
-{
+struct remotefs *remotefs_lookup (const char *host_, char *last_directory)
+{E_
     static struct remotefs_item dummy;
     int r;
     char host[256];
     char addr[64];
     int addrlen = 0;
     struct remotefs_item *i;
+    if (!host_)
+        host_ = REMOTEFS_LOCAL;
     if (!strcmp (host_, REMOTEFS_LOCAL)) {
         strcpy (host, host_);
     } else {
@@ -4300,6 +4994,10 @@ struct remotefs *remotefs_lookup (const char *host_)
     if (remotefs_start (i, host, remotefs_error_return_)) {
         free (i);
         goto errout;
+    }
+    if (last_directory) {
+        strncpy (last_directory, i->home_dir, MAX_PATH_LEN);
+        last_directory[MAX_PATH_LEN - 1] = '\0';
     }
     i->next = remotefs_list;
     remotefs_list = i;
@@ -4324,13 +5022,13 @@ struct server_data {
 };
 
 static int remote_action_fn_v1_notimplemented (struct server_data *sd, CStr * s, const unsigned char *in, int inlen)
-{
+{E_
     alloc_encode_error (s, RFSERR_UNIMPLEMENTED_FUNCTION, "Unimplemented function", 0);
     return 0;
 }
 
 static int remote_action_fn_v1_listdir (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
-{
+{E_
     const unsigned char *p, *end;
     char directory[MAX_PATH_LEN];
     char filter[256];
@@ -4350,35 +5048,35 @@ static int remote_action_fn_v1_listdir (struct server_data *sd, CStr *s, const u
 
 struct server_reader_info {
     struct server_data *sd;
-    long progress;
-    long filelen;
+    long long progress;
+    long long filelen;
 };
 
-static int remote_chunk_startreader_cb (void *hook, long filelen, char *errmsg)
-{
+static int remote_chunk_startreader_cb (void *hook, long long filelen, char *errmsg)
+{E_
     struct server_reader_info *info;
     unsigned char p[6];
 
     info = (struct server_reader_info *) hook;
 
     encode_uint48 (p, filelen);
-    if (writer (*info->sd->reader_data->sock, p, 6)) {
-        info->progress = -1;
-        set_sockerrmsg_to_errno (errmsg, errno);
+    if (writer (info->sd->reader_data->sock_data, p, 6)) {
+        info->progress = -1LL;
+        set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
         return -1;
     }
 
     return 0;
 }
 
-static int remote_chunk_reader_cb (void *hook, const unsigned char *chunk, int chunklen, long filelen, char *errmsg)
-{
+static int remote_chunk_reader_cb (void *hook, const unsigned char *chunk, int chunklen, long long filelen, char *errmsg)
+{E_
     struct server_reader_info *info;
 
     info = (struct server_reader_info *) hook;
 
-    if (writer (*info->sd->reader_data->sock, chunk, chunklen)) {
-        set_sockerrmsg_to_errno (errmsg, errno);
+    if (writer (info->sd->reader_data->sock_data, chunk, chunklen)) {
+        set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
         return -1;
     }
 
@@ -4389,7 +5087,7 @@ static int remote_chunk_reader_cb (void *hook, const unsigned char *chunk, int c
 }
 
 static int remote_action_fn_v1_readfile (struct server_data *sd, CStr * s, const unsigned char *in, int inlen)
-{
+{E_
     const unsigned char *p, *end;
     char filename[MAX_PATH_LEN];
     struct server_reader_info info;
@@ -4410,19 +5108,20 @@ static int remote_action_fn_v1_readfile (struct server_data *sd, CStr * s, const
 
 struct server_writer_info {
     struct server_data *sd;
-    long remaining;
+    long long remaining;
 };
 
 static int remote_chunk_writer_cb (void *hook, unsigned char *chunk, int *chunklen, char *errmsg)
-{
+{E_
     struct server_writer_info *info;
+    enum reader_error reader_error = READER_ERROR_NOERROR;
 
     info = (struct server_writer_info *) hook;
 
     *chunklen = MIN (info->remaining, *chunklen);
 
-    if (reader (info->sd->reader_data, chunk, *chunklen)) {
-        set_sockerrmsg_to_errno (errmsg, errno);
+    if (reader (info->sd->reader_data, chunk, *chunklen, &reader_error)) {
+        set_sockerrmsg_to_errno (errmsg, errno, reader_error);
         return -1;
     }
 
@@ -4432,7 +5131,7 @@ static int remote_chunk_writer_cb (void *hook, unsigned char *chunk, int *chunkl
 }
 
 static void remote_intermediate_ack_cb (void *hook, int got_error)
-{
+{E_
     struct server_writer_info *info;
     struct cooledit_remote_msg_ack ack;
 
@@ -4441,11 +5140,11 @@ static void remote_intermediate_ack_cb (void *hook, int got_error)
     memset (&ack, '\0', sizeof (ack));
     encode_msg_ack (&ack, got_error ? RFSERR_EARLY_TERMINATE_FROM_WRITE_FILE : RFSERR_SUCCESS, MSG_VERSION);
 
-    writer (*info->sd->reader_data->sock, &ack, sizeof (ack));
+    writer (info->sd->reader_data->sock_data, &ack, sizeof (ack));
 }
 
 static int remote_action_fn_v1_writefile (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
-{
+{E_
     const unsigned char *p, *end;
     char filename[MAX_PATH_LEN];
     char backup_extension[MAX_PATH_LEN];
@@ -4475,7 +5174,7 @@ static int remote_action_fn_v1_writefile (struct server_data *sd, CStr *s, const
 }
 
 static int remote_action_fn_v1_checkordinaryfileaccess (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
-{
+{E_
     const unsigned char *p, *end;
     char filename[MAX_PATH_LEN];
     unsigned long long sizelimit;
@@ -4490,7 +5189,7 @@ static int remote_action_fn_v1_checkordinaryfileaccess (struct server_data *sd, 
 }
 
 static int remote_action_fn_v1_stat (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
-{
+{E_
     const unsigned char *p, *end;
     char path[MAX_PATH_LEN];
     unsigned long long handle_just_not_there = 0;
@@ -4505,7 +5204,7 @@ static int remote_action_fn_v1_stat (struct server_data *sd, CStr *s, const unsi
 }
 
 static int remote_action_fn_v1_chdir (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
-{
+{E_
     const unsigned char *p, *end;
     char dirname[MAX_PATH_LEN];
     p = in;
@@ -4517,7 +5216,7 @@ static int remote_action_fn_v1_chdir (struct server_data *sd, CStr *s, const uns
 }
 
 static int remote_action_fn_v1_realpathize (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
-{
+{E_
     const unsigned char *p, *end;
     char path[MAX_PATH_LEN];
     char homedir[MAX_PATH_LEN];
@@ -4532,8 +5231,28 @@ static int remote_action_fn_v1_realpathize (struct server_data *sd, CStr *s, con
 }
 
 static int remote_action_fn_v1_gethomedir (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
-{
+{E_
     remotefs_gethomedir_ (s);
+    return 0;
+}
+
+static int remote_action_fn_v2_enablecrypto (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
+{E_
+    const unsigned char *p, *end;
+    unsigned char challenge_local[SYMAUTH_BLOCK_SIZE + 1];
+    unsigned char challenge_remote[SYMAUTH_BLOCK_SIZE + 1];
+
+    p = in;
+    end = in + inlen;
+    if (decode_str (&p, end, (char *) challenge_remote, sizeof (challenge_remote)))
+        return -1;
+
+    get_next_iv (challenge_local);
+    if (!remotefs_enablecrypto_ (s, &sd->reader_data->sock_data->crypto_data, challenge_local, challenge_remote)) {
+    /* signal to turn on crypto at the end of this action: */
+        sd->reader_data->sock_data->enable_crypto = 1;
+    }
+
     return 0;
 }
 
@@ -4551,6 +5270,7 @@ struct action_item action_list[] = {
     { remote_action_fn_v1_chdir, },
     { remote_action_fn_v1_realpathize, },
     { remote_action_fn_v1_gethomedir, },
+    { remote_action_fn_v2_enablecrypto, },
 };
 
 static unsigned int client_count = 0L;
@@ -4563,7 +5283,7 @@ struct service {
 };
 
 static void init_service (struct service *serv, const char *listen_address, const char *option_range)
-{
+{E_
     int c = 0;
     memset (serv, '\0', sizeof (*serv));
     serv->h = listen_socket (listen_address, 50095);
@@ -4583,7 +5303,7 @@ struct client_item {
     unsigned int id;  /* for logging only */
     const char *action;
     struct client_item *next;
-    SOCKET sock;
+    struct sock_data sock_data;
     remotefs_sockaddr_t client_address;
     struct reader_data d;
     struct server_data sd;
@@ -4598,10 +5318,10 @@ struct client_item {
 };
 
 static void add_client (struct service *serv)
-{
+{E_
     struct client_item *i;
     int found_ip;
-    SOCKET sock;
+    struct sock_data sock_data_, *sock_data;
 #ifdef MSWIN
     BOOL yes = TRUE;
     u_long nbio = 1;
@@ -4612,9 +5332,12 @@ static void add_client (struct service *serv)
     socklen_t l;
     remotefs_sockaddr_t client_address;
 
+    sock_data = &sock_data_;
+    memset (sock_data, '\0', sizeof (*sock_data));
+
     l = sizeof (client_address);
-    sock = accept (serv->h, (struct sockaddr *) &client_address, &l);
-    if (sock == INVALID_SOCKET) {
+    sock_data->sock = accept (serv->h, (struct sockaddr *) &client_address, &l);
+    if (sock_data->sock == INVALID_SOCKET) {
         perrorsocket ("accept fail");
         return;
     }
@@ -4623,19 +5346,19 @@ static void add_client (struct service *serv)
 
     if (!found_ip) {
         char t[64];
-        SHUTSOCK (sock);
+        SHUTSOCK (sock_data);
         ip_to_text (remotefs_sockaddr_t_address (&client_address), remotefs_sockaddr_t_addresslen (&client_address), t);
         printf ("incoming address %s not in range %s\n", t, serv->option_range);
         return;
     }
 
-    if (setsockopt (sock, IPPROTO_TCP, TCP_NODELAY, (char *) &yes, sizeof (yes))) {
-        SHUTSOCK (sock);
+    if (setsockopt (sock_data->sock, IPPROTO_TCP, TCP_NODELAY, (char *) &yes, sizeof (yes))) {
+        SHUTSOCK (sock_data);
         perrorsocket ("setsockopt TCP_NODELAY\n");
         return;
     }
-    if (ioctlsocket (sock, FIONBIO, &nbio))  {
-        SHUTSOCK (sock);
+    if (ioctlsocket (sock_data->sock, FIONBIO, &nbio))  {
+        SHUTSOCK (sock_data);
         perrorsocket ("ioctl FIONBIO\n");
         return;
     }
@@ -4648,9 +5371,9 @@ static void add_client (struct service *serv)
     memset (i, '\0', sizeof (*i));
     i->magic  = CLIENT_MAGIC;
     i->id = client_count;
-    i->sock = sock;
+    i->sock_data = *sock_data;
     i->client_address = client_address;
-    i->d.sock = &i->sock;
+    i->d.sock_data = &i->sock_data;
     i->sd.reader_data = &i->d;
     time (&i->last_accessed);
 
@@ -4661,26 +5384,56 @@ static void add_client (struct service *serv)
 }
 
 static void process_client (struct client_item *i)
-{
-    CStr r;
+{E_
+#define r       (v[1])
+    CStr v[2];
+    char log_action[8];
     unsigned char *p = NULL;
     unsigned long long msglen;
     unsigned long version, action, magic;
     struct cooledit_remote_msg_header m;
     struct cooledit_remote_msg_ack ack;
+    enum reader_error reader_error = READER_ERROR_NOERROR;
 
     memset (&r, '\0', sizeof (r));
 
 #define ERR(s,m)  \
     do { \
-        printf ("%d: Error: %s, %s, %s\n", i->id, (s), (m), strerrorsocket ()); \
+        printf ("%d: Error: %s, %s, %s, %s\n", i->id, (s), (m), reader_error == READER_ERROR_NOERROR ? strerrorsocket () : "", reader_error_to_str(reader_error)); \
         goto errout; \
     } while (0)
 
-    if (reader (&i->d, &m, sizeof (m)))
-        ERR ("reading header", "");
+    if (reader (&i->d, &m, sizeof (m), &reader_error)) {
+        if (reader_error != READER_ERROR_NOERROR) {
+            /* This can only happy if crypto is enabled: */
+            int ignore;
+            struct crypto_packet_error e;
+            encode_uint16 (e.error_magic, CRYPTO_ERROR_MAGIC);
+            encode_uint32 (e.__future, 0);
+            encode_uint32 (e.read_error, reader_error);
+            ignore = send (i->sock_data.sock, (void *) &e, sizeof (e), 0);
+            if (ignore != sizeof (e)) {
+                ERR ("reading header, failed to send error msg", "");
+            } else {
+                ERR ("reading header, error msg sent", "");
+            }
+        } else {
+            ERR ("reading header, no error msg sent", "");
+        }
+    }
 
     decode_msg_header (&m, &msglen, &version, &action, &magic);
+
+    if (option_force_crypto) {
+        if (!i->d.sock_data->crypto && action != REMOTEFS_ACTION_ENABLECRYPTO) {
+            memset (&ack, '\0', sizeof (ack));
+            encode_msg_ack (&ack, RFSERR_NON_CRYPTO_OP_ATTEMPTED, MSG_VERSION);
+            if (writer (&i->sock_data, &ack, sizeof (ack)))
+                ERR ("writing ack", i->action);
+            ERR ("non-crypto op attempted", "");
+            goto errout;
+        }
+    }
 
     if (magic != FILE_PROTO_MAGIC)
         ERR ("bad magic", "");
@@ -4697,20 +5450,27 @@ static void process_client (struct client_item *i)
     memset (&ack, '\0', sizeof (ack));
     encode_msg_ack (&ack, 0, MSG_VERSION);
 
-    if (writer (i->sock, &ack, sizeof (ack)))
+    if (writer (&i->sock_data, &ack, sizeof (ack)))
         ERR ("writing ack", i->action);
 
     p = (unsigned char *) malloc (msglen);
 
-    if (reader (&i->d, p, msglen))
+    if (reader (&i->d, p, msglen, &reader_error))
         ERR ("reading request msg", "");
 
     memset (&r, '\0', sizeof (r));
 
-    if (action <= REMOTEFS_ACTION_NOTIMPLEMENTED || action >= sizeof (action_list) / sizeof (action_list[0]))
+    log_action[0] = '\0';
+    if (action <= REMOTEFS_ACTION_NOTIMPLEMENTED || action >= sizeof (action_list) / sizeof (action_list[0])) {
+        snprintf (log_action, sizeof (log_action), "(%ld)", action);
         action = REMOTEFS_ACTION_NOTIMPLEMENTED;
+    }
+    if (!action_list[action].action_fn) {
+        snprintf (log_action, sizeof (log_action), "(%ld)", action);
+        action = REMOTEFS_ACTION_NOTIMPLEMENTED;
+    }
     i->action = action_descr[action];
-    printf ("%u: %s: \n", i->id, i->action);
+    printf ("%u: %s%s%s: \n", i->id, i->sock_data.crypto ? (symauth_with_aesni (i->sock_data.crypto_data.symauth) ?  "(aesni) " : "(aes) ") : "", i->action, log_action);
     if ((*action_list[action].action_fn) (&i->sd, &r, p, msglen)) {
         i->kill = KILL_SOFT;
         printf ("Error: executing action, %s %d\n", i->action, r.len);
@@ -4731,14 +5491,17 @@ static void process_client (struct client_item *i)
     p = NULL;
 
     encode_msg_header (&m, r.len, MSG_VERSION, action, FILE_PROTO_MAGIC);
-    if (writer (i->sock, &m, sizeof (m)))
-        ERR ("writing response header", i->action);
 
-    if (writer (i->sock, r.data, r.len))
-        ERR ("writing response", i->action);
+    v[0].data = (char *) &m;
+    v[0].len = sizeof (m);
+    if (writervec (&i->sock_data, v, 2))
+        ERR ("writing response header", i->action);
 
     free (r.data);
     r.data = NULL;
+
+    i->sock_data.crypto = i->sock_data.enable_crypto;
+
     return;
 
   errout:
@@ -4748,10 +5511,11 @@ static void process_client (struct client_item *i)
         free (r.data);
     i->kill = KILL_HARD;
     return;
+#undef r
 }
 
 static void run_service (struct service *serv)
-{
+{E_
     struct client_item *i, **j;
     int n = 0;
     int r;
@@ -4761,8 +5525,8 @@ static void run_service (struct service *serv)
 
     for (i = serv->client_list; i; i = i->next) {
         assert (i->magic == CLIENT_MAGIC);
-        FD_SET (i->sock, &rd);
-        n = MAX (n, i->sock);
+        FD_SET (i->sock_data.sock, &rd);
+        n = MAX (n, i->sock_data.sock);
     }
     FD_SET (serv->h, &rd);
     n = MAX (n, serv->h);
@@ -4784,7 +5548,7 @@ static void run_service (struct service *serv)
 
     for (i = serv->client_list; i; i = i->next) {
         assert (i->magic == CLIENT_MAGIC);
-        if (FD_ISSET (i->sock, &rd)) {
+        if (FD_ISSET (i->sock_data.sock, &rd)) {
             if (i->kill) {
                 i->kill = KILL_HARD;
             } else {
@@ -4806,16 +5570,17 @@ static void run_service (struct service *serv)
             struct cooledit_remote_msg_ack ack;
             memset (&ack, '\0', sizeof (ack));
             encode_msg_ack (&ack, RFSERR_SERVER_CLOSED_IDLE_CLIENT, MSG_VERSION);
-            writer (i->sock, &ack, sizeof (ack));
+            writer (&i->sock_data, &ack, sizeof (ack));
             i->kill = KILL_HARD;
         }
 
         if (i->kill == KILL_HARD) {
             struct client_item *next;
-            SHUTSOCK (i->sock);
+            SHUTSOCK (&i->sock_data);
             next = i->next;
             i->magic = 0;
             printf ("removing %u\n", i->id);
+            symauth_free (i->sock_data.crypto_data.symauth);
             free (i);
             *j = next;
         } else {
@@ -4826,7 +5591,7 @@ static void run_service (struct service *serv)
 
 
 void remotefs_serverize (const char *listen_address, const char *option_range)
-{
+{E_
     struct service serv;
 
 #ifdef MSWIN
@@ -4844,8 +5609,6 @@ void remotefs_serverize (const char *listen_address, const char *option_range)
 #else
     signal (SIGPIPE, SIG_IGN);
 #endif
-
-    init_random ();
 
     init_service (&serv, listen_address, option_range);
 
@@ -4873,12 +5636,118 @@ void remotefs_serverize (const char *listen_address, const char *option_range)
 
 #ifdef STANDALONE
 
+#define ISSPACE(c)              ((c) <= ' ')
+static void string_chomp_ (char *_p)
+{E_
+    unsigned char *p, *q, *t;
+    p = (unsigned char *) _p;
+    assert (p);
+    for (q = p; *q; q++)
+        if (!ISSPACE (*q))
+            break;
+    for (t = p; *q;)
+        if (!ISSPACE (*p++ = *q++))
+            t = p;
+    *t = '\0';
+}
+
+
+static unsigned char get_rand_char (void)
+{E_
+    static int c = SYMAUTH_BLOCK_SIZE - 1;
+    static unsigned char data[SYMAUTH_BLOCK_SIZE];
+    struct randblock tmpr;
+
+    assert (sizeof (tmpr) >= SYMAUTH_BLOCK_SIZE);
+
+    if (c == SYMAUTH_BLOCK_SIZE - 1) {
+        c = 0;
+        get_random (&tmpr);
+        memcpy (data, &tmpr, SYMAUTH_BLOCK_SIZE);
+    } else {
+        c++;
+    }
+
+    return data[c];
+}
+
+static unsigned char get_range_char (void)
+{E_
+/* Elimate O and 0 which are too similar */
+/* Elimate I, 1, and l which are too similar */
+    const char *digits = "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+    unsigned char c;
+    int l;
+    l = strlen (digits);
+    while ((c = get_rand_char ()) >= l);
+    return digits[c];
+}
+
+static void create_aes_key (const char *n)
+{E_
+    int i;
+    FILE *f = NULL;
+    f = fopen (n, "wb");
+    if (!f)
+        goto err;
+/* 256 / (log(strlen(digits)) / log(2)) = 43.88904974692184 */
+    for (i = 0; i < 44; i++) {
+        if (fputc (get_range_char (), f) == EOF)
+            goto err;
+    }
+#ifdef MSWIN
+    if (fputc ('\r', f) == EOF)
+        goto err;
+#endif
+    if (fputc ('\n', f) == EOF)
+        goto err;
+    if (fflush (f))
+        goto err;
+    if (fclose (f)) {
+        perror (n);
+        exit (1);
+    }
+    return;
+
+  err:
+    if (f)
+        fclose (f);
+    perror (n);
+    exit (1);
+}
+
+static void read_keyfile (const char *n)
+{E_
+    FILE *f = NULL;
+    printf ("reading AES key from %s\n", n);
+    f = fopen (n, "rb");
+    if (!f) {
+        perror (n);
+        fclose (f);
+        exit (1);
+    }
+    if (!fgets ((char *) the_key, sizeof (the_key), f)) {
+        perror (n);
+        fclose (f);
+        exit (1);
+    }
+    string_chomp_ ((char *) the_key);
+    if (!strlen ((char *) the_key)) {
+        fprintf (stderr, "error, file %s is empty\n", n);
+        fclose (f);
+        exit (1);
+    }
+    fclose (f);
+}
+
 #ifdef MSWIN
 INT WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
 #else
 int main (int argc, char **argv)
 #endif
-{
+{E_
+    int i;
+    const char *keyfile = NULL;
 #ifdef MSWIN
     wchar_t **argv;
     int argc;
@@ -4892,10 +5761,93 @@ int main (int argc, char **argv)
 
     (void) strerrorsocket;
 
-    if (argc != 3) {
-        printf ("Usage: remotefs <listenaddress> <iprange>\n");
+    for (i = 1; i < argc; i++) {
+        const char *p;
+        p = wchar_to_char (argv[i]);
+        if (!strcmp (p, "-h")) {
+            goto usage;
+        } else if (!strcmp (p, "--no-crypto")) {
+            option_no_crypto = 1;
+        } else if (!strcmp (p, "--force-crypto")) {
+            option_force_crypto = 1;
+        } else if (!strcmp (p, "-k") || !strcmp (p, "--key-file")) {
+            keyfile = 0;
+            i++;
+            if (i >= argc)
+                goto usage;
+            keyfile = wchar_to_char (argv[i]);
+        } else if (p[0] == '-') {
+            goto usage;
+        } else {
+            break;
+        }
+    }
+
+    if (option_no_crypto && option_force_crypto) {
+        fprintf (stderr, "You cannot specify both --force-crypto and --no-crypto.\n");
         exit (1);
     }
+
+    init_random ();
+
+    if (!keyfile) {
+        FILE *f;
+        keyfile = "AESKEYFILE";
+        f = fopen (keyfile, "rb");
+        if (f) {
+            fclose (f);
+        } else if (!f && errno == ENOENT) {
+            /* ok, doesn't exist yet*/
+            printf ("creating keyfile AESKEYFILE\n");
+            create_aes_key (keyfile);
+        } else if (!f) {
+            perror (keyfile);
+            exit (1);
+        }
+    }
+
+    read_keyfile (keyfile);
+
+    if (!option_no_crypto) { /* only one side need do this check */
+        unsigned char *aeskey;
+        int aeskey_len, klen;
+        int bits_of_complexity;
+        klen = strlen ((char *) the_key);
+        aeskey = (unsigned char *) alloca (klen);
+        password_to_key (aeskey, &aeskey_len, the_key, klen, &bits_of_complexity);
+#define MIN_COMPLEXITY           ((SYMAUTH_AES_KEY_BYTES * 8) * 3 / 4)
+        if (bits_of_complexity < MIN_COMPLEXITY) {
+            fprintf (stderr, "password error: complexity %d less than %d bits\n", bits_of_complexity, MIN_COMPLEXITY);
+            exit (1);
+        }
+    }
+
+    while (i > 1) {
+        argc--;
+        argv++;
+        i--;
+    }
+
+    if (argc != 3) {
+      usage:
+        printf ("\n");
+        printf ("Usage: [<OPTIONS>] <listenaddress> <iprange>\n");
+        printf ("Usage: [-h]\n");
+        printf ("\n");
+        printf ("OPTIONS:\n");
+        printf ("  --no-crypto                          Turn off encryption.\n");
+        printf ("  --force-crypto                       Require encryption, or reject transaction.\n");
+        printf ("  -k <file>, --key-file <file>         Read AES key from <file>. Default: AESKEYFILE\n");
+        printf ("                                       If not specified, AESKEYFILE will be created\n");
+        printf ("                                       and populated with a strong random key.\n");
+        printf ("                                       If AESKEYFILE exists it will be read.\n");
+        printf ("  -h                                   Print help and exit.\n");
+        printf ("\n");
+        exit (1);
+    }
+
+    if (option_no_crypto)
+        action_list[REMOTEFS_ACTION_ENABLECRYPTO].action_fn = NULL;
 
     remotefs_serverize (wchar_to_char (argv[1]), wchar_to_char (argv[2]));
 
@@ -4912,7 +5864,7 @@ int main (int argc, char **argv)
 
 
 static void test_sint (long long J, int N)
-{
+{E_
     unsigned char buf[256];
     unsigned char *p;
     const unsigned char *q, *end;
@@ -4934,7 +5886,7 @@ static void test_sint (long long J, int N)
 #define test_float(a,b,c)       test_float__(__LINE__,a,b,c)
 
 static void test_float__ (int line, double J, int N, int assert_equality)
-{
+{E_
     unsigned char buf[256];
     unsigned char *p;
     const unsigned char *q, *end;
@@ -4968,7 +5920,7 @@ static void test_float__ (int line, double J, int N, int assert_equality)
 #define test_floatspecial(a,b,c)       test_floatspecial__(__LINE__,a,b,c)
 
 static void test_floatspecial__ (int line, double J, int N, unsigned long long nan)
-{
+{E_
     unsigned char buf[256];
     unsigned char *p;
     const unsigned char *q, *end;
@@ -5002,7 +5954,7 @@ static void test_floatspecial__ (int line, double J, int N, unsigned long long n
 #include "math.h"
 
 int main (int argc, char **argv)
-{
+{E_
     unsigned char buf[256];
     unsigned char *p;
     const unsigned char *q, *end;

@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* fieldedtextbox.c - for drawing a scrollable text window widget
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -24,6 +25,7 @@
 
 #define BDR 8
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -69,7 +71,7 @@ int mbrtowc_utf8_to_wchar (C_wchar_t * c, const char *t, int n, void *x /* no sh
 #define this_is_printable(c) (!strchr ("\r\b\t", c))
 
 static int this_text_width (char *s)
-{
+{E_
     int l = 0;
     char *p;
     for (p = s; *p;) {
@@ -105,7 +107,7 @@ static int this_text_width (char *s)
 /* result must be free'd */
 static int *get_field_sizes (void *data, int *num_lines, int *max_width,
 			     char **(*get_line) (void *, int, int *, int *))
-{
+{E_
     char **fields;
     int tagged, i, tab[256], *result, num_fields, max_num_fields = 0, line_number;
 
@@ -143,7 +145,7 @@ static int *get_field_sizes (void *data, int *num_lines, int *max_width,
 
 static void compose_line (void *data, int line_number, unsigned char *line, int *tab,
 		     char **(*get_line) (void *, int, int *, int *), int *tagged)
-{
+{E_
     char **fields;
     int i, num_fields;
 
@@ -214,7 +216,7 @@ static void compose_line (void *data, int line_number, unsigned char *line, int 
 }
 
 static unsigned char *compose_line_cached (void *data, int l, int *tab, char **(*get_line) (void *, int, int *, int *), int *tagged)
-{
+{E_
     static unsigned char line[4096];
     static int c_tagged, c_l = -1;
     if (c_l == l) {
@@ -231,7 +233,7 @@ static long count_fielded_textbox_lines (CWidget * wdt);
 void render_fielded_textbox (CWidget * w, int redrawall);
 
 void link_scrollbar_to_fielded_textbox (CWidget * scrollbar, CWidget * textbox, XEvent * xevent, CEvent * cwevent, int whichscrbutton)
-{
+{E_
     int redrawtext = 0, count, c;
     static int r = 0;
     if ((xevent->type == ButtonRelease || xevent->type == MotionNotify) && whichscrbutton == 3) {
@@ -276,7 +278,7 @@ void link_scrollbar_to_fielded_textbox (CWidget * scrollbar, CWidget * textbox, 
 }
 
 void link_h_scrollbar_to_fielded_textbox (CWidget * scrollbar, CWidget * textbox, XEvent * xevent, CEvent * cwevent, int whichscrbutton)
-{
+{E_
     int redrawtext = 0, c;
     static int r = 0;
     if ((xevent->type == ButtonRelease || xevent->type == MotionNotify) && whichscrbutton == 3) {
@@ -322,19 +324,19 @@ void selection_clear (void);
 static long current;
 
 static int text_ypixel_to_row (int y)
-{
+{E_
     int row;
     row = y / FONT_PIX_PER_LINE + 1;
     return row;
 }
 
 static void xy (int x, int y, int *x_return, int *y_return)
-{
+{E_
     edit_translate_xy (x, y, x_return, y_return);
 }
 
 static long cp (CWidget * w, int x, int y)
-{
+{E_
     long q, row;
     row = text_ypixel_to_row (y);
     row = (row + w->firstline - 1) << 16;
@@ -348,7 +350,7 @@ static long cp (CWidget * w, int x, int y)
 
 /* return 1 if not marked */
 static int marks (CWidget * w, long *start, long *end)
-{
+{E_
     if (w->mark1 == w->mark2)
 	return 1;
     *start = min (w->mark1, w->mark2);
@@ -359,17 +361,17 @@ static int marks (CWidget * w, long *start, long *end)
 extern int range (CWidget * w, long start, long end, int click);
 
 static void move_mark (CWidget * w)
-{
+{E_
     w->mark2 = w->mark1 = current;
 }
 
 static void fin_mark (CWidget * w)
-{
+{E_
     w->mark2 = w->mark1 = -1;
 }
 
 static void release_mark (CWidget * w, XEvent * event)
-{
+{E_
     w->mark2 = current;
     if (w->mark2 != w->mark1 && event) {
 	selection_clear ();
@@ -380,7 +382,7 @@ static void release_mark (CWidget * w, XEvent * event)
 
 /* result must be free'd */
 static char *get_block (CWidget * w, long start_mark, long end_mark, int *type, int *l)
-{
+{E_
     POOL *p;
     int tagged, i;
     unsigned char c, *t;
@@ -466,7 +468,7 @@ static char *get_block (CWidget * w, long start_mark, long end_mark, int *type, 
 }
 
 static void move (CWidget * w, long click, int y)
-{
+{E_
     int h, row;
     row = text_ypixel_to_row (y);
     current = click;
@@ -481,7 +483,7 @@ static void move (CWidget * w, long click, int y)
 }
 
 static void motion (CWidget * w, long click)
-{
+{E_
     w->mark2 = click;
 }
 
@@ -508,7 +510,7 @@ CWidget *CDrawFieldedTextbox (const char *identifier, Window parent, int x, int 
 			      int width, int height, int line, int column,
 			      char **(*get_line) (void *, int, int *, int *),
 			      long options, void *data)
-{
+{E_
     char *scroll;
     int numlines;
     CWidget *wdt;
@@ -572,7 +574,7 @@ CWidget *CDrawFieldedTextbox (const char *identifier, Window parent, int x, int 
 
 
 CWidget *CRedrawFieldedTextbox (const char *identifier, int preserve)
-{
+{E_
     int numlines;
     CWidget *wdt;
     int *tab, w;
@@ -606,7 +608,7 @@ int utf8_to_wchar_t_one_char_safe (C_wchar_t * c, const char *t, int n);
 
 
 static int calc_text_pos_fielded_textbox (CWidget *w, long b, long *q, int l)
-{
+{E_
     int x = 0, xn = 0, tagged;
     C_wchar_t c;
     unsigned char *text;
@@ -677,7 +679,7 @@ extern int highlight_this_line;
 
 /* here upper 16 bits of q are the line, lowe 16, the column */
 static void convert_text_fielded_textbox (CWidget * w, long bol, long q, cache_type *line, cache_type *eol, int x, int x_max, int row, struct _book_mark **bookmarks_not_used, int n_bookmarks_not_used)
-{
+{E_
     unsigned char *text;
     int tagged, bold = 0, italic = 0;
     C_wchar_t c;
@@ -774,7 +776,7 @@ static void convert_text_fielded_textbox (CWidget * w, long bol, long q, cache_t
 
 
 static void fielded_text_print_line (CWidget * w, long b, int row)
-{
+{E_
     edit_draw_proportional (w,
 			    (converttext_cb_t) convert_text_fielded_textbox,
                             (calctextpos_cb_t) calc_text_pos_fielded_textbox,
@@ -800,7 +802,7 @@ extern int EditClear;
 extern unsigned long edit_normal_background_color;
 
 void render_fielded_textbox (CWidget * w, int redrawall)
-{
+{E_
     int row, height, isfocussed, curs, i, x;
     static Window last_win = 0;
     static int last_firstcolumn = 0;
@@ -875,7 +877,7 @@ void render_fielded_textbox (CWidget * w, int redrawall)
    If all is non-zero then count all the lines.
  */
 static long count_fielded_textbox_lines (CWidget * wdt)
-{
+{E_
     long height;
     height = wdt->height / FONT_PIX_PER_LINE;
     if (wdt->numlines - wdt->firstline < height)
@@ -884,7 +886,7 @@ static long count_fielded_textbox_lines (CWidget * wdt)
 }
 
 static void fielded_text_mouse_mark (CWidget * w, XEvent * event, CEvent * ce)
-{
+{E_
     CPushFont ("editor", 0);
     mouse_mark (event, ce->double_click, w->funcs);
     CPopFont ();
@@ -892,7 +894,7 @@ static void fielded_text_mouse_mark (CWidget * w, XEvent * event, CEvent * ce)
 
 /* gets selected text into selection structure, stripping nroff */
 void fielded_text_get_selection (CWidget * w)
-{
+{E_
 /* backport this fix: */
     int type = DndUnknown;
     CStr s;
@@ -906,7 +908,7 @@ void fielded_text_get_selection (CWidget * w)
 void selection_send (XSelectionRequestEvent * rq);
 
 int eh_fielded_textbox (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     int handled = 0, redrawall = 0, count;
 
     switch (xevent->type) {

@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
+#include "inspect.h"
 #include "rxvtlib.h"
 
 /*--------------------------------*-C-*---------------------------------*
@@ -41,7 +43,7 @@
 /* draw triangular button with a shadow of SHADOW (1 or 2) pixels */
 /* INTPROTO */
 void            rxvtlib_Draw_button (rxvtlib *o, int x, int y, int state, int dirn)
-{
+{E_
     const unsigned int sz = (SB_WIDTH), sz2 = (SB_WIDTH / 2);
     XPoint          pt[3];
     GC              top, bot;
@@ -127,7 +129,7 @@ void            rxvtlib_Draw_button (rxvtlib *o, int x, int y, int state, int di
 
 /* INTPROTO */
 Pixmap          rxvtlib_renderPixmap (rxvtlib *o, char **data, int width, int height)
-{
+{E_
     int             x, y;
     Pixmap          d;
 
@@ -161,7 +163,7 @@ Pixmap          rxvtlib_renderPixmap (rxvtlib *o, char **data, int width, int he
 
 /* INTPROTO */
 void            rxvtlib_init_scrollbar_stuff (rxvtlib *o)
-{
+{E_
     XGCValues       gcvalue;
     XColor          xcol;
     Pixmap          stipple;
@@ -234,7 +236,7 @@ void            rxvtlib_init_scrollbar_stuff (rxvtlib *o)
 /* Draw bevel & arrows */
 /* INTPROTO */
 void            rxvtlib_drawBevel (rxvtlib *o, Drawable d, int x, int y, int w, int h)
-{
+{E_
     XDrawLine (o->Xdisplay, d, o->whiteGC, x, y, x + w - 1, y);
     XDrawLine (o->Xdisplay, d, o->whiteGC, x, y, x, y + h - 1);
 
@@ -249,7 +251,7 @@ void            rxvtlib_drawBevel (rxvtlib *o, Drawable d, int x, int y, int w, 
 
 /* EXTPROTO */
 int             rxvtlib_scrollbar_show (rxvtlib *o, int update)
-{
+{E_
     static int      scrollbar_len;	/* length of slider */
     static int      last_top, last_bot, last_state;
 #ifndef NEXT_SCROLLBAR
@@ -489,7 +491,7 @@ int             rxvtlib_scrollbar_show (rxvtlib *o, int update)
 
 /* EXTPROTO */
 int             rxvtlib_scrollbar_mapping (rxvtlib *o, int map)
-{
+{E_
     int             change = 0;
 
     if (map && !scrollbar_visible ()) {
@@ -508,7 +510,7 @@ int             rxvtlib_scrollbar_mapping (rxvtlib *o, int map)
 
 /* EXTPROTO */
 void            rxvtlib_map_scrollBar (rxvtlib *o, int map)
-{
+{E_
     if (rxvtlib_scrollbar_mapping (o, map)) {
 	rxvtlib_resize_all_windows (o);
 	rxvtlib_scr_touch (o);

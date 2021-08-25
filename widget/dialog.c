@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* dialog.c - draws various useful dialog boxes
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -30,7 +32,7 @@ extern struct look *look;
 
 /* Yuriy Elkin: (from mc/src/util.c) */
 char *get_sys_error (const char *s)
-{
+{E_
     const char *error_msg;
     if (errno) {
 #ifdef HAVE_STRERROR
@@ -52,7 +54,7 @@ char *get_sys_error (const char *s)
 /* error messages displayed before the main window is mapped must
    be displayed on the root window to be seen */
 Window find_mapped_window (Window w)
-{
+{E_
     CWidget *wdt;
     if (w == CRoot)
 	return CRoot;
@@ -65,7 +67,7 @@ Window find_mapped_window (Window w)
 }
 
 static char *replace_tabs (const char *p)
-{
+{E_
     char *r, *q;
     const char *t;
     int n = 0, line = 0;
@@ -100,8 +102,8 @@ static char *replace_tabs (const char *p)
     return r;
 }
 
-static void CErrorDialog_ (Window in, int x, int y, const char *heading, int fixed, const char *fmt, va_list pa)
-{
+static void CErrorDialog__ (Window in, int x, int y, const char *heading, int fixed, const char *fmt, va_list pa)
+{E_
     static int inside = 0;
     char *str, *str_raw;
     Window win;
@@ -156,8 +158,16 @@ static void CErrorDialog_ (Window in, int x, int y, const char *heading, int fix
     inside = 0;
 }
 
+static void CErrorDialog_ (Window in, int x, int y, const char *heading, int fixed, const char *fmt, va_list pa)
+{E_
+    struct hint_pos *h;
+    h = CPushHintPos ();
+    CErrorDialog__ (in, x, y, heading, fixed, fmt, pa);
+    CPopHintPos (h);
+}
+
 void CErrorDialog (Window in, int x, int y, const char *heading, const char *fmt, ...)
-{
+{E_
     va_list pa;
     va_start (pa, fmt);
     CErrorDialog_ (in, x, y, heading, 0, fmt, pa);
@@ -165,7 +175,7 @@ void CErrorDialog (Window in, int x, int y, const char *heading, const char *fmt
 }
 
 void CErrorDialogTxt (Window in, int x, int y, const char *heading, const char *fmt, ...)
-{
+{E_
     va_list pa;
     va_start (pa, fmt);
     CErrorDialog_ (in, x, y, heading, 1, fmt, pa);
@@ -173,7 +183,7 @@ void CErrorDialogTxt (Window in, int x, int y, const char *heading, const char *
 }
 
 void CMessageDialog (Window in, int x, int y, unsigned long options, const char *heading, const char *fmt,...)
-{
+{E_
     va_list pa;
     char *str;
     Window win;
@@ -215,7 +225,7 @@ void CMessageDialog (Window in, int x, int y, unsigned long options, const char 
 
 /* draws a scrollable text box with a button to clear. Can be used to give long help messages */
 void CTextboxMessageDialog (Window in, int x, int y, int columns, int lines, const char *heading, const char *text, int line)
-{
+{E_
     Window win;
     CEvent cwevent;
     CState s;
@@ -257,7 +267,7 @@ void CTextboxMessageDialog (Window in, int x, int y, int columns, int lines, con
 /* draws a scrollable text box with a button to clear. Can be used to give long help messages */
 void CFieldedTextboxMessageDialog (Window in, int x, int y, int columns, int lines, const char *heading,
                             char **(*get_line) (void *, int, int *, int *), long options, void *data)
-{
+{E_
     Window win;
     CEvent cwevent;
     CState s;
@@ -310,7 +320,7 @@ void CFieldedTextboxMessageDialog (Window in, int x, int y, int columns, int lin
 int CListboxDialog (Window in, int x, int y, int columns, int lines,
      const char *heading, int start_line, int cursor_line, int num_lines,
 		    char *(*get_line) (void *data, int line), void *data)
-{
+{E_
     Window win;
     CEvent cwevent;
     CState s;
@@ -392,7 +402,7 @@ int CListboxDialog (Window in, int x, int y, int columns, int lines,
    Result must be less than 1024 bytes long.
  */
 char *CTrivialSelectionDialog (Window in, int x, int y, int columns, int lines, const char *text, int line, int cursor_line)
-{
+{E_
     Window win;
     CEvent cwevent;
     XEvent xevent;
@@ -443,7 +453,7 @@ char *CTrivialSelectionDialog (Window in, int x, int y, int columns, int lines, 
 
 
 void CFatalErrorDialog (int x, int y, const char *fmt,...)
-{
+{E_
     va_list pa;
     char *str;
     Window win;
@@ -485,7 +495,7 @@ void CFatalErrorDialog (int x, int y, const char *fmt,...)
 
 /* returns a raw XK_key sym, or 0 on cancel */
 XEvent *CRawkeyQuery (Window in, int x, int y, const char *heading, const char *fmt,...)
-{
+{E_
     va_list pa;
     char *str;
     XEvent *p = 0;
@@ -544,7 +554,7 @@ XEvent *CRawkeyQuery (Window in, int x, int y, const char *heading, const char *
    Result must be free'd. Returns 0 on cancel.
  */
 char *CInputDialog (const char *ident, Window in, int x, int y, int min_width, const char *def, const char *heading, const char *fmt,...)
-{
+{E_
     va_list pa;
     char *str, *p = 0;
     int w, h;
@@ -639,7 +649,7 @@ static char *id[32] =
 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 void free_last_query_buttons (void)
-{
+{E_
     int i;
     for (i = 0; i < 32; i++)
 	if (id[i]) {
@@ -650,7 +660,7 @@ void free_last_query_buttons (void)
 
 /* returns -1 on widget-destroyed-without-a-button-pressed or cancel (i.e. Esc) */
 int CQueryDialog (Window in, int x, int y, const char *heading, const char *descr, const char *first,...)
-{
+{E_
     va_list pa;
     char *textbox_text = 0;
     int i, buttons = 0, r = -1;

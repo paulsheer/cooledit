@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* coollocal.h  - header for internel usage
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -45,6 +46,7 @@ void link_scrollbar_to_editor (CWidget * w, CWidget * editor, XEvent * xevent, C
 void destroy_picture (CWidget * w);
 int edit_translate_key (unsigned int x_keycode, long x_key, int x_state, int *cmd, char *x_lat, int *x_lat_len);
 void toggle_cursor (void);
+void init_cursor_state(void);
 unsigned char *font_wchar_to_charenc (C_wchar_t c, int *l);
 KeySym key_sym_xlat (XEvent * ev, char *x_lat, int *x_lat_len);
 void textinput_insert (CWidget * w, CStr c);
@@ -55,6 +57,7 @@ void childhandler_ (void);
 int CCheckGlobalHotKey (XEvent * xevent, CEvent * cwevent, int do_focus);
 void CDisableXIM(void);
 void CEnableXIM(void);
+int CIsIdle (void);
 
 
 /* returns non-zero if they keysym of one of the control keys (shift, capslock etc.) */
@@ -86,6 +89,7 @@ long for_all_widgets (for_all_widgets_cb_t call_back, void *data1, void *data2);
 unsigned char *wcrtomb_wchar_to_utf8 (C_wchar_t c);
 enum font_encoding get_editor_encoding (void);
 int set_editor_encoding (int utf_encoding, int locale_encoding);
+const char *get_event_name(int type);
 
 
 struct style_struct {

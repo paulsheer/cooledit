@@ -1,5 +1,8 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
+#include "inspect.h"
 #include "rxvtlib.h"
 #include "stringtools.h"
+#include "edit.h"
 
 
 /*--------------------------------*-C-*--------------------------------------*
@@ -58,7 +61,7 @@
 /* Fill part/all of a line with blanks. */
 /* INTPROTO */
 void            blank_line (text_t * et, rend_t * er, int width, rend_t efs)
-{
+{E_
     MEMSET (et, ' ', width);
     for (; width--;)
 	*er++ = efs;
@@ -69,7 +72,7 @@ void            blank_line (text_t * et, rend_t * er, int width, rend_t efs)
 /* INTPROTO */
 void            rxvtlib_blank_screen_mem (rxvtlib *o, text_t ** tp, rend_t ** rp, int row,
 				  rend_t efs)
-{
+{E_
     int             width = o->TermWin.ncol;
     rend_t         *er;
 
@@ -88,7 +91,7 @@ void            rxvtlib_blank_screen_mem (rxvtlib *o, text_t ** tp, rend_t ** rp
 
 /* EXTPROTO */
 void            rxvtlib_scr_reset (rxvtlib *o)
-{
+{E_
     int             i, j, k, total_rows, prev_total_rows;
     rend_t          setrstyle;
 
@@ -298,7 +301,7 @@ void            rxvtlib_scr_reset (rxvtlib *o)
 
 /* INTPROTO */
 void            rxvtlib_scr_reset_realloc (rxvtlib *o)
-{
+{E_
     int             total_rows;
 
     total_rows = o->TermWin.nrow + o->TermWin.saveLines;
@@ -325,7 +328,7 @@ void            rxvtlib_scr_reset_realloc (rxvtlib *o)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_release (rxvtlib *o)
-{
+{E_
     int             i, total_rows;
 
     total_rows = o->TermWin.nrow + o->TermWin.saveLines;
@@ -366,7 +369,7 @@ void            rxvtlib_scr_release (rxvtlib *o)
 /* ------------------------------------------------------------------------- */
 /* EXTPROTO */
 void            rxvtlib_scr_poweron (rxvtlib *o)
-{
+{E_
     D_SCREEN ((stderr, "scr_poweron()"));
 
     MEMSET (o->charsets, 'B', sizeof (o->charsets));
@@ -399,7 +402,7 @@ void            rxvtlib_scr_poweron (rxvtlib *o)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_cursor (rxvtlib *o, int mode)
-{
+{E_
     D_SCREEN ((stderr, "scr_cursor(%c)", mode));
 
     switch (mode) {
@@ -440,7 +443,7 @@ void            rxvtlib_scr_cursor (rxvtlib *o, int mode)
  */
 /* EXTPROTO */
 int             rxvtlib_scr_change_screen (rxvtlib *o, int scrn)
-{
+{E_
     int             i, tmp;
 
 #if NSCREENS
@@ -516,7 +519,7 @@ int             rxvtlib_scr_change_screen (rxvtlib *o, int scrn)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_color (rxvtlib *o, unsigned int color, unsigned int Intensity)
-{
+{E_
     if (color == restoreFG)
 	color = Color_fg;
     else if (color == restoreBG)
@@ -559,7 +562,7 @@ void            rxvtlib_scr_color (rxvtlib *o, unsigned int color, unsigned int 
  */
 /* EXTPROTO */
 void            rxvtlib_scr_rendition (rxvtlib *o, int set, int style)
-{
+{E_
     unsigned int    color;
     rend_t          font_attr;
 
@@ -628,7 +631,7 @@ void            rxvtlib_scr_rendition (rxvtlib *o, int set, int style)
  */
 /* INTPROTO */
 int             rxvtlib_scroll_text (rxvtlib *o, int row1, int row2, int count, int spec)
-{
+{E_
     int             i, j;
 
     o->want_refresh = 1;
@@ -723,7 +726,7 @@ int             rxvtlib_scroll_text (rxvtlib *o, int row1, int row2, int count, 
  */
 /* EXTPROTO */
 void            rxvtlib_scr_scroll_text (rxvtlib *o, int count)
-{
+{E_
     int             row, erow;
 
     if (count == 0)
@@ -748,7 +751,7 @@ void            rxvtlib_scr_scroll_text (rxvtlib *o, int count)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_add_lines (rxvtlib *o, const unsigned char *str, int nlines, int len)
-{
+{E_
     char            c;
     int             i, j, row, last_col, checksel, clearsel;
     text_t         *stp;
@@ -921,7 +924,7 @@ void            rxvtlib_scr_add_lines (rxvtlib *o, const unsigned char *str, int
  */
 /* EXTPROTO */
 void            rxvtlib_scr_backspace (rxvtlib *o)
-{
+{E_
     RESET_CHSTAT;
     o->want_refresh = 1;
     if (o->screen.cur.col == 0) {
@@ -948,7 +951,7 @@ void            rxvtlib_scr_backspace (rxvtlib *o)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_tab (rxvtlib *o, int count)
-{
+{E_
     int             i, x;
 
     o->want_refresh = 1;
@@ -990,7 +993,7 @@ void            rxvtlib_scr_tab (rxvtlib *o, int count)
 #ifndef NO_FRILLS
 /* EXTPROTO */
 void            rxvtlib_scr_backindex (rxvtlib *o)
-{
+{E_
     int             i, row;
     text_t         *t0;
     rend_t         *r0;
@@ -1026,7 +1029,7 @@ void            rxvtlib_scr_backindex (rxvtlib *o)
 #ifndef NO_FRILLS
 /* EXTPROTO */
 void            rxvtlib_scr_forwardindex (rxvtlib *o)
-{
+{E_
     int             i, row;
     text_t         *t0;
     rend_t         *r0;
@@ -1061,7 +1064,7 @@ void            rxvtlib_scr_forwardindex (rxvtlib *o)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_gotorc (rxvtlib *o, int row, int col, int relative)
-{
+{E_
     o->want_refresh = 1;
     ZERO_SCROLLBACK;
     RESET_CHSTAT;
@@ -1109,7 +1112,7 @@ void            rxvtlib_scr_gotorc (rxvtlib *o, int row, int col, int relative)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_index (rxvtlib *o, int direction)
-{
+{E_
     int             dirn;
 
     o->want_refresh = 1;
@@ -1149,7 +1152,7 @@ void            rxvtlib_scr_index (rxvtlib *o, int direction)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_erase_line (rxvtlib *o, int mode)
-{
+{E_
     int             row, col, num;
 
     o->want_refresh = 1;
@@ -1208,7 +1211,7 @@ void            rxvtlib_scr_erase_line (rxvtlib *o, int mode)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_erase_screen (rxvtlib *o, int mode)
-{
+{E_
     int             row, num, row_offset;
     rend_t          ren;
     long            gcmask;
@@ -1280,7 +1283,7 @@ void            rxvtlib_scr_erase_screen (rxvtlib *o, int mode)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_E (rxvtlib *o)
-{
+{E_
     int             i, j;
     text_t         *t;
     rend_t         *r, fs;
@@ -1308,7 +1311,7 @@ void            rxvtlib_scr_E (rxvtlib *o)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_insdel_lines (rxvtlib *o, int count, int insdel)
-{
+{E_
     int             end;
 
     ZERO_SCROLLBACK;
@@ -1349,7 +1352,7 @@ void            rxvtlib_scr_insdel_lines (rxvtlib *o, int count, int insdel)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_insdel_chars (rxvtlib *o, int count, int insdel)
-{
+{E_
     int             col, row;
     rend_t          tr;
 
@@ -1448,7 +1451,7 @@ void            rxvtlib_scr_insdel_chars (rxvtlib *o, int count, int insdel)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_scroll_region (rxvtlib *o, int top, int bot)
-{
+{E_
     MAX_IT (top, 0);
     MIN_IT (bot, o->TermWin.nrow - 1);
     if (top > bot)
@@ -1466,7 +1469,7 @@ void            rxvtlib_scr_scroll_region (rxvtlib *o, int top, int bot)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_cursor_visible (rxvtlib *o, int mode)
-{
+{E_
     o->want_refresh = 1;
     if (mode)
 	o->screen.flags |= Screen_VisibleCursor;
@@ -1482,7 +1485,7 @@ void            rxvtlib_scr_cursor_visible (rxvtlib *o, int mode)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_autowrap (rxvtlib *o, int mode)
-{
+{E_
     if (mode)
 	o->screen.flags |= Screen_Autowrap;
     else
@@ -1501,7 +1504,7 @@ void            rxvtlib_scr_autowrap (rxvtlib *o, int mode)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_relative_origin (rxvtlib *o, int mode)
-{
+{E_
     if (mode)
 	o->screen.flags |= Screen_Relative;
     else
@@ -1517,7 +1520,7 @@ void            rxvtlib_scr_relative_origin (rxvtlib *o, int mode)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_insert_mode (rxvtlib *o, int mode)
-{
+{E_
     if (mode)
 	o->screen.flags |= Screen_Insert;
     else
@@ -1533,7 +1536,7 @@ void            rxvtlib_scr_insert_mode (rxvtlib *o, int mode)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_set_tab (rxvtlib *o, int mode)
-{
+{E_
     if (mode < 0)
 	MEMSET (o->tabs, 0, o->TermWin.ncol * sizeof (char));
 
@@ -1549,7 +1552,7 @@ void            rxvtlib_scr_set_tab (rxvtlib *o, int mode)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_rvideo_mode (rxvtlib *o, int mode)
-{
+{E_
     int             i, j;
     rend_t         *r;
 
@@ -1573,7 +1576,7 @@ void            rxvtlib_scr_rvideo_mode (rxvtlib *o, int mode)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_report_position (rxvtlib *o)
-{
+{E_
     rxvtlib_tt_printf (o, "\033[%d;%dR", o->screen.cur.row + 1, o->screen.cur.col + 1);
 }
 
@@ -1586,7 +1589,7 @@ void            rxvtlib_scr_report_position (rxvtlib *o)
  */
 /* INTPROTO */
 void            rxvtlib_set_font_style (rxvtlib *o)
-{
+{E_
     o->rstyle &= ~RS_fontMask;
     switch (o->charsets[o->screen.charset]) {
     case '0':			/* DEC Special Character & Line Drawing Set */
@@ -1618,7 +1621,7 @@ void            rxvtlib_set_font_style (rxvtlib *o)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_charset_choose (rxvtlib *o, int set)
-{
+{E_
     o->screen.charset = set;
     rxvtlib_set_font_style (o);
 }
@@ -1634,7 +1637,7 @@ void            rxvtlib_scr_charset_choose (rxvtlib *o, int set)
  */
 /* EXTPROTO */
 void            rxvtlib_scr_charset_set (rxvtlib *o, int set, unsigned int ch)
-{
+{E_
 #ifdef MULTICHAR_SET
     o->multi_byte = (set < 0);
     set = abs (set);
@@ -1650,7 +1653,7 @@ void            rxvtlib_scr_charset_set (rxvtlib *o, int set, unsigned int ch)
 
 /* INTPROTO */
 void            eucj2jis (unsigned char *str, int len)
-{
+{E_
     register int    i;
 
     for (i = 0; i < len; i++)
@@ -1660,7 +1663,7 @@ void            eucj2jis (unsigned char *str, int len)
 /* ------------------------------------------------------------------------- */
 /* INTPROTO */
 void            sjis2jis (unsigned char *str, int len)
-{
+{E_
     register int    i;
     unsigned char  *high, *low;
 
@@ -1682,12 +1685,12 @@ void            sjis2jis (unsigned char *str, int len)
 
 /* INTPROTO */
 void            big5dummy (unsigned char *str, int len)
-{
+{E_
 }
 
 /* INTPROTO */
 void            gb2jis (unsigned char *str, int len)
-{
+{E_
     register int    i;
 
     for (i = 0; i < len; i++)
@@ -1696,7 +1699,7 @@ void            gb2jis (unsigned char *str, int len)
 
 /* EXTPROTO */
 void            rxvtlib_set_multichar_encoding (rxvtlib *o, const char *str)
-{
+{E_
     if (str && *str) {
 	if (!Cstrcasecmp (str, "sjis")) {
 	    o->encoding_method = SJIS;	/* Kanji SJIS */
@@ -1716,14 +1719,14 @@ void            rxvtlib_set_multichar_encoding (rxvtlib *o, const char *str)
 #ifdef RXVT_GRAPHICS
 /* EXTPROTO */
 int             rxvtlib_scr_get_fgcolor (rxvtlib *o)
-{
+{E_
     return GET_FGCOLOR (o->rstyle);
 }
 
 /* ------------------------------------------------------------------------- */
 /* EXTPROTO */
 int             rxvtlib_scr_get_bgcolor (rxvtlib *o)
-{
+{E_
     return GET_BGCOLOR (o->rstyle);
 }
 #endif
@@ -1746,7 +1749,7 @@ enum {
 };
 /* EXTPROTO */
 void            rxvtlib_scr_expose (rxvtlib *o, int x, int y, int width, int height)
-{
+{E_
     int             i;
 
     row_col_t       rc[RC_COUNT];
@@ -1804,7 +1807,7 @@ void            rxvtlib_scr_expose (rxvtlib *o, int x, int y, int width, int hei
  */
 /* EXTPROTO */
 void            rxvtlib_scr_touch (rxvtlib *o)
-{
+{E_
     rxvtlib_scr_expose (o, 0, 0, o->TermWin.width, o->TermWin.height);
 }
 
@@ -1815,7 +1818,7 @@ void            rxvtlib_scr_touch (rxvtlib *o)
  */
 /* EXTPROTO */
 int             rxvtlib_scr_move_to (rxvtlib *o, int y, int len)
-{
+{E_
     int             start;
 
     o->want_refresh = 1;
@@ -1847,7 +1850,7 @@ int             rxvtlib_scr_move_to (rxvtlib *o, int y, int len)
  */
 /* EXTPROTO */
 int             rxvtlib_scr_page (rxvtlib *o, int direction, int nlines)
-{
+{E_
     int             start;
 
     D_SCREEN (
@@ -1874,7 +1877,7 @@ int             rxvtlib_scr_page (rxvtlib *o, int direction, int nlines)
 /* ------------------------------------------------------------------------- */
 /* EXTPROTO */
 void            rxvtlib_scr_bell (rxvtlib *o)
-{
+{E_
 #ifndef NO_MAPALERT
 # ifdef MAPALERT_OPTION
     if (o->Options & Opt_mapAlert)
@@ -1892,7 +1895,7 @@ void            rxvtlib_scr_bell (rxvtlib *o)
 /* ARGSUSED */
 /* EXTPROTO */
 void            rxvtlib_scr_printscreen (rxvtlib *o, int fullhist)
-{
+{E_
 #ifdef PRINTPIPE
     int             i, r, nrows, row_offset;
     text_t         *t;
@@ -1929,7 +1932,7 @@ void            rxvtlib_scr_printscreen (rxvtlib *o, int fullhist)
 
 /* EXTPROTO */
 void            rxvtlib_scr_refresh (rxvtlib *o, int type)
-{
+{E_
     int             i, j,	/* tmp                                       */
                     col, row,	/* column/row we're processing               */
                     scrrow,	/* screen row offset                         */
@@ -2439,7 +2442,7 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 
 /* EXTPROTO */
 void            rxvtlib_scr_clear (rxvtlib *o)
-{
+{E_
     if (!o->TermWin.mapped)
 	return;
 #ifdef TRANSPARENT
@@ -2457,7 +2460,7 @@ void            rxvtlib_scr_clear (rxvtlib *o)
 /* ------------------------------------------------------------------------- */
 /* INTPROTO */
 void            rxvtlib_scr_reverse_selection (rxvtlib *o)
-{
+{E_
     int             i, col, row, end_row;
     rend_t         *srp;
 
@@ -2490,7 +2493,7 @@ void            rxvtlib_scr_reverse_selection (rxvtlib *o)
  */
 /* INTPROTO */
 void            rxvtlib_selection_check (rxvtlib *o, int check_more)
-{
+{E_
     row_col_t       pos;
 
     if ((o->selection.beg.row < -o->TermWin.nscrolled)
@@ -2528,7 +2531,7 @@ void            rxvtlib_selection_check (rxvtlib *o, int check_more)
  */
 /* INTPROTO */
 void            rxvtlib_PasteIt (rxvtlib *o, const unsigned char *data, unsigned int nitems)
-{
+{E_
     int             num;
     const unsigned char *p;
     const unsigned char cr = '\r';
@@ -2553,7 +2556,7 @@ void            rxvtlib_PasteIt (rxvtlib *o, const unsigned char *data, unsigned
  */
 /* EXTPROTO */
 int _rxvtlib_selection_paste (rxvtlib * o, Window win, unsigned int prop, int Delete)
-{
+{E_
     long nread;
     unsigned long bytes_after;
     XTextProperty ct;
@@ -2594,7 +2597,7 @@ int _rxvtlib_selection_paste (rxvtlib * o, Window win, unsigned int prop, int De
  * repeated in editwidget.c
  */
 void rxvtlib_selection_paste (rxvtlib * o, Window win, unsigned int prop, int delete_prop)
-{
+{E_
     struct timeval tv, tv_start;
     unsigned long bytes_after;
     Atom actual_type;
@@ -2655,7 +2658,7 @@ extern struct edit_selection selection;
  */
 /* EXTPROTO */
 void            rxvtlib_selection_request (rxvtlib *o, Time tm, int x, int y)
-{
+{E_
     Atom            prop;
 
 #ifdef MULTICHAR_SET
@@ -2695,7 +2698,7 @@ void            rxvtlib_selection_request (rxvtlib *o, Time tm, int x, int y)
  */
 /* EXTPROTO */
 void            rxvtlib_selection_clear (rxvtlib *o)
-{
+{E_
 #ifdef STANDALONE
     D_SELECT ((stderr, "selection_clear()"));
 
@@ -2721,7 +2724,7 @@ extern Atom ATOM_ICCCM_P2P_CLIPBOARD;
  */
 /* EXTPROTO */
 void            rxvtlib_selection_make (rxvtlib *o, Time tm)
-{
+{E_
     int             i, col, end_col, row, end_row;
     unsigned char  *new_selection_text;
     char           *str;
@@ -2818,7 +2821,7 @@ void            rxvtlib_selection_make (rxvtlib *o, Time tm)
  */
 /* EXTPROTO */
 void            rxvtlib_selection_click (rxvtlib *o, int clicks, int x, int y)
-{
+{E_
 /*    int             r, c;
  *   row_col_t             ext_beg, ext_end;
  */
@@ -2842,7 +2845,7 @@ void            rxvtlib_selection_click (rxvtlib *o, int clicks, int x, int y)
  */
 /* INTPROTO */
 void            rxvtlib_selection_start_colrow (rxvtlib *o, int col, int row)
-{
+{E_
     o->want_refresh = 1;
     o->selection.mark.col = col;
     o->selection.mark.row = row - o->TermWin.view_start;
@@ -2870,7 +2873,7 @@ void            rxvtlib_selection_start_colrow (rxvtlib *o, int col, int row)
 /* INTPROTO */
 void            rxvtlib_selection_delimit_word (rxvtlib *o, int dirn, const row_col_t * mark,
 					row_col_t * ret)
-{
+{E_
     int             col, row, dirnadd, tcol, trow, w1, w2;
     row_col_t       bound;
     text_t         *stp;
@@ -2958,7 +2961,7 @@ void            rxvtlib_selection_delimit_word (rxvtlib *o, int dirn, const row_
  */
 /* EXTPROTO */
 void            rxvtlib_selection_extend (rxvtlib *o, int x, int y, int flag)
-{
+{E_
     int             col, row;
 
     col = Pixel2Col (x);
@@ -2997,7 +3000,7 @@ void            rxvtlib_selection_extend (rxvtlib *o, int x, int y, int flag)
 #ifdef MULTICHAR_SET
 /* INTPROTO */
 void            rxvtlib_selection_adjust_kanji (rxvtlib *o)
-{
+{E_
     int             c, r;
 
     if (o->selection.beg.col > 0) {
@@ -3024,7 +3027,7 @@ void            rxvtlib_selection_adjust_kanji (rxvtlib *o)
 /* INTPROTO */
 void            rxvtlib_selection_extend_colrow (rxvtlib *o, int col, int row, int button3,
 					 int buttonpress, int clickchange)
-{
+{E_
     int             end_col;
     row_col_t       pos;
     enum {
@@ -3230,7 +3233,7 @@ void            rxvtlib_selection_extend_colrow (rxvtlib *o, int col, int row, i
  */
 /* EXTPROTO */
 void            rxvtlib_selection_rotate (rxvtlib *o, int x, int y)
-{
+{E_
     o->selection.clicks = o->selection.clicks % 3 + 1;
     rxvtlib_selection_extend_colrow (o, Pixel2Col (x), Pixel2Row (y), 1, 0, 1);
 }
@@ -3249,7 +3252,7 @@ void            rxvtlib_selection_rotate (rxvtlib *o, int x, int y)
  */
 /* EXTPROTO */
 void            rxvtlib_selection_send (rxvtlib *o, const XSelectionRequestEvent * rq)
-{
+{E_
     XEvent          ev;
     Atom            target_list[4];
     Atom            target;
@@ -3318,7 +3321,7 @@ void            rxvtlib_selection_send (rxvtlib *o, const XSelectionRequestEvent
  */
 /* EXTPROTO */
 void            pixel_position (rxvtlib *o, int *x, int *y)
-{
+{E_
     *x = Pixel2Col (*x);
 /* MAX_IT(*x, 0); MIN_IT(*x, TermWin.ncol - 1); */
     *y = Pixel2Row (*y);
@@ -3330,7 +3333,7 @@ void            pixel_position (rxvtlib *o, int *x, int *y)
 /* INTPROTO */
 void            mouse_tracking (int report, int x, int y, int firstrow,
 				int lastrow)
-{
+{E_
 /* TODO */
 }
 
@@ -3340,7 +3343,7 @@ void            mouse_tracking (int report, int x, int y, int firstrow,
 /* ARGSUSED */
 /* INTPROTO */
 void            debug_PasteIt (unsigned char *data, int nitems)
-{
+{E_
 /* TODO */
 }
 
@@ -3348,7 +3351,7 @@ void            debug_PasteIt (unsigned char *data, int nitems)
 #if 0
 /* INTPROTO */
 void            debug_colors (void)
-{
+{E_
     int             color;
     const char     *name[] = { "fg", "bg",
 	"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"
@@ -3388,7 +3391,7 @@ void            debug_colors (void)
 #ifdef USE_XIM
 /* EXTPROTO */
 void            rxvtlib_setPosition (rxvtlib *o, XPoint * pos)
-{
+{E_
     XWindowAttributes xwa;
 
     XGetWindowAttributes (o->Xdisplay, o->TermWin.vt, &xwa);

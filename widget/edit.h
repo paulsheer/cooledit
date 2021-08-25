@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* edit.h - main include file
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -499,8 +500,19 @@ void CRefreshEditor (WEdit * edit);
 void edit_set_user_command (void (*func) (WEdit *, int));
 struct _book_mark;
 int edit_draw_this_line_proportional (WEdit * edit, long b, int row, int y, int start_column, int end_column, struct _book_mark **book_marks, int n_book_marks);
-int get_international_character (unsigned char key_press);
+#define GET_INTL_CHAR_RESET_COMPOSE     -1
+#define GET_INTL_CHAR_STATUS            -2
+#define GET_INTL_CHAR_BUSY              1
+#define GET_INTL_CHAR_ERROR             0
+int get_international_character (int key_press);
+void compose_help (char ****r_, int *n);
+void free_compose_help (char ***r_, int n);
 void edit_set_user_key_function (int (*user_def_key_func) (unsigned int, unsigned int, KeySym keysym));
+char *possible_char (void);
+int edit_translate_key_in_key_compose (void);
+int edit_translate_key_exit_keycompose (void);
+
+
 
 #else
 
@@ -535,6 +547,9 @@ static inline int edit_get_byte (WEdit * edit, long byte_index)
     }
 }
 #endif
+
+typedef int (*edit_file_is_open_fn_t) (const char *host, const char *, int);
+extern edit_file_is_open_fn_t edit_file_is_open;
 
 int edit_backspace (WEdit * edit);
 char *edit_get_buffer_as_text (WEdit * edit);
@@ -572,7 +587,7 @@ void edit_insert_ahead (WEdit * edit, int c);
 #define EDIT_CHANGE_ON_DISK__ON_SAVE            1
 #define EDIT_CHANGE_ON_DISK__ON_COMMAND         2
 int edit_check_change_on_disk (WEdit * edit, int save_mode);
-int edit_save_file (WEdit * edit, const char *filename);
+int edit_save_file (WEdit * edit, const char *host, const char *filename);
 int edit_save_cmd (WEdit * edit);
 int edit_save_query_cmd (WEdit * edit);
 int edit_save_confirm_cmd (WEdit * edit);
@@ -618,6 +633,7 @@ void edit_get_selection (WEdit * edit);
 void selection_replace (CStr new_selection);
 void selection_clear (void);
 int edit_get_text_from_selection_history (Window parent, int x, int y, int cols, int lines, CStr *r);
+void edit_free_cache_lines (void);
 
 int edit_save_macro_cmd (WEdit * edit, struct macro_rec *macro);
 int edit_load_macro_cmd (WEdit * edit, struct macro_rec *macro, int k);
@@ -630,7 +646,7 @@ void edit_paste_from_X_buf_cmd (WEdit * edit);
 
 void edit_paste_from_history (WEdit *edit);
 
-void edit_split_filename (WEdit * edit, const char *host, const char *name);
+int edit_split_filename (WEdit * edit, const char *host, const char *name);
 
 #ifdef MIDNIGHT
 #define CWidget Widget

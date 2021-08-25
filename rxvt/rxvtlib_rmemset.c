@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
+#include "inspect.h"
 #include "rxvtlib.h"
 
 /*---------------------------------------------------------------------------*
@@ -31,7 +33,7 @@
 #ifndef NO_RMEMSET
 /* EXTPROTO */
 void            rmemset (void *p, unsigned char c, intp_t len)
-{
+{E_
 }
 #endif
 

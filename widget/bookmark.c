@@ -1,9 +1,11 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* bookmark.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 
+#include "inspect.h"
 #include <config.h>
 #include "edit.h"
 #include "stringtools.h"
@@ -13,7 +15,7 @@
    by book_mark_found() i.e. last in is the one seen */
 
 static inline struct _book_mark *double_marks (WEdit * edit, struct _book_mark *p)
-{
+{E_
     if (p->next)
 	while (p->next->line == p->line)
 	    p = p->next;
@@ -21,7 +23,7 @@ static inline struct _book_mark *double_marks (WEdit * edit, struct _book_mark *
 }
 
 static void free_bookmark (struct _book_mark *p)
-{
+{E_
     if (p->text)
         free (p->text);
     free (p);
@@ -29,7 +31,7 @@ static void free_bookmark (struct _book_mark *p)
 
 /* returns the first bookmark on or before this line */
 struct _book_mark *book_mark_find (WEdit * edit, int line)
-{
+{E_
     struct _book_mark *p, *q;
     if (!edit->book_mark) {
 /* must have an imaginary top bookmark at line -1 to make things less complicated  */
@@ -81,7 +83,7 @@ struct _book_mark *book_mark_find (WEdit * edit, int line)
 
 /* returns true if a bookmark exists at this line of colour c */
 int book_mark_query_color (WEdit * edit, int line, int c)
-{
+{E_
     struct _book_mark *p;
     if (!edit->book_mark)
 	return 0;
@@ -97,7 +99,7 @@ int book_mark_query_color (WEdit * edit, int line, int c)
 /* returns the number of bookmarks at this line and a list of their colours in c 
    up to a maximum of 8 colours */
 int book_mark_query_all (WEdit * edit, int line, struct _book_mark **c)
-{
+{E_
     int i;
     struct _book_mark *p;
     if (!edit->book_mark)
@@ -112,7 +114,7 @@ int book_mark_query_all (WEdit * edit, int line, struct _book_mark **c)
 
 /* insert a bookmark at this line */
 void book_mark_insert (WEdit * edit, int line, int c, int height, const char *text, int column_marker)
-{
+{E_
     struct _book_mark *p, *q;
     p = book_mark_find (edit, line);
     edit->force |= REDRAW_LINE;
@@ -141,7 +143,7 @@ void book_mark_insert (WEdit * edit, int line, int c, int height, const char *te
 /* remove a bookmark if there is one at this line matching this colour - c of -1 clear all */
 /* returns non-zero on not-found */
 int book_mark_clear (WEdit * edit, int line, int c)
-{
+{E_
     struct _book_mark *p, *q;
     int r = 1;
     int rend = 0;
@@ -177,7 +179,7 @@ int book_mark_clear (WEdit * edit, int line, int c)
 
 /* clear all bookmarks matching this colour, if c is -1 clears all */
 void book_mark_flush (WEdit * edit, int c)
-{
+{E_
     struct _book_mark *p, *q;
     int rend = 0;
     if (!edit->book_mark)
@@ -207,7 +209,7 @@ void book_mark_flush (WEdit * edit, int c)
 
 /* shift down bookmarks after this line */
 void book_mark_inc (WEdit * edit, int line)
-{
+{E_
     int rend = 0;
     if (edit->book_mark) {
 	struct _book_mark *p;
@@ -225,7 +227,7 @@ void book_mark_inc (WEdit * edit, int line)
 
 /* shift up bookmarks after this line */
 void book_mark_dec (WEdit * edit, int line)
-{
+{E_
     int rend = 0;
     if (edit->book_mark) {
 	struct _book_mark *p;

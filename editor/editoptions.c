@@ -1,10 +1,12 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* editoptions.c - save and load init file sections and do learn keys
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 #define EDIT_OPTIONS_C
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -178,14 +180,14 @@ static struct key_list klist[] =
 
 
 struct key_list *get_command_list (void)
-{
+{E_
     return klist;
 }
 
 /* returns 0 if not found */
 int get_defined_key (struct key_list k_list[],
 		     unsigned int state, unsigned int keycode)
-{
+{E_
     int i;
     for (i = 0;; i++) {
 	if (!k_list[i].key_name[0])
@@ -201,7 +203,7 @@ int get_defined_key (struct key_list k_list[],
 int get_script_number_from_key (unsigned int state, KeySym keysym);
 
 int user_defined_key (unsigned int state, unsigned int keycode, KeySym keysym)
-{
+{E_
     if (keycode) {
 	int i;
 #ifdef HAVE_PYTHON
@@ -220,7 +222,7 @@ int user_defined_key (unsigned int state, unsigned int keycode, KeySym keysym)
 
 /* returns a pointer to the '[' that begins a section */
 char *find_section (char *t, const char *section)
-{
+{E_
     char *p;
     int l;
     l = strlen (section);
@@ -239,7 +241,7 @@ char *find_section (char *t, const char *section)
 /* returns a pointer to the first line of the section after the "[Bla Bla]".
    return 0 on error or section not available, result must be free'd */
 char *get_options_section (const char *file, const char *section)
-{
+{E_
     char *t, *p;
 
     t = loadfile (file, 0);
@@ -269,7 +271,7 @@ char *get_options_section (const char *file, const char *section)
 
 /* return -1 on error, 0 on success */
 int save_options_section (const char *file, const char *section, const char *text)
-{
+{E_
     char *t, *p, *result;
 
     t = loadfile (file, 0);
@@ -292,7 +294,7 @@ int save_options_section (const char *file, const char *section, const char *tex
 
 /* return -1 on error */
 int load_user_defined_keys (struct key_list k_list[], const char *file)
-{
+{E_
     char kname[128];
     struct key_list kl;
     char *s, *p;
@@ -336,7 +338,7 @@ int load_user_defined_keys (struct key_list k_list[], const char *file)
 }
 
 int load_keys (const char *file)
-{
+{E_
     return load_user_defined_keys (klist, file);
 }
 
@@ -344,7 +346,7 @@ int load_keys (const char *file)
 /* saves the klist key list into the options file in the section [Key Defines].
    saves only those keys that have at least one define. Returns -1 on error. */
 int save_user_defined_keys (struct key_list k_list[], const char *file)
-{
+{E_
     char *s, *p;
     int n, i;
 
@@ -382,7 +384,7 @@ int save_user_defined_keys (struct key_list k_list[], const char *file)
 
 
 char **get_key_text (void *data, int line, int *num_fields, int *tagged)
-{
+{E_
     struct key_list *get_klist;
     static char key_0[16];
     static char key_1[16];
@@ -436,7 +438,7 @@ char **get_key_text (void *data, int line, int *num_fields, int *tagged)
 }
 
 static void move_down (struct key_list k_list[], CWidget * w)
-{
+{E_
     int i, j;
     CTextboxCursorMove (w, CK_Down);
     for (j = 0; j < 6; j++) {
@@ -448,7 +450,7 @@ static void move_down (struct key_list k_list[], CWidget * w)
 }
 
 int cb_learnkeys (CWidget * w, XEvent * xe, CEvent * ce)
-{
+{E_
     int i;
     KeySym x_key;
 
@@ -484,14 +486,14 @@ int cb_learnkeys (CWidget * w, XEvent * xe, CEvent * ce)
 
 
 int cb_save (CWidget * w, XEvent * xe, CEvent * ce)
-{
+{E_
     if (save_user_defined_keys (klist, editor_options_file))
 	CErrorDialog (main_window, 20, 20, _(" Save keys "), get_sys_error (_(" Error trying to save file ")));
     return 0;
 }
 
 int cb_clear (CWidget * w, XEvent * xe, CEvent * ce)
-{
+{E_
     int i;
     for (i = 0; klist[i].key_name[0]; i++) {
 	klist[i].state0 = 0;
@@ -507,7 +509,7 @@ int cb_clear (CWidget * w, XEvent * xe, CEvent * ce)
 }
 
 int cb_clearline (CWidget * w, XEvent * xe, CEvent * ce)
-{
+{E_
     int i;
     w = CIdent ("_learnkeysbox");
     i = w->cursor;
@@ -525,7 +527,7 @@ int cb_clearline (CWidget * w, XEvent * xe, CEvent * ce)
 
 /* only allowed to draw one of these */
 CWidget *Cdrawlearnkeys (Window parent, int x, int y, int columns, int lines)
-{
+{E_
     CWidget *w;
 
     CPushFont ("editor", 0);

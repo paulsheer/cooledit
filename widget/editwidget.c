@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* editwidget.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include "edit.h"
 
@@ -26,7 +28,7 @@ void CChildWait (pid_t p);
 
 
 void edit_destroy_callback (CWidget * w)
-{
+{E_
     if (w) {
 	shell_output_kill_jobs (w->editor);
 	edit_clean (w->editor);
@@ -43,7 +45,7 @@ void edit_destroy_callback (CWidget * w)
 #define SHELL_INPUT_BUF_SIZE 1024
 
 static void shell_output_write_callback (int fd, fd_set * reading, fd_set * writing, fd_set * error, void *data)
-{
+{E_
     unsigned char s[SHELL_INPUT_BUF_SIZE];
     int i;
     WEdit *edit;
@@ -85,7 +87,7 @@ static void shell_output_write_callback (int fd, fd_set * reading, fd_set * writ
 #define SHELL_OUTPUT_BUF_SIZE 16384
 
 static void shell_output_read_callback (int fd, fd_set * reading, fd_set * writing, fd_set * error, void *data)
-{
+{E_
     WEdit *edit;
     unsigned char s[SHELL_OUTPUT_BUF_SIZE];
     int i, n, move_mark = 0;
@@ -114,7 +116,7 @@ static void shell_output_read_callback (int fd, fd_set * reading, fd_set * writi
 }
 
 void shell_output_add_job (WEdit * edit, int in, int out, pid_t pid, char *name, int close_on_error)
-{
+{E_
     struct shell_job *j;
     long start_mark, end_mark;
 
@@ -140,7 +142,7 @@ void shell_output_add_job (WEdit * edit, int in, int out, pid_t pid, char *name,
 }
 
 static void shell_output_destroy_job (struct shell_job *j, int send_term)
-{
+{E_
     if (j->out >= 0) {
 	CRemoveWatch (j->out, shell_output_read_callback, WATCH_READING);
 	close (j->out);
@@ -159,7 +161,7 @@ static void shell_output_destroy_job (struct shell_job *j, int send_term)
 }
 
 void shell_output_kill_jobs (WEdit * edit)
-{
+{E_
     struct shell_job *j, *n;
     if (!edit)
 	return;
@@ -171,7 +173,7 @@ void shell_output_kill_jobs (WEdit * edit)
 }
 
 void shell_output_kill_job (WEdit * edit, long pid, int send_term)
-{
+{E_
     struct shell_job **p;
     for (p = &edit->jobs; *p;) {
 	if ((*p)->pid == (pid_t) pid) {
@@ -189,7 +191,7 @@ void link_hscrollbar_to_editor (CWidget * scrollbar, CWidget * editor, XEvent * 
 int edit_get_line_height (WEdit * edit, int row);
 
 static int edit_ypixel_to_row (WEdit * edit, int y_search)
-{
+{E_
     int row, y;
     for (y = 0, row = 0;; row++) {
         int h;
@@ -203,7 +205,7 @@ static int edit_ypixel_to_row (WEdit * edit, int y_search)
 
 /* returns the position in the edit buffer of a window click */
 long edit_get_click_pos (WEdit * edit, int x, int y)
-{
+{E_
     long click, row;
 /* (1) goto to left margin */
     click = edit_bol (edit, edit->curs1);
@@ -222,7 +224,7 @@ long edit_get_click_pos (WEdit * edit, int x, int y)
 }
 
 void edit_translate_xy (int xs, int ys, int *x, int *y)
-{
+{E_
     *x = xs - EDIT_TEXT_HORIZONTAL_OFFSET;
     *y = (ys - EDIT_TEXT_VERTICAL_OFFSET - option_text_line_spacing / 2 - 1);
 }
@@ -230,7 +232,7 @@ void edit_translate_xy (int xs, int ys, int *x, int *y)
 extern int just_dropped_something;
 
 void mouse_redraw (WEdit * edit, long click)
-{
+{E_
     edit->force |= REDRAW_PAGE | REDRAW_LINE;
     edit_update_curs_row (edit);
     edit_update_curs_col (edit);
@@ -240,25 +242,25 @@ void mouse_redraw (WEdit * edit, long click)
 }
 
 static void xy (int x, int y, int *x_return, int *y_return)
-{
+{E_
     edit_translate_xy (x, y, x_return, y_return);
 }
 
 static long cp (WEdit * edit, int x, int y)
-{
+{E_
     return edit_get_click_pos (edit, x, y);
 }
 
 /* return 1 if not marked */
 static int marks (WEdit * edit, long *start, long *end)
-{
+{E_
     return eval_marks (edit, start, end);
 }
 
 int column_highlighting = 0;
 
 static int erange (WEdit * edit, long start, long end, int click)
-{
+{E_
     if (column_highlighting) {
 	int x;
 	x = edit_move_forward3 (edit, edit_bol (edit, click), 0, click);
@@ -272,19 +274,19 @@ static int erange (WEdit * edit, long start, long end, int click)
 }
 
 static void fin_mark (WEdit * edit)
-{
+{E_
     if (edit->mark2 < 0)
 	edit_mark_cmd (edit, 0);
 }
 
 static void move_mark (WEdit * edit)
-{
+{E_
     edit_mark_cmd (edit, 1);
     edit_mark_cmd (edit, 0);
 }
 
 static void release_mark (WEdit * edit, XEvent * event)
-{
+{E_
     if (edit->mark2 < 0)
 	edit_mark_cmd (edit, 0);
     else
@@ -302,7 +304,7 @@ static void release_mark (WEdit * edit, XEvent * event)
 }
 
 static char *get_block (WEdit * edit, long start_mark, long end_mark, int *type, int *l)
-{
+{E_
     char *t;
     t = (char *) edit_get_block (edit, start_mark, end_mark, l);
     if (strlen (t) < *l)
@@ -313,12 +315,12 @@ static char *get_block (WEdit * edit, long start_mark, long end_mark, int *type,
 }
 
 static void move (WEdit * edit, long click, int y)
-{
+{E_
     edit_cursor_move (edit, click - edit->curs1);
 }
 
 static void dclick (WEdit * edit, XEvent * event)
-{
+{E_
     edit_mark_cmd (edit, 1);
     edit_right_word_move (edit, 1);
     edit_mark_cmd (edit, 0);
@@ -327,7 +329,7 @@ static void dclick (WEdit * edit, XEvent * event)
 }
 
 static void redraw (WEdit * edit, long click)
-{
+{E_
     mouse_redraw (edit, click);
 }
 
@@ -335,7 +337,7 @@ void edit_insert_column_of_text (WEdit * edit, unsigned char *data, int size, in
 
 /* strips out the first i chars and returns a null terminated string, result must be free'd */
 char *filename_from_url (char *data, int size, int i)
-{
+{E_
     char *p, *f;
     int l;
     for (p = data + i; (unsigned long) p - (unsigned long) data < size && *p && *p != '\n'; p++);
@@ -347,7 +349,7 @@ char *filename_from_url (char *data, int size, int i)
 }
 
 static int insert_drop (WEdit * e, Window from, unsigned char *data, int size, int xs, int ys, Atom type, Atom action)
-{
+{E_
     long start_mark = 0, end_mark = 0;
     int x, y;
 
@@ -427,7 +429,7 @@ void edit_tri_cursor (Window win);
 CWidget *CDrawEditor (const char *identifier, Window parent, int x, int y,
 		      int width, int height, const char *text, const char *filename,
 		      const char *starting_host, const char *starting_directory, unsigned int options, unsigned long text_size)
-{
+{E_
     static int made_directory = 0;
     int extra_space_for_hscroll = 0;
     int max_x = 0;
@@ -511,8 +513,52 @@ CWidget *CDrawEditor (const char *identifier, Window parent, int x, int y,
     return w;
 }
 
+#if 0
+
+/* starting_directory is for the filebrowser */
+void CRedrawEditor (const char *identifier, Window parent, int x, int y, int width, int height, unsigned int options, unsigned long text_size)
+{E_
+    int extra_space_for_hscroll = 0;
+    int max_x = 0;
+    CWidget *w;
+
+    CPushFont ("editor", 0);
+    if (options & EDITOR_HORIZ_SCROLL)
+	extra_space_for_hscroll = 8;
+    w = CRedrawWidget (identifier, x, y, width + EDIT_FRAME_W, height + EDIT_FRAME_H,
+			C_EDITOR_WIDGET, color_palette (option_editor_bg_normal), 1);
+
+    w->options = options | WIDGET_TAKES_SELECTION;
+
+    edit_adjust (w->editor, height / FONT_PIX_PER_LINE, width / FONT_MEAN_WIDTH, 1);
+
+    if (!(options & EDITOR_NO_SCROLL)) {
+	CRedrawVerticalScrollbar (catstrs (identifier, ".vsc", NULL), x + width + EDIT_FRAME_W + WIDGET_SPACING, y, height + EDIT_FRAME_H, AUTO_WIDTH, 0, 0);
+	CGetHintPos (&max_x, 0);
+    }
+    set_hint_pos (x + width + EDIT_FRAME_W + WIDGET_SPACING,
+		  y + height + EDIT_FRAME_H + WIDGET_SPACING + extra_space_for_hscroll);
+    if (extra_space_for_hscroll) {
+	CRedrawHorizontalScrollbar (catstrs (identifier, ".hsc", NULL), x, y + height + EDIT_FRAME_H,
+                                    width + EDIT_FRAME_W, AUTO_HEIGHT, 0, 0);
+    }
+    CGetHintPos (0, &y);
+    if (!(options & EDITOR_NO_TEXT)) {
+	CPushFont ("widget", 0);
+	CRedrawStatus (catstrs (identifier, ".text", NULL), parent, x, y, width + EDIT_FRAME_W);
+	CPopFont ();
+    }
+    CGetHintPos (0, &y);
+    if (!max_x)
+	CGetHintPos (&max_x, 0);
+    set_hint_pos (max_x, y);
+    CPopFont ();
+}
+
+#endif
+
 static void render_book_marks (CWidget * w)
-{
+{E_
     struct _book_mark *p;
     WEdit *edit;
     int l;
@@ -534,7 +580,7 @@ static void render_book_marks (CWidget * w)
 }
 
 void update_scroll_bars (WEdit * e)
-{
+{E_
     int i, x1, x2;
     CWidget *scroll;
     CPushFont ("editor", 0);
@@ -577,7 +623,7 @@ void update_scroll_bars (WEdit * e)
 }
 
 void edit_mouse_mark (WEdit * edit, XEvent * event, int double_click)
-{
+{E_
     CPushFont ("editor", 0);
     edit_update_curs_row (edit);
     edit_update_curs_col (edit);
@@ -599,7 +645,7 @@ void edit_mouse_mark (WEdit * edit, XEvent * event, int double_click)
 }
 
 void link_scrollbar_to_editor (CWidget * scrollbar, CWidget * editor, XEvent * xevent, CEvent * cwevent, int whichscrbutton)
-{
+{E_
     int i, start_line;
     WEdit *e;
     e = editor->editor;
@@ -654,7 +700,7 @@ void link_scrollbar_to_editor (CWidget * scrollbar, CWidget * editor, XEvent * x
 }
 
 void link_hscrollbar_to_editor (CWidget * scrollbar, CWidget * editor, XEvent * xevent, CEvent * cwevent, int whichscrbutton)
-{
+{E_
     int i, start_col;
     WEdit *e;
     e = editor->editor;
@@ -714,7 +760,7 @@ void link_hscrollbar_to_editor (CWidget * scrollbar, CWidget * editor, XEvent * 
    Changes made for cooledit
  */
 void selection_send (XSelectionRequestEvent * rq)
-{
+{E_
     XEvent ev;
     static Atom xa_targets = None;
     if (xa_targets == None)
@@ -769,7 +815,7 @@ void selection_send (XSelectionRequestEvent * rq)
 /* repeated in xdnd.c and rxvt */
 static int paste_prop_internal (void *data, void (*insert) (void *, int), Window win,
 				unsigned long prop, int delete_prop)
-{
+{E_
     long nread = 0;
     unsigned long nitems;
     unsigned long bytes_after;
@@ -799,7 +845,7 @@ static int paste_prop_internal (void *data, void (*insert) (void *, int), Window
  * make multiple attempts to get the selection starting first with UTF-8
  */
 static void paste_convert_selection_ (Window w, int start)
-{
+{E_
     static Atom convertions[10];
     static int n_convertions = 0;
     static int i = 0;
@@ -825,7 +871,7 @@ static void paste_convert_selection_ (Window w, int start)
 }
 
 void paste_convert_selection(Window w)
-{
+{E_
     paste_convert_selection_(w, 1);
 }
 
@@ -834,7 +880,7 @@ void paste_convert_selection(Window w)
  */
 void paste_prop (void *data, void (*insert) (void *, int), Window win, unsigned long prop,
 		 int delete_prop)
-{
+{E_
     struct timeval tv, tv_start;
     unsigned long bytes_after;
     Atom actual_type;
@@ -887,7 +933,7 @@ void paste_prop (void *data, void (*insert) (void *, int), Window win, unsigned 
 }
 
 void selection_paste (WEdit * edit, Window win, unsigned prop, int delete_prop)
-{
+{E_
     long c;
     c = edit->curs1;
     paste_prop ((void *) edit,
@@ -902,7 +948,7 @@ void selection_paste (WEdit * edit, Window win, unsigned prop, int delete_prop)
 void (*user_selection_clear) (void) = 0;
 
 void selection_replace (CStr new_selection)
-{
+{E_
     CStr_free(&edit_selection);
     edit_selection = CStr_cpy(new_selection.data, new_selection.len);
     if (user_selection_clear)
@@ -910,14 +956,14 @@ void selection_replace (CStr new_selection)
 }
 
 void selection_clear (void)
-{
+{E_
     CStr_free(&edit_selection);
     if (user_selection_clear)
 	(*user_selection_clear) ();
 }
 
 void edit_update_screen (WEdit * e)
-{
+{E_
     if (!e)
 	return;
     if (!e->force)
@@ -947,7 +993,7 @@ void edit_update_screen (WEdit * e)
 }
 
 int eh_editor (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     WEdit *e = w->editor;
     int r = 0;
     static int old_tab_spacing = -1;
@@ -1056,6 +1102,13 @@ int eh_editor (CWidget * w, XEvent * xevent, CEvent * cwevent)
 		cwevent->xlat_len = 0;
 	    }
 	}
+        if (edit_translate_key_exit_keycompose ()) {
+            e->force |= REDRAW_CHAR_ONLY;
+        } else if (edit_translate_key_in_key_compose ()) {
+            e->force |= REDRAW_CHAR_ONLY;
+	    edit_update_screen (e);
+            return 0;
+        }
 	if (cwevent->command <= 0 && !cwevent->xlat_len)
 	    break;
 	if (cwevent->command <= 0 && ((cwevent->state & MyAltMask) || (cwevent->state & ControlMask)))
@@ -1085,12 +1138,12 @@ int column_highlighting = 0;
 static int edit_callback (Dlg_head * h, WEdit * edit, int msg, int par);
 
 static int edit_mode_callback (struct Dlg_head *h, int id, int msg)
-{
+{E_
     return 0;
 }
 
 int edit_event (WEdit * edit, Gpm_Event * event, int *result)
-{
+{E_
     *result = MOU_NORMAL;
     edit_update_curs_row (edit);
     edit_update_curs_col (edit);
@@ -1135,7 +1188,7 @@ int edit_event (WEdit * edit, Gpm_Event * event, int *result)
 int menubar_event (Gpm_Event * event, WMenu * menubar);		/* menu.c */
 
 int edit_mouse_event (Gpm_Event * event, void *x)
-{
+{E_
     int result;
     if (edit_event ((WEdit *) x, event, &result))
 	return result;
@@ -1146,7 +1199,7 @@ int edit_mouse_event (Gpm_Event * event, void *x)
 extern Menu EditMenuBar[5];
 
 int edit (const char *_file, int line)
-{
+{E_
     static int made_directory = 0;
     int framed = 0;
     int midnight_colors[4];
@@ -1224,63 +1277,63 @@ int edit (const char *_file, int line)
 
 static void edit_my_define (Dlg_head * h, int idx, char *text,
 			    void (*fn) (WEdit *), WEdit * edit)
-{
+{E_
     define_label_data (h, (Widget *) edit, idx, text, (buttonbarfn) fn, edit);
 }
 
 
 void cmd_F1 (WEdit * edit)
-{
+{E_
     send_message (edit->widget.parent, (Widget *) edit, WIDGET_KEY, KEY_F (1));
 }
 
 void cmd_F2 (WEdit * edit)
-{
+{E_
     send_message (edit->widget.parent, (Widget *) edit, WIDGET_KEY, KEY_F (2));
 }
 
 void cmd_F3 (WEdit * edit)
-{
+{E_
     send_message (edit->widget.parent, (Widget *) edit, WIDGET_KEY, KEY_F (3));
 }
 
 void cmd_F4 (WEdit * edit)
-{
+{E_
     send_message (edit->widget.parent, (Widget *) edit, WIDGET_KEY, KEY_F (4));
 }
 
 void cmd_F5 (WEdit * edit)
-{
+{E_
     send_message (edit->widget.parent, (Widget *) edit, WIDGET_KEY, KEY_F (5));
 }
 
 void cmd_F6 (WEdit * edit)
-{
+{E_
     send_message (edit->widget.parent, (Widget *) edit, WIDGET_KEY, KEY_F (6));
 }
 
 void cmd_F7 (WEdit * edit)
-{
+{E_
     send_message (edit->widget.parent, (Widget *) edit, WIDGET_KEY, KEY_F (7));
 }
 
 void cmd_F8 (WEdit * edit)
-{
+{E_
     send_message (edit->widget.parent, (Widget *) edit, WIDGET_KEY, KEY_F (8));
 }
 
 void cmd_F9 (WEdit * edit)
-{
+{E_
     send_message (edit->widget.parent, (Widget *) edit, WIDGET_KEY, KEY_F (9));
 }
 
 void cmd_F10 (WEdit * edit)
-{
+{E_
     send_message (edit->widget.parent, (Widget *) edit, WIDGET_KEY, KEY_F (10));
 }
 
 void edit_labels (WEdit * edit)
-{
+{E_
     Dlg_head *h = edit->widget.parent;
 
     edit_my_define (h, 1, _ ("Help"), cmd_F1, edit);
@@ -1300,12 +1353,12 @@ void edit_labels (WEdit * edit)
 
 
 long get_key_state ()
-{
+{E_
     return (long) get_modifier ();
 }
 
 void edit_adjust_size (Dlg_head * h)
-{
+{E_
     WEdit *edit;
     WButtonBar *edit_bar;
 
@@ -1321,7 +1374,7 @@ void edit_adjust_size (Dlg_head * h)
 }
 
 void edit_update_screen (WEdit * e)
-{
+{E_
     edit_scroll_screen_over_cursor (e);
 
     edit_update_curs_col (e);
@@ -1339,7 +1392,7 @@ void edit_update_screen (WEdit * e)
 }
 
 static int edit_callback (Dlg_head * h, WEdit * e, int msg, int par)
-{
+{E_
     switch (msg) {
     case WIDGET_INIT:
 	e->force |= REDRAW_COMPLETELY;

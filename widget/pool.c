@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* pool.c - create a file in memeory to write to
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,7 +16,7 @@
 
 /* returns NULL on error */
 POOL *pool_init (void)
-{
+{E_
     POOL *p;
     p = malloc (sizeof (POOL));
     if (!p)
@@ -32,7 +34,7 @@ POOL *pool_init (void)
 /* free's a pool except for the actual data which is returned */
 /* result must be free'd by the caller even if the pool_length is zero */
 unsigned char *pool_break (POOL * p)
-{
+{E_
     unsigned char *d;
     d = p->start;
     free (p);
@@ -41,7 +43,7 @@ unsigned char *pool_break (POOL * p)
 
 /* free's a pool and all its data */
 void pool_free (POOL * p)
-{
+{E_
     if (!p)
 	return;
     if (p->start)
@@ -51,7 +53,7 @@ void pool_free (POOL * p)
 
 /* make space for a forthcoming write of l bytes. leaves current untouched */
 unsigned long pool_advance (POOL * p, unsigned long l)
-{
+{E_
     if ((unsigned long) p->current + l > (unsigned long) p->end) {
 	unsigned char *t;
 	unsigned long old_length;
@@ -73,8 +75,8 @@ unsigned long pool_advance (POOL * p, unsigned long l)
 }
 
 /* returns the number of bytes written into p */
-unsigned long pool_write (POOL * p, unsigned char *d, unsigned long l)
-{
+unsigned long pool_write (POOL * p, const unsigned char *d, unsigned long l)
+{E_
     unsigned long a;
     a = pool_advance (p, l);
     memcpy (p->current, d, a);
@@ -84,7 +86,7 @@ unsigned long pool_write (POOL * p, unsigned char *d, unsigned long l)
 
 /* returns the number of bytes read into d */
 unsigned long pool_read (POOL * p, unsigned char *d, unsigned long l)
-{
+{E_
     unsigned long m;
     m = min (l, (unsigned long) p->end - (unsigned long) p->current);
     memcpy (d, p->current, m);
@@ -94,7 +96,7 @@ unsigned long pool_read (POOL * p, unsigned char *d, unsigned long l)
 
 /* sets the position in the pool */
 unsigned long pool_seek (POOL * p, unsigned long l)
-{
+{E_
     unsigned long m;
     m = min (l, p->length);
     p->current = p->start + m;
@@ -103,7 +105,7 @@ unsigned long pool_seek (POOL * p, unsigned long l)
 
 /* used like sprintf */
 unsigned long pool_printf (POOL * p, const char *fmt,...)
-{
+{E_
     unsigned long l;
     va_list ap;
     va_start (ap, fmt);
@@ -121,7 +123,7 @@ unsigned long pool_printf (POOL * p, const char *fmt,...)
 
 /* zero the char after the last char written/read */
 int pool_null (POOL * p)
-{
+{E_
     if (pool_advance (p, 1) != 1)
 	return 0;
     p->current[0] = 0;
@@ -130,7 +132,7 @@ int pool_null (POOL * p)
 
 /* removes the last line from the length, and null-terminates */
 void pool_drop_last_line (POOL * p)
-{
+{E_
     char *q;
     q = (char *) strrchr ((char *) pool_start (p), '\n');
     if (!q)

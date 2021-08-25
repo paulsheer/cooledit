@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* find.h - find files as a front end to find ... -exec grep ...
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -37,6 +38,10 @@ int CInputsWithOptions (Window parent, int x, int y, const char *heading,
 	    char **inputs[], char *input_labels[], char *input_names[],
     char *input_tool_hint[], int *check_values[], char *check_labels[],
 			char *check_tool_hints[], int options, int width);
+
+void ctags (void);
+void find_file (void);
+
 
 #endif				/* ! FIND_H */
 

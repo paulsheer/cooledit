@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* loadtiff.c - loads a tiff file into memory
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -7,6 +8,7 @@
 
 /* NLS through this whole file ? */
 
+#include "inspect.h"
 #include <config.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -33,7 +35,7 @@
 short highbytefirst = 0;
 
 short fgetshort(FILE *f)
-{
+{E_
 if(highbytefirst)
     return (getc(f)<<8) + getc(f);
 else
@@ -42,7 +44,7 @@ else
 
 
 long fgetlong (FILE * f)
-{
+{E_
     if (highbytefirst)
 	return (getc (f) << 24) + (getc (f) << 16) + (getc (f) << 8) + getc (f);
     else
@@ -59,7 +61,7 @@ Also copy the results before the next call to fgetstring.
 */
 
 unsigned char *fgetstring (FILE * f, long offset, long length)
-{
+{E_
     static unsigned char *str = NULL;
 
     if (str)
@@ -78,7 +80,7 @@ unsigned char *fgetstring (FILE * f, long offset, long length)
 }
 
 void tiffprintf(const char *str, ...)
-{
+{E_
 
 }
 
@@ -98,7 +100,7 @@ struct IFDentry {
    to fit in the valueoffset it gets it from there.
    Handles correctly both arrays and single numbers */
 void getvalue (FILE * fp, struct IFDentry *entry, long *retval, long numtoget, int size)
-{
+{E_
     int j;
     if (size == 2 || (entry->fieldtype == 3 && size == 0)) {
 	TPRINTF (" (short) ");
@@ -132,7 +134,7 @@ void getvalue (FILE * fp, struct IFDentry *entry, long *retval, long numtoget, i
 
 
 void tifferror (const char *errmessage)
-{
+{E_
   fprintf(stderr, errmessage); /* OR for the application:  */
 #ifdef ABORT_ON_ERROR
 abort();
@@ -165,7 +167,7 @@ The first row/scanline is number zero, the last is numbered height - 1.
 
 
 unsigned char *loadgreytiff (const char *fname, long *width, long *height, long rowstart, long rowend, float gamma)
-{
+{E_
 
     FILE *fp = NULL;
     int i, j, c;

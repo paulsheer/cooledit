@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* 3dkit.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -57,6 +58,7 @@ centre, or as a 3D world. (See plane.h for how to modify the demo).
 
 #define TD_MULCONSTANT 4096
 
+#include "inspect.h"
 #include <config.h>
 #include <math.h>
 #include <stdlib.h>
@@ -82,7 +84,7 @@ TD_Short_Point *temp;
 #ifdef __alpha__
 
 static inline int muldiv64 (int m1, int m2, int d)
-{
+{E_
     return (long) m1 *(long) m2 / (long) d;
 }
 
@@ -101,7 +103,7 @@ static inline int muldiv64 (int m1, int m2, int d)
 /* scaling without having to worry about overflows. */
 
 static inline int muldiv64 (int m1, int m2, int d)
-{
+{E_
 /* int32 * int32 -> int64 / int32 -> int32 */
     int result;
     __asm__ (
@@ -117,7 +119,7 @@ static inline int muldiv64 (int m1, int m2, int d)
 #else
 
 static inline int muldiv64 (int m1, int m2, int d)
-{
+{E_
     return (long long) m1 * m2 / d;
 }
 
@@ -126,7 +128,7 @@ static inline int muldiv64 (int m1, int m2, int d)
 #else
 
 static inline int muldiv64(int m1, int m2, int d)
-{
+{E_
     return (double) m1 * (double) m2 / ((double) d);
 }
 
@@ -140,7 +142,7 @@ static inline int muldiv64(int m1, int m2, int d)
 #endif
 
 void TD_translate (TD_Solid * s, TD_Point * p, TD_Short_Point * scr)
-{
+{E_
 /* the following rotational transformation avoids floating point
    calculations entirely */
 
@@ -186,7 +188,7 @@ void TD_translate (TD_Solid * s, TD_Point * p, TD_Short_Point * scr)
 
 
 long TD_finddistance (TD_Solid * s, TD_Point * p)
-{
+{E_
 /* the following rotational transformation avoids floating point
    calculations entirely */
 
@@ -207,7 +209,7 @@ long TD_finddistance (TD_Solid * s, TD_Point * p)
 
 
 long TD_findcolor (TD_Solid * s, TD_Point * p, int which)
-{
+{E_
     long c, shadow = s->surf[which].shadow;
 
     /*this you can fool around with to get different shadowing effects. */
@@ -246,7 +248,7 @@ long TD_findcolor (TD_Solid * s, TD_Point * p, int which)
 
 
 void TD_calc_rotation_matrix (TD_Solid * s)
-{
+{E_
 /* This matrix comes from "Dynamics of Atmospheric Flight" by Bernard Etkin,
    John Wiley & Sons, Inc., and is much easier to copy down than to 
    derive yourself. */
@@ -285,7 +287,7 @@ void TD_calc_rotation_matrix (TD_Solid * s)
 
 
 void TD_drawwire (TD_Solid * s, int which)
-{
+{E_
     TD_Surface *surf = &s->surf[which];
     int w = surf->w;
     int l = surf->l;
@@ -316,7 +318,7 @@ void TD_drawwire (TD_Solid * s, int which)
 
 
 void TD_drawmesh (TD_Solid * s, int which)
-{
+{E_
     TD_Surface *surf = &s->surf[which];
     int w = surf->w;
     int l = surf->l;
@@ -344,7 +346,7 @@ void TD_drawmesh (TD_Solid * s, int which)
 
 
 void xchg (int *a, int *b)
-{
+{E_
     int t = *a;
     *a = *b;
     *b = t;
@@ -352,7 +354,7 @@ void xchg (int *a, int *b)
 
 
 void TD_drawsurface (TD_Solid * s, int which)
-{
+{E_
 
     TD_Surface *surf = &s->surf[which];
     int w = surf->w;
@@ -555,7 +557,7 @@ void TD_drawsurface (TD_Solid * s, int which)
 
 
 int compare (const void *vp, const void *vq)
-{
+{E_
     const int *p = vp;
     const int *q = vq;
     int diff = *p - *q;
@@ -569,7 +571,7 @@ struct disttype {
 
 
 void TD_draw_solid (TD_Solid * s)
-{
+{E_
     int n = s->num_surfaces, w, l, i, j, render, num_existing_surfaces;
     long max = 0;
 

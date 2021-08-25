@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* print.c - GUI frontend to the postscript printing
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,11 +19,12 @@
 #include "editoptions.h"
 #include "postscript.h"
 #include "find.h"
+#include "print.h"
 
 
 #if 0
 static char *font_list[] =
-{
+{E_
     "AvantGarde-Book",
     "AvantGarde-BookOblique",
     "AvantGarde-Demi",
@@ -65,7 +68,7 @@ static WEdit *print_editor = 0;
 static long print_current_pos = 0;
 
 static unsigned char *print_get_next_line (unsigned char *old)
-{
+{E_
     int l, len;
     unsigned char *r = 0;
     if (print_current_pos < print_editor->last_byte) {
@@ -81,13 +84,13 @@ static unsigned char *print_get_next_line (unsigned char *old)
 }
 
 void print_dialog_cannot_open (unsigned char *m)
-{
+{E_
 #warning backport this fix
     CErrorDialog (0, 0, 0, _ (" Print "), " %s: \n %s ", get_sys_error (_ (" Error trying to open print file. ")), m);
 }
 
 int print_dialog_exists (unsigned char *m)
-{
+{E_
     char s[2048];
     sprintf (s, " %s: \n %s ", _ ("File exists, shall I overwrite?"), m);
     if (CQueryDialog (0, 0, 0, _ (" Print "), s, (" Yes "), (" No "), NULL) == 0)
@@ -96,7 +99,7 @@ int print_dialog_exists (unsigned char *m)
 }
 
 void cooledit_print_dialog (WEdit * editor)
-{
+{E_
     unsigned char margin[12], width[12], height[12], chars[12];
     unsigned char *margin_result = 0, *width_result = 0, *height_result = 0, *chars_result = 0;
     char *input_labels[20] =

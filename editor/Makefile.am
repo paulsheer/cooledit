@@ -10,9 +10,9 @@ cooledit_SOURCES = cooledit.c find.c editoptions.c mancmd.c options.c \
 smalledit_SOURCES = smalledit.c copyright.h trivoptions.c
 coolman_SOURCES = coolman.c manpage.c trivoptions.c
 
-cooledit_LDADD = ../rxvt/librxvt.a ../widget/libCw.la @X_LIBS@ -lX11 @X_EXTRA_LIBS@
-smalledit_LDADD = ../widget/libCw.la @X_LIBS@ -lX11 @X_EXTRA_LIBS@
-coolman_LDADD = ../widget/libCw.la @X_LIBS@ -lX11 @X_EXTRA_LIBS@
+cooledit_LDADD = ../rxvt/librxvt.a ../widget/libCw.la @FREETYPE_LIBS@ @X_LIBS@ -lX11 @X_EXTRA_LIBS@
+smalledit_LDADD = ../widget/libCw.la @FREETYPE_LIBS@ @X_LIBS@ -lX11 @X_EXTRA_LIBS@
+coolman_LDADD = ../widget/libCw.la @FREETYPE_LIBS@ @X_LIBS@ -lX11 @X_EXTRA_LIBS@
 
 datadir = $(prefix)/share
 localedir = $(datadir)/locale

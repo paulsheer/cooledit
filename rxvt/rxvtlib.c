@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /*--------------------------------*-C-*---------------------------------*
  * File:	rxvtlib.c
  *----------------------------------------------------------------------*
@@ -24,7 +25,7 @@
  * Copyright (C) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
  * Copyright (C) 1998      Geoff Wing <gcw@pobox.com>
  * Copyright (C) 1998      Alfredo K. Kojima <kojima@windowmaker.org>
- * Copyright (C) 1996-2017 Paul Sheer
+ * Copyright (C) 1996-2022 Paul Sheer
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,6 +47,7 @@
 /*************************************************************************/
 
 
+#include "inspect.h"
 #include "rxvtlib.h"
 
 static  int      cmd_fd = -1;
@@ -242,7 +244,7 @@ static  XpmAttributes xpmAttr;
 
 
 void rxvtlib_init (rxvtlib *o)
-{
+{E_
     memset (o, 0, sizeof (rxvtlib));
     o->cmd_fd = cmd_fd;
     o->cmd_pid = cmd_pid;
@@ -314,13 +316,13 @@ void rxvtlib_init (rxvtlib *o)
 }
 
 static void myfree (void *x)
-{
+{E_
     if (x)
 	free (x);
 }
 
 void rxvtlib_shut (rxvtlib * o)
-{
+{E_
     int i;
 
     for (i = 0; i < o->TermWin.nrow; i++) {

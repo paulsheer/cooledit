@@ -1,9 +1,11 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* inputwidget.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -59,7 +61,7 @@ static struct textinput_history *history_widgets[MAX_HIST_WIDGETS] =
 static int n_history_widgets = 0;
 
 static void add_to_history (struct textinput_history *h, CStr s, int allow_blank_lines)
-{
+{E_
     int i, j;
     if (!s.len)
 	return;
@@ -87,7 +89,7 @@ static void add_to_history (struct textinput_history *h, CStr s, int allow_blank
 }
 
 static void add_to_widget_history (const char *ident, CStr s)
-{
+{E_
     int i;
     int allow_blank_lines = 0;
     allow_blank_lines = (strchr (ident, '+') != 0);
@@ -118,7 +120,7 @@ static void add_to_widget_history (const char *ident, CStr s)
 }
 
 void CAddToTextInputHistory (const char *ident, CStr s)
-{
+{E_
     add_to_widget_history (ident, s);
 }
 
@@ -126,7 +128,7 @@ void CAddToTextInputHistory (const char *ident, CStr s)
    Returns a newline separate list of all 'input' in the history.
  */
 static void get_history_list (const char *ident, int reverse, struct textinput_history *h)
-{
+{E_
     int i, j;
     for (i = 0; i < n_history_widgets; i++) {
 	if (!strcmp (history_widgets[i]->ident, ident)) {
@@ -149,7 +151,7 @@ static void get_history_list (const char *ident, int reverse, struct textinput_h
 /* result must not be free'd */
 /* returns the last text inputted in the input widget named ident */
 CStr CLastInput (const char *ident)
-{
+{E_
     int i;
     CStr empty;
     empty.data = "";
@@ -167,7 +169,7 @@ CStr CLastInput (const char *ident)
 #define HISTORY_LINES 10
 
 static int clip_lines (int lines, int num_lines)
-{
+{E_
     if (lines > num_lines)
 	lines = num_lines;
     if (lines > HISTORY_LINES)
@@ -183,7 +185,7 @@ static const char *escape_header = "nulls and newlines are escaped with backslas
    to an options file (if you want to save the state of an application, 
    for example. result must be free'd */
 char *get_all_lists (void)
-{
+{E_
     int i, j;
     POOL *p;
 
@@ -219,7 +221,7 @@ char *get_all_lists (void)
 }
 
 void free_all_lists (void)
-{
+{E_
     int i, j;
     for (i = 0; i < n_history_widgets; i++) {
 	for (j = 0; j < history_widgets[i]->last; j++)
@@ -229,7 +231,7 @@ void free_all_lists (void)
 }
 
 void put_all_lists (const char *s)
-{
+{E_
     char ident[33];
     CStr str;
     int escape = 0;
@@ -296,7 +298,7 @@ void put_all_lists (const char *s)
 char *selection_get_line (void *data, int line);
 
 static int draw_text_input_history (CWidget * text_input, CStr *r)
-{
+{E_
     CWidget *w;
     int x, y;
     int i;
@@ -305,7 +307,7 @@ static int draw_text_input_history (CWidget * text_input, CStr *r)
 
     memset(&h, '\0', sizeof(h));
 
-    if (text_input->options & TEXTINPUT_PASSWORD)	/* password lines, not allowed a history! */
+    if (text_input->options & (TEXTINPUT_PASSWORD | TEXTINPUT_NOHISTORY))	/* password lines, not allowed a history! */
 	return 1;
 
     x = text_input->x;
@@ -343,7 +345,7 @@ static int draw_text_input_history (CWidget * text_input, CStr *r)
 }
 
 static int draw_selection_history (CWidget * text_input, CStr *r)
-{
+{E_
     CWidget *w;
     int x, y;
     int columns, lines;
@@ -371,7 +373,7 @@ static int draw_selection_history (CWidget * text_input, CStr *r)
 }
 
 static char *draw_selection_completion (CWidget * text_input)
-{
+{E_
     CWidget *w;
     char *r;
     int x, y;
@@ -399,7 +401,7 @@ static char *draw_selection_completion (CWidget * text_input)
 }
 
 void render_passwordinput (CWidget * wdt)
-{
+{E_
     int wc, k, l, w = wdt->width, h = wdt->height;
     Window win;
     char *password;
@@ -436,7 +438,7 @@ int propfont_convert_to_long_printable (C_wchar_t c, C_wchar_t * t);
 int propfont_width_of_long_printable (C_wchar_t c);
 
 static int width_input_text (int max_width, char *p, int n)
-{
+{E_
     int l, x = 0;
     char *q = p + n;
     for (; p < q; p += l) {
@@ -459,7 +461,7 @@ static int width_input_text (int max_width, char *p, int n)
 
 /* return right margin of last char */
 static int draw_input_text (CWidget * wdt, int x, int y, int max_width, int m1, int m2)
-{
+{E_
     int n, l;
     long color = -1;
     char *p, *text;
@@ -512,7 +514,7 @@ static int draw_input_text (CWidget * wdt, int x, int y, int max_width, int m1, 
 }
 
 void render_textinput (CWidget * wdt)
-{
+{E_
     int wc, isfocussed = 0;
     int f, k, n;
     int m1, m2;
@@ -600,18 +602,18 @@ void render_textinput (CWidget * wdt)
 
 
 void text_input_destroy (CWidget * w)
-{
+{E_
     CAddToTextInputHistory (w->ident, w->text);
 }
 
 static void xy (int x, int y, int *x_return, int *y_return)
-{
+{E_
     *x_return = x - (3 + TEXTINPUT_RELIEF + 1);
     *y_return = 0;
 }
 
 static long cp (CWidget * wdt, int x, int y)
-{
+{E_
     int n, a = 0, l;
     char *p, *text;
 
@@ -638,7 +640,7 @@ static long cp (CWidget * wdt, int x, int y)
 
 /* return 1 if not marked */
 static int marks (CWidget * w, long *start, long *end)
-{
+{E_
     if (w->mark1 == w->mark2)
 	return 1;
     *start = min (w->mark1, w->mark2);
@@ -649,17 +651,17 @@ static int marks (CWidget * w, long *start, long *end)
 extern int range (CWidget * w, long start, long end, int click);
 
 static void move_mark (CWidget * w)
-{
+{E_
     w->mark2 = w->mark1 = w->cursor;
 }
 
 static void fin_mark (CWidget * w)
-{
+{E_
     w->mark2 = w->mark1 = -1;
 }
 
 static void release_mark (CWidget * w, XEvent * event)
-{
+{E_
     w->mark2 = w->cursor;
     if (w->mark2 != w->mark1 && event) {
 	XSetSelectionOwner (CDisplay, XA_PRIMARY, w->winid, event->xbutton.time);
@@ -668,7 +670,7 @@ static void release_mark (CWidget * w, XEvent * event)
 }
 
 static char *get_block (CWidget * w, long start_mark, long end_mark, int *type, int *l)
-{
+{E_
     char *t;
     if (w->options & TEXTINPUT_PASSWORD) {
 	*type = DndText;
@@ -690,7 +692,7 @@ static char *get_block (CWidget * w, long start_mark, long end_mark, int *type, 
 }
 
 static void move (CWidget * w, long click, int row)
-{
+{E_
     while(click > 0 && count_one_utf8_char(w->text.data + click) < 0)
         click--;
     w->cursor = click;
@@ -700,14 +702,14 @@ static void move (CWidget * w, long click, int row)
 }
 
 static void motion (CWidget * w, long click)
-{
+{E_
     w->mark2 = click;
 }
 
 char *filename_from_url (char *data, int size, int i);
 
 static int insert_drop (CWidget * w, Window from, unsigned char *data, int size, int xs, int ys, Atom type, Atom action)
-{
+{E_
     int cursor;
     char *f;
     int x, y, i;
@@ -758,7 +760,7 @@ static struct mouse_funcs input_mouse_funcs =
 
 CWidget *CDrawTextInputP (const char *identifier, Window parent, int x, int y,
 		          int width, int height, int maxlen, const char *text)
-{
+{E_
     CStr s;
     if (text == TEXTINPUT_LAST_INPUT) {
         s = CLastInput (identifier);
@@ -775,7 +777,7 @@ CWidget *CDrawTextInputP (const char *identifier, Window parent, int x, int y,
  */
 CWidget *CDrawTextInput (const char *identifier, Window parent, int x, int y,
 		     int width, int height, int maxlen, const CStr *text)
-{
+{E_
     CWidget *wdt;
     CStr s;
 
@@ -830,7 +832,7 @@ CWidget *CDrawTextInput (const char *identifier, Window parent, int x, int y,
 void paste_prop (void *data, void (*insert) (void *, int), Window win, unsigned prop, int delete);
 
 void textinput_insert (CWidget * w, CStr c)
-{
+{E_
     int i;
     input_insert (w, INPUT_INSERT_FLUSH);
     for (i = 0; i < c.len; i++)
@@ -839,7 +841,7 @@ void textinput_insert (CWidget * w, CStr c)
 }
 
 static void input_insert (CWidget * w, int c)
-{
+{E_
     static unsigned char buf[4096];     /* implement a simple freeze-thaw caching system to speed inserts */
     static int buf_len = 0;
     CStr s;
@@ -877,7 +879,7 @@ void selection_send (XSelectionRequestEvent * rq);
 void paste_convert_selection (Window w);
 
 int eh_textinput (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     int handled = 0, save_options;
     char *u = 0;
 
@@ -1109,7 +1111,7 @@ int eh_textinput (CWidget * w, XEvent * xevent, CEvent * cwevent)
 }
 
 void input_mouse_mark (CWidget * w, XEvent * event, CEvent * ce)
-{
+{E_
     CPushFont ("editor", 0);
     mouse_mark (event, ce->double_click, w->funcs);
     CPopFont ();

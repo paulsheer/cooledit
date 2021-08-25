@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* syntax.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #if defined(MIDNIGHT) || defined(GTK)
@@ -47,7 +49,7 @@ void edit_free_syntax_rules (WEdit * edit);
 void edit_get_syntax_color (WEdit * edit, long byte_index, int *fg, int *bg);
 
 static void *syntax_malloc (size_t x)
-{
+{E_
     void *p;
     p = malloc (x);
     memset (p, 0, x);
@@ -57,7 +59,7 @@ static void *syntax_malloc (size_t x)
 #define syntax_free(x) {if(x){free(x);(x)=0;}}
 
 static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole_left, char *whole_right, int line_start, int brace_match)
-{
+{E_
     int depth = 0;
     unsigned char *p, *q;
     int c, d, j;
@@ -200,7 +202,7 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 		goto done;					\
 	    s++;
 static inline char *xx_strchr (const unsigned char *s, int c)
-{
+{E_
   repeat:
     XXX XXX XXX XXX XXX XXX XXX XXX;
     XXX XXX XXX XXX XXX XXX XXX XXX;
@@ -213,7 +215,7 @@ static inline char *xx_strchr (const unsigned char *s, int c)
 #if 0
 /* this optimized function gives no better overall perfomance */
 static inline char *xx_strchr (const unsigned char *s, int c)
-{
+{E_
     int i;
     unsigned long *p, cl, one = 1UL, cx = 0xF8;
     p = (unsigned long *) (void *) s;
@@ -275,7 +277,7 @@ static inline char *xx_strchr (const unsigned char *s, int c)
 
 #if 0
 void test_xx_strchr ()
-{
+{E_
     char *s = "0123456789abcdefghijklmnopq";
     int i;
 
@@ -289,7 +291,7 @@ void test_xx_strchr ()
 
 
 static inline struct syntax_rule apply_rules_going_right (WEdit * edit, long i, struct syntax_rule rule)
-{
+{E_
     struct context_rule *r;
     int contextchanged = 0, c;
     int found_right = 0, found_left = 0, keyword_foundleft = 0, keyword_foundright = 0;
@@ -423,7 +425,7 @@ static inline struct syntax_rule apply_rules_going_right (WEdit * edit, long i, 
 }
 
 static struct syntax_rule edit_get_rule (WEdit * edit, long byte_index)
-{
+{E_
     long i;
     if (edit->syntax_invalidate) {
 	struct _syntax_marker *s;
@@ -478,7 +480,7 @@ static struct syntax_rule edit_get_rule (WEdit * edit, long byte_index)
 }
 
 static void translate_rule_to_color (WEdit * edit, struct syntax_rule rule, int *fg, int *bg)
-{
+{E_
     struct key_word *k;
     k = edit->rules[rule.context]->keyword[rule.keyword];
     *bg = k->bg;
@@ -486,7 +488,7 @@ static void translate_rule_to_color (WEdit * edit, struct syntax_rule rule, int 
 }
 
 void edit_get_syntax_color (WEdit * edit, long byte_index, int *fg, int *bg)
-{
+{E_
     if (edit->rules && byte_index < edit->last_byte && option_syntax_highlighting) {
 	translate_rule_to_color (edit, edit_get_rule (edit, byte_index), fg, bg);
     } else {
@@ -505,7 +507,7 @@ void edit_get_syntax_color (WEdit * edit, long byte_index, int *fg, int *bg)
    including the newline. Result must be free'd.
  */
 static int read_one_line (char **line, FILE * f)
-{
+{E_
     char *p;
     int len = 256, c, r = 0, i = 0;
     p = syntax_malloc (len);
@@ -537,7 +539,7 @@ static int read_one_line (char **line, FILE * f)
 }
 
 static char *strdup_convert (char *s)
-{
+{E_
     char *r, *p;
     p = r = (char *) strdup (s);
     while (*s) {
@@ -600,7 +602,7 @@ static char *strdup_convert (char *s)
 #define whiteness(x) ((x) == '\t' || (x) == '\n' || (x) == ' ')
 
 static void get_args (char *l, char **args, int *argc)
-{
+{E_
     *argc = 0;
     l--;
     for (;;) {
@@ -618,7 +620,7 @@ static void get_args (char *l, char **args, int *argc)
 }
 
 static void free_args (char **args)
-{
+{E_
     while (*args) {
 	syntax_free (*args);
 	*args = 0;
@@ -634,7 +636,7 @@ static void free_args (char **args)
 int try_alloc_color_pair (char *fg, char *bg);
 
 int this_try_alloc_color_pair (char *fg, char *bg)
-{
+{E_
     char f[80], b[80], *p;
     if (bg)
 	if (!*bg)
@@ -663,7 +665,7 @@ int this_try_alloc_color_pair (char *fg, char *bg)
 int allocate_color (WEdit *edit, gchar *color);
 
 int this_allocate_color (WEdit *edit, char *fg)
-{
+{E_
     char *p;
     if (fg)
 	if (!*fg)
@@ -677,7 +679,7 @@ int this_allocate_color (WEdit *edit, char *fg)
 }
 #else
 int this_allocate_color (WEdit *edit, char *fg)
-{
+{E_
     char *p;
     if (fg)
 	if (!*fg)
@@ -695,7 +697,7 @@ int this_allocate_color (WEdit *edit, char *fg)
 static char *error_file_name = 0;
 
 static FILE *open_include_file (char *filename)
-{
+{E_
     FILE *f;
     char p[MAX_PATH_LEN];
     syntax_free (error_file_name);
@@ -719,7 +721,7 @@ static FILE *open_include_file (char *filename)
 
 /* returns line number on error */
 static int edit_read_syntax_rules (WEdit * edit, FILE * f)
-{
+{E_
     FILE *g = 0;
     char *fg, *bg;
     char last_fg[32] = "", last_bg[32] = "";
@@ -965,7 +967,7 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
 
 /* strdup and append c */
 static char *strdupc (char *s, int c)
-{
+{E_
     char *t;
     int l;
     l = strlen (s);
@@ -976,7 +978,7 @@ static char *strdupc (char *s, int c)
 }
 
 static void edit_syntax_clear_keyword (WEdit * edit, int context, int j)
-{
+{E_
     int k;
     char *q;
     struct context_rule *c;
@@ -1006,7 +1008,7 @@ pid_t ispell_pid = 0;
 
 /* adds a keyword for underlining into the keyword list for this context, returns 1 if too many words */
 static int edit_syntax_add_keyword (WEdit * edit, char *keyword, int context, time_t t)
-{
+{E_
     int j;
     char *s;
     struct context_rule *c;
@@ -1049,7 +1051,7 @@ static int edit_syntax_add_keyword (WEdit * edit, char *keyword, int context, ti
 
 /* checks spelling of the word at offset */
 static int edit_check_spelling_at (WEdit * edit, long byte_index)
-{
+{E_
     int context;
     long p1, p2;
     unsigned char *p, *q;
@@ -1161,7 +1163,7 @@ FILE *fdopen(int fd, const char *mode);
 #endif
 
 int edit_check_spelling (WEdit * edit)
-{
+{E_
     if (!option_auto_spellcheck)
 	return 0;
 /* magic arg to close up shop */
@@ -1261,7 +1263,7 @@ int edit_check_spelling (WEdit * edit)
 #else				/* ! GTK && ! MIDNIGHT*/
 
 int edit_check_spelling (WEdit * edit)
-{
+{E_
     return 0;
 }
 
@@ -1270,12 +1272,12 @@ int edit_check_spelling (WEdit * edit)
 void (*syntax_change_callback) (CWidget *) = 0;
 
 void edit_set_syntax_change_callback (void (*callback) (CWidget *))
-{
+{E_
     syntax_change_callback = callback;
 }
 
 void edit_free_syntax_rules (WEdit * edit)
-{
+{E_
     int i, j;
     if (!edit)
 	return;
@@ -1531,10 +1533,11 @@ char *syntax_text[] = {
 
 
 FILE *upgrade_syntax_file (char *syntax_file)
-{
-    FILE *f;
+{E_
+    FILE *f = NULL;
     char *p;
     char line[80];
+    int records;
     f = fopen (syntax_file, "r");
     if (!f) {
 	char **syntax_line;
@@ -1546,9 +1549,8 @@ FILE *upgrade_syntax_file (char *syntax_file)
 	fclose (f);
 	return fopen (syntax_file, "r");
     }
-    memset (line, 0, 79);
-    (void) fread (line, 80, 1, f);
-    if (!strstr (line, "syntax rules version"))
+    records = fread (line, 80, 1, f);
+    if (records <= 0 || !strstr (line, "syntax rules version"))
 	goto rename_rule_file;
     p = strstr (line, "version") + strlen ("version") + 1;
     if (atoi (p) < atoi (CURRENT_SYNTAX_RULES_VERSION)) {
@@ -1564,6 +1566,7 @@ FILE *upgrade_syntax_file (char *syntax_file)
 #else
 	CMessageDialog (0, 20, 20, 0, " Load Syntax Rules ", " Your syntax rule file is outdated \n A new rule file is being installed. \n Your old rule file has been saved with a .OLD extension. ");
 #endif
+        fclose (f);
 	return upgrade_syntax_file (syntax_file);
     }
     rewind (f);
@@ -1571,7 +1574,7 @@ FILE *upgrade_syntax_file (char *syntax_file)
 }
 
 static int apply_syntax_rules (WEdit * edit, FILE * f, int line, char *syntax_type)
-{
+{E_
     int line_error, result = 0;
     line_error = edit_read_syntax_rules (edit, f);
     if (line_error) {
@@ -1602,7 +1605,7 @@ static int apply_syntax_rules (WEdit * edit, FILE * f, int line, char *syntax_ty
 /* returns -1 on file error, line number on error in file syntax */
 static int edit_read_syntax_file (WEdit * edit, char **names, char *syntax_file, char *editor_file,
 				  char *first_line, char *type)
-{
+{E_
     FILE *f;
     regex_t r;
     regmatch_t pmatch[1];
@@ -1689,7 +1692,7 @@ static int edit_read_syntax_file (WEdit * edit, char **names, char *syntax_file,
 }
 
 static char *get_first_editor_line (WEdit * edit)
-{
+{E_
     int i;
     static char s[256];
     s[0] = '\0';
@@ -1710,7 +1713,7 @@ static char *get_first_editor_line (WEdit * edit)
    edit is zero, a list of types will be stored into name. type may be zero
    in which case the type will be selected according to the filename. */
 void edit_load_syntax (WEdit * edit, char **names, char *type)
-{
+{E_
     int r;
     char *f;
 
@@ -1751,17 +1754,17 @@ void edit_load_syntax (WEdit * edit, char **names, char *type)
 int option_syntax_highlighting = 0;
 
 void edit_load_syntax (WEdit * edit, char **names, char *type)
-{
+{E_
     return;
 }
 
 void edit_free_syntax_rules (WEdit * edit)
-{
+{E_
     return;
 }
 
 void edit_get_syntax_color (WEdit * edit, long byte_index, int *fg, int *bg)
-{
+{E_
     *fg = NORMAL_COLOR;
 }
 

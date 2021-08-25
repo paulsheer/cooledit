@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* widechar.c - handle multibyte and UTF-8 encoding
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <edit.h>
 
@@ -20,7 +22,7 @@ enum font_encoding get_editor_encoding (void);
 */
 
 unsigned char *wcrtomb_wchar_to_utf8 (C_wchar_t c)
-{
+{E_
     static unsigned char r[32];
     int i = 0;
 #undef APPEND
@@ -60,7 +62,7 @@ unsigned char *wcrtomb_wchar_to_utf8 (C_wchar_t c)
 
 /* makes sense to me... (although only goes to 21 bits) */
 int mbrtowc_utf8_to_wchar (C_wchar_t * c, const char *t, int n, void *x /* no shifting with utf8 */ )
-{
+{E_
     const unsigned char *s = (const unsigned char *) t;
     if (!*s) {
 	*c = 0;
@@ -153,7 +155,7 @@ int mbrtowc_utf8_to_wchar (C_wchar_t * c, const char *t, int n, void *x /* no sh
 
 static inline struct mb_rule apply_mb_rules_going_right_utf8_to_wchar (WEdit * edit, long byte_index,
 								      struct mb_rule mb_rule)
-{
+{E_
     C_wchar_t wc;
     unsigned char p[16];
     int n;
@@ -183,7 +185,7 @@ static inline struct mb_rule apply_mb_rules_going_right_utf8_to_wchar (WEdit * e
 }
 
 static inline struct mb_rule apply_mb_rules_going_right (WEdit * edit, long byte_index, struct mb_rule mb_rule)
-{
+{E_
 #ifdef HAVE_WCHAR_H
     C_wchar_t wc;
     unsigned char p[16];
@@ -221,7 +223,7 @@ static inline struct mb_rule apply_mb_rules_going_right (WEdit * edit, long byte
 }
 
 struct mb_rule get_mb_rule (WEdit * edit, long byte_index)
-{
+{E_
     long i;
 
     if (
@@ -317,7 +319,7 @@ struct mb_rule get_mb_rule (WEdit * edit, long byte_index)
 }
 
 long edit_get_wide_byte (WEdit * edit, long byte_index)
-{
+{E_
     struct mb_rule r;
     r = get_mb_rule (edit, byte_index);
     return r.ch;

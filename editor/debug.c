@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* debug.c - interactive debugger
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -43,6 +45,8 @@
 #include "shell.h"
 #include "widget/pool.h"
 #include "find.h"
+#include "rxvt/rxvtexport.h"
+#include "debug.h"
 
 extern struct look *look;
 
@@ -96,7 +100,7 @@ typedef struct struct_debug {
     struct debug_query {
 	char *query;
 	char *response;
-    } query[20];
+    } query[30];
     char *progname;
     char *debugger;
     char *args;
@@ -133,12 +137,12 @@ extern int current_edit;
 extern int last_edit;
 
 static int debug_query_yes_no (const char *heading, const char *str)
-{
+{E_
     return CQueryDialog (0, 20, 20, heading, str, "Yes", "No", NULL) == 0;
 }
 
 static void debug_message (Debug * d, const char *heading, const char *str, int options)
-{
+{E_
     if (d->pid) {
 	CRemoveWatch (d->in, debug_write_callback, WATCH_WRITING);
 	CRemoveWatch (d->out, debug_read_callback, WATCH_READING);
@@ -152,7 +156,7 @@ static void debug_message (Debug * d, const char *heading, const char *str, int 
 }
 
 static void debug_error2 (Debug * d, const char *par1, const char *par2)
-{
+{E_
     char *t;
     if (d->pid) {
 	CRemoveWatch (d->in, debug_write_callback, WATCH_WRITING);
@@ -175,7 +179,7 @@ static void debug_error2 (Debug * d, const char *par1, const char *par2)
 #define debug_error1(d, x)		debug_error2(d, x, "")
 
 static void xdebug_cursor_bookmark_flush (void)
-{
+{E_
     int i;
     for (i = 0; i < last_edit; i++)
 	if (edit[i]->editor)
@@ -183,7 +187,7 @@ static void xdebug_cursor_bookmark_flush (void)
 }
 
 static void xdebug_append_command (Debug * d, char *s, int action, char *editor, int line)
-{
+{E_
     if (d->n_commands < MAX_QUEUED_COMMANDS - 2) {
 	if (action == ACTION_BREAKPOINT_CLEAR) {
 	    const char *t;
@@ -209,7 +213,7 @@ static void xdebug_append_command (Debug * d, char *s, int action, char *editor,
 }
 
 static void xdebug_flush_commands (Debug * d)
-{
+{E_
     int i;
     for (i = 0; i < d->n_commands; i++) {
 	if (d->command[i].editor)
@@ -227,7 +231,7 @@ static void xdebug_flush_commands (Debug * d)
 /* {{{ variables */
 
 static void xdebug_show_variables (Debug * d)
-{
+{E_
     int i;
     char s[1024];
     for (i = 0; d->variable[i].name; i++) {
@@ -237,7 +241,7 @@ static void xdebug_show_variables (Debug * d)
 }
 
 static int xdebug_add_variable (Debug * d, char *s)
-{
+{E_
     int i;
     for (i = 0; d->variable[i].name; i++);
     if (i >= MAX_VARIABLES - 1) {
@@ -252,7 +256,7 @@ static int xdebug_add_variable (Debug * d, char *s)
 }
 
 static void xdebug_remove_variable (Debug * d, int i)
-{
+{E_
     if (d->variable[i].name) {
 	free (d->variable[i].name);
 	if (d->variable[i].output)
@@ -262,7 +266,7 @@ static void xdebug_remove_variable (Debug * d, int i)
 }
 
 static char **xdebug_get_line (void *data, int line, int *numfields, int *tagged)
-{
+{E_
     static char *fields[3];
     Debug *d = (Debug *) data;
     *numfields = 3;
@@ -277,7 +281,7 @@ static char **xdebug_get_line (void *data, int line, int *numfields, int *tagged
 }
 
 static int xdebug_varlist_callback (CWidget * w, XEvent * x, CEvent * c)
-{
+{E_
     Debug *d;
     d = (Debug *) w->hook;
     if (c->command == CK_Delete || c->command == CK_BackSpace) {
@@ -298,7 +302,7 @@ static int xdebug_varlist_callback (CWidget * w, XEvent * x, CEvent * c)
 }
 
 static void xdebug_display_variable (Debug * d, char *message, int action)
-{
+{E_
     char *p;
     int i;
     if (*message == '$') {
@@ -352,7 +356,7 @@ static void xdebug_display_variable (Debug * d, char *message, int action)
 
 /* returns 1 on error */
 static void xdebug_break_point_special (Debug * d, char *cmd, char *editor, int line, int action)
-{
+{E_
     CWidget *w;
     if ((w = CIdent (editor))) {
 	char s[MAX_DEBUG_CMD_LEN];
@@ -362,12 +366,12 @@ static void xdebug_break_point_special (Debug * d, char *cmd, char *editor, int 
 }
 
 static void xdebug_break_point (Debug * d, char *cmd, char *editor, int line)
-{
+{E_
     xdebug_break_point_special (d, cmd, editor, line, *cmd == 'b' ? ACTION_BREAKPOINT : ACTION_BREAKPOINT_CLEAR);
 }
 
 static void xdebug_set_break_points (Debug * d)
-{
+{E_
     int i;
     for (i = 0; i < last_edit; i++) {
 	struct _book_mark *b;
@@ -383,14 +387,14 @@ static void xdebug_set_break_points (Debug * d)
 int goto_error (char *message, int raise_wm_window);
 
 static int xdebug_set_current (char *file, int line)
-{
+{E_
     char s[MAX_DEBUG_CMD_LEN];
     sprintf (s, "%s:%d", file, line);
     return goto_error (s, 0);
 }
 
 static void xdebug_goto_line (Debug * d, char *file, int line)
-{
+{E_
     xdebug_cursor_bookmark_flush ();
     if (!xdebug_set_current (file, line))
 	book_mark_insert (edit[current_edit]->editor, edit[current_edit]->editor->curs_line, DEBUG_CURRENT_COLOR, 0, 0, 0);
@@ -406,7 +410,7 @@ static Debug debug_session;
 static void debug_finish (unsigned long x);
 
 void debug_callback (void)
-{
+{E_
     static int animation = 0;
     static int refresh = 0;
 
@@ -429,7 +433,7 @@ void debug_callback (void)
 }
 
 static char *from_start (char *s, char *p, int n)
-{
+{E_
     p = strstr (s, p);
     if (!p)
 	return 0;
@@ -439,7 +443,7 @@ static char *from_start (char *s, char *p, int n)
 }
 
 static char *from_end (char *s, char *p, int n)
-{
+{E_
     int i, l, k;
     if ((l = strlen (s)) >= (k = strlen (p)) + n)
 	for (i = l - k; i >= l - k - n; i--)
@@ -457,7 +461,7 @@ static char *from_end (char *s, char *p, int n)
 
  */
 static int match_pattern (char *s, const char *pattern)
-{
+{E_
     int l = 0;
     while (*pattern) {
 	if (*pattern == '*') {
@@ -490,7 +494,7 @@ static int match_pattern (char *s, const char *pattern)
 }
 
 static char *from_end_pattern (char *s, const char *pattern, int n)
-{
+{E_
     char *e;
     for (e = s + strlen (s) - 1; e >= s; e--) {
 	int match_len;
@@ -505,7 +509,7 @@ static char *from_end_pattern (char *s, const char *pattern, int n)
 }
 
 static char *from_start_pattern (char *s, const char *pattern, int n)
-{
+{E_
     int i = 0;
     while (*s && i <= n) {
 	int match_len;
@@ -521,7 +525,7 @@ static char *from_start_pattern (char *s, const char *pattern, int n)
 }
 
 static void xdebug_check_watch_point (Debug * d, char *m)
-{
+{E_
     char *p, *q, *s, *r;
     CWidget *w;
     p = strstr (m, "\nHardware watchpoint ");
@@ -565,17 +569,16 @@ static void xdebug_check_watch_point (Debug * d, char *m)
 }
 
 int str_empty_space (const char *p)
-{
+{E_
     for (; *p; p++)
 	if (((unsigned char) *p) > ' ')
 	    return 0;
     return 1;
 }
 
-int writeall (int fd, char *buf, int len);
 
 static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_set * error, void *data)
-{
+{E_
     CWidget *w;
     Debug *d;
     char *p;
@@ -1011,7 +1014,7 @@ loop () at test.c:7
 }
 
 static void debug_write_callback (int fd, fd_set * reading, fd_set * writing, fd_set * error, void *data)
-{
+{E_
     Debug *d;
     d = &debug_session;
     if (CChildExitted (d->pid, 0) || (!rxvt_have_pid (d->xterm_pid) && d->show_output)) {
@@ -1047,10 +1050,9 @@ static void debug_write_callback (int fd, fd_set * reading, fd_set * writing, fd
     CRemoveWatch (d->in, debug_write_callback, WATCH_WRITING);
 }
 
-struct _rxvtlib *rxvt_start (Window win, char **argv, int do_sleep);
 
 static int xdebug_run_program (Debug * d)
-{
+{E_
     char *arg[10];
     int i = 0;
     struct stat s;
@@ -1114,7 +1116,7 @@ static int xdebug_run_program (Debug * d)
 }
 
 static void xdebug_set_args (Debug * d, char *args)
-{
+{E_
     char *s;
     s = malloc (strlen (args) + 20);
     sprintf (s, "set args %s\n", args ? args : "");
@@ -1123,7 +1125,7 @@ static void xdebug_set_args (Debug * d, char *args)
 }
 
 static void xdebug_run (Debug * d)
-{
+{E_
     xdebug_append_command (d, "b main\n", ACTION_BREAKPOINT, 0, 0);
     xdebug_append_command (d, "r\n", ACTION_RUNNING, 0, 0);
     xdebug_append_command (d, "clear\n", ACTION_BREAKPOINT_CLEAR, 0, 0);
@@ -1141,7 +1143,7 @@ static void xdebug_run (Debug * d)
 }
 
 static void debug_start (void)
-{
+{E_
     if (xdebug_run_program (&debug_session))
 	return;
     xdebug_set_args (&debug_session, debug_session.args);
@@ -1153,7 +1155,7 @@ static void debug_start (void)
 static int debug_set_info (unsigned long x);
 
 static void debug_attach (unsigned long x)
-{
+{E_
     char *s;
     char t[80];
     long p;
@@ -1188,7 +1190,7 @@ static void debug_attach (unsigned long x)
 }
 
 void debug_detach (unsigned long x)
-{
+{E_
     if (!debug_session.pid) {
 	debug_error1 (&debug_session, _ ("Debugger is not running"));
 	return;
@@ -1203,7 +1205,7 @@ void debug_detach (unsigned long x)
 
 /* resturns 1 on cancel */
 static int debug_set_info (unsigned long x)
-{
+{E_
     char *inputs[10] =
     {
 	gettext_noop (""),
@@ -1280,7 +1282,7 @@ static int debug_set_info (unsigned long x)
 /* ACTION_STEP is the same as ACTION_RUNNING except that if a user hits it twice in a row,
    it won't be prone to give "Program is currently running..." messages. */
 static void debug_step (unsigned long c)
-{
+{E_
     char *cmd;
     cmd = (char *) c;
     if (!debug_session.pid) {
@@ -1295,7 +1297,7 @@ static void debug_step (unsigned long c)
 }
 
 static void debug_command (unsigned long c)
-{
+{E_
     char *cmd;
     cmd = (char *) c;
     if (!debug_session.pid) {
@@ -1310,7 +1312,7 @@ static void debug_command (unsigned long c)
 }
 
 static void debug_show_output (unsigned long c)
-{
+{E_
     char s[MAX_DEBUG_CMD_LEN];
     char *cmd;
     cmd = (char *) c;
@@ -1336,7 +1338,7 @@ static void debug_show_output (unsigned long c)
 }
 
 static void debug_break (unsigned long x)
-{
+{E_
     if (!debug_session.pid) {
 	debug_error1 (&debug_session, _ ("Debugger is not running"));
 	return;
@@ -1353,7 +1355,7 @@ static void debug_break (unsigned long x)
 }
 
 static void debug_finish (unsigned long x)
-{
+{E_
     xdebug_cursor_bookmark_flush ();
     xdebug_flush_commands (&debug_session);
     if (debug_session.pool)
@@ -1378,7 +1380,7 @@ static void debug_finish (unsigned long x)
 }
 
 static void debug_restart (unsigned long x)
-{
+{E_
     if (debug_session.action) {
 	debug_error1 (&debug_session, _ ("Program is currently running, use Control-C first"));
 	return;
@@ -1398,7 +1400,7 @@ static void debug_restart (unsigned long x)
 }
 
 static void debug_clear_breakpoints (unsigned long x)
-{
+{E_
     int i;
     if (debug_session.action) {
 	debug_error1 (&debug_session, _ ("Program is currently running, use Control-C first"));
@@ -1411,7 +1413,7 @@ static void debug_clear_breakpoints (unsigned long x)
 }
 
 static void debug_conditional (unsigned long x)
-{
+{E_
     if (!debug_session.pid) {
 	debug_error1 (&debug_session, _ ("Debugger is not running"));
 	return;
@@ -1428,7 +1430,7 @@ static void debug_conditional (unsigned long x)
 }
 
 static void debug_break_point (unsigned long x)
-{
+{E_
     char *cmd = "b";
     if (debug_session.action) {
 	debug_error1 (&debug_session, _ ("Program is currently running, use Control-C first"));
@@ -1452,7 +1454,7 @@ static void debug_break_point (unsigned long x)
 }
 
 static void debug_add_var (unsigned int x)
-{
+{E_
     char *s;
     if (!debug_session.pid) {
 	debug_error1 (&debug_session, _ ("Debugger is not running"));
@@ -1474,7 +1476,7 @@ static void debug_add_var (unsigned int x)
 }
 
 static void debug_until (unsigned int x)
-{
+{E_
     if (!debug_session.pid) {
 	debug_error1 (&debug_session, _ ("Debugger is not running"));
 	return;
@@ -1488,7 +1490,7 @@ static void debug_until (unsigned int x)
 }
 
 void xdebug_init_animation (void)
-{
+{E_
     CWidget *w;
     w = CIdent ("menu.debugmenu");
     debug_session.r = w->height / 2;
@@ -1498,7 +1500,7 @@ void xdebug_init_animation (void)
 }
 
 void debug_init (void)
-{
+{E_
     memset (&debug_session, 0, sizeof (debug_session));
     debug_session.prompt = "(gdb) ";
     debug_session.get_line = "info line\n";
@@ -1510,8 +1512,10 @@ void debug_init (void)
     debug_session.query[1].response = "y\n";
     debug_session.query[2].query = "<return> to quit---";
     debug_session.query[2].response = "\n";
-    debug_session.query[3].query = 0;
-    debug_session.query[3].response = 0;
+    debug_session.query[3].query = "c to continue without paging--";
+    debug_session.query[3].response = "c\n";
+    debug_session.query[4].query = 0;
+    debug_session.query[4].response = 0;
     debug_session.debugger = "cooledit-gdb";
     debug_session.stop_at_main = 1;
 #if 0
@@ -1521,7 +1525,7 @@ void debug_init (void)
 }
 
 void debug_shut (void)
-{
+{E_
     int i;
     debug_finish (0);
     CDestroyWidget ("debug_vars.win");
@@ -1543,7 +1547,7 @@ void debug_shut (void)
 }
 
 void debug_menus (Window parent, Window main_window, int x, int y)
-{
+{E_
     CDrawMenuButton ("menu.debugmenu", parent, main_window, x, y, AUTO_SIZE, 16,
 			 _ (" Debug "),
 			 _ ("Start\tAlt-F5"), (int) '~', debug_restart, 0L,
@@ -1569,7 +1573,7 @@ void debug_menus (Window parent, Window main_window, int x, int y)
 /* hack: c is just to check if different keys are pressed - any unique
    thing can go in there. */
 static int time_diff (unsigned long c)
-{
+{E_
     static unsigned long c_last = 0;
     int r = 0;
     static struct timeval tv =
@@ -1586,7 +1590,7 @@ static int time_diff (unsigned long c)
 }
 
 void debug_key_command (int command)
-{
+{E_
     if (time_diff (command))
 	if (debug_session.action) {
 	    return;

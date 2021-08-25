@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* look-cool.c - look 'n feel type: COOL
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <assert.h>
@@ -38,7 +40,7 @@ struct look_cool_list {
 };
 
 int look_cool_search_replace_dialog (Window parent, int x, int y, CStr *search_text, CStr *replace_text, CStr *arg_order, const char *heading, int option)
-{
+{E_
     int cancel = 0;
     Window win;
     XEvent xev;
@@ -213,7 +215,7 @@ int look_cool_search_replace_dialog (Window parent, int x, int y, CStr *search_t
 /* {{{ file list stuff */
 
 static void destroy_filelist (CWidget * w)
-{
+{E_
     if (w->hook) {
         struct look_cool_list *fe = (struct look_cool_list *) w->hook;
         if (fe->l)
@@ -271,7 +273,7 @@ static void destroy_filelist (CWidget * w)
 void get_file_time (char *timestr, time_t file_time, int l);
 
 static char **get_filelist_line (void *data, const int line_number, int *num_fields, int *tagged)
-{
+{E_
     struct file_entry *directentry;
     struct look_cool_list *fe;
     static char *fields[10], size[24], mode[65], timestr[32];
@@ -338,7 +340,7 @@ CWidget *look_cool_draw_file_list (const char *identifier, Window parent, int x,
 			int width, int height, int line, int column,
 			struct file_entry *directentry,
 			long options)
-{
+{E_
     struct look_cool_list *fe;
     CWidget *w;
     int n;
@@ -362,7 +364,7 @@ CWidget *look_cool_draw_file_list (const char *identifier, Window parent, int x,
 }
 
 CWidget *look_cool_redraw_file_list (const char *identifier, struct file_entry *directentry, int preserve)
-{
+{E_
     struct look_cool_list *fe;
     CWidget *w;
     int n;
@@ -383,7 +385,7 @@ CWidget *look_cool_redraw_file_list (const char *identifier, struct file_entry *
 }
 
 struct file_entry *look_cool_get_file_list_line (CWidget * w, int line)
-{
+{E_
     struct look_cool_list *fe;
     static struct file_entry r;
     memset (&r, 0, sizeof (r));
@@ -409,16 +411,16 @@ static char *mime_majors[3] =
 
 static Window draw_file_browser (const char *identifier, Window parent, int x, int y,
 		    char *host, const char *directory, const char *file, const char *label)
-{
+{E_
     CWidget * w;
     struct file_entry *filelist = 0, *directorylist = 0;
-    char *dir;
     char *resolved_path, *p;
     int y2, x2, x3, y3;
     Window win;
     char errmsg[REMOTEFS_ERR_MSG_LEN] = "";
+    char dir[MAX_PATH_LEN + 1];
 
-    dir = (char *) strdup (directory);
+    strlcpy (dir, directory, MAX_PATH_LEN);
 
     if (parent == CRoot)
 	win = CDrawMainWindow (identifier, label);
@@ -454,7 +456,11 @@ static Window draw_file_browser (const char *identifier, Window parent, int x, i
 	goto error;
     }
     CGetHintPos (&x, &y);
-    resolved_path = pathdup (host, dir);
+    resolved_path = pathdup (host, dir, errmsg);
+    if (!resolved_path) {
+        CErrorDialog (parent, 20, 20, _(" File browser "), "%s\n [%s] ", _(" Unable to read directory "), errmsg);
+        goto error;
+    }
     p = resolved_path + strlen (resolved_path) - 1;
     if (*p != '/') {
 	*++p = '/';
@@ -535,12 +541,11 @@ static Window draw_file_browser (const char *identifier, Window parent, int x, i
 	free (directorylist);
     if (filelist)
 	free (filelist);
-    free (dir);
     return win;
 }
 
 static int how_much_matches (const char *a, const char *b)
-{
+{E_
     int n = 0;
     while (*a && *b && *a++ == *b++)
         n++;
@@ -549,7 +554,7 @@ static int how_much_matches (const char *a, const char *b)
 
 /* returns 0 on fail */
 static int goto_partial_file_name (CWidget * list, char *text)
-{
+{E_
     int i = 0;
     struct file_entry *fe = 0;
     char *e;
@@ -597,6 +602,7 @@ static int goto_partial_file_name (CWidget * list, char *text)
 #define GETFILE_GET_DIRECTORY		1
 #define GETFILE_GET_EXISTING_FILE	2
 #define GETFILE_BROWSER			4
+#define GETFILE_WITH_REMOTE		8
 
 
 
@@ -605,11 +611,11 @@ static int goto_partial_file_name (CWidget * list, char *text)
    else returns the file or directory. Result must be immediately copied.
    Result must not be free'd.
  */
-static char *handle_browser (const char *identifier, char *host, CEvent * cwevent, int options)
-{
+static char *handle_browser (const char *identifier, CEvent * cwevent, int options, int *init)
+{E_
     char *r = "";
     char errmsg[REMOTEFS_ERR_MSG_LEN];
-    char host_[256] = REMOTEFS_LOCAL;
+    char host[256] = REMOTEFS_LOCAL;
     struct portable_stat st;
     char *q;
     char *idd = catstrs (identifier, ".dbox", NULL);
@@ -621,10 +627,16 @@ static char *handle_browser (const char *identifier, char *host, CEvent * cweven
     CWidget *textinput = CIdent (catstrs (identifier, ".finp", NULL));
     CWidget *filterinput = CIdent (catstrs (identifier, ".filt", NULL));
     CWidget *ipinput = NULL;
+    static char last_filterinput[256 + 1] = "";
+    static char last_ipinput[256 + 1] = "";
+    static Window last_focus = 0;
+    int reread_filelist = 0;
 
-    if (host) {
+#define HOST            (ipinput ? ipinput->text.data : "")
+
+    if ((options & GETFILE_WITH_REMOTE)) {
         ipinput = CIdent (catstrs (identifier, ".host", NULL));
-        strcpy (host_, host);
+        strcpy (host, HOST);
     }
 
     CSetDndDirectory (directory->text.data);
@@ -632,15 +644,51 @@ static char *handle_browser (const char *identifier, char *host, CEvent * cweven
     if (cwevent->type == ButtonPress || cwevent->type == KeyPress)
 	CRedrawText (catstrs (identifier, ".msg", NULL), _("Ctrl-Tab to complete, Alt-Ins for clip history, Shift-Up for history"));
 
-    if (!strcmp (cwevent->ident, filterinput->ident) && cwevent->command == CK_Enter) {
+    if (!*init) {
+        *init = 1;
+        last_focus = CGetFocus();
+        strcpy (last_filterinput, filterinput->text.data);
+        strcpy (last_ipinput, HOST);
+    }
+    if (ipinput && CGetFocus() != ipinput->winid && last_focus == ipinput->winid)
+        reread_filelist = 1;
+    if (!strcmp (cwevent->ident, filterinput->ident) && cwevent->command == CK_Enter)
+        reread_filelist = 1;
+    if (CGetFocus() != filterinput->winid && last_focus == filterinput->winid)
+        reread_filelist = 1;
+    if (ipinput && !strcmp (cwevent->ident, ipinput->ident) && cwevent->command == CK_Enter)
+        reread_filelist = 1;
+    last_focus = CGetFocus();
+
+    if (reread_filelist) {
+        char dir[MAX_PATH_LEN + 1];
 	struct file_entry *f;
+	if (ipinput && !ipinput->text.len) {
+            CStr_free(&ipinput->text);
+            ipinput->text = CStr_dup(REMOTEFS_LOCAL);
+	    CExpose (ipinput->ident);
+	}
 	if (!filterinput->text.len) {
             CStr_free(&filterinput->text);
             filterinput->text = CStr_dup("*");
 	    CExpose (filterinput->ident);
 	}
+        if (!strcmp (last_filterinput, filterinput->text.data) && !strcmp (last_ipinput, HOST)) {
+            r = "";
+            goto out;
+        }
+        strcpy (last_filterinput, filterinput->text.data);
+        strcpy (last_ipinput, HOST);
 	CHourGlass (CFirstWindow);
-	CRedrawFilelist (idf, f = get_file_entry_list (ipinput ? ipinput->text.data : 0, directory->text.data, FILELIST_FILES_ONLY, filterinput->text.data, errmsg), 0);
+
+        strlcpy (dir, directory->text.data, MAX_PATH_LEN);
+	CRedrawFilelist (idf, f = get_file_entry_list (ipinput ? ipinput->text.data : 0, dir, FILELIST_FILES_ONLY, filterinput->text.data, errmsg), 0);
+        if (f && strcmp (dir, directory->text.data)) {
+            CRedrawText (catstrs (identifier, ".dir", NULL), "%s", dir);
+            free (f);
+            CRedrawFilelist (catstrs (identifier, ".dbox", NULL), f = get_file_entry_list (ipinput ? ipinput->text.data : 0, dir, FILELIST_DIRECTORIES_ONLY, "", errmsg), 0);
+        }
+
 	if (f)
 	    free (f);
         else
@@ -648,15 +696,6 @@ static char *handle_browser (const char *identifier, char *host, CEvent * cweven
 	CUnHourGlass (CFirstWindow);
         r = "";
         goto out;
-    }
-
-    if (host && !strcmp (cwevent->ident, ipinput->ident) && cwevent->command == CK_Enter) {
-	if (!ipinput->text.len) {
-            CStr_free(&ipinput->text);
-            ipinput->text = CStr_dup(REMOTEFS_LOCAL);
-	    CExpose (ipinput->ident);
-	}
-        CDrawTextInputP (textinput->ident, CIdent (identifier)->winid, textinput->x, textinput->y, textinput->width, textinput->height, 256, "");
     }
 
     if (!strcmp (cwevent->ident, idf) && !(options & (GETFILE_GET_DIRECTORY | GETFILE_BROWSER))) {
@@ -755,12 +794,16 @@ static char *handle_browser (const char *identifier, char *host, CEvent * cweven
     if (options & GETFILE_GET_DIRECTORY) {
 	if (!strcmp (cwevent->ident, catstrs (identifier, ".ok", NULL))) {
 	    char *resolved_path;
-	    resolved_path = pathdup (ipinput ? ipinput->text.data : 0, directory->text.data);
+            char errmsg[REMOTEFS_ERR_MSG_LEN] = "";
+	    resolved_path = pathdup (ipinput ? ipinput->text.data : 0, directory->text.data, errmsg);
+            if (!resolved_path) {
+	        CRedrawText (catstrs (identifier, ".msg", NULL), "[%s]", errmsg);
+                r = "";
+                goto out;
+            }
 	    strcpy (estr, resolved_path);
 	    free (resolved_path);
             r = estr;
-            if (ipinput)
-                strcpy (host, ipinput->text.data);
             goto out;
 	}
     }
@@ -774,11 +817,17 @@ static char *handle_browser (const char *identifier, char *host, CEvent * cweven
         int just_not_there = 0;
         struct remotefs *u;
         remotefs_error_code_t error_code = 0;
-        u = remotefs_lookup (ipinput ? ipinput->text.data : 0);
+        char dir[MAX_PATH_LEN + 1];
+
+        strlcpy (dir, directory->text.data, MAX_PATH_LEN);
+        u = remotefs_lookup (ipinput ? ipinput->text.data : 0, dir);
+        if (strcmp (dir, directory->text.data))
+            CRedrawText (catstrs (identifier, ".dir", NULL), "%s", dir);
+
 	if (*textinput->text.data == '/' || *textinput->text.data == '~') {
 	    strcpy (estr, textinput->text.data);
 	} else {
-            if (!ipinput || !strcmp (host_, ipinput->text.data)) {
+            if (!ipinput || !strcmp (host, ipinput->text.data)) {
 	        strcpy (estr, directory->text.data);
 	        strcat (estr, "/");
 	        strcat (estr, textinput->text.data);
@@ -786,9 +835,12 @@ static char *handle_browser (const char *identifier, char *host, CEvent * cweven
 	        strcpy (estr, remotefs_home_dir (u));
             }
 	}
-        if (ipinput)
-            strcpy (host, ipinput->text.data);
-	resolved_path = pathdup (ipinput ? ipinput->text.data : 0, estr);
+	resolved_path = pathdup (ipinput ? ipinput->text.data : 0, estr, errmsg);
+        if (!resolved_path) {
+            CRedrawText (catstrs (identifier, ".msg", NULL), "[%s]", errmsg);
+            r = "";
+            goto out;
+        }
 	strcpy (estr, resolved_path);
 	free (resolved_path);
 	textinput->keypressed = 0;
@@ -805,13 +857,9 @@ static char *handle_browser (const char *identifier, char *host, CEvent * cweven
         if (just_not_there) {
 	    CRedrawText (catstrs (identifier, ".msg", NULL), "[%s]", errmsg);
 /* The user wanted a directory, but typed in one that doesn't exist */
-            if (ipinput)
-                strcpy (host, ipinput->text.data);
             if (*q != '/' && !(options & GETFILE_GET_EXISTING_FILE) && !(options & (GETFILE_GET_DIRECTORY | GETFILE_BROWSER))) {
 /* user wants a new file */
                 r = estr;
-                if (ipinput)
-                    strcpy (host, ipinput->text.data);
                 goto out;
             }
             r = "";
@@ -849,8 +897,6 @@ static char *handle_browser (const char *identifier, char *host, CEvent * cweven
 	    r = "";
             goto out;
 	} else {
-            if (ipinput)
-                strcpy (host, ipinput->text.data);
 	    if (options & (GETFILE_GET_DIRECTORY | GETFILE_BROWSER)) {
 		CRedrawText (catstrs (identifier, ".msg", NULL), "[%s]", errmsg);
 		r = "";
@@ -870,11 +916,12 @@ Window find_mapped_window (Window w);
 /* result must be free'd */
 char *look_cool_get_file_or_dir (Window parent, int x, int y,
        char *host, const char *dir, const char *file, const char *label, int options)
-{
+{E_
     CEvent cwevent;
     XEvent xevent;
     CState s;
     CWidget *w;
+    int init = 0;
 
     CBackupState (&s);
     CDisable ("*");
@@ -904,10 +951,13 @@ char *look_cool_get_file_or_dir (Window parent, int x, int y,
 	    file = "";
 	    continue;
 	}
-	file = handle_browser ("CGetFile", host, &cwevent, options);
+	file = handle_browser ("CGetFile", &cwevent, options | (host ? GETFILE_WITH_REMOTE : 0), &init);
 	if (!file)
 	    break;
     } while (!(*file));
+
+    if (file && host && (w = CIdent ("CGetFile.host")))
+        strcpy (host, w->text.data);
 
 /* here we want to add the complete path to the text-input history: */
     w = CIdent ("CGetFile.finp");
@@ -936,14 +986,14 @@ char *look_cool_get_file_or_dir (Window parent, int x, int y,
 }
 
 static int cb_browser (CWidget * w, XEvent * x, CEvent * c)
-{
-    char host[256] = REMOTEFS_LOCAL;
+{E_
     char id[32], *s;
+    int init = 0;
     strcpy (id, w->ident);
     s = strchr (id, '.');
     if (s)
 	*s = 0;
-    if (!handle_browser (id, host, c, GETFILE_BROWSER)) {
+    if (!handle_browser (id, c, GETFILE_BROWSER | GETFILE_WITH_REMOTE, &init)) {
 	w = CIdent (catstrs (id, ".finp", NULL));
 	if (w) {
             CStr_free(&w->text);
@@ -956,7 +1006,7 @@ static int cb_browser (CWidget * w, XEvent * x, CEvent * c)
 
 void look_cool_draw_browser (const char *ident, Window parent, int x, int y,
 		   char *host, const char *dir, const char *file, const char *label)
-{
+{E_
     if (!(parent | x | y)) {
 	parent = CFirstWindow;
 	x = 20;
@@ -1008,7 +1058,7 @@ int find_menu_hotkey (struct menu_item m[], int this, int num);
 const char *get_default_widget_font (void);
 
 static void look_cool_get_menu_item_extents (int n, int j, struct menu_item m[], int *border, int *relief, int *y1, int *y2)
-{
+{E_
     int i, n_items = 0, n_bars = 0;
 
     *border = O;
@@ -1031,7 +1081,7 @@ static void look_cool_get_menu_item_extents (int n, int j, struct menu_item m[],
 }
 
 static void look_cool_menu_draw (Window win, int w, int h, struct menu_item m[], int n, int light)
-{
+{E_
     int i, y1, y2, offset = 0;
     static int last_light = 0, last_n = 0;
     static Window last_win = 0;
@@ -1092,7 +1142,7 @@ static void look_cool_menu_draw (Window win, int w, int h, struct menu_item m[],
 }
 
 static void look_cool_render_menu_button (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     int x = 0, y = 0;
 
@@ -1117,15 +1167,15 @@ static void look_cool_render_menu_button (CWidget * wdt)
 	return;
     if (!(*(wdt->label)))
 	return;
-    CSetColor (COLOR_BLACK);
     CPushFont ("widget", 0);
+    CSetColor (COLOR_BLACK);
     CSetBackgroundColor (COLOR_FLAT);
     drawstring_xy_hotkey (win, x + 2 + BUTTON_RELIEF, y + 2 + BUTTON_RELIEF, wdt->label, wdt->hotkey);
     CPopFont ();
 }
 
 static void look_cool_render_button (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     int x = 0, y = 0;
 
@@ -1149,15 +1199,15 @@ static void look_cool_render_button (CWidget * wdt)
 	return;
     if (!(*(wdt->label)))
 	return;
+    CPushFont ("widget", 0);
     CSetColor (COLOR_BLACK);
     CSetBackgroundColor (COLOR_FLAT);
-    CPushFont ("widget", 0);
     drawstring_xy_hotkey (win, x + 2 + BUTTON_RELIEF, y + 2 + BUTTON_RELIEF, wdt->label, wdt->hotkey);
     CPopFont ();
 }
 
 static void look_cool_render_bar (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
 
     Window win = wdt->winid;
@@ -1168,7 +1218,7 @@ static void look_cool_render_bar (CWidget * wdt)
 }
 
 void look_cool_render_sunken_bevel (Window win, int x1, int y1, int x2, int y2, int thick, int sunken)
-{
+{E_
     int i;
 
     if ((sunken & 2)) {
@@ -1204,7 +1254,7 @@ void look_cool_render_sunken_bevel (Window win, int x1, int y1, int x2, int y2, 
 }
 
 static void look_cool_render_raised_bevel (Window win, int x1, int y1, int x2, int y2, int thick, int sunken)
-{
+{E_
     int i;
 
     if ((sunken & 2)) {
@@ -1240,14 +1290,14 @@ static void look_cool_render_raised_bevel (Window win, int x1, int y1, int x2, i
 }
 
 static void look_cool_draw_hotkey_understroke (Window win, int x, int y, int hotkey)
-{
+{E_
     CLine (win, x, y, x + FONT_PER_CHAR (hotkey), y);
     CLine (win, x - 1, y + 1, x + FONT_PER_CHAR (hotkey) / 2, y + 1);
     CLine (win, x - 1, y + 2, x + FONT_PER_CHAR (hotkey) / 4 - 1, y + 2);
 }
 
 static void look_cool_render_text (CWidget * wdt)
-{
+{E_
     Window win = wdt->winid;
     char text[1024], *p, *q;
     int hot, y, w = wdt->width, center = 0;
@@ -1293,7 +1343,7 @@ static void look_cool_render_text (CWidget * wdt)
 }
 
 static void look_cool_render_window (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
 
     Window win = wdt->winid;
@@ -1327,7 +1377,7 @@ static void look_cool_render_window (CWidget * wdt)
 }
 
 static void look_cool_render_vert_scrollbar (Window win, int x, int y, int w, int h, int pos, int prop, int pos2, int prop2, int flags)
-{
+{E_
     int l = h - 10 * w / 3 - 5;
 
     render_bevel (win, 0, 0, w - 1, h - 1, 2, 1);
@@ -1355,7 +1405,7 @@ static void look_cool_render_vert_scrollbar (Window win, int x, int y, int w, in
 }
 
 static void look_cool_render_hori_scrollbar (Window win, int x, int y, int h, int w, int pos, int prop, int flags)
-{
+{E_
     int l = h - 10 * w / 3 - 5, k;
     k = (l - 5) * pos / 65535;
 
@@ -1381,7 +1431,7 @@ static void look_cool_render_hori_scrollbar (Window win, int x, int y, int h, in
 }
 
 static void look_cool_render_scrollbar (CWidget * wdt)
-{
+{E_
     int flags = wdt->options;
     if (!wdt)
 	return;
@@ -1411,7 +1461,7 @@ static void look_cool_render_scrollbar (CWidget * wdt)
    Which scrollbar button was pressed: 3 is the middle button ?
  */
 static int look_cool_which_scrollbar_button (int bx, int by, CWidget * wdt)
-{
+{E_
     int w, h;
     int pos = wdt->firstline;
     int prop = wdt->numlines;
@@ -1443,7 +1493,7 @@ static int look_cool_which_scrollbar_button (int bx, int by, CWidget * wdt)
 }
 
 int look_cool_scrollbar_handler (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     static int buttonypos, y, whichscrbutton = 0;	/* which of the five scroll bar buttons was pressed */
     int xevent_xbutton_y, length, width;
 
@@ -1533,12 +1583,12 @@ int look_cool_scrollbar_handler (CWidget * w, XEvent * xevent, CEvent * cwevent)
 }
 
 static void look_cool_init_scrollbar_icons (CWidget * w)
-{
+{E_
     return;
 }
 
 static int look_cool_get_scrollbar_size (int type)
-{
+{E_
     if (type == C_HORISCROLL_WIDGET)
 	return 13;
     return 20;
@@ -1549,7 +1599,7 @@ extern char *init_fg_color_green;
 extern char *init_fg_color_blue;
 
 static void look_cool_get_button_color (XColor * color, int i)
-{
+{E_
     double r, g, b, min_wc;
 
     r = 1 / atof (init_fg_color_red);
@@ -1565,12 +1615,12 @@ static void look_cool_get_button_color (XColor * color, int i)
 }
 
 static int look_cool_get_default_interwidget_spacing (void)
-{
+{E_
     return 4;
 }
 
 int look_cool_window_handler (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     static int windowx, windowy;
     static int wx = 0, wy = 0;
     static int wwidth = 0, wheight = 0;
@@ -1660,7 +1710,7 @@ extern Pixmap Cswitchon;
 extern Pixmap Cswitchoff;
 
 static void look_cool_render_switch (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     Window win = wdt->winid;
     int x = 0, y = 0;
@@ -1693,7 +1743,7 @@ static void look_cool_render_switch (CWidget * wdt)
 extern unsigned long edit_normal_background_color;
 
 static void look_cool_edit_render_tidbits (CWidget * wdt)
-{
+{E_
     int isfocussed;
     int w = wdt->width, h = wdt->height;
     Window win;
@@ -1712,28 +1762,28 @@ static void look_cool_edit_render_tidbits (CWidget * wdt)
 }
 
 CWidget *look_cool_draw_exclam_cancel_button (char *ident, Window win, int x, int y)
-{
+{E_
     CWidget *wdt;
     wdt = CDrawPixmapButton (ident, win, x, y, PIXMAP_BUTTON_EXCLAMATION);
     return wdt;
 }
 
 CWidget *look_cool_draw_tick_cancel_button (char *ident, Window win, int x, int y)
-{
+{E_
     CWidget *wdt;
     wdt = CDrawPixmapButton (ident, win, x, y, PIXMAP_BUTTON_TICK);
     return wdt;
 }
 
 CWidget *look_cool_draw_cross_cancel_button (char *ident, Window win, int x, int y)
-{
+{E_
     CWidget *wdt;
     wdt = CDrawPixmapButton (ident, win, x, y, PIXMAP_BUTTON_CROSS);
     return wdt;
 }
 
 static void look_cool_render_fielded_textbox_tidbits (CWidget * w, int isfocussed)
-{
+{E_
     if (isfocussed) {
 	render_bevel (w->winid, 0, 0, w->width - 1, w->height - 1, 3, 1);	/*most outer border bevel */
     } else {
@@ -1745,7 +1795,7 @@ static void look_cool_render_fielded_textbox_tidbits (CWidget * w, int isfocusse
 }
 
 static void look_cool_render_textbox_tidbits (CWidget * w, int isfocussed)
-{
+{E_
     if (isfocussed) {
 	render_bevel (w->winid, 0, 0, w->width - 1, w->height - 1, 3, 1);	/*most outer border bevel */
     } else {
@@ -1755,7 +1805,7 @@ static void look_cool_render_textbox_tidbits (CWidget * w, int isfocussed)
 }
 
 static void look_cool_render_passwordinput_tidbits (CWidget * wdt, int isfocussed)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     Window win = wdt->winid;
     if (isfocussed) {
@@ -1767,7 +1817,7 @@ static void look_cool_render_passwordinput_tidbits (CWidget * wdt, int isfocusse
 }
 
 static void look_cool_render_textinput_tidbits (CWidget * wdt, int isfocussed)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     Window win = wdt->winid;
     if (isfocussed) {
@@ -1776,10 +1826,10 @@ static void look_cool_render_textinput_tidbits (CWidget * wdt, int isfocussed)
 	render_bevel (win, 2, 2, w - h - 3, h - 3, 1, 1);	/*border bevel */
 	render_bevel (win, 0, 0, w - h - 1, h - 1, 2, 0);	/*most outer border bevel */
     }
-    if (wdt->options & BUTTON_PRESSED) {
+    if ((wdt->options & BUTTON_PRESSED) && !(wdt->options & TEXTINPUT_NOHISTORY)) {
 	CRectangle (win, w - h + 2, 2, h - 4, h - 4);
 	render_bevel (win, w - h, 0, w - 1, h - 1, 2, 3);
-    } else if (wdt->options & BUTTON_HIGHLIGHT) {
+    } else if ((wdt->options & BUTTON_HIGHLIGHT) && !(wdt->options & TEXTINPUT_NOHISTORY)) {
 	CRectangle (win, w - h + 1, 1, h - 2, h - 2);
 	render_bevel (win, w - h, 0, w - 1, h - 1, 1, 2);
     } else {
@@ -1791,7 +1841,7 @@ static void look_cool_render_textinput_tidbits (CWidget * wdt, int isfocussed)
 extern struct focus_win focus_border;
 
 static void render_focus_border_n (Window win, int i)
-{
+{E_
     int j;
     j = (i > 3) + 1;
     if (win == focus_border.top) {
@@ -1810,37 +1860,37 @@ static void render_focus_border_n (Window win, int i)
 }
 
 static void look_cool_render_focus_border (Window win)
-{
+{E_
     render_focus_border_n (win, focus_border.border);
 }
 
 static int look_cool_get_extra_window_spacing (void)
-{
+{E_
     return 2;
 }
 
 static int look_cool_get_focus_ring_size (void)
-{
+{E_
     return 4;
 }
 
 static unsigned long look_cool_get_button_flat_color (void)
-{
+{E_
     return color_widget(9);
 }
 
 static int look_cool_get_window_resize_bar_thickness (void)
-{
+{E_
     return 0;
 }
 
 static int look_cool_get_switch_size (void)
-{
+{E_
     return FONT_PIX_PER_LINE + TEXT_RELIEF * 2 + 2 + 4;
 }
 
 static int look_cool_get_fielded_textbox_hscrollbar_width (void)
-{
+{E_
     return 12;
 }
 

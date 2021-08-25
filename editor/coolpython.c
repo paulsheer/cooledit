@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /*
  * FILE : ../coolpython.c
  * 
@@ -19,6 +20,7 @@
 /* Implementation : PYTHON */
 
 #define SWIGPYTHON
+#include "inspect.h"
 #include <string.h>
 #include <stdlib.h>
 /***********************************************************************
@@ -91,7 +93,7 @@ typedef struct swig_varlinkobject {
 
 static PyObject *
 swig_varlink_repr(swig_varlinkobject *v)
-{
+{E_
   v = v;
   return PyString_FromString("<Global variables>");
 }
@@ -104,7 +106,7 @@ swig_varlink_repr(swig_varlinkobject *v)
 
 static int
 swig_varlink_print(swig_varlinkobject *v, FILE *fp, int flags)
-{
+{E_
 
   int i = 0;
   flags = flags;
@@ -128,7 +130,7 @@ swig_varlink_print(swig_varlinkobject *v, FILE *fp, int flags)
 
 static PyObject *
 swig_varlink_getattr(swig_varlinkobject *v, char *n)
-{
+{E_
   int i = 0;
   char temp[128];
 
@@ -151,7 +153,7 @@ swig_varlink_getattr(swig_varlinkobject *v, char *n)
 
 static int
 swig_varlink_setattr(swig_varlinkobject *v, char *n, PyObject *p)
-{
+{E_
   char temp[128];
   int i = 0;
   while (v->vars[i]) {
@@ -187,7 +189,7 @@ statichere PyTypeObject varlinktype = {
 
 SWIGSTATIC PyObject *
 SWIG_newvarlink(void)
-{
+{E_
   swig_varlinkobject *result = 0;
   result = PyMem_NEW(swig_varlinkobject,1);
   varlinktype.ob_type = &PyType_Type;    /* Patch varlinktype into a PyType */
@@ -205,7 +207,7 @@ SWIG_newvarlink(void)
 SWIGSTATIC void
 SWIG_addvarlink(PyObject *p, char *name,
 	   PyObject *(*get_attr)(void), int (*set_attr)(PyObject *p))
-{
+{E_
   swig_varlinkobject *v;
   v= (swig_varlinkobject *) p;
 	
@@ -417,7 +419,7 @@ void SWIG_MakePtr(char *_c, const void *_ptr, char *type) {
 
 SWIGSTATIC 
 char *SWIG_GetPtr(char *_c, void **ptr, char *_t)
-{
+{E_
   unsigned long _p;
   char temp_type[256];
   char *name;
@@ -624,7 +626,7 @@ static struct {
 int last_binding = 0;
 
 static void free_current_bindings (void *x)
-{
+{E_
     struct python_binding *b, *n;
     for (b = (struct python_binding *) x; b; b = n) {
 	n = b->next;
@@ -637,7 +639,7 @@ static void free_current_bindings (void *x)
 
 /* returns non-zero on error: i.e. max bindings reached */
 static int add_binding (PyObject * function, char *statement, KeySym keysym, int modifiers)
-{
+{E_
     struct python_binding **b, *p;
     int i;
     b = (struct python_binding **) &(edit[current_edit]->user);
@@ -683,7 +685,7 @@ static int add_binding (PyObject * function, char *statement, KeySym keysym, int
 }
 
 static int add_bindings (PyObject *function, KeySym keysym1, KeySym keysym2, int modifiers)
-{
+{E_
     int r = 0;
     while (keysym1 <= keysym2)
 	if ((r = add_binding (function, 0, keysym1++, modifiers)))
@@ -692,7 +694,7 @@ static int add_bindings (PyObject *function, KeySym keysym1, KeySym keysym2, int
 }
 
 int coolpython_key (unsigned int state, unsigned int keycode, KeySym keysym)
-{
+{E_
     struct python_binding *b;
     int i;
     CWidget *w;
@@ -716,13 +718,13 @@ int coolpython_key (unsigned int state, unsigned int keycode, KeySym keysym)
 /* }}} bindings */
 
 static void move (long i)
-{
+{E_
     CHECK_CURRENT;
     edit_cursor_move (edit[current_edit]->editor, i);
 }
 
 static void move_lines (long i)
-{
+{E_
     CHECK_CURRENT;
     if (i > 0)
 	edit_move_up (edit[current_edit]->editor, i, 0);
@@ -731,20 +733,20 @@ static void move_lines (long i)
 }
 
 static void move_to (long i)
-{
+{E_
     CHECK_CURRENT;
     edit_cursor_move (edit[current_edit]->editor, i - edit[current_edit]->editor->curs1);
 }
 
 static void insert (char *s)
-{
+{E_
     CHECK_CURRENT;
     for (; *s; s++)
 	edit_insert (edit[current_edit]->editor, (long) *s);
 }
 
 static void delete (long i)
-{
+{E_
     CHECK_CURRENT;
     if (i > 0)
 	while (i-- && edit[current_edit]->editor->curs2 > 0)
@@ -752,7 +754,7 @@ static void delete (long i)
 }
 
 static void back_space (long i)
-{
+{E_
     CHECK_CURRENT;
     if (i > 0)
 	while (i-- && edit[current_edit]->editor->curs1 > 0)
@@ -760,7 +762,7 @@ static void back_space (long i)
 }
 
 static void insert_ahead (char *s)
-{
+{E_
     long l, r;
     CHECK_CURRENT;
     r = l = strlen (s);
@@ -770,19 +772,19 @@ static void insert_ahead (char *s)
 }
 
 static long current (void)
-{
+{E_
     CHECK_CURRENT_RETURN (-1);
     return edit[current_edit]->editor->curs1;
 }
 
 static long current_line (void)
-{
+{E_
     CHECK_CURRENT_RETURN (-1);
     return edit[current_edit]->editor->curs_line;
 }
 
 static long bol (long i)
-{
+{E_
     CHECK_CURRENT_RETURN (-1);
     if (i > edit[current_edit]->editor->total_lines || i < 0)
 	return -1;
@@ -790,7 +792,7 @@ static long bol (long i)
 }
 
 static long eol (long i)
-{
+{E_
     CHECK_CURRENT_RETURN (-1);
     if (i > edit[current_edit]->editor->total_lines || i < 0)
 	return -1;
@@ -798,7 +800,7 @@ static long eol (long i)
 }
 
 static long find_forwards (long from, char *s)
-{
+{E_
     CHECK_CURRENT_RETURN (-1);
     if (!*s)
 	return -1;
@@ -818,7 +820,7 @@ static long find_forwards (long from, char *s)
 }
 
 static long find_backwards (long from, char *s)
-{
+{E_
     CHECK_CURRENT_RETURN (-1);
     if (!*s)
 	return -1;
@@ -838,7 +840,7 @@ static long find_backwards (long from, char *s)
 }
 
 static PyObject *edit__get_text (PyObject * self, PyObject * args)
-{
+{E_
     PyObject *result;
     char *r, *p;
     long i, j = -1, l;
@@ -869,7 +871,7 @@ static PyObject *edit__get_text (PyObject * self, PyObject * args)
 
 
 static PyObject *edit__get_line (PyObject * self, PyObject * args)
-{
+{E_
     PyObject *result;
     char *r, *p;
     int i, j, l, l1 = -1, l2 = -1;
@@ -902,7 +904,7 @@ static PyObject *edit__get_line (PyObject * self, PyObject * args)
 
 
 static long line (long i)
-{
+{E_
     CHECK_CURRENT_RETURN (-1);
     if (i > edit[current_edit]->editor->curs1)
 	return edit[current_edit]->editor->curs_line + edit_count_lines (edit[current_edit]->editor, edit[current_edit]->editor->curs1, i);
@@ -910,14 +912,14 @@ static long line (long i)
 }
 
 static void command (long i)
-{
+{E_
     CHECK_CURRENT;
     edit_execute_cmd (edit[current_edit]->editor, i, -1);
 }
 
 /* window functions */
 static void focus (void)
-{
+{E_
     CHECK_CURRENT;
     CFocus (edit[current_edit]);
     XRaiseWindow (CDisplay, edit[current_edit]->parentid);
@@ -926,7 +928,7 @@ static void focus (void)
 }
 
 static long set_editor (char *filename_with_path)
-{
+{E_
     char *f, *d, *p;
     int i, r = 1;
     d = pathdup (filename_with_path);
@@ -954,7 +956,7 @@ static long set_editor (char *filename_with_path)
 }
 
 static void close_window (long force)
-{
+{E_
     if (force)
 	edit[current_edit]->editor->stopped = 1;
     else
@@ -962,17 +964,17 @@ static void close_window (long force)
 }
 
 static void new_window (void)
-{
+{E_
     new_window_callback (0);
 }
 
 static int load (char *filename)
-{
+{E_
     return edit_load_file_from_filename (edit[current_edit]->editor, filename);
 }
 
 static void status (char *text)
-{
+{E_
     char id[33];
     CWidget *w;
     strcpy (id, CIdentOf (edit[current_edit]));
@@ -984,22 +986,22 @@ static void status (char *text)
 }
 
 static char *file (void)
-{
+{E_
     return edit[current_edit]->editor->filename;
 }
 
 static char *directory (void)
-{
+{E_
     return edit[current_edit]->editor->dir;
 }
 
 static long modified (void)
-{
+{E_
     return (long) edit[current_edit]->editor->modified;
 }
 
 static char *input_dialog (char *title, char *prompt, char *def)
-{
+{E_
     static char x[4096];
     char *p;
     p = CInputDialog (title, 0, 0, 0, 60 * FONT_MEAN_WIDTH, def, title, "%s", prompt);
@@ -1012,7 +1014,7 @@ static char *input_dialog (char *title, char *prompt, char *def)
 }
 
 static char *load_file_dialog (char *title, char *dir, char *def)
-{
+{E_
     static char x[4096];
     char *p;
     p = CGetLoadFile (0, 0, 0, dir, def, title);
@@ -1025,7 +1027,7 @@ static char *load_file_dialog (char *title, char *dir, char *def)
 }
 
 static char *save_file_dialog (char *title, char *dir, char *def)
-{
+{E_
     static char x[4096];
     char *p;
     p = CGetSaveFile (0, 0, 0, dir, def, title);
@@ -1038,7 +1040,7 @@ static char *save_file_dialog (char *title, char *dir, char *def)
 }
 
 static char *status_input (char *prompt, char *def)
-{
+{E_
     char id[33];
     int width = 0;
     XEvent xevent;
@@ -1081,51 +1083,51 @@ static char *status_input (char *prompt, char *def)
 }
 
 static void message_dialog (char *title, char *message)
-{
+{E_
     CMessageDialog (0, 0, 0, 0, title, "%s", message);
 }
 
 static void error_dialog (char *title, char *message)
-{
+{E_
     CErrorDialog (0, 0, 0, title, "%s", message);
 }
 
 static long tab_width (void)
-{
+{E_
     return (long) TAB_SIZE;
 }
 
 static long column_pixels (long i)
-{
+{E_
     return 0;
 }
 
 static long buffer_size (void)
-{
+{E_
     return edit[current_edit]->editor->last_byte;
 }
 
 static void key_press (void)
-{
+{E_
     edit_push_key_press (edit[current_edit]->editor);
 }
 
 static void redraw_page (void)
-{
+{E_
     edit[current_edit]->editor->force |= REDRAW_PAGE;
     edit_update_curs_row (edit[current_edit]->editor);
     edit_update_curs_col (edit[current_edit]->editor);
 }
 
 static int shell_output (char *title, char *s, char *name)
-{
+{E_
     return execute_background_display_output (title, s, name);
 }
 
 
 
 PyObject *edit__get_editors (PyObject * self, PyObject * args)
-{
+{E_
     PyObject *ret;
     int i;
     char *p;
@@ -1149,7 +1151,7 @@ PyObject *edit__get_editors (PyObject * self, PyObject * args)
 
 
 PyObject *edit__indent (PyObject * self, PyObject * args)
-{
+{E_
     int extra = 0;
     if (!PyArg_ParseTuple (args, "|i:indent", &extra))
 	return NULL;
@@ -1161,7 +1163,7 @@ PyObject *edit__indent (PyObject * self, PyObject * args)
 
 
 PyObject *edit__file_type (PyObject * self, PyObject * args)
-{
+{E_
     PyObject *ret;
     char *type = 0;
     if (!PyArg_ParseTuple (args, "|s:file_type", &type))
@@ -1178,7 +1180,7 @@ PyObject *edit__file_type (PyObject * self, PyObject * args)
 
 
 PyObject *edit__query_dialog (PyObject * self, PyObject * args)
-{
+{E_
     char *heading, *text;
     char *b1 = 0, *b2 = 0, *b3 = 0, *b4 = 0, *b5 = 0, *b6 = 0, *b7 = 0,
     *b8 = 0, *b9 = 0, *b10 = 0;
@@ -1192,7 +1194,7 @@ PyObject *edit__query_dialog (PyObject * self, PyObject * args)
 
 
 PyObject *edit__overwrite (PyObject * self, PyObject * args)
-{
+{E_
     PyObject *ret;
     int i = -1;
     if (!PyArg_ParseTuple (args, "|i:overwrite", &i))
@@ -1208,7 +1210,7 @@ PyObject *edit__overwrite (PyObject * self, PyObject * args)
 
 
 PyObject *edit__generic_dialog (PyObject * self, PyObject * args)
-{
+{E_
     PyObject *a1 = 0, *a2 = 0, *a3 = 0, *a4 = 0, *a5 = 0, *a6 = 0, *a7 = 0, *result = 0;
 
     char **inputs;
@@ -1320,7 +1322,7 @@ PyObject *edit__generic_dialog (PyObject * self, PyObject * args)
 extern int column_highlighting;
 
 PyObject *edit__markers (PyObject * self, PyObject * args)
-{
+{E_
     PyObject *ret;
     long m1 = -1000000000, m2 = -1000000000;
     int c1 = -1000000000, c2 = -1000000000;
@@ -1363,7 +1365,7 @@ PyObject *edit__markers (PyObject * self, PyObject * args)
 
 
 PyObject *edit__get_key (PyObject * self, PyObject * args)
-{
+{E_
     PyObject *ret;
     XEvent xevent;
     CState s;
@@ -1395,7 +1397,7 @@ PyObject *edit__get_key (PyObject * self, PyObject * args)
 
 
 PyObject *edit__key (PyObject * self, PyObject * args)
-{
+{E_
     int i, found = 0;
     int modifiers;
     char *key = 0;
@@ -1452,7 +1454,7 @@ PyObject *edit__key (PyObject * self, PyObject * args)
 
 
 PyObject *edit__bind (PyObject * self, PyObject * args)
-{
+{E_
     char e[128];
     int modifiers;
     char *key1 = 0, *key2 = 0;
@@ -1488,7 +1490,7 @@ PyObject *edit__bind (PyObject * self, PyObject * args)
 
 
 static void coolpython_constants (PyObject * d)
-{
+{E_
     struct key_list *k;
     for (k = get_command_list (); *k->key_name; k++)
 	if (k->command)
@@ -1529,7 +1531,7 @@ static void coolpython_constants (PyObject * d)
 }
 
 void coolpython_run_file (char *filename)
-{
+{E_
     FILE *f;
     PyObject *e;
     f = fopen (filename, "r");
@@ -1550,7 +1552,7 @@ static int coolpython_argc = 0;
 static char **coolpython_argv = 0;
 
 void coolpython_shut (void)
-{
+{E_
     int i;
 #if 0
     Py_Finalize ();
@@ -1564,7 +1566,7 @@ void coolpython_shut (void)
 }
 
 void coolpython_init (int argc, char **argv)
-{
+{E_
     PyObject *e;
     char s[1024];
     int fd = -1;
@@ -1603,7 +1605,7 @@ sys.path.append('%s%s')\n\
 }
 
 int coolpython_run_function (PyObject * function, char *key_name, int modifiers)
-{
+{E_
     PyObject *p, *ret;
     p = PyTuple_New (2);
     PyTuple_SetItem (p, 0, PyString_FromString (key_name));
@@ -1621,7 +1623,7 @@ int coolpython_run_function (PyObject * function, char *key_name, int modifiers)
 }
 
 int coolpython_run_statement (char *statement)
-{
+{E_
     PyObject *v;
     v = PyRun_String (statement, Py_file_input, name_space, name_space);
     if (v == NULL) {
@@ -1635,7 +1637,7 @@ int coolpython_run_statement (char *statement)
 }
 
 static void type_change (int i)
-{
+{E_
     char s[256];
     sprintf (s, "type_change ('%s')", edit[i]->editor->syntax_type ? edit[i]->editor->syntax_type : "");
     free_current_bindings (edit[i]->user);
@@ -1644,7 +1646,7 @@ static void type_change (int i)
 }
 
 void coolpython_typechange (Window win)
-{
+{E_
     int temp_current_edit;
     temp_current_edit = current_edit;
     for (current_edit = 0; current_edit < last_edit; current_edit++)
@@ -1656,7 +1658,7 @@ void coolpython_typechange (Window win)
 }
 
 void menu_python_reload (unsigned long ignored)
-{
+{E_
     int temp_current_edit;
     coolpython_shut ();
     coolpython_init (0, 0);
@@ -1668,7 +1670,7 @@ void menu_python_reload (unsigned long ignored)
 
 /* this is similar to the function edit__menu - if you change here, change there as well */
 static PyObject *edit__replace_insert_menu (PyObject * self, PyObject * args, int insert)
-{
+{E_
     char *menu_name, *old_item = 0, *new_item = 0, *statement = 0;
     char ident[33];
     CWidget *w;
@@ -1723,18 +1725,18 @@ static PyObject *edit__replace_insert_menu (PyObject * self, PyObject * args, in
 }
 
 PyObject *edit__insert_menu (PyObject * self, PyObject * args)
-{
+{E_
     return edit__replace_insert_menu (self, args, 1);
 }
 
 PyObject *edit__replace_menu (PyObject * self, PyObject * args)
-{
+{E_
     return edit__replace_insert_menu (self, args, 0);
 }
 
 /* this is similar to the function edit__replace_menu - if you change here, change there as well */
 PyObject *edit__menu (PyObject * self, PyObject * args)
-{
+{E_
     char *menu_name, *menu_item = 0, *statement = 0;
     char ident[33];
     CWidget *w;
@@ -1789,7 +1791,7 @@ PyObject *edit__menu (PyObject * self, PyObject * args)
 }
 
 PyObject *edit__gettext (PyObject * self, PyObject * args)
-{
+{E_
     char *s;
     if (!PyArg_ParseTuple (args, "s:gettext", &s))
 	return NULL;
@@ -1799,7 +1801,7 @@ PyObject *edit__gettext (PyObject * self, PyObject * args)
 
 
 void coolpython_command (WEdit * edit, int i)
-{
+{E_
     int k;
     struct python_binding *b;
     if (i >= GLOBAL_BINDING (0) && i < GLOBAL_BINDING (MAX_GLOBAL_BINDINGS)) {
@@ -1823,7 +1825,7 @@ void coolpython_command (WEdit * edit, int i)
 }
 
 static void coolpython_display_error (int set_sys_last_vars)
-{
+{E_
     PyObject *e;
     char t[1024];
     PyObject *exception, *v, *tb, *d;

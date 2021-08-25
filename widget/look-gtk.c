@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* look-gtk.c - look 'n feel type: GTK
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -67,7 +69,7 @@ int find_menu_hotkey (struct menu_item m[], int this, int num);
 #define B		BAR_HEIGHT
 
 static void look_gtk_get_menu_item_extents (int n, int j, struct menu_item m[], int *border, int *relief, int *y1, int *y2)
-{
+{E_
     int i, n_items = 0, n_bars = 0;
 
     *border = O;
@@ -92,7 +94,7 @@ static void look_gtk_get_menu_item_extents (int n, int j, struct menu_item m[], 
 unsigned long bevel_background_color = 1;
 
 static void look_gtk_menu_draw (Window win, int w, int h, struct menu_item m[], int n, int light)
-{
+{E_
     int i, y1, y2, offset = 0;
     static int last_light = 0, last_n = 0;
     static Window last_win = 0;
@@ -157,7 +159,7 @@ static void look_gtk_menu_draw (Window win, int w, int h, struct menu_item m[], 
 }
 
 static void look_gtk_render_menu_button (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     int x = 0, y = 0;
 
@@ -186,7 +188,7 @@ static void look_gtk_render_menu_button (CWidget * wdt)
 }
 
 static void look_gtk_render_button (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     int x = 0, y = 0;
     XGCValues gcv;
@@ -233,7 +235,7 @@ static void look_gtk_render_button (CWidget * wdt)
 }
 
 static void look_gtk_render_bar (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     Window win = wdt->winid;
     CSetColor (color_widget (9));
@@ -244,7 +246,7 @@ static void look_gtk_render_bar (CWidget * wdt)
 
 void look_gtk_render_sunken_bevel (Window win, int x1, int y1, int x2, int y2, int thick,
 				   int sunken)
-{
+{E_
     int i;
 
     CSetColor (color_widget (9));
@@ -285,7 +287,7 @@ void look_gtk_render_sunken_bevel (Window win, int x1, int y1, int x2, int y2, i
 
 static void look_gtk_render_raised_bevel (Window win, int x1, int y1, int x2, int y2, int thick,
 					  int sunken)
-{
+{E_
     int i;
 
     if (bevel_background_color == 1)
@@ -334,12 +336,12 @@ static void look_gtk_render_raised_bevel (Window win, int x1, int y1, int x2, in
 }
 
 static void look_gtk_draw_hotkey_understroke (Window win, int x, int y, int hotkey)
-{
+{E_
     CLine (win, x, y + 1, x + FONT_PER_CHAR (hotkey) - 1, y + 1);
 }
 
 static void look_gtk_render_text (CWidget * wdt)
-{
+{E_
     Window win = wdt->winid;
     char text[1024], *p, *q;
     int hot, y, w = wdt->width, center = 0;
@@ -384,7 +386,7 @@ static void look_gtk_render_text (CWidget * wdt)
 }
 
 static void look_gtk_render_window (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
 
     Window win = wdt->winid;
@@ -418,7 +420,7 @@ static void look_gtk_render_window (CWidget * wdt)
 }
 
 static void look_gtk_render_vert_scrollbar (Window win, int x, int y, int w, int h, int pos, int prop, int pos2, int prop2, int flags)
-{
+{E_
     int l = h - 10 * w / 3 - 5;
 
     render_bevel (win, 0, 0, w - 1, h - 1, 2, 1);
@@ -452,7 +454,7 @@ static void look_gtk_render_vert_scrollbar (Window win, int x, int y, int w, int
 }
 
 static void look_gtk_render_hori_scrollbar (Window win, int x, int y, int h, int w, int pos, int prop, int flags)
-{
+{E_
     int l = h - 10 * w / 3 - 5, k;
     k = (l - 5) * pos / 65535;
 
@@ -484,7 +486,7 @@ static void look_gtk_render_hori_scrollbar (Window win, int x, int y, int h, int
 }
 
 static void look_gtk_render_scrollbar (CWidget * wdt)
-{
+{E_
     int flags = wdt->options;
     if (!wdt)
 	return;
@@ -514,7 +516,7 @@ static void look_gtk_render_scrollbar (CWidget * wdt)
    Which scrollbar button was pressed: 3 is the middle button ?
  */
 static int look_gtk_which_scrollbar_button (int bx, int by, CWidget * wdt)
-{
+{E_
     int w, h;
     int pos = wdt->firstline;
     int prop = wdt->numlines;
@@ -548,19 +550,19 @@ static int look_gtk_which_scrollbar_button (int bx, int by, CWidget * wdt)
 extern int look_cool_scrollbar_handler (CWidget * w, XEvent * xevent, CEvent * cwevent);
 
 static void look_gtk_init_scrollbar_icons (CWidget * w)
-{
+{E_
     return;
 }
 
 static int look_gtk_get_scrollbar_size (int type)
-{
+{E_
     if (type == C_HORISCROLL_WIDGET)
 	return 13;
     return 20;
 }
 
 static void look_gtk_get_button_color (XColor * color, int i)
-{
+{E_
     color->red = i * 65535 / 15;
     color->green = i * 65535 / 15;
     color->blue = i * 65535 / 15;
@@ -583,7 +585,7 @@ static void look_gtk_get_button_color (XColor * color, int i)
 }
 
 static int look_gtk_get_default_interwidget_spacing (void)
-{
+{E_
     return 2;
 }
 
@@ -593,7 +595,7 @@ extern Pixmap Cswitchon;
 extern Pixmap Cswitchoff;
 
 static void look_gtk_render_switch (CWidget * wdt)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     Window win = wdt->winid;
     if (wdt->options & BUTTON_HIGHLIGHT)
@@ -607,7 +609,7 @@ static void look_gtk_render_switch (CWidget * wdt)
 extern int edit_normal_background_color;
 
 static void look_gtk_edit_render_tidbits (CWidget * wdt)
-{
+{E_
     int isfocussed;
     int w = wdt->width, h = wdt->height;
     Window win;
@@ -636,7 +638,7 @@ extern CWidget *look_cool_draw_cross_cancel_button (char *ident, Window win, int
 extern int option_text_bg_normal;
 
 static void look_gtk_render_fielded_textbox_tidbits (CWidget * w, int isfocussed)
-{
+{E_
     bevel_background_color = COLOR_WHITE;
     if (isfocussed) {
 	render_bevel (w->winid, 1, 1, w->width - 2, w->height - 2, 2, 1);	/*most outer border bevel */
@@ -651,7 +653,7 @@ static void look_gtk_render_fielded_textbox_tidbits (CWidget * w, int isfocussed
 }
 
 static void look_gtk_render_textbox_tidbits (CWidget * w, int isfocussed)
-{
+{E_
     bevel_background_color = COLOR_WHITE;
     if (isfocussed) {
 	render_bevel (w->winid, 1, 1, w->width - 2, w->height - 2, 2, 1);	/*most outer border bevel */
@@ -664,7 +666,7 @@ static void look_gtk_render_textbox_tidbits (CWidget * w, int isfocussed)
 }
 
 static void look_gtk_render_passwordinput_tidbits (CWidget * wdt, int isfocussed)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     Window win = wdt->winid;
     bevel_background_color = COLOR_WHITE;
@@ -679,7 +681,7 @@ static void look_gtk_render_passwordinput_tidbits (CWidget * wdt, int isfocussed
 }
 
 static void look_gtk_render_textinput_tidbits (CWidget * wdt, int isfocussed)
-{
+{E_
     int w = wdt->width, h = wdt->height;
     Window win = wdt->winid;
     bevel_background_color = COLOR_WHITE;
@@ -710,7 +712,7 @@ static void look_gtk_render_textinput_tidbits (CWidget * wdt, int isfocussed)
 extern struct focus_win focus_border;
 
 static void look_gtk_render_focus_border (Window win)
-{
+{E_
     if (win == focus_border.top || win == focus_border.bottom || win == focus_border.left
 	|| win == focus_border.right) {
 	CSetColor (color_widget (0));
@@ -719,32 +721,32 @@ static void look_gtk_render_focus_border (Window win)
 }
 
 static int look_gtk_get_extra_window_spacing (void)
-{
+{E_
     return 2;
 }
 
 static int look_gtk_get_focus_ring_size (void)
-{
+{E_
     return 1;
 }
 
 static unsigned long look_gtk_get_button_flat_color (void)
-{
+{E_
     return color_widget(12);
 }
 
 static int look_gtk_get_window_resize_bar_thickness (void)
-{
+{E_
     return 0;
 }
 
 static int look_gtk_get_switch_size (void)
-{
+{E_
     return FONT_PIX_PER_LINE + TEXT_RELIEF * 2 + 2 + 4;
 }
 
 static int look_gtk_get_fielded_textbox_hscrollbar_width (void)
-{
+{E_
     return 12;
 }
 

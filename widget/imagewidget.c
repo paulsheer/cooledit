@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* imagewidget.c - for drawing black and white images
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -7,6 +8,7 @@
 /*general note: widget labels and identifiers are copied from
    data passed and free'd on widget undraw. */
 
+#include "inspect.h"
 #include <config.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -25,7 +27,7 @@
 
 
 void grey_scale_to_pixels (void *pixdata, unsigned char *data, int width, int height, int bytedepth)
-{
+{E_
     long p = width * height - 1;
     int i;
     static unsigned long c[256] =
@@ -78,7 +80,7 @@ void grey_scale_to_pixels (void *pixdata, unsigned char *data, int width, int he
 
 
 void color_8bit_to_pixels (void *pixdata, unsigned char *data, int width, int height, int bytedepth)
-{
+{E_
     long p = width * height - 1;
     static unsigned long c[256] =
     {1};
@@ -131,7 +133,7 @@ void color_8bit_to_pixels (void *pixdata, unsigned char *data, int width, int he
    this for the border */
 CWidget * CDrawBWImage (const char *identifier, Window parent, int x, int y,
 		       int width, int height, unsigned char *data)
-{
+{E_
     int bytespp = 16;
     CWidget *w;
 
@@ -177,7 +179,7 @@ CWidget * CDrawBWImage (const char *identifier, Window parent, int x, int y,
    this for the border */
 CWidget * Cdraw8bitimage (const char *identifier, Window parent, int x, int y,
 			 int width, int height, unsigned char *data)
-{
+{E_
     int bytespp = 16;
     CWidget *w;
 
@@ -210,7 +212,7 @@ CWidget * Cdraw8bitimage (const char *identifier, Window parent, int x, int y,
 
 
 void render_bw_image (CWidget *wdt, int x, int y, int rendw, int rendh)
-{
+{E_
     int w = wdt->width;
     int h = wdt->height;
     Window win = wdt->winid;
@@ -281,7 +283,7 @@ void render_bw_image (CWidget *wdt, int x, int y, int rendw, int rendh)
 
 
 void tgaerror (const char *errmessage)
-{
+{E_
     fprintf (stderr, errmessage);	/*OR for the application: */
 /*    CError (errmessage); *//********/
 }
@@ -296,7 +298,7 @@ void tgaerror (const char *errmessage)
 
 
 unsigned char *load_targa_to_grey (const char *fname, long *width, long *height, long rowstart, long rowend)
-{
+{E_
     FILE *fp;
     int i, j, k, row, c, c1, w, h, flags, intlace, topleft, trunc, bytesperpixel;
     unsigned char *pic8 = NULL, *pp;
@@ -437,7 +439,7 @@ unsigned char *load_targa_to_grey (const char *fname, long *width, long *height,
 
 /*returns 1 on error */
 int write_targa (unsigned char *pic8, const char *fname, long w, long h, int grey)
-{
+{E_
     FILE *fp;
     int i, j;
     long index = 0;

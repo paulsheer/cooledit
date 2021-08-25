@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* bitmapbutton.c - buttons with little pictures on them
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -22,7 +24,7 @@ void render_rounded_bevel (Window win, int x1, int y1, int x2, int y2, int radiu
 
 CWidget *CDrawBitmapButton (const char *identifier, Window parent, int x, int y,
 			    int width, int height, unsigned long fg, unsigned long bg, const unsigned char data[])
-{
+{E_
     XSetWindowAttributes xswa;
     CWidget *w = CSetupWidget (identifier, parent, x, y,
       width + 8, height + 8, C_BITMAPBUTTON_WIDGET, INPUT_BUTTON, bg, 1);
@@ -41,7 +43,7 @@ CWidget *CDrawBitmapButton (const char *identifier, Window parent, int x, int y,
 
 CWidget *CDrawBitmap (const char *identifier, Window parent, int x, int y,
 		      int width, int height, unsigned long fg, unsigned long bg, const unsigned char data[])
-{
+{E_
     CWidget *w = CSetupWidget (identifier, parent, x, y,
 	     width + 8, height + 8, C_BITMAP_WIDGET, INPUT_EXPOSE, bg, 0);
     Pixmap pixmap;
@@ -59,7 +61,7 @@ CWidget *CDrawBitmap (const char *identifier, Window parent, int x, int y,
 
 CWidget *CDrawPixmapButton (const char *identifier, Window parent,
     int x, int y, int width, int height, const char *data[], char start_char)
-{
+{E_
     CWidget *w;
     w = CDrawButton (identifier, parent, x, y, width, height, "");
     CSetBackgroundPixmap (identifier, data, width, height, start_char);
@@ -76,7 +78,7 @@ Pixmap Cswitchoff = 0;
     and ->keypressed hold if the switch is on or off */
 
 CWidget *CDrawSwitch (const char *identifier, Window parent, int x, int y, int on, const char *label, int group)
-{
+{E_
     int y_button, y_label, h = 0, xt = 0, yt = 0, l;
     CWidget *w;
 
@@ -141,7 +143,7 @@ CWidget *CDrawSwitch (const char *identifier, Window parent, int x, int y, int o
 
 /* sets and redraws in the group all except w */
 void set_switch_group (CWidget * w, int group, int on)
-{
+{E_
     CWidget *p = w;
 
     if (!w->cursor)	/* belongs to no group */
@@ -161,7 +163,7 @@ void set_switch_group (CWidget * w, int group, int on)
 }
 
 void toggle_radio_button (CWidget * w)
-{
+{E_
     if (w->options & RADIO_INVERT_GROUP)
 	set_switch_group (w, w->cursor, w->keypressed);
     else
@@ -175,12 +177,12 @@ void toggle_radio_button (CWidget * w)
 }
 
 void render_switch (CWidget * wdt)
-{
+{E_
     (*look->render_switch) (wdt);
 }
 
 void render_rounded_bevel (Window win, int xs1, int ys1, int xs2, int ys2, int radius, int thick, int sunken)
-{
+{E_
     unsigned long cn, cs, cnw, cne, cse;
     int i;
     int x1, y1, x2, y2;

@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* smalledit.c - stripped down cooledit.c and demo of the Coolwidget library
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -20,6 +21,7 @@
  * 
  */
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,6 +44,7 @@
 #include "cmdlineopt.h"
 #include "shell.h"
 #include "pool.h"
+#include "remotefspassword.h"
 
 /* default window sizes */
 #define START_WIDTH	80
@@ -73,6 +76,8 @@ char *option_display = 0;
 
 /* font from the command line */
 char *option_font2 = 0;
+int option_utf_interpretation2 = 1;
+int option_locale_encoding = 0;
 
 static int get_help = 0;
 static int get_version = 0;
@@ -84,7 +89,7 @@ static char *command_line_args[] =
 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 void usage (void)
-{
+{E_
     printf ( \
 	_("Smalledit version %s\nUsage:\n" \
 	"A stripped down version of cooledit.\n" \
@@ -105,7 +110,7 @@ void usage (void)
 }
 
 void version (void)
-{
+{E_
     printf (_("Smalledit version %s\n"), VERSION);
 }
 
@@ -132,7 +137,7 @@ static struct cmdline_option_free cmdline_fl;
 
 /* here we use our own function (which is better than get_opt() or get_opt_long()) */
 static void process_command_line (int argc, char **argv)
-{
+{E_
     int error;
     option_auto_spellcheck = 0;
     error = get_cmdline_options (argc, argv, cooledit_options, &cmdline_fl);
@@ -157,7 +162,7 @@ static void process_command_line (int argc, char **argv)
 /* {{{ utilities */
 
 static char *get_full_filename (const char *f)
-{
+{E_
     char *s, *p;
 
     if (*f == '/')
@@ -179,7 +184,7 @@ static char *get_full_filename (const char *f)
 /* {{{ menu callbacks */
 
 void run_main_callback (unsigned long ignore)
-{
+{E_
     switch (fork ()) {
     case 0:
 	CDisableAlarm ();
@@ -194,18 +199,18 @@ void run_main_callback (unsigned long ignore)
 }
 
 void menu_exit (unsigned long ignore)
-{
+{E_
     CEditMenuCommand (CK_Exit);
 }
 
 void save_and_exit_callback (unsigned long ignore)
-{
+{E_
     CEditMenuCommand (CK_Save);
     menu_exit (0);
 }
 
 int about_callback (CWidget *w, XEvent *xe, CEvent *ce)
-{
+{E_
     CMessageDialog (main_window, 20, 20, TEXT_CENTRED, _(" About "),
       _("\n" \
       "Smalledit  version  %s\n" \
@@ -213,7 +218,7 @@ int about_callback (CWidget *w, XEvent *xe, CEvent *ce)
       "A cut down version of Cooledit -\n" \
       "a text editor written for The X Window System.\n" \
       "\n" \
-      "Copyright (C) 1996-2017 Paul Sheer\n" \
+      "Copyright (C) 1996-2022 Paul Sheer\n" \
       "\n" \
       " Smalledit comes with ABSOLUTELY NO WARRANTY; for details \n" \
       " click on 'no Warranty' in the File menu. \n" \
@@ -236,7 +241,7 @@ extern Atom ATOM_WM_NAME;
 /* {{{ change my name by sasha*/
 
 void set_main_window_name( char* filename )
-{
+{E_
   char* full_title ;
   CWidget *wdt = CWidgetOfWindow( main_window );
     
@@ -286,6 +291,7 @@ int main (int argc, char **argv)
     process_command_line (argc, argv);
 
     get_home_dir ();
+    password_init ();
 
 /* intialise the library */
     memset (&cooledit_startup, 0, sizeof (cooledit_startup));
@@ -296,6 +302,8 @@ int main (int argc, char **argv)
 
 /* create main window */
     main_window = CDrawMainWindow ("smalledit", "Smalledit");
+
+    set_editor_encoding (option_utf_interpretation2, option_locale_encoding);
 
 /* draw the predefined edit menu buttons */
     CGetHintPos (&x, &y);

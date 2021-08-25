@@ -1,15 +1,17 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* cmdlineopt.c and cmdlineopt.h are for processing command line options.
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "cmdlineopt.h"
 
 void get_cmdline_options_free_list (struct cmdline_option_free *fl)
-{
+{E_
     while(fl->free_list_len) {
         fl->free_list_len--;
 	free (fl->free_list[fl->free_list_len]);
@@ -17,7 +19,7 @@ void get_cmdline_options_free_list (struct cmdline_option_free *fl)
 }
 
 int get_cmdline_options (int argc, char **argv, struct prog_options *args, struct cmdline_option_free *fl)
-{
+{E_
     int i = 0, j, c;
     int other = 0;
     fl->free_list_len = 0;

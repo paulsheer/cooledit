@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* initapp.c - initialise X Server connection, X application, and widget library
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -38,6 +39,7 @@
 /* Thence macros are defined in coolwidgets.h for color lookup */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -59,6 +61,8 @@
 #include "xim.h"
 #include "stringtools.h"
 #include "remotefs.h"
+#include "remotefspassword.h"
+#include "aafont.h"
 
 #include <signal.h>
 #include <sys/types.h>
@@ -131,14 +135,14 @@ struct resource_param resources[] =
 };
 
 static void alloccolorerror (void)
-{
+{E_
 /* Translations in initapp.c are of a lower priority than other files, since they only output when cooledit is run in verbose mode */
     fprintf (stderr, _ ("Cannot allocate colors. Could be to many applications\ntrying to use the colormap. If closing other apps doesn't\nhelp, then your graphics hardware may be inadequite.\n"));
     exit (1);
 }
 
 static void init_widgets (void)
-{
+{E_
     int i;
     last_widget = 1;		/*widget[0] is never used since index 0 is used
 				   to indicate an error message */
@@ -147,7 +151,7 @@ static void init_widgets (void)
 }
 
 static void open_display (char *app_name, int wait_for_display)
-{
+{E_
     if (wait_for_display) {
 	CDisplay = 0;
 	while (!(CDisplay = XOpenDisplay (init_display)))
@@ -165,7 +169,7 @@ static void open_display (char *app_name, int wait_for_display)
 }
 
 static void get_resources (void)
-{
+{E_
     int i;
     char *type;
     XrmValue value;
@@ -187,7 +191,7 @@ static enum font_encoding editor_encoding = FONT_ENCODING_UTF8;
 
 /* returns non-zero on changed */
 int set_editor_encoding (int utf_encoding, int locale_encoding)
-{
+{E_
     enum font_encoding last_encoding;
 
     last_encoding = editor_encoding;
@@ -204,131 +208,191 @@ int set_editor_encoding (int utf_encoding, int locale_encoding)
 }
 
 enum font_encoding get_editor_encoding (void)
-{
+{E_
     return editor_encoding;
 }
 
 #define ALL_TTF_RESIZABLE_FONTS \
-	"NotoSans-Regular.ttf," \
-	"NotoSansSyriacEstrangela-Regular.ttf," \
-	"NotoSansThaana-Regular.ttf," \
-	"NotoSansTagalog-Regular.ttf," \
-	"NotoSansTeluguUI-Regular.ttf," \
-	"NotoSansEthiopic-Regular.ttf," \
-	"NotoSansOldPersian-Regular.ttf," \
-	"NotoSansArmenian-Regular.ttf," \
-	"NotoSansTamilUI-Regular.ttf," \
-	"NotoSansPhagsPa-Regular.ttf," \
-	"NotoSansTaiViet-Regular.ttf," \
-	"NotoSansAdlam-Regular.ttf," \
-	"NotoSansMalayalamUI-Regular.ttf," \
-	"NotoSansSylotiNagri-Regular.ttf," \
-	"NotoSansImperialAramaic-Regular.ttf," \
-	"NotoSansCarian-Regular.ttf," \
-	"NotoSansTagbanwa-Regular.ttf," \
-	"NotoSansAnatolianHieroglyphs-Regular.ttf," \
-	"NotoSansCanadianAboriginal-Regular.ttf," \
-	"NotoSansMonoCJKtc-Regular.otf," \
-	"NotoSansNewTaiLue-Regular.ttf," \
-	"NotoSansAdlamUnjoined-Regular.ttf," \
-	"NotoSansKharoshthi-Regular.ttf," \
-	"NotoSansSymbols2-Regular.ttf," \
-	"NotoSansOldTurkic-Regular.ttf," \
-	"NotoSansSaurashtra-Regular.ttf," \
-	"NotoSansOlChiki-Regular.ttf," \
-	"NotoSansShavian-Regular.ttf," \
-	"NotoSansGeorgian-Regular.ttf," \
-	"NotoSansDevanagariUI-Regular.ttf," \
-	"NotoSansThaiUI-Regular.ttf," \
-	"NotoSansTibetan-Regular.ttf," \
-	"NotoSansTifinagh-Regular.ttf," \
-	"NotoSansUgaritic-Regular.ttf," \
-	"NotoSansBatak-Regular.ttf," \
-	"NotoSansLycian-Regular.ttf," \
-	"NotoSansBuhid-Regular.ttf," \
-	"NotoSansKaithi-Regular.ttf," \
-	"NotoSansOgham-Regular.ttf," \
-	"NotoSansCham-Regular.ttf," \
-	"NotoSansSymbols-Regular.ttf," \
-	"NotoSansRunic-Regular.ttf," \
-	"NotoSansGothic-Regular.ttf," \
-	"NotoSansOsmanya-Regular.ttf," \
-	"NotoSansOldSouthArabian-Regular.ttf," \
-	"NotoSansTaiTham-Regular.ttf," \
-	"NotoSansLimbu-Regular.ttf," \
-	"NotoSansCherokee-Regular.ttf," \
-	"NotoSansOriyaUI-Regular.ttf," \
-	"NotoSansGujaratiUI-Regular.ttf," \
-	"NotoSansKhmerUI-Regular.ttf," \
-	"NotoSansCuneiform-Regular.ttf," \
-	"NotoSansOldItalic-Regular.ttf," \
-	"NotoSansMandaic-Regular.ttf," \
-	"NotoSansMonoCJKkr-Regular.otf," \
-	"NotoSansPhoenician-Regular.ttf," \
-	"NotoSansMonoCJKsc-Regular.otf," \
-	"NotoSansBengaliUI-Regular.ttf," \
-	"NotoSansGlagolitic-Regular.ttf," \
-	"NotoSansGurmukhiUI-Regular.ttf," \
-	"NotoSansJavanese-Regular.ttf," \
-	"NotoSansSyriacEastern-Regular.ttf," \
-	"NotoSansOsage-Regular.ttf," \
-	"NotoSansKayahLi-Regular.ttf," \
-	"NotoSansCypriot-Regular.ttf," \
-	"NotoSansLinearB-Regular.ttf," \
-	"NotoSansKannadaUI-Regular.ttf," \
-	"NotoSansMonoCJKjp-Regular.otf," \
-	"NotoSansMongolian-Regular.ttf," \
-	"NotoSansBuginese-Regular.ttf," \
-	"NotoSansEgyptianHieroglyphs-Regular.ttf," \
-	"NotoSansSinhalaUI-Regular.ttf," \
-	"NotoSansBrahmi-Regular.ttf," \
-	"NotoSansInscriptionalPahlavi-Regular.ttf," \
-	"NotoSansDeseret-Regular.ttf," \
-	"NotoSansRejang-Regular.ttf," \
-	"NotoSansYi-Regular.ttf," \
-	"NotoSansBalinese-Regular.ttf," \
-	"NotoSansLaoUI-Regular.ttf," \
-	"NotoSansHanunoo-Regular.ttf," \
-	"NotoSansMeeteiMayek-Regular.ttf," \
-	"NotoSansLepcha-Regular.ttf," \
-	"NotoSansSundanese-Regular.ttf," \
-	"NotoSansLydian-Regular.ttf," \
-	"NotoSansTaiLe-Regular.ttf," \
-	"NotoSansSamaritan-Regular.ttf," \
-	"NotoSansLisu-Regular.ttf," \
-	"NotoSansNKo-Regular.ttf," \
-	"NotoSansVai-Regular.ttf," \
-	"NotoSansCoptic-Regular.ttf," \
-	"NotoSansChakma-Regular.ttf," \
-	"NotoSansInscriptionalParthian-Regular.ttf," \
-	"NotoSansBamum-Regular.ttf," \
-	"NotoSansMyanmarUI-Regular.ttf," \
-	"NotoSansSyriacWestern-Regular.ttf," \
-	"NotoSansAvestan-Regular.ttf," \
-	"NotoSansHebrew-Regular.ttf," \
-	"NotoColorEmoji.ttf," \
-	"NotoEmoji-Regular.ttf," \
-	"NotoKufiArabic-Regular.ttf," \
-        "NotoNaskhArabicUI-Regular.ttf," \
-        "NotoNastaliqUrdu-Regular.ttf"
+        "NotoSans-Regular.ttf," \
+        "NotoSansSymbols-Regular.ttf," \
+        "NotoSansSymbols2-Regular.ttf," \
+        "NotoSansMath-Regular.ttf," \
+        "NotoMusic-Regular.ttf," \
+        "NotoColorEmoji.ttf," \
+        "NotoLoopedLao-Regular.ttf," \
+        "NotoNastaliqUrdu-Regular.ttf," \
+        "NotoSansAdlam-Regular.ttf," \
+        "NotoSansAnatolianHieroglyphs-Regular.ttf," \
+        "NotoSansArabic-Regular.ttf," \
+        "NotoSansArmenian-Regular.ttf," \
+        "NotoSansAvestan-Regular.ttf," \
+        "NotoSansBalinese-Regular.ttf," \
+        "NotoSansBamum-Regular.ttf," \
+        "NotoSansBassaVah-Regular.ttf," \
+        "NotoSansBatak-Regular.ttf," \
+        "NotoSansBengali-Regular.ttf," \
+        "NotoSansBhaiksuki-Regular.ttf," \
+        "NotoSansBrahmi-Regular.ttf," \
+        "NotoSansBuginese-Regular.ttf," \
+        "NotoSansBuhid-Regular.ttf," \
+        "NotoSansCanadianAboriginal-Regular.ttf," \
+        "NotoSansCarian-Regular.ttf," \
+        "NotoSansCaucasianAlbanian-Regular.ttf," \
+        "NotoSansChakma-Regular.ttf," \
+        "NotoSansCham-Regular.ttf," \
+        "NotoSansCherokee-Regular.ttf," \
+        "NotoSansChorasmian-Regular.ttf," \
+        "NotoSansCoptic-Regular.ttf," \
+        "NotoSansCuneiform-Regular.ttf," \
+        "NotoSansCypriot-Regular.ttf," \
+        "NotoSansCyproMinoan-Regular.ttf," \
+        "NotoSansDeseret-Regular.ttf," \
+        "NotoSansDevanagari-Regular.ttf," \
+        "NotoSansDuployan-Regular.ttf," \
+        "NotoSansEgyptianHieroglyphs-Regular.ttf," \
+        "NotoSansElbasan-Regular.ttf," \
+        "NotoSansElymaic-Regular.ttf," \
+        "NotoSansEthiopic-Regular.ttf," \
+        "NotoSansGeorgian-Regular.ttf," \
+        "NotoSansGlagolitic-Regular.ttf," \
+        "NotoSansGothic-Regular.ttf," \
+        "NotoSansGrantha-Regular.ttf," \
+        "NotoSansGujarati-Regular.ttf," \
+        "NotoSansGunjalaGondi-Regular.ttf," \
+        "NotoSansGurmukhi-Regular.ttf," \
+        "NotoSansHanifiRohingya-Regular.ttf," \
+        "NotoSansHanunoo-Regular.ttf," \
+        "NotoSansHatran-Regular.ttf," \
+        "NotoSansHebrew-Regular.ttf," \
+        "NotoSansImperialAramaic-Regular.ttf," \
+        "NotoSansIndicSiyaqNumbers-Regular.ttf," \
+        "NotoSansInscriptionalPahlavi-Regular.ttf," \
+        "NotoSansInscriptionalParthian-Regular.ttf," \
+        "NotoSansJavanese-Regular.ttf," \
+        "NotoSansKaithi-Regular.ttf," \
+        "NotoSansKannada-Regular.ttf," \
+        "NotoSansKayahLi-Regular.ttf," \
+        "NotoSansKharoshthi-Regular.ttf," \
+        "NotoSansKhmer-Regular.ttf," \
+        "NotoSansKhudawadi-Regular.ttf," \
+        "NotoSansLepcha-Regular.ttf," \
+        "NotoSansLimbu-Regular.ttf," \
+        "NotoSansLinearA-Regular.ttf," \
+        "NotoSansLinearB-Regular.ttf," \
+        "NotoSansLisu-Regular.ttf," \
+        "NotoSansLycian-Regular.ttf," \
+        "NotoSansLydian-Regular.ttf," \
+        "NotoSansMahajani-Regular.ttf," \
+        "NotoSansMalayalam-Regular.ttf," \
+        "NotoSansMandaic-Regular.ttf," \
+        "NotoSansManichaean-Regular.ttf," \
+        "NotoSansMarchen-Regular.ttf," \
+        "NotoSansMasaramGondi-Regular.ttf," \
+        "NotoSansMedefaidrin-Regular.ttf," \
+        "NotoSansMeeteiMayek-Regular.ttf," \
+        "NotoSansMendeKikakui-Regular.ttf," \
+        "NotoSansMeroitic-Regular.ttf," \
+        "NotoSansMiao-Regular.ttf," \
+        "NotoSansModi-Regular.ttf," \
+        "NotoSansMongolian-Regular.ttf," \
+        "NotoSansMono-Regular.ttf," \
+        "NotoSansMro-Regular.ttf," \
+        "NotoSansMultani-Regular.ttf," \
+        "NotoSansMyanmar-Regular.ttf," \
+        "NotoSansNKo-Regular.ttf," \
+        "NotoSansNabataean-Regular.ttf," \
+        "NotoSansNandinagari-Regular.ttf," \
+        "NotoSansNewTaiLue-Regular.ttf," \
+        "NotoSansNewa-Regular.ttf," \
+        "NotoSansOgham-Regular.ttf," \
+        "NotoSansOlChiki-Regular.ttf," \
+        "NotoSansOldHungarian-Regular.ttf," \
+        "NotoSansOldItalic-Regular.ttf," \
+        "NotoSansOldNorthArabian-Regular.ttf," \
+        "NotoSansOldPermic-Regular.ttf," \
+        "NotoSansOldPersian-Regular.ttf," \
+        "NotoSansOldSogdian-Regular.ttf," \
+        "NotoSansOldSouthArabian-Regular.ttf," \
+        "NotoSansOldTurkic-Regular.ttf," \
+        "NotoSansOriya-Regular.ttf," \
+        "NotoSansOsage-Regular.ttf," \
+        "NotoSansOsmanya-Regular.ttf," \
+        "NotoSansPahawhHmong-Regular.ttf," \
+        "NotoSansPalmyrene-Regular.ttf," \
+        "NotoSansPauCinHau-Regular.ttf," \
+        "NotoSansPhagsPa-Regular.ttf," \
+        "NotoSansPhoenician-Regular.ttf," \
+        "NotoSansPsalterPahlavi-Regular.ttf," \
+        "NotoSansRejang-Regular.ttf," \
+        "NotoSansRunic-Regular.ttf," \
+        "NotoSansSamaritan-Regular.ttf," \
+        "NotoSansSaurashtra-Regular.ttf," \
+        "NotoSansSharada-Regular.ttf," \
+        "NotoSansShavian-Regular.ttf," \
+        "NotoSansSiddham-Regular.ttf," \
+        "NotoSansSignWriting-Regular.ttf," \
+        "NotoSansSinhala-Regular.ttf," \
+        "NotoSansSogdian-Regular.ttf," \
+        "NotoSansSoraSompeng-Regular.ttf," \
+        "NotoSansSoyombo-Regular.ttf," \
+        "NotoSansSundanese-Regular.ttf," \
+        "NotoSansSylotiNagri-Regular.ttf," \
+        "NotoSansSyriac-Regular.ttf," \
+        "NotoSansTagalog-Regular.ttf," \
+        "NotoSansTagbanwa-Regular.ttf," \
+        "NotoSansTaiLe-Regular.ttf," \
+        "NotoSansTaiTham-Regular.ttf," \
+        "NotoSansTaiViet-Regular.ttf," \
+        "NotoSansTakri-Regular.ttf," \
+        "NotoSansTamil-Regular.ttf," \
+        "NotoSansTamilSupplement-Regular.ttf," \
+        "NotoSansTangsa-Regular.ttf," \
+        "NotoSansTelugu-Regular.ttf," \
+        "NotoSansThaana-Regular.ttf," \
+        "NotoSansTifinagh-Regular.ttf," \
+        "NotoSansTirhuta-Regular.ttf," \
+        "NotoSansUgaritic-Regular.ttf," \
+        "NotoSansVai-Regular.ttf," \
+        "NotoSansVithkuqi-Regular.ttf," \
+        "NotoSansWancho-Regular.ttf," \
+        "NotoSansWarangCiti-Regular.ttf," \
+        "NotoSansYi-Regular.ttf," \
+        "NotoSansZanabazarSquare-Regular.ttf," \
+        "NotoSerifAhom-Regular.ttf," \
+        "NotoSerifDivesAkuru-Regular.ttf," \
+        "NotoSerifDogra-Regular.ttf," \
+        "NotoSerifKhojki-Regular.ttf," \
+        "NotoSerifMakasar-Regular.ttf," \
+        "NotoSerifNyiakengPuachueHmong-Regular.ttf," \
+        "NotoSerifOldUyghur-Regular.ttf," \
+        "NotoSerifTangut-Regular.ttf," \
+        "NotoSerifTibetan-Regular.ttf," \
+        "NotoSerifToto-Regular.ttf," \
+        "NotoSerifYezidi-Regular.ttf," \
+        "NotoTraditionalNushu-Regular.ttf," \
+        "NotoSansHK-Regular.otf," \
+        "NotoSansJP-Regular.otf," \
+        "NotoSansKR-Regular.otf," \
+        "NotoSansTC-Regular.otf," \
+        "NotoSansSC-Regular.otf"
 
 const char *get_default_editor_font (void)
-{
+{E_
     return "8x13B.pcf.gz," ALL_TTF_RESIZABLE_FONTS;
 }
 
 const char *get_default_widget_font (void)
-{
+{E_
     return ALL_TTF_RESIZABLE_FONTS ":14";
 }
 
 const char *get_default_bookmark_font (void)
-{
+{E_
     return ALL_TTF_RESIZABLE_FONTS ":13";
 }
 
 static void init_load_font (void)
-{
+{E_
     static enum font_encoding widget_encoding = FONT_ENCODING_UTF8;
     static enum font_encoding bookmark_encoding = FONT_ENCODING_UTF8;
     char *f;
@@ -356,7 +420,7 @@ static void init_load_font (void)
 }
 
 static void visual_comments (int class)
-{
+{E_
     switch (class) {
     case PseudoColor:
 	printf ("PseudoColor");
@@ -401,7 +465,7 @@ static void visual_comments (int class)
 
 /* must be free'd */
 XColor *get_cells (Colormap cmap, int *size)
-{
+{E_
     int i;
     XColor *c;
     *size = DisplayCells (CDisplay, DefaultScreen (CDisplay));
@@ -417,7 +481,7 @@ XColor *get_cells (Colormap cmap, int *size)
 
 /* find the closest color without allocating it */
 int CGetCloseColor (XColor * cells, int ncells, XColor color, long *error)
-{
+{E_
     unsigned long merror = (unsigned long) -1;
     unsigned long e;
     int min = 0, i;
@@ -441,7 +505,7 @@ int CGetCloseColor (XColor * cells, int ncells, XColor color, long *error)
 
 /* return -1 if not found. Meaning that another coolwidget app is not running */
 int find_coolwidget_grey_scale (XColor * c, int ncells)
-{
+{E_
     unsigned long mask = 0xFFFF0000UL;
     int i, j;
     mask >>= BitsPerRGBofVisual (CVisual);
@@ -461,27 +525,27 @@ int find_coolwidget_grey_scale (XColor * c, int ncells)
 void CAllocColorCells (Colormap colormap, Bool contig,
 		       unsigned long plane_masks[], unsigned int nplanes,
 		       unsigned long pixels[], unsigned int npixels)
-{
+{E_
     if (!XAllocColorCells (CDisplay, colormap, contig,
 			   plane_masks, nplanes, pixels, npixels))
 	alloccolorerror ();
 }
 
 void CAllocColor (Colormap cmap, XColor * c)
-{
+{E_
     if (!XAllocColor (CDisplay, cmap, c))
 	alloccolorerror ();
 }
 
 static void get_grey_colors (XColor * color, int i)
-{
+{E_
     color->red = color->green = grey_intense (i);
     color->blue = grey_intense (i);
     color->flags = DoRed | DoBlue | DoGreen;
 }
 
 static void get_button_color (XColor * color, int i)
-{
+{E_
     (*look->get_button_color) (color, i);
 }
 
@@ -496,7 +560,7 @@ int option_invert_red_blue = 0;
 
 /* inverts the cromiance - this is for editor background colors that are very light */
 static int transform (int color)
-{
+{E_
     float r, g, b, y, y_max, c1, c1_max, c2, c2_max;
     r = (float) ((color >> 16) & 0xFF);
     g = (float) ((color >> 8) & 0xFF);
@@ -559,7 +623,7 @@ int option_color_26 = 0xF8F8FF;
 
 /* takes 0-26 and converts it to RGB */
 static void get_general_colors (XColor * color, int i)
-{
+{E_
     unsigned long c = 0;
     switch (i) {
     case 0:
@@ -651,7 +715,7 @@ static void get_general_colors (XColor * color, int i)
 }
 
 void alloc_grey_scale (Colormap cmap)
-{
+{E_
     XColor color;
     int i;
 
@@ -670,7 +734,7 @@ void alloc_grey_scale (Colormap cmap)
    color VGA servers.
  */
 static void setup_staticcolor (void)
-{
+{E_
     XColor *c;
     unsigned short *grey_levels;
     XColor color;
@@ -754,7 +818,7 @@ static void setup_staticcolor (void)
 }
 
 static void make_grey (XColor * color)
-{
+{E_
     long g;
 
     g = ((long) color->red) * 8L + ((long) color->green) * 10L + ((long) color->blue) * 5L;
@@ -768,7 +832,7 @@ static void make_grey (XColor * color)
    need not find the "closest" matching color.
  */
 static void setup_alloc_colors (int force_grey)
-{
+{E_
     int i;
     XColor color;
 
@@ -794,7 +858,7 @@ static void setup_alloc_colors (int force_grey)
 }
 
 void store_grey_scale (Colormap cmap)
-{
+{E_
     XColor color;
     int i;
     if (verbose_operation)
@@ -811,7 +875,7 @@ void store_grey_scale (Colormap cmap)
 }
 
 void try_color (Colormap cmap, XColor * c, int size, XColor color, int i)
-{
+{E_
     int x;
     long error;
     XColor closest;
@@ -848,7 +912,7 @@ void try_color (Colormap cmap, XColor * c, int size, XColor color, int i)
    plus another 64 if you are using greyscale.
  */
 static void setup_store_colors (void)
-{
+{E_
     int i, size;
     XColor *c;
     XColor color;
@@ -893,7 +957,7 @@ static void setup_store_colors (void)
 
 
 static void setup_colormap (int class)
-{
+{E_
     switch (class) {
     case StaticColor:
     case StaticGray:
@@ -937,20 +1001,20 @@ static int cursor_blink_rate;
  */
 
 void CSetCursorBlinkRate (int b)
-{
+{E_
     if (b < 1)
 	b = 1;
     cursor_blink_rate = b;
 }
 
 int CGetCursorBlinkRate (void)
-{
+{E_
     return cursor_blink_rate;
 }
 
 /* does nothing and calls nothing for t seconds, resolution is ALRM_PER_SECOND */
 void CSleep (double t)
-{
+{E_
     float i;
     for (i = 0; i < t; i += 1.0 / ALRM_PER_SECOND)
 	pause ();
@@ -986,7 +1050,7 @@ int block_push_event = 0;
 int got_alarm = 0;
 
 void _alarmhandler (void)
-{
+{E_
     static int count = ALRM_PER_SECOND;
     got_alarm = 0;
     if (count) {
@@ -995,6 +1059,7 @@ void _alarmhandler (void)
 	    CSendEvent (&xevent);
 	}
     } else {
+        housekeeping_inspect ();
 	xevent.type = AlarmEvent;
 	if (CQueueSize () < 128 && !block_push_event) {	/* say */
 	    CSendEvent (&xevent);
@@ -1005,7 +1070,7 @@ void _alarmhandler (void)
 }
 
 static RETSIGTYPE alarmhandler (int x)
-{
+{E_
     if (!got_alarm)
 	got_alarm = 1;
     signal (SIGALRM, alarmhandler);
@@ -1034,7 +1099,7 @@ static unsigned char children_exitted_trailer = 0;
 #endif
 
 static RETSIGTYPE childhandler (int x)
-{
+{E_
     int save_errno = errno;
     pid_t pid;
     pid = waitpid (-1, &children_exitted[children_exitted_leader].status, WNOHANG);
@@ -1063,7 +1128,7 @@ struct child_exitted_list {
 static struct child_exitted_list child_list = {NULL};
 
 void childhandler_ (void)
-{
+{E_
     while (children_exitted_trailer != children_exitted_leader) {
         struct child_exitted_item *c;
         c = malloc (sizeof (struct child_exitted_item));
@@ -1079,7 +1144,7 @@ void childhandler_ (void)
 #if 0
 /* returns non-zero on child exit */
 int CChildExitted (pid_t p, int *status)
-{
+{E_
     unsigned char i;
     for (i = children_exitted_trailer; i != children_exitted_leader; i++)
         if (p && children_exitted[i].pid == p) {
@@ -1095,7 +1160,7 @@ int CChildExitted (pid_t p, int *status)
 
 /* returns non-zero on child exit */
 int CChildExitted (pid_t p, int *status)
-{
+{E_
     struct child_exitted_item *c;
     if (!p)
         return 0;
@@ -1116,7 +1181,7 @@ int CChildExitted (pid_t p, int *status)
 }
 
 void CChildWait (pid_t p)
-{
+{E_
     while (!CChildExitted (p, NULL)) {
         struct timeval tv;
         childhandler_ ();
@@ -1127,13 +1192,13 @@ void CChildWait (pid_t p)
 }
 
 static void set_child_handler (void)
-{
+{E_
     memset (children_exitted, 0, sizeof (children_exitted));
     signal (SIGCHLD, childhandler);
 }
 
 static void set_alarm (void)
-{
+{E_
     memset (&xevent, 0, sizeof (XEvent));
     xevent.type = 0;
     xevent.xany.display = CDisplay;
@@ -1146,18 +1211,18 @@ static void set_alarm (void)
 }
 
 void CEnableAlarm (void)
-{
+{E_
     set_alarm ();
 }
 
 void CDisableAlarm (void)
-{
+{E_
     setitimer (ITIMER_REAL, &alarm_off, NULL);
     signal (SIGALRM, SIG_IGN);
 }
 
 static void get_endian (void)
-{
+{E_
     char o[sizeof (long)];
     unsigned long *p;
     p = (unsigned long *) (void *) &o[0];
@@ -1169,7 +1234,7 @@ static void get_endian (void)
 }
 
 void get_temp_dir (void)
-{
+{E_
     if (temp_dir)
 	return;
     temp_dir = getenv ("TEMP");
@@ -1188,7 +1253,7 @@ void get_temp_dir (void)
 }
 
 void get_home_dir (void)
-{
+{E_
     char homedir_[MAX_PATH_LEN] = "";
     char errmsg[REMOTEFS_ERR_MSG_LEN] = "";
     struct remotefs *u;
@@ -1201,13 +1266,10 @@ void get_home_dir (void)
         return;
     }
     local_home_dir = strdup (homedir_);
-
-printf ("local_home_dir = %s\n", local_home_dir);
-
 }
 
-void get_dir (void)
-{
+static void get_dir (void)
+{E_
     if (!get_current_wd (current_dir, MAX_PATH_LEN))
 	*current_dir = 0;
     get_temp_dir ();
@@ -1215,7 +1277,7 @@ void get_dir (void)
 }
 
 void wm_interaction_init (void)
-{
+{E_
     ATOM_ICCCM_P2P_CLIPBOARD = XInternAtom (CDisplay, "CLIPBOARD", False);
     ATOM_UTF8_STRING = XInternAtom (CDisplay, "UTF8_STRING", False);
     ATOM_WM_PROTOCOLS = XInternAtom (CDisplay, "WM_PROTOCOLS", False);
@@ -1226,7 +1288,7 @@ void wm_interaction_init (void)
 
 /* look up the modifier mask for the Alt or Meta key */
 static void get_alt_key (void)
-{
+{E_
     int i, j, k, v;
     unsigned int found_mask = 0;
     XModifierKeymap *map;
@@ -1257,7 +1319,7 @@ static void get_alt_key (void)
 char visual_name[16][16];
 
 void make_visual_list (void)
-{
+{E_
     memset (visual_name, 0, sizeof (visual_name));
     strcpy (visual_name[StaticGray], "StaticGray");
     strcpy (visual_name[GrayScale], "GrayScale");
@@ -1343,7 +1405,7 @@ int option_force_own_colormap = 0;
 int option_force_default_colormap = 0;
 
 void get_preferred (XVisualInfo * v, int n, Visual ** vis, int *depth)
-{
+{E_
 #ifndef GUESS_VISUAL
     *vis = DefaultVisual (CDisplay, DefaultScreen (CDisplay));
     *depth = DefaultDepth (CDisplay, DefaultScreen (CDisplay));
@@ -1417,7 +1479,7 @@ void get_preferred (XVisualInfo * v, int n, Visual ** vis, int *depth)
 }
 
 static void get_preferred_visual_and_depth (void)
-{
+{E_
     XVisualInfo *v, t;
     int n;
 
@@ -1434,14 +1496,14 @@ static void get_preferred_visual_and_depth (void)
 }
 
 static void assign_default_cmap (void)
-{
+{E_
     if (verbose_operation)
 	printf (_ ("Using DefaultColormap()\n"));
     CColormap = DefaultColormap (CDisplay, DefaultScreen (CDisplay));
 }
 
 static void assign_own_cmap (void)
-{
+{E_
     if (verbose_operation)
 	printf (_ ("Creating own colormap\n"));
     CColormap = XCreateColormap (CDisplay,
@@ -1450,7 +1512,7 @@ static void assign_own_cmap (void)
 }
 
 static void assign_check_colormap (void)
-{
+{E_
 #if 0				/* What do I do here ? */
     switch (ClassOfVisual (CVisual)) {
     case PseudoColor:
@@ -1468,7 +1530,7 @@ static void assign_check_colormap (void)
 #define COLORMAP_PROPERTY "RGB_DEFAULT_MAP"
 
 static void get_colormap (void)
-{
+{E_
 #ifdef TRY_WM_COLORMAP
     Atom DEFAULT_CMAPS;
 #endif
@@ -1530,7 +1592,7 @@ static void get_colormap (void)
 }
 
 int ignore_handler (Display * c, XErrorEvent * e)
-{
+{E_
     return 0;
 }
 
@@ -1538,7 +1600,7 @@ void init_cursors (void);
 
 /*-------------------------------------------------------------*/
 void CInitialise (CInitData * config_start)
-{
+{E_
     get_endian ();
 
 /*test_xx_strchr ();

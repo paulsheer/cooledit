@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* mousemark.h
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -49,6 +50,7 @@ void xdnd_set_dnd_mime_types (int utf8);
 struct mouse_funcs *mouse_funcs_new (void *data, struct mouse_funcs *m);
 void mouse_shut (void);
 void mouse_init (void);
+void set_cursor_visible (void);
 
 extern Atom **xdnd_typelist_receive;
 extern Atom **xdnd_typelist_send;

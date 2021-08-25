@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* complete.c - brings up a possible word list
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -14,6 +15,7 @@
 /* C functions, and #'s */
 #define ALLOW_CHARS_TYPE_D "_#"
 
+#include "inspect.h"
 #include "coolwidget.h"
 
 extern Window main_window;
@@ -24,12 +26,12 @@ static char **words;
 static long num_completion_words = 0;
 
 static int compare_completion (const char **a, const char **b)
-{
+{E_
     return strcmp (*a, *b);
 }
 
 static void load_competion_file (void)
-{
+{E_
     char *f, *n;
     long l, i;
     f = loadfile (n = catstrs (local_home_dir, EDIT_DIR COMPLETION_FILE, 0), &l);
@@ -69,7 +71,7 @@ static void load_competion_file (void)
 
 /* w = 0 causes return of the last word. Result must not be free'd */
 static char *get_current_word (CWidget * w, char *allow_chars)
-{
+{E_
     static char t[1024];
     int i;
     static char *p;
@@ -91,7 +93,7 @@ static char *get_current_word (CWidget * w, char *allow_chars)
 
 /* result must be free'd, returns 0 on not found */
 static char **get_possible_words (CWidget * w, char *allow_chars)
-{
+{E_
     char *p, **r;
     int i, l, o;
     p = get_current_word (w, allow_chars);
@@ -141,7 +143,7 @@ static char **get_possible_words (CWidget * w, char *allow_chars)
 }
 
 static char *complete_selection_get_line (void *data, int line)
-{
+{E_
     char **s;
     s = (char **) data;
     if (s[line])
@@ -150,7 +152,7 @@ static char *complete_selection_get_line (void *data, int line)
 }
 
 static int get_selection_complete (char **s)
-{
+{E_
     int i, c = 0;
     for (i = 0; s[i]; i++) {
 	int l;
@@ -163,7 +165,7 @@ static int get_selection_complete (char **s)
 }
 
 static void complete_with_word (CWidget * w, char *s)
-{
+{E_
     s += strlen (get_current_word (0, 0));
     while (*s) {
 	edit_insert (w->editor, *s++);
@@ -172,7 +174,7 @@ static void complete_with_word (CWidget * w, char *s)
 }
 
 void complete_command (CWidget * edit)
-{
+{E_
     char **s;
     if (!edit) {
 	if (word_list) {

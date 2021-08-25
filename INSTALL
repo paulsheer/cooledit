@@ -1,5 +1,50 @@
 
+# Simple build assuming freetype is installed:
+
 ./configure
 make
 make install
+
+
+
+# Difficult build first building freetype:
+
+# install libbz2-dev zlib1g-dev libpng-dev
+sudo apt-get install libbz2-dev zlib1g-dev libpng-dev
+
+# Build harfbuzz 5.1.0:
+g++ -Os -DHAVE_FREETYPE -fPIC -DPIC -c -I/opt/cooledit/include/freetype2 -I/usr/include/libpng16 src/harfbuzz.cc -fno-exceptions
+ar cru libharfbuzz.a harfbuzz.o
+mkdir -p /opt/cooledit/hb/
+mkdir -p /opt/cooledit/lib/
+cp libharfbuzz.a /opt/cooledit/lib/
+cp `find -name '*.h'` /opt/cooledit/hb/
+
+# Build brotli v1.0.9:
+follow README.md
+
+# Build freetype 2.12.1:
+export BROTLI_CFLAGS=-I/opt/cooledit/include/
+export BROTLI_LIBS='/opt/cooledit/lib/libbrotlidec-static.a /opt/cooledit/lib/libbrotlienc-static.a /opt/cooledit/lib/libbrotlicommon-static.a'
+export HARFBUZZ_CFLAGS='-I/opt/cooledit/include/hb'
+export HARFBUZZ_LIBS=/opt/cooledit/lib/libharfbuzz.a
+export CFLAGS='-Os'
+./configure --prefix=/opt/cooledit/
+
+# Should end with:
+#       Library configuration:
+#         external zlib: yes (pkg-config)
+#         bzip2:         yes (autoconf test)
+#         libpng:        yes (pkg-config)
+#         harfbuzz:      yes (HARFBUZZ_CFLAGS and HARFBUZZ_LIBS)
+#         brotli:        yes (BROTLI_CFLAGS and BROTLI_LIBS)
+#         pthread:       yes
+
+make && make install
+
+
+export FREETYPE_LIBS='/opt/cooledit/lib/libfreetype.a /opt/cooledit/lib/libharfbuzz.a /opt/cooledit/lib/libbrotlidec-static.a /opt/cooledit/lib/libbrotlienc-static.a /opt/cooledit/lib/libbrotlicommon-static.a  -lpng -lbz2 -lz -lm'
+export FREETYPE_CFLAGS='-I/opt/cooledit/include/freetype2 -I/usr/include/libpng16'
+./configure --disable-shared --prefix=/opt/cooledit/
+
 

@@ -1,9 +1,11 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* scrollbar.c - scrollbar widget
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -26,7 +28,7 @@ extern struct look *look;
 
 CWidget *CDrawVerticalScrollbar (const char *identifier, Window parent, int x, int y,
 				 int length, int width, int pos, int prop)
-{
+{E_
     CWidget *w;
     if (width == AUTO_WIDTH || width == AUTO_HEIGHT)
 	width = (*look->get_scrollbar_size) (C_VERTSCROLL_WIDGET);
@@ -41,7 +43,7 @@ CWidget *CDrawVerticalScrollbar (const char *identifier, Window parent, int x, i
 
 CWidget *CDrawHorizontalScrollbar (const char *identifier, Window parent, int x, int y,
 			     int length, int width, int pos, int prop)
-{
+{E_
     CWidget *w;
     if (width == AUTO_WIDTH || width == AUTO_HEIGHT)
 	width = (*look->get_scrollbar_size) (C_HORISCROLL_WIDGET);
@@ -60,7 +62,7 @@ CWidget *CDrawHorizontalScrollbar (const char *identifier, Window parent, int x,
 void CSetScrollbarCallback (const char *scrollbar, const char *wdt,
 			    void (*link_to) (CWidget *,
 				      CWidget *, XEvent *, CEvent *, int))
-{
+{E_
     CWidget *s, *w;
     s = CIdent (scrollbar);
     w = CIdent (wdt);
@@ -71,12 +73,12 @@ void CSetScrollbarCallback (const char *scrollbar, const char *wdt,
 }
 
 void render_scrollbar (CWidget * wdt)
-{
+{E_
     (look->render_scrollbar) (wdt);
 }
 
 int inbounds (int x, int y, int x1, int y1, int x2, int y2)
-{
+{E_
     if (x >= x1 && x <= x2 && y >= y1 && y <= y2)
 	return 1;
     else
@@ -84,7 +86,7 @@ int inbounds (int x, int y, int x1, int y1, int x2, int y2)
 }
 
 int eh_scrollbar (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     return (*look->scrollbar_handler) (w, xevent, cwevent);
 }
 

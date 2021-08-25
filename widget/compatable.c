@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* compatable.c - these are substitute string and memory functions
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,7 +16,7 @@
 
 #ifndef HAVE_MEMSET
 void *memset (void *dest, int c, size_t n)
-{
+{E_
     char *d = (char *) dest;
 #ifdef HAVE_BZERO
     if (!c) {
@@ -30,7 +32,7 @@ void *memset (void *dest, int c, size_t n)
 
 #ifndef HAVE_MEMCHR
 void *memchr (const void *s, int c, size_t n)
-{
+{E_
     unsigned char *m = (unsigned char *) s;
     while (n--) {
 	if (*m == c)
@@ -43,7 +45,7 @@ void *memchr (const void *s, int c, size_t n)
 
 #ifndef HAVE_MEMCMP
 int memcmp (const void *m1, const void *m2, size_t n)
-{
+{E_
     const unsigned char *s1, *s2;
     signed char t = 0;
 
@@ -59,7 +61,7 @@ int memcmp (const void *m1, const void *m2, size_t n)
 
 #ifndef HAVE_STRSTR
 char *strstr (const char *s1, const char *s2)
-{
+{E_
     int l1, l2;
 
     l2 = strlen (s2);
@@ -79,7 +81,7 @@ char *strstr (const char *s1, const char *s2)
 
 #ifndef HAVE_STRSPN
 size_t strspn (const char *s, const char *accept)
-{
+{E_
     const char *p;
     const char *a;
     size_t count = 0;
@@ -112,7 +114,7 @@ size_t strspn (const char *s, const char *accept)
 
 /* this function uses the sprintf command to do a vsprintf */
 int vsprintf (char *str, const char *fmt, va_list ap)
-{
+{E_
     char *q, *p, *s = str;
     int n;
     char q1[32];

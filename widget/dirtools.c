@@ -1,7 +1,9 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* dirtools.c - reads and creates a list of directory entries
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
+#include "inspect.h"
 #include "global.h"
 #ifdef MSWIN
 #include <config-mswin.h>
@@ -27,7 +29,7 @@
 #include "remotefs.h"
 
 void pstat_to_mode_string (struct portable_stat *ps, char *mode)
-{
+{E_
     memset (mode, ' ', 64);
 
     if (ps->os == OS_TYPE_WINDOWS) {
@@ -134,21 +136,21 @@ a        FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS    0x400000
 }
 
 int compare_fileentries (struct file_entry *file_entry1, struct file_entry *file_entry2)
-{
+{E_
 #if 0
     if (file_entry->options & FILELIST_SORT_...);
 #endif
     return (strcmp (file_entry1->name, file_entry2->name));
 }
 
-struct file_entry *get_file_entry_list (char *host, const char *directory, unsigned long options, char *filter, char *errmsg)
-{
+struct file_entry *get_file_entry_list (char *host, char *directory, unsigned long options, char *filter, char *errmsg)
+{E_
     struct remotefs *u;
     int n = 0;
     struct file_entry *list = NULL;
     errmsg[0] = '\0';
 
-    u = remotefs_lookup (host);
+    u = remotefs_lookup (host, directory);
     if ((*u->remotefs_listdir) (u, directory, options, filter, &list, &n, errmsg))
         return NULL;
 
@@ -158,7 +160,7 @@ struct file_entry *get_file_entry_list (char *host, const char *directory, unsig
 }
 
 static char *get_a_line (void *data, int line)
-{
+{E_
     char **s;
     s = (char **) data;
     return s[line];
@@ -167,7 +169,7 @@ static char *get_a_line (void *data, int line)
 /* generate a list of search results, and query the user if the list is
 longer that one: */
 static char *do_user_file_list_search (Window parent, int x, int y, int lines, int columns, char *file_list, const char *base_name)
-{
+{E_
     char *p = file_list, *ret = NULL;
     char **l = NULL;
     int list_len = 0, item, i;
@@ -219,7 +221,7 @@ static char *do_user_file_list_search (Window parent, int x, int y, int lines, i
 longer that one: */
 static char *do_user_file_list_complete (Window parent, int x, int y, int lines, int columns, char *file_list,
 					 const char *search_str)
-{
+{E_
     POOL *pool;
     int c;
     char *p, *t, *r;
@@ -260,7 +262,7 @@ static char *do_user_file_list_complete (Window parent, int x, int y, int lines,
 static char *_user_file_list_search (Window parent, int x, int y, int lines, int columns,
 				     const char *base_name, char *(*do_dialog) (Window, int, int, int, int,
 										char *, const char *))
-{
+{E_
     static time_t last_stat_time = 0;
     static time_t last_change_time = 0;
     static char *whole_file = NULL;
@@ -301,11 +303,11 @@ static char *_user_file_list_search (Window parent, int x, int y, int lines, int
 }
 
 char *user_file_list_search (Window parent, int x, int y, const char *base_name)
-{
+{E_
     return _user_file_list_search (parent, x, y, 0, 0, base_name, do_user_file_list_search);
 }
 
 char *user_file_list_complete (Window parent, int x, int y, int lines, int columns, const char *search_str)
-{
+{E_
     return _user_file_list_search (parent, x, y, lines, columns, search_str, do_user_file_list_complete);
 }

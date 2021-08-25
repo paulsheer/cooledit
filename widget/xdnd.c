@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* xdnd.c, xdnd.h - C program library for handling the Xdnd protocol
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -22,6 +23,7 @@
      - not yet tested with applications that only supported XDND 0 or 1
 */
 
+#include "inspect.h"
 #include <config.h>
 #include <X11/Xlib.h>
 #include <X11/X.h>
@@ -96,7 +98,7 @@ XClientMessageEvent xclient;
 #include <unistd.h>
 
 char *xdnd_debug_milliseconds (void)
-{
+{E_
     struct timeval tv;
     static char r[22];
     gettimeofday (&tv, 0);
@@ -221,7 +223,7 @@ static DndCursor dnd_cursors[] =
 };
 
 void xdnd_reset (DndClass * dnd)
-{
+{E_
     dnd->stage = XDND_DROP_STAGE_IDLE;
     dnd->dragging_version = 0;
     dnd->internal_drag = 0;
@@ -239,7 +241,7 @@ void xdnd_reset (DndClass * dnd)
 }
 
 void xdnd_init (DndClass * dnd, Display * display)
-{
+{E_
     DndCursor *cursor;
     XColor black, white;
     memset (dnd, 0, sizeof (*dnd));
@@ -291,7 +293,7 @@ void xdnd_init (DndClass * dnd, Display * display)
 }
 
 void xdnd_shut (DndClass * dnd)
-{
+{E_
     DndCursor *cursor;
     for (cursor = &dnd->cursors[0]; cursor->width; cursor++)
 	XFreeCursor (dnd->display, cursor->cursor);
@@ -302,14 +304,14 @@ void xdnd_shut (DndClass * dnd)
 
 /* typelist is a null terminated array */
 static int array_length (Atom * a)
-{
+{E_
     int n;
     for (n = 0; a[n]; n++);
     return n;
 }
 
 void xdnd_set_dnd_aware (DndClass * dnd, Window window, Atom * typelist)
-{
+{E_
     Window root_return, parent;
     unsigned int nchildren_return;
     Window *children_return = 0;
@@ -341,7 +343,7 @@ void xdnd_set_dnd_aware (DndClass * dnd, Window window, Atom * typelist)
 }
 
 int xdnd_is_dnd_aware (DndClass * dnd, Window window, int *version, Atom * typelist)
-{
+{E_
     Atom actual;
     int format;
     unsigned long count, remaining;
@@ -390,7 +392,7 @@ int xdnd_is_dnd_aware (DndClass * dnd, Window window, int *version, Atom * typel
 }
 
 void xdnd_set_type_list (DndClass * dnd, Window window, Atom * typelist)
-{
+{E_
     int n;
     n = array_length (typelist);
     XChangeProperty (dnd->display, window, dnd->XdndTypeList, XA_ATOM, 32,
@@ -399,7 +401,7 @@ void xdnd_set_type_list (DndClass * dnd, Window window, Atom * typelist)
 
 /* result must be free'd */
 void xdnd_get_type_list (DndClass * dnd, Window window, Atom ** typelist)
-{
+{E_
     Atom type, *a;
     int format, i;
     unsigned long count, remaining;
@@ -427,7 +429,7 @@ void xdnd_get_type_list (DndClass * dnd, Window window, Atom ** typelist)
 }
 
 void xdnd_get_three_types (DndClass * dnd, XEvent * xevent, Atom ** typelist)
-{
+{E_
     int i;
     *typelist = malloc ((XDND_THREE + 1) * sizeof (Atom));
     for (i = 0; i < XDND_THREE; i++)
@@ -437,7 +439,7 @@ void xdnd_get_three_types (DndClass * dnd, XEvent * xevent, Atom ** typelist)
 
 /* result must be free'd */
 static char *concat_string_list (char **t, int *bytes)
-{
+{E_
     int l, n;
     char *s;
     for (l = n = 0;; n++) {
@@ -462,7 +464,7 @@ static char *concat_string_list (char **t, int *bytes)
 }
 
 void xdnd_set_actions (DndClass * dnd, Window window, Atom * actions, char **descriptions)
-{
+{E_
     int n, l;
     char *s;
     n = array_length (actions);
@@ -480,7 +482,7 @@ void xdnd_set_actions (DndClass * dnd, Window window, Atom * actions, char **des
    xdnd_get_actions (window, &actions, &descriptions);
    free (actions); free (descriptions); */
 int xdnd_get_actions (DndClass * dnd, Window window, Atom ** actions, char ***descriptions)
-{
+{E_
     Atom type, *a;
     int format, i;
     unsigned long count, dcount, remaining;
@@ -542,7 +544,7 @@ int xdnd_get_actions (DndClass * dnd, Window window, Atom ** actions, char ***de
 
 /* returns non-zero on cancel */
 int xdnd_choose_action_dialog (DndClass * dnd, Atom * actions, char **descriptions, Atom * result)
-{
+{E_
     if (!actions[0])
 	return 1;
     if (!dnd->action_choose_dialog) {	/* default to return the first action if no dialog set */
@@ -553,7 +555,7 @@ int xdnd_choose_action_dialog (DndClass * dnd, Atom * actions, char **descriptio
 }
 
 static void xdnd_send_event (DndClass * dnd, Window window, XEvent * xevent)
-{
+{E_
     dnd_debug4 ("xdnd_send_event(), window = %ld, l[0] = %ld, l[4] = %ld",
     window, xevent->xclient.data.l[0], xevent->xclient.data.l[4]);
     dnd_debug2 ("xdnd_send_event(), from widget widget %s", (char *) CWidgetOfWindow (xevent->xclient.data.l[0]));
@@ -561,7 +563,7 @@ static void xdnd_send_event (DndClass * dnd, Window window, XEvent * xevent)
 }
 
 static void xdnd_send_enter (DndClass * dnd, Window window, Window from, Atom * typelist)
-{
+{E_
     XEvent xevent;
     int n, i;
     n = array_length (typelist);
@@ -583,7 +585,7 @@ static void xdnd_send_enter (DndClass * dnd, Window window, Window from, Atom * 
 }
 
 static void xdnd_send_position (DndClass * dnd, Window window, Window from, Atom action, int x, int y, unsigned long time)
-{
+{E_
     XEvent xevent;
 
     memset (&xevent, 0, sizeof (xevent));
@@ -606,7 +608,7 @@ static void xdnd_send_position (DndClass * dnd, Window window, Window from, Atom
 
 static void xdnd_send_status (DndClass * dnd, Window window, Window from, int will_accept, \
 	      int want_position, int x, int y, int w, int h, Atom action)
-{
+{E_
     XEvent xevent;
 
     memset (&xevent, 0, sizeof (xevent));
@@ -631,7 +633,7 @@ static void xdnd_send_status (DndClass * dnd, Window window, Window from, int wi
 }
 
 static void xdnd_send_leave (DndClass * dnd, Window window, Window from)
-{
+{E_
     XEvent xevent;
 
     memset (&xevent, 0, sizeof (xevent));
@@ -648,7 +650,7 @@ static void xdnd_send_leave (DndClass * dnd, Window window, Window from)
 }
 
 static void xdnd_send_drop (DndClass * dnd, Window window, Window from, unsigned long time)
-{
+{E_
     XEvent xevent;
 
     memset (&xevent, 0, sizeof (xevent));
@@ -669,7 +671,7 @@ static void xdnd_send_drop (DndClass * dnd, Window window, Window from, unsigned
 /* error is not actually used, i think future versions of the protocol should return an error status
    to the calling window with the XdndFinished client message */
 static void xdnd_send_finished (DndClass * dnd, Window window, Window from, int error)
-{
+{E_
     XEvent xevent;
 
     memset (&xevent, 0, sizeof (xevent));
@@ -687,7 +689,7 @@ static void xdnd_send_finished (DndClass * dnd, Window window, Window from, int 
 
 /* returns non-zero on error - i.e. no selection owner set. Type is of course the mime type */
 static int xdnd_convert_selection (DndClass * dnd, Window window, Window requester, Atom type)
-{
+{E_
     if (!(window = XGetSelectionOwner (dnd->display, dnd->XdndSelection))) {
 	dnd_debug1 ("xdnd_convert_selection(): XGetSelectionOwner failed");
 	return 1;
@@ -699,7 +701,7 @@ static int xdnd_convert_selection (DndClass * dnd, Window window, Window request
 
 /* returns non-zero on error */
 static int xdnd_set_selection_owner (DndClass * dnd, Window window, Atom type, Time time)
-{
+{E_
     if (!XSetSelectionOwner (dnd->display, dnd->XdndSelection, window, time)) {
 	dnd_debug1 ("xdnd_set_selection_owner(): XSetSelectionOwner failed");
 	return 1;
@@ -708,7 +710,7 @@ static int xdnd_set_selection_owner (DndClass * dnd, Window window, Atom type, T
 }
 
 static void xdnd_selection_send (DndClass * dnd, XSelectionRequestEvent * request, unsigned char *data, int length)
-{
+{E_
     XEvent xevent;
     dnd_debug2 ("      requestor = %ld", request->requestor);
     dnd_debug2 ("      property = %ld", request->property);
@@ -728,7 +730,7 @@ static void xdnd_selection_send (DndClass * dnd, XSelectionRequestEvent * reques
 #if 0
 /* respond to a notification that a primary selection has been sent */
 int xdnd_get_selection (DndClass * dnd, Window from, Atom property, Window insert)
-{
+{E_
     long read;
     int error = 0;
     unsigned long remaining;
@@ -756,8 +758,20 @@ int xdnd_get_selection (DndClass * dnd, Window from, Atom property, Window inser
 }
 #endif
 
+static int type_to_sizeof (int fmt)
+{E_
+    switch (fmt) {
+    case 8:
+        return 1;
+    case 16:
+        return 2;
+    default:
+        return sizeof (long);
+    }
+}
+
 static int paste_prop_internal (DndClass * dnd, Window from, Window insert, unsigned long prop, int delete_prop)
-{
+{E_
     long nread = 0;
     unsigned long nitems;
     unsigned long bytes_after;
@@ -773,9 +787,9 @@ static int paste_prop_internal (DndClass * dnd, Window from, Window insert, unsi
 	    XFree (s);
 	    return 1;
 	}
-	nread += nitems;
+	nread += nitems * type_to_sizeof (actual_fmt);
 	if (dnd->widget_insert_drop && !error)
-	    error = (*dnd->widget_insert_drop) (dnd, s, nitems, bytes_after, insert, from, actual_fmt);
+	    error = (*dnd->widget_insert_drop) (dnd, s, nitems * type_to_sizeof (actual_fmt), bytes_after, insert, from, actual_type);
 	XFree (s);
     } while (bytes_after);
     if (!nread)
@@ -787,7 +801,7 @@ static int paste_prop_internal (DndClass * dnd, Window from, Window insert, unsi
  * Respond to a notification that a primary selection has been sent (supports INCR)
  */
 static int xdnd_get_selection (DndClass * dnd, Window from, Atom prop, Window insert)
-{
+{E_
     struct timeval tv, tv_start;
     unsigned long bytes_after;
     Atom actual_type;
@@ -838,13 +852,13 @@ static int xdnd_get_selection (DndClass * dnd, Window from, Atom prop, Window in
 
 
 int outside_rectangle (int x, int y, XRectangle * r)
-{
+{E_
     return (x < r->x || y < r->y || x >= r->x + r->width || y >= r->y + r->height);
 }
 
 /* avoids linking with the maths library */
 static float xdnd_sqrt (float x)
-{
+{E_
     float last_ans, ans = 2, a;
     if (x <= 0.0)
 	return 0.0;
@@ -862,7 +876,7 @@ static float xdnd_sqrt (float x)
 
 /* returns action on success, 0 otherwise */
 Atom xdnd_drag (DndClass * dnd, Window from, Atom action, Atom * typelist)
-{
+{E_
     XEvent xevent, xevent_temp;
     Window over_window = 0, last_window = 0;
 #if XDND_VERSION >= 3
@@ -1244,7 +1258,7 @@ Atom xdnd_drag (DndClass * dnd, Window from, Atom action, Atom * typelist)
 
 /* returns non-zero if event is handled */
 int xdnd_handle_drop_events (DndClass * dnd, XEvent * xevent)
-{
+{E_
     int result = 0;
     if (xevent->type == SelectionNotify) {
 	dnd_debug1 ("got SelectionNotify");
@@ -1451,7 +1465,7 @@ struct xdnd_get_drop_info {
 };
 
 static int widget_insert_drop (DndClass * dnd, unsigned char *data, int length, int remaining, Window into, Window from, Atom type)
-{
+{E_
     struct xdnd_get_drop_info *i;
     i = (struct xdnd_get_drop_info *) dnd->user_hook1;
     if (!i->drop_data) {
@@ -1481,7 +1495,7 @@ static int widget_apply_position (DndClass * dnd, Window widgets_window, Window 
 		      Atom action, int x, int y, Time t, Atom * typelist,
  int *want_position, Atom * supported_action_return, Atom * desired_type,
 				  XRectangle * rectangle)
-{
+{E_
     int i, j;
     struct xdnd_get_drop_info *info;
     Atom *dropper_typelist, supported_type = 0;
@@ -1540,7 +1554,7 @@ static int widget_apply_position (DndClass * dnd, Window widgets_window, Window 
 
 Atom xdnd_get_drop (Display * display, XEvent * xevent, Atom * typelist, Atom * actionlist,
 	  unsigned char **data, int *length, Atom * type, int *x, int *y)
-{
+{E_
     Atom action = 0;
     static int initialised = 0;
     static DndClass dnd;

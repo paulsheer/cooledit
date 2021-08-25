@@ -1,10 +1,12 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* editcmd.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 /* #define PIPE_BLOCKS_SO_READ_BYTE_BY_BYTE */
 
+#include "inspect.h"
 #include <config.h>
 #ifdef NEEDS_IO_H
 #include <io.h>
@@ -49,12 +51,12 @@ int edit_confirm_save = 0;
 #if defined(MIDNIGHT) || defined(GTK)
 
 static inline int my_lower_case (int c)
-{
+{E_
     return tolower(c & 0xFF);
 }
 
 char *strcasechr (const unsigned char *s, int c)
-{
+{E_
     for (; my_lower_case ((int) *s) != my_lower_case (c); ++s)
 	if (*s == '\0')
 	    return 0;
@@ -63,7 +65,7 @@ char *strcasechr (const unsigned char *s, int c)
 
 /* #define itoa MY_itoa  <---- this line is now in edit.h */
 char *itoa (int i)
-{
+{E_
     static char t[14];
     char *s = t + 13;
     int j = i;
@@ -82,7 +84,7 @@ char *itoa (int i)
    by the caller.
  */
 char *catstrs (const char *first,...)
-{
+{E_
     static char *stacked[16] =
     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     static int i = 0;
@@ -120,7 +122,7 @@ char *catstrs (const char *first,...)
 #ifdef MIDNIGHT
 
 void edit_help_cmd (WEdit * edit)
-{
+{E_
     char *hlpdir = concat_dir_and_file (mc_home, "mc.hlp");
     interactive_display (hlpdir, "[Internal File Editor]");
     free (hlpdir);
@@ -128,7 +130,7 @@ void edit_help_cmd (WEdit * edit)
 }
 
 void edit_refresh_cmd (WEdit * edit)
-{
+{E_
 #ifndef HAVE_SLANG
     clr_scr();
     do_refresh();
@@ -146,18 +148,18 @@ void edit_refresh_cmd (WEdit * edit)
 #else
 
 void edit_help_cmd (WEdit * edit)
-{
+{E_
 }
 
 void edit_refresh_cmd (WEdit * edit)
-{
+{E_
     int fg, bg;
     edit_get_syntax_color (edit, -1, &fg, &bg);
     edit->force |= REDRAW_COMPLETELY;
 }
 
 void CRefreshEditor (WEdit * edit)
-{
+{E_
     edit_refresh_cmd (edit);
 }
 
@@ -167,7 +169,7 @@ void CRefreshEditor (WEdit * edit)
 
 /* three argument open */
 static int open_create (const char *pathname, int flags, mode_t mode)
-{
+{E_
     int file;
     file = open ((char *) pathname, O_RDONLY, mode);
     if (file < 0 && (flags & O_CREAT))	/* must it be created ? */
@@ -204,7 +206,7 @@ struct saver_data {
 #define MIN(a,b)        ((a) < (b) ? (a) : (b))
 
 static int edit_sock_writer (struct action_callbacks *o, unsigned char *chunk, int *chunklen_, char *errmsg)
-{
+{E_
     struct saver_data *sd;
     const WEdit *edit;
     int chunklen;
@@ -303,8 +305,8 @@ static int edit_sock_writer (struct action_callbacks *o, unsigned char *chunk, i
     return 0;
 }
 
-int edit_save_file (WEdit * edit, const char *filename)
-{
+int edit_save_file (WEdit * edit, const char *host, const char *filename)
+{E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     struct saver_data sd;
     struct action_callbacks o;
@@ -326,7 +328,7 @@ int edit_save_file (WEdit * edit, const char *filename)
     o.hook = (void *) &sd;
     o.sock_writer = edit_sock_writer;
 
-    u = remotefs_lookup (edit->host);
+    u = remotefs_lookup (host, NULL);
     if ((*u->remotefs_writefile) (u, &o, filename, edit->last_byte, option_save_mode, DEFAULT_CREATE_MODE, option_backup_ext, &st, errmsg)) {
         edit_error_dialog (_(" Error "), catstrs (_(" Failed trying to write file: "), filename, " \n [", errmsg, "]", NULL));
         return 0;
@@ -345,7 +347,7 @@ int edit_save_file (WEdit * edit, const char *filename)
 
 /* returns 0 on ignore.  for save_mode=2 returns 0 on cancel */
 int edit_check_change_on_disk (WEdit * edit, int save_mode)
-{
+{E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     remotefs_error_code_t error_code;
     char *fullname;
@@ -357,7 +359,7 @@ int edit_check_change_on_disk (WEdit * edit, int save_mode)
     if (!edit->filename || !*edit->filename || !edit->dir || !*edit->dir)
         return 0;
     fullname = (char *) strdup(catstrs (edit->dir, edit->filename, NULL));
-    u = remotefs_lookup (edit->host);
+    u = remotefs_lookup (edit->host, NULL);
 #warning should abort on network error
     if (!(*u->remotefs_stat) (u, fullname, &st, NULL, &error_code, errmsg)) {
         if (st.ustat.st_mtime != (save_mode == EDIT_CHANGE_ON_DISK__ON_SAVE ? edit->stat.ustat.st_mtime : edit->test_file_on_disk_for_changes_m_time)) {
@@ -405,7 +407,7 @@ int edit_check_change_on_disk (WEdit * edit, int save_mode)
    does mean there is a memory leak - paul.
  */
 void menu_save_mode_cmd (void)
-{
+{E_
 #define DLG_X 38
 #define DLG_Y 10
     static char *str_result;
@@ -458,7 +460,7 @@ void menu_save_mode_cmd (void)
 #ifdef MIDNIGHT
 
 void edit_split_filename (WEdit * edit, char *f)
-{
+{E_
     if (edit->filename)
 	free (edit->filename);
     edit->filename = (char *) strdup (f);
@@ -474,7 +476,7 @@ void edit_split_filename (WEdit * edit, char *f)
 static char cwd[1040];
 
 static char *canonicalize_pathname (char *p)
-{
+{E_
     char *q, *r;
 
     if (*p != '/') {
@@ -528,13 +530,20 @@ static char *canonicalize_pathname (char *p)
 #endif		/* GTK */
 
 
-void edit_split_filename (WEdit * edit, const char *host, const char *longname)
-{
+int edit_split_filename (WEdit * edit, const char *host, const char *longname)
+{E_
     char *exp, *p;
 #if defined(MIDNIGHT) || defined(GTK)
     exp = canonicalize_pathname (longname);
 #else
-    exp = pathdup (host, longname);	/* this ensures a full path */
+    char errmsg[REMOTEFS_ERR_MSG_LEN] = "";
+    exp = pathdup (host, longname, errmsg);	/* this ensures a full path */
+    if (!exp) {
+        char msg[REMOTEFS_ERR_MSG_LEN + 28];
+        snprintf (msg, sizeof (msg), " Error connecting to %s: %s ", host, errmsg);
+	edit_error_dialog (" Resolving Path ", msg);
+        return 1;
+    }
 #endif
     if (edit->filename)
 	free (edit->filename);
@@ -548,6 +557,7 @@ void edit_split_filename (WEdit * edit, const char *host, const char *longname)
     edit->dir = (char *) strdup (exp);
     edit->host = (char *) strdup (host);
     free (exp);
+    return 0;
 }
 
 #endif		/* ! MIDNIGHT */
@@ -556,7 +566,7 @@ void edit_split_filename (WEdit * edit, const char *host, const char *longname)
    have made a change to the filename */
 /* returns 1 on success */
 int edit_save_as_cmd (WEdit * edit)
-{
+{E_
 /* This heads the 'Save As' dialog box */
     char *exp = 0;
     int different_filename = 0;
@@ -578,7 +588,7 @@ int edit_save_as_cmd (WEdit * edit)
                 struct portable_stat st;
                 struct remotefs *u;
 		different_filename = 1;
-                u = remotefs_lookup (host);
+                u = remotefs_lookup (host, NULL);
 #warning should report on network error
                 if (!(*u->remotefs_stat) (u, exp, &st, NULL, &error_code, errmsg)) {     /* the file exists */
 		    if (edit_query_dialog2 (_(" Warning "), 
@@ -590,8 +600,12 @@ int edit_save_as_cmd (WEdit * edit)
 		    }
 		}
 	    }
-	    if (edit_save_file (edit, exp)) {
-		edit_split_filename (edit, host, exp);
+	    if (edit_save_file (edit, host, exp)) {
+                if (edit_split_filename (edit, host, exp)) {
+		    free (exp);
+		    edit->force |= REDRAW_COMPLETELY;
+		    return 0;
+                }
 		free (exp);
 		edit->modified = 0;
 #if defined(MIDNIGHT) || defined(GTK)
@@ -616,7 +630,7 @@ int edit_save_as_cmd (WEdit * edit)
 
 #ifdef MIDNIGHT
 int raw_callback (struct Dlg_head *h, int key, int Msg)
-{
+{E_
     switch (Msg) {
     case DLG_DRAW:
 	attrset (REVERSE_COLOR);
@@ -640,7 +654,7 @@ int raw_callback (struct Dlg_head *h, int key, int Msg)
    a cancel button thus allowing c-c etc.. Alternatively, cancel = 0 
    will return the next key pressed */
 int edit_raw_key_query (char *heading, char *query, int cancel)
-{
+{E_
     int w = strlen (query) + 7;
     struct Dlg_head *raw_dlg = create_dlg (0, 0, 7, w, dialog_colors,
 /* NLS ? */
@@ -666,7 +680,7 @@ int edit_raw_key_query (char *heading, char *query, int cancel)
 #else
 
 int edit_raw_key_query (const char *heading, const char *query, int cancel)
-{
+{E_
 #ifdef GTK
     /* *** */
     return 0;
@@ -679,7 +693,7 @@ int edit_raw_key_query (const char *heading, const char *query, int cancel)
 
 /* creates a macro file if it doesn't exist */
 static FILE *edit_open_macro_file (const char *r)
-{
+{E_
     char *filename;
     int file;
     filename = catstrs (local_home_dir, MACRO_FILE, NULL);
@@ -699,7 +713,7 @@ static int saved_macros_loaded = 0;
    that aren't defined to anything. On slow systems this could be annoying.
  */
 int macro_exists (int k)
-{
+{E_
     int i;
     for (i = 0; i < MAX_MACROS && saved_macro[i]; i++)
 	if (saved_macro[i] == k)
@@ -708,7 +722,7 @@ int macro_exists (int k)
 }
 
 static void macro_print_line (FILE *f, int s, struct macro_rec *macro)
-{
+{E_
     int i;
     fprintf (f, _("key '%d 0': "), s);
     for (i = 0; i < macro->macro_i; i++) {
@@ -724,7 +738,7 @@ static void macro_print_line (FILE *f, int s, struct macro_rec *macro)
 }
 
 static int macro_scan_line (FILE * f, int *s, struct macro_rec *macro)
-{
+{E_
     int u;
     memset (macro, '\0', sizeof (*macro));
     u = fscanf (f, _("key '%d 0': "), s);
@@ -753,7 +767,7 @@ static int macro_scan_line (FILE * f, int *s, struct macro_rec *macro)
 
 /* returns 1 on error */
 int edit_delete_macro (WEdit * edit, int k)
-{
+{E_
     FILE *f, *g;
     int s, j = 0;
 
@@ -801,7 +815,7 @@ int edit_delete_macro (WEdit * edit, int k)
 
 /* returns 0 on error */
 int edit_save_macro_cmd (WEdit * edit, struct macro_rec *macro)
-{
+{E_
     FILE *f;
     int s, i;
 
@@ -833,7 +847,7 @@ int edit_save_macro_cmd (WEdit * edit, struct macro_rec *macro)
 }
 
 void edit_delete_macro_cmd (WEdit * edit)
-{
+{E_
     int command;
 
 #ifdef MIDNIGHT
@@ -858,7 +872,7 @@ void edit_delete_macro_cmd (WEdit * edit)
 
 /* return 0 on error */
 int edit_load_macro_cmd (WEdit * edit, struct macro_rec *macro, int k)
-{
+{E_
     FILE *f;
     int s, i = 0, found = 0;
     struct macro_rec m;
@@ -903,7 +917,7 @@ int edit_load_macro_cmd (WEdit * edit, struct macro_rec *macro, int k)
 }
 
 int edit_check_macro_exists (WEdit * edit, int k)
-{
+{E_
     if (!saved_macros_loaded)
 	edit_load_macro_cmd (edit, 0, k);
     return macro_exists (k) >= 0;
@@ -913,7 +927,7 @@ int edit_check_macro_exists (WEdit * edit, int k)
 
 /* returns 1 on success */
 int edit_save_confirm_cmd (WEdit * edit)
-{
+{E_
     char *f;
 
     if (edit_confirm_save) {
@@ -931,10 +945,10 @@ int edit_save_confirm_cmd (WEdit * edit)
 
 /* returns 1 on success */
 int edit_save_cmd (WEdit * edit)
-{
+{E_
     if (edit_check_change_on_disk (edit, EDIT_CHANGE_ON_DISK__ON_SAVE))
         return 0;
-    if (!edit->filename || !*edit->filename || !edit_save_file (edit, catstrs (edit->dir, edit->filename, NULL)))
+    if (!edit->filename || !*edit->filename || !edit_save_file (edit, edit->host, catstrs (edit->dir, edit->filename, NULL)))
 	return edit_save_as_cmd (edit);
     edit->force |= REDRAW_COMPLETELY;
     edit->modified = 0;
@@ -947,10 +961,10 @@ int edit_save_cmd (WEdit * edit)
 
 /* returns 1 on success */
 int edit_save_query_cmd (WEdit * edit)
-{
+{E_
     if (edit_check_change_on_disk (edit, EDIT_CHANGE_ON_DISK__ON_COMMAND))
         return 0;
-    if (!edit_save_file (edit, catstrs (edit->dir, edit->filename, NULL)))
+    if (!edit_save_file (edit, edit->host, catstrs (edit->dir, edit->filename, NULL)))
 	return edit_save_as_cmd (edit);
     edit->force |= REDRAW_COMPLETELY;
     edit->modified = 0;
@@ -959,7 +973,7 @@ int edit_save_query_cmd (WEdit * edit)
 
 /* returns 1 on success */
 int edit_new_cmd (WEdit * edit)
-{
+{E_
     if (edit->modified) {
 	if (edit_query_dialog2 (_ (" Warning "), _ (" Current text was modified without a file save. \n Continue discards these changes. "), _ ("Continue"), _ ("Cancel"))) {
 	    edit->force |= REDRAW_COMPLETELY;
@@ -973,16 +987,17 @@ int edit_new_cmd (WEdit * edit)
 
 /* returns 1 on error */
 int edit_load_file_from_filename (WEdit * edit, const char *host, const char *exp)
-{
+{E_
     if (!edit_reload (edit, exp, 0, host, "", 0))
 	return 1;
-    edit_split_filename (edit, host, exp);
+    if (edit_split_filename (edit, host, exp))
+	return 1;
     edit->modified = 0;
     return 0;
 }
 
 int edit_load_cmd (WEdit * edit)
-{
+{E_
     char *exp;
     char host[256];
 
@@ -1012,7 +1027,7 @@ int edit_load_cmd (WEdit * edit)
    Returns 1 if no text is marked.
  */
 int eval_marks (WEdit * edit, long *start_mark, long *end_mark)
-{
+{E_
     if (edit->mark1 != edit->mark2) {
 	if (edit->mark2 >= 0) {
 	    *start_mark = min (edit->mark1, edit->mark2);
@@ -1040,7 +1055,7 @@ extern int space_width;
 #endif
 
 void edit_insert_column_of_text (WEdit * edit, unsigned char *data, int size, int width)
-{
+{E_
     long cursor;
     int i, col;
     cursor = edit->curs1;
@@ -1083,7 +1098,7 @@ void edit_insert_column_of_text (WEdit * edit, unsigned char *data, int size, in
 
 
 void edit_block_copy_cmd (WEdit * edit)
-{
+{E_
     long start_mark, end_mark, current = edit->curs1;
     int size, x;
     unsigned char *copy_buf;
@@ -1126,7 +1141,7 @@ void edit_block_copy_cmd (WEdit * edit)
 
 
 void edit_block_move_cmd (WEdit * edit)
-{
+{E_
     long count;
     long current;
     unsigned char *copy_buf;
@@ -1202,7 +1217,7 @@ void edit_block_move_cmd (WEdit * edit)
 void edit_cursor_to_bol (WEdit * edit);
 
 void edit_delete_column_of_text (WEdit * edit)
-{
+{E_
     long p, q, r, m1, m2;
     int b, c, d;
     int n;
@@ -1235,7 +1250,7 @@ void edit_delete_column_of_text (WEdit * edit)
 }
 
 int edit_block_delete (WEdit * edit)
-{
+{E_
     long count;
     long start_mark, end_mark;
     if (eval_marks (edit, &start_mark, &end_mark))
@@ -1269,7 +1284,7 @@ int edit_block_delete (WEdit * edit)
 
 /* returns 1 if canceelled by user */
 int edit_block_delete_cmd (WEdit * edit)
-{
+{E_
     long start_mark, end_mark;
     if (eval_marks (edit, &start_mark, &end_mark)) {
 	edit_delete_line (edit);
@@ -1293,7 +1308,7 @@ int edit_block_delete_cmd (WEdit * edit)
 #define B_SKIP_REPLACE B_USER+3
 
 int edit_replace_prompt (WEdit * edit, char *replace_text, int xpos, int ypos)
-{
+{E_
     QuickWidget quick_widgets[] =
     {
 /* NLS  for hotkeys? */
@@ -1327,7 +1342,7 @@ int edit_replace_prompt (WEdit * edit, char *replace_text, int xpos, int ypos)
 }
 
 int edit_replace_dialog (WEdit * edit, CStr *search_text, CStr *replace_text, char **arg_order)
-{
+{E_
     int treplace_scanf = replace_scanf;
     int treplace_regexp = replace_regexp;
     int treplace_all = replace_all;
@@ -1416,7 +1431,7 @@ int edit_replace_dialog (WEdit * edit, CStr *search_text, CStr *replace_text, ch
 
 
 void edit_search_dialog (WEdit * edit, char **search_text)
-{
+{E_
     int treplace_scanf = replace_scanf;
     int treplace_regexp = replace_regexp;
     int treplace_whole = replace_whole;
@@ -1491,12 +1506,12 @@ extern CWidget *wedit;
 void edit_backspace_tab (WEdit * edit, int whole_tabs_only);
 
 static inline int my_is_blank (int c)
-{
+{E_
     return c == ' ' || c == '\t';
 }
 
 void edit_indent_left_right_paragraph (WEdit * edit)
-{
+{E_
     char id[33];
     int width = 0, lines, c;
     CState s;
@@ -1574,18 +1589,18 @@ extern struct look *look;
 
 int edit_search_replace_dialog (Window parent, int x, int y, CStr *search_text,
 				 CStr *replace_text, CStr *arg_order, const char *heading, int option)
-{
+{E_
     return (*look->search_replace_dialog) (parent, x, y, search_text, replace_text, arg_order, heading, option);
 }
 
 int edit_search_dialog (WEdit * edit, CStr *search_text)
-{
+{E_
 /* Heads the 'Search' dialog box */
     return edit_search_replace_dialog (WIN_MESSAGES, search_text, 0, 0, _(" Search "), SEARCH_DIALOG_OPTION_BACKWARDS | SEARCH_DIALOG_OPTION_BOOKMARK);
 }
 
 int edit_replace_dialog (WEdit * edit, CStr *search_text, CStr *replace_text, CStr *arg_order)
-{
+{E_
 /* Heads the 'Replace' dialog box */
     return edit_search_replace_dialog (WIN_MESSAGES, search_text, replace_text, arg_order, _(" Replace "), SEARCH_DIALOG_OPTION_BACKWARDS);
 }
@@ -1596,7 +1611,7 @@ int edit_replace_dialog (WEdit * edit, CStr *search_text, CStr *replace_text, CS
 #include <libgnomeui/gnome-stock.h>
 
 void edit_search_dialog (WEdit * edit, char **search_text)
-{
+{E_
     char *s;
     s = gtk_dialog_cauldron (
 				"Search", GTK_CAULDRON_TOPLEVEL | GTK_CAULDRON_GRAB,
@@ -1616,7 +1631,7 @@ void edit_search_dialog (WEdit * edit, char **search_text)
 }
 
 void edit_replace_dialog (WEdit * edit, char **search_text, char **replace_text, char **arg_order)
-{
+{E_
     char *s;
     s = gtk_dialog_cauldron (
 				"Search", GTK_CAULDRON_TOPLEVEL | GTK_CAULDRON_GRAB,
@@ -1644,7 +1659,7 @@ void edit_replace_dialog (WEdit * edit, char **search_text, char **replace_text,
 #ifdef GTK
 
 int edit_replace_prompt (WEdit * edit, char *replace_text, int xpos, int ypos)
-{
+{E_
     char *s;
     s = gtk_dialog_cauldron (
 		    "Replace", GTK_CAULDRON_TOPLEVEL | GTK_CAULDRON_GRAB,
@@ -1670,7 +1685,7 @@ int edit_replace_prompt (WEdit * edit, char *replace_text, int xpos, int ypos)
 static char *text_to_nroff_out (CStr s);
 
 static int edit_replace_prompt (WEdit * edit, CStr replace_text, int xpos, int ypos)
-{
+{E_
     int q, x[] =
     {
 	B_CANCEL, B_ENTER, B_SKIP_REPLACE, B_REPLACE_ALL, B_REPLACE_ONE, B_CANCEL
@@ -1708,7 +1723,7 @@ struct sargs_s sargs_;
 /* This function is a modification of mc-3.2.10/src/view.c:regexp_view_search() */
 /* returns -3 on error in pattern, -1 on not found, found_len = 0 if either */
 int string_regexp_search (char *pattern, char *string, int len, int match_type, int match_bol, int icase, int *found_len, void *d)
-{
+{E_
     static regex_t r;
     static char *old_pattern = NULL;
     static int old_type, old_icase;
@@ -1745,7 +1760,7 @@ int string_regexp_search (char *pattern, char *string, int len, int match_type, 
 /* thanks to  Liviu Daia <daia@stoilow.imar.ro>  for getting this
    (and the above) routines to work properly - paul */
 static long edit_find_string_ (long start, CStr exp, int *len, long last_byte, int (*get_byte) (void *, long), void *data, int once_only, void *d)
-{
+{E_
     long p, q = 0;
     long l = exp.len, f = 0;
     int n = 0;
@@ -1909,7 +1924,7 @@ static long edit_find_string_ (long start, CStr exp, int *len, long last_byte, i
 }
 
 long edit_find_string (long start, CStr exp, int *len, long last_byte, int (*get_byte) (void *, long), void *data, int once_only, void *d)
-{
+{E_
     int r;
     CStr s;
     s = CStr_dupstr(exp);
@@ -1942,7 +1957,7 @@ long edit_find_forwards (long search_start, CStr exp, int *len, long last_byte, 
 }
 
 long edit_find (long search_start, CStr exp, int *len, long last_byte, int (*get_byte) (void *, long), void *data, void *d)
-{
+{E_
     long p;
     if (replace_backwards) {
 	while (search_start >= 0) {
@@ -1969,7 +1984,7 @@ long edit_find (long search_start, CStr exp, int *len, long last_byte, int (*get
 /* this function uses the sprintf command to do a vprintf */
 /* it takes pointers to arguments instead of the arguments themselves */
 int sprintf_p (char *str, const char *fmt,...)
-{
+{E_
     va_list ap;
     int n;
     char *q, *p, *s = str;
@@ -2057,14 +2072,14 @@ int sprintf_p (char *str, const char *fmt,...)
 }
 
 static void regexp_error (WEdit *edit)
-{
+{E_
 /* "Error: Syntax error in regular expression, or scanf expression contained too many %'s */
     edit_error_dialog (_(" Error "), _(" Invalid regular expression, or scanf expression with to many conversions "));
 }
 
 /* call with edit = 0 before shutdown to close memory leaks */
 void edit_replace_cmd (WEdit * edit, int again)
-{
+{E_
     int cancel = 0;
     static regmatch_t pmatch[NUM_REPL_ARGS];
     static CStr old1 = {NULL, 0};
@@ -2279,7 +2294,7 @@ void edit_replace_cmd (WEdit * edit, int again)
 
 
 void edit_search_cmd (WEdit * edit, int again)
-{
+{E_
     int len = 0;
     int cancel = 0;
     static CStr old = {0, 0};
@@ -2375,7 +2390,7 @@ void edit_search_cmd (WEdit * edit, int again)
 
 /* Real edit only */
 void edit_quit_cmd (WEdit * edit)
-{
+{E_
     edit_push_action (edit, KEY_PRESS, edit->start_display);
 
 #ifndef MIDNIGHT
@@ -2449,7 +2464,7 @@ void edit_quit_cmd (WEdit * edit)
 
 /* returns a null terminated length of text. Result must be free'd */
 unsigned char *edit_get_block (WEdit * edit, long start, long finish, int *l)
-{
+{E_
     unsigned char *s, *r;
     r = s = malloc (finish - start + 1);
     if (column_highlighting) {
@@ -2476,7 +2491,7 @@ unsigned char *edit_get_block (WEdit * edit, long start, long finish, int *l)
 
 /* save block, returns 1 on success */
 int edit_save_block (WEdit * edit, const char *filename, long start, long finish)
-{
+{E_
     int len, file;
 
     if ((file = open_create ((char *) filename, O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_CREATE_MODE)) == -1)
@@ -2516,14 +2531,14 @@ int edit_save_block (WEdit * edit, const char *filename, long start, long finish
 
 /* copies a block to clipboard file */
 static int edit_save_block_to_clip_file (WEdit * edit, long start, long finish)
-{
+{E_
     return edit_save_block (edit, catstrs (local_home_dir, CLIP_FILE, NULL), start, finish);
 }
 
 #ifndef MIDNIGHT
 
 void paste_text (WEdit * edit, unsigned char *data, unsigned int nitems)
-{
+{E_
     if (data) {
 	data += nitems - 1;
 	while (nitems--)
@@ -2533,7 +2548,7 @@ void paste_text (WEdit * edit, unsigned char *data, unsigned int nitems)
 }
 
 static char *text_to_nroff_out (CStr s)
-{
+{E_
     static unsigned char t[1024];
     unsigned char *p = (unsigned char *) s.data;
     int i = 0;
@@ -2591,14 +2606,14 @@ static char *text_to_nroff_out (CStr s)
 }
 
 char *selection_get_line (void *data, int line)
-{
+{E_
     CStr *s;
     s = (CStr *) data;
     return text_to_nroff_out (s[line]);
 }
 
 int edit_get_text_from_selection_history (Window parent, int x, int y, int cols, int lines, CStr *r)
-{
+{E_
     int i;
     CStr h[NUM_SELECTION_HISTORY];
 
@@ -2625,7 +2640,7 @@ int edit_get_text_from_selection_history (Window parent, int x, int y, int cols,
 }
 
 void edit_paste_from_history (WEdit * edit)
-{
+{E_
     CStr s;
     edit_update_curs_col (edit);
     edit_update_curs_row (edit);
@@ -2637,7 +2652,7 @@ void edit_paste_from_history (WEdit * edit)
 
 /* copies a block to the XWindows buffer */
 static int edit_XStore_block (WEdit * edit, long start, long finish)
-{
+{E_
     edit_get_selection (edit);
     if (edit_selection.len <= 512 * 1024) {	/* we don't want to fill up the server */
 	XStoreBytes (CDisplay, (char *) edit_selection.data, (int) edit_selection.len);
@@ -2647,7 +2662,7 @@ static int edit_XStore_block (WEdit * edit, long start, long finish)
 }
 
 int edit_copy_to_X_buf_cmd (WEdit * edit)
-{
+{E_
     long start_mark, end_mark;
     if (eval_marks (edit, &start_mark, &end_mark))
 	return 0;
@@ -2670,7 +2685,7 @@ int edit_copy_to_X_buf_cmd (WEdit * edit)
 }
 
 int edit_cut_to_X_buf_cmd (WEdit * edit)
-{
+{E_
     long start_mark, end_mark;
     if (eval_marks (edit, &start_mark, &end_mark))
 	return 0;
@@ -2697,7 +2712,7 @@ void selection_paste (WEdit * edit, Window win, unsigned prop, int delete);
 void paste_convert_selection (Window w);
 
 void edit_paste_from_X_buf_cmd (WEdit * edit)
-{
+{E_
     if (edit_selection.data && edit_selection.len)
 	paste_text (edit, (unsigned char *) edit_selection.data, edit_selection.len);
     else if (!XGetSelectionOwner (CDisplay, XA_PRIMARY))
@@ -2720,11 +2735,11 @@ void edit_paste_from_X_buf_cmd (WEdit * edit)
 #else				/* MIDNIGHT */
 
 void edit_paste_from_history (WEdit *edit)
-{
+{E_
 }
 
 int edit_copy_to_X_buf_cmd (WEdit * edit)
-{
+{E_
     long start_mark, end_mark;
     if (eval_marks (edit, &start_mark, &end_mark))
 	return 0;
@@ -2737,7 +2752,7 @@ int edit_copy_to_X_buf_cmd (WEdit * edit)
 }
 
 int edit_cut_to_X_buf_cmd (WEdit * edit)
-{
+{E_
     long start_mark, end_mark;
     if (eval_marks (edit, &start_mark, &end_mark))
 	return 0;
@@ -2751,14 +2766,14 @@ int edit_cut_to_X_buf_cmd (WEdit * edit)
 }
 
 void edit_paste_from_X_buf_cmd (WEdit * edit)
-{
+{E_
     edit_insert_file (edit, catstrs (home_dir, CLIP_FILE, NULL));
 }
 
 #endif				/* MIDMIGHT */
 
 void edit_goto_cmd (WEdit *edit)
-{
+{E_
     char *f;
     static int l = 0;
 #ifdef MIDNIGHT
@@ -2792,7 +2807,7 @@ void edit_goto_cmd (WEdit *edit)
 
 /*returns 1 on success */
 int edit_save_block_cmd (WEdit * edit)
-{
+{E_
     long start_mark, end_mark;
     char *exp;
     char host[256];
@@ -2828,7 +2843,7 @@ int edit_save_block_cmd (WEdit * edit)
 
 /* returns 1 on success */
 int edit_insert_file_cmd (WEdit * edit)
-{
+{E_
     char host[256];
     char *exp;
 
@@ -2861,7 +2876,7 @@ int edit_insert_file_cmd (WEdit * edit)
 
 /* sorts a block, returns -1 on system fail, 1 on cancel and 0 on success */
 int edit_sort_cmd (WEdit * edit)
-{
+{E_
     static char *old = 0;
     char *exp;
     long start_mark, end_mark;
@@ -2914,7 +2929,7 @@ int edit_sort_cmd (WEdit * edit)
    processes it. If block is 0 the shell command is a straight system
    command, that just produces some output which is to be inserted */
 void edit_block_process_cmd (WEdit * edit, const char *shell_cmd, int block)
-{
+{E_
     long start_mark, end_mark;
     struct stat s;
     char *f = NULL, *b = NULL;
@@ -2967,7 +2982,7 @@ int edit_execute_cmd (WEdit * edit, int command, CStr char_for_insertion);
 /* prints at the cursor */
 /* returns the number of chars printed */
 int edit_print_string (WEdit * e, const char *s)
-{
+{E_
     edit_execute_cmd (e, -1, CStr_const (s, strlen (s)));
     e->force |= REDRAW_COMPLETELY;
     edit_update_screen (e);
@@ -2975,7 +2990,7 @@ int edit_print_string (WEdit * e, const char *s)
 }
 
 int edit_printf (WEdit * e, const char *fmt,...)
-{
+{E_
     int i;
     va_list pa;
     char s[1024];
@@ -2991,7 +3006,7 @@ int edit_printf (WEdit * e, const char *fmt,...)
 /* FIXME: does this function break NT_OS2 ? */
 
 static void pipe_mail (WEdit *edit, char *to, char *subject, char *cc)
-{
+{E_
     FILE *p;
     char *s;
     s = malloc (4096);
@@ -3012,7 +3027,7 @@ static void pipe_mail (WEdit *edit, char *to, char *subject, char *cc)
 #define MAIL_DLG_HEIGHT 12
 
 void edit_mail_dialog (WEdit * edit)
-{
+{E_
     char *tmail_to;
     char *tmail_subject;
     char *tmail_cc;

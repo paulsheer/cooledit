@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* gtkeditkey.c - key defs for gtk
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include "edit.h"
 #include "editcmddef.h"
@@ -15,14 +17,14 @@ int (*user_defined_key_function) (unsigned int state, unsigned int keycode, KeyS
 int option_interpret_numlock = 0;
 
 void edit_set_user_key_function (int (*user_def_key_func) (unsigned int, unsigned int, KeySym))
-{
+{E_
     user_defined_key_function = user_def_key_func;
 }
 
 #error option_international_characters2
 
 int edit_translate_key (unsigned int x_keycode, long x_key, int x_state, int *cmd, int *ch)
-{
+{E_
     int command = -1;
     int char_for_insertion = -1;
 

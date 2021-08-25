@@ -1,16 +1,18 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* mancmd.c - runs man and displays the output 
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include "edit.h"
+#include "manpage.h"
+
 extern Window main_window;
 
-CWidget *CManpageDialog (Window in, int x, int y, int width, int height, const char *manpage);
-
 int edit_man_page_cmd (WEdit * edit)
-{
+{E_
     int i;
     long start_mark, end_mark;
     char q[64];

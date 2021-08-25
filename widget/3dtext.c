@@ -1,11 +1,13 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* 3dtext.c - converts generic 3D commands to 3D data
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 
 /* 3dtext */
 
+#include "inspect.h"
 #include <config.h>
 #include <stdlib.h>
 #include <math.h>
@@ -79,7 +81,7 @@ Vec DimensionOffset =
 {0, 0, 0};
 
 static inline void assignTD (TD_Point * p, Vec v)
-{
+{E_
     p->x = (double) (v.x + DimensionOffset.x) * DimensionScale;
     p->y = (double) (v.y + DimensionOffset.y) * DimensionScale;
     p->z = (double) (v.z + DimensionOffset.z) * DimensionScale;
@@ -89,7 +91,7 @@ static inline void assignTD (TD_Point * p, Vec v)
 
 
 static void third_cyl (double t, TD_Point * p, Vec A, Vec X, Vec r1, Vec r2, int g, double f)
-{
+{E_
     int i = 0;
     double h;
     double alpha = t;
@@ -107,7 +109,7 @@ static void third_cyl (double t, TD_Point * p, Vec A, Vec X, Vec r1, Vec r2, int
 
 
 void CDraw3DCone (const char *ident, double x, double y, double z, double a, double b, double c, double ra, double rb)
-{
+{E_
     int g = 4 * GridDensity / 3;
     TD_Point *p = CMalloc ((g + 1) * 3 * sizeof (TD_Point));
     Vec r1;
@@ -137,14 +139,14 @@ void CDraw3DCone (const char *ident, double x, double y, double z, double a, dou
 
 
 void CDraw3DCylinder (const char *ident, double x, double y, double z, double a, double b, double c, double r)
-{
+{E_
     CDraw3DCone (ident, x, y, z, a, b, c, r, r);
 }
 
 
 
 void CDraw3DRoundPlate (const char *ident, double x, double y, double z, double a, double b, double c, double r)
-{
+{E_
     TD_Point *p = CMalloc ((GridDensity * 4 + 1) * 2 * sizeof (TD_Point));
     double alpha = 0;
     Vec r1;
@@ -176,7 +178,7 @@ void CDraw3DRoundPlate (const char *ident, double x, double y, double z, double 
 
 
 void CDraw3DCappedCylinder (const char *ident, double x, double y, double z, double a, double b, double c, double r)
-{
+{E_
     CDraw3DCylinder (ident, x, y, z, a, b, c, r);
     CDraw3DRoundPlate (ident, -x, -y, -z, a, b, c, r);
     CDraw3DRoundPlate (ident, x, y, z, x + a, y + b, z + c, r);
@@ -184,7 +186,7 @@ void CDraw3DCappedCylinder (const char *ident, double x, double y, double z, dou
 
 
 void textformaterror (int line, const char *ident)
-{
+{E_
 /* "Compile our special discription language into an actual 3D world" */
     CErrorDialog (0, 0, 0, _ (" Compile text to 3D "),
 		  _ (" A text format error was encounted at line %d, \n while trying to draw 3d item to widget %s "), line, ident);
@@ -192,24 +194,24 @@ void textformaterror (int line, const char *ident)
 
 
 void CDraw3DScale (const char *ident, double a)
-{
+{E_
     DimensionScale = 32767 / a;
 }
 
 void CDraw3DOffset (const char *ident, double x, double y, double z)
-{
+{E_
     DimensionOffset.x = x;
     DimensionOffset.y = y;
     DimensionOffset.z = z;
 }
 
 void CDraw3DDensity (const char *ident, double a)
-{
+{E_
     GridDensity = a;
 }
 
 void draw3d_surface (const char *ident, int w, int h, Vec * v)
-{
+{E_
     int i;
     TD_Point *p = CMalloc ((w + 1) * (h + 1) * sizeof (TD_Point));
     for (i = 0; i < w * h; i++)
@@ -220,7 +222,7 @@ void draw3d_surface (const char *ident, int w, int h, Vec * v)
 
 
 void CDraw3DSurface (const char *ident, int w, int h,...)
-{
+{E_
     va_list pa;
     int i;
     TD_Point *p = CMalloc (w * h * sizeof (TD_Point));
@@ -244,7 +246,7 @@ void CDraw3DSurface (const char *ident, int w, int h,...)
 
 
 static void fxchg (double *a, double *b)
-{
+{E_
     double t = *a;
     *a = *b;
     *b = t;
@@ -253,7 +255,7 @@ static void fxchg (double *a, double *b)
 
 void initellipsoidpart (TD_Point * p, double x, double y, double z,
 		  double a, double b, double c, int w, int dir, double f)
-{
+{E_
     int i, j;
     Vec v;
     double r;
@@ -303,7 +305,7 @@ void initellipsoidpart (TD_Point * p, double x, double y, double z,
 }
 
 void CDraw3DEllipsoid (const char *ident, double x, double y, double z, double a, double b, double c, double f)
-{
+{E_
     int w = GridDensity / 2;
     int g = 2 * w + 1;
     TD_Point *p = CMalloc (g * g * sizeof (TD_Point));
@@ -324,7 +326,7 @@ void CDraw3DEllipsoid (const char *ident, double x, double y, double z, double a
 }
 
 void CDraw3DCappedCone (const char *ident, double x, double y, double z, double a, double b, double c, double ra, double rb)
-{
+{E_
     CDraw3DCone (ident, x, y, z, a, b, c, ra, rb);
     CDraw3DRoundPlate (ident, -x, -y, -z, a, b, c, ra);
     CDraw3DRoundPlate (ident, x, y, z, x + a, y + b, z + c, rb);
@@ -332,20 +334,20 @@ void CDraw3DCappedCone (const char *ident, double x, double y, double z, double 
 
 
 void CDraw3DRectangle (const char *ident, double x, double y, double z, double a, double b, double c)
-{
+{E_
     CDraw3DEllipsoid (ident, x, y, z, a, b, c, 1);
 }
 
 
 void CDraw3DSphere (const char *ident, double x, double y, double z, double r)
-{
+{E_
     CDraw3DEllipsoid (ident, x, y, z, r, r, r, 0);
 }
 
 
 /* returns -1 on error, zero on success */
 int CDraw3DFromText (const char *ident, const char *text)
-{
+{E_
     char *p = (char *) text;
     int line = 1;
     double x, y, z, a, b, c, r, r2;

@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* regtools.c - regexp front end convenience functions
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -20,7 +22,7 @@
 char *regtools_old_pattern = 0;
 
 int regexp_match (char *pattern, char *string, int match_type)
-{
+{E_
     static regex_t r;
     static int old_type;
     int    rval;
@@ -45,7 +47,7 @@ int regexp_match (char *pattern, char *string, int match_type)
 int easy_patterns = 1;
 
 static char *maybe_start_group (char *d, int do_group, int *was_wildcard)
-{
+{E_
     if (!do_group)
 	return d;
     if (*was_wildcard)
@@ -57,7 +59,7 @@ static char *maybe_start_group (char *d, int do_group, int *was_wildcard)
 }
 
 static char *maybe_end_group (char *d, int do_group, int *was_wildcard)
-{
+{E_
     if (!do_group)
 	return d;
     if (!*was_wildcard)
@@ -72,7 +74,7 @@ static char *maybe_end_group (char *d, int do_group, int *was_wildcard)
    expression. Called by regexp_match and mask_rename. */
 /* Shouldn't we support [a-fw] type wildcards as well ?? */
 char *convert_pattern (char *pattern, int match_type, int do_group)
-{
+{E_
     char *s, *d;
     static char new_pattern [100];
     int was_wildcard = 0;

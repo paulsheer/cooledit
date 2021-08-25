@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 
 /*  Some configuration constants, meassured in points (1/72 inch) */
 extern int postscript_option_page_top;	/* A4 = 297mm x 210mm = 841pt x 595pt */
@@ -37,4 +38,5 @@ extern int (*postscript_dialog_exists) (unsigned char *);
 extern unsigned char *(*postscript_get_next_line) (unsigned char *);
 
 void postscript_print (void);
+void postscript_clean (void);
 

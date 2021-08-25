@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
+#include "inspect.h"
 #include "rxvtlib.h"
 #include <coolwidget.h>
 #include <stringtools.h>
@@ -48,7 +50,7 @@
 #if defined(__svr4__) && ! defined(_POSIX_VERSION)
 /* INTPROTO */
 int             getdtablesize (void)
-{
+{E_
     struct rlimit   rlim;
 
     getrlimit (RLIMIT_NOFILE, &rlim);
@@ -60,7 +62,7 @@ int             getdtablesize (void)
 /*{{{ take care of suid/sgid super-user (root) privileges */
 /* EXTPROTO */
 void            privileges (int mode)
-{
+{E_
 #if ! defined(__CYGWIN32__)
 # ifdef HAVE_SETEUID
     static uid_t    euid;
@@ -144,7 +146,7 @@ rxvtlib *match_object_to_pid (rxvtlib * o, int pid) {
 }
 
 RETSIGTYPE Child_signal (int unused)
-{
+{E_
     int pid, save_errno = errno;
     rxvtlib *o;
 
@@ -166,7 +168,7 @@ RETSIGTYPE Child_signal (int unused)
  */
 /* INTPROTO */
 RETSIGTYPE      Exit_signal (int sig)
-{
+{E_
 
 #ifdef DEBUG_CMD
     print_error ("signal %d", sig);
@@ -191,7 +193,7 @@ RETSIGTYPE      Exit_signal (int sig)
  */
 /* INTPROTO */
 void            clean_exit (void)
-{
+{E_
 
 /*
     scr_release ();
@@ -229,7 +231,7 @@ void            clean_exit (void)
  */
 /* INTPROTO */
 int             rxvtlib_get_pty (rxvtlib *o)
-{
+{E_
     int             fd;
     char           *ptydev;
 
@@ -356,7 +358,7 @@ int             rxvtlib_get_pty (rxvtlib *o)
  */
 /* INTPROTO */
 int             rxvtlib_get_tty (rxvtlib *o)
-{
+{E_
     int             fd, i;
     pid_t           pid;
 
@@ -481,7 +483,7 @@ int             rxvtlib_get_tty (rxvtlib *o)
 #ifdef DEBUG_TTYMODE
 /* INTPROTO */
 void            debug_ttymode (const ttymode_t * ttymode)
-{
+{E_
 #ifdef HAVE_TERMIOS_H
 /* c_iflag bits */
     fprintf (stderr, "Input flags\n");
@@ -554,7 +556,7 @@ void            debug_ttymode (const ttymode_t * ttymode)
 /*{{{ get_ttymode() */
 /* INTPROTO */
 void            get_ttymode (ttymode_t * tio)
-{
+{E_
 #ifdef HAVE_TERMIOS_H
 /*
  * standard System V termios interface
@@ -669,7 +671,7 @@ void            get_ttymode (ttymode_t * tio)
  */
 /* INTPROTO */
 void            rxvtlib_get_ourmods (rxvtlib *o)
-{
+{E_
     int             i, j, k, m;
     int             got_meta, got_numlock;
     XModifierKeymap *map;
@@ -752,7 +754,7 @@ void            rxvtlib_get_ourmods (rxvtlib *o)
 /*{{{ init_command() */
 /* EXTPROTO */
 void            rxvtlib_init_command (rxvtlib *o, const char *const *argv, int do_sleep)
-{
+{E_
 /*
  * Initialize the command connection.
  * This should be called after the X server connection is established.
@@ -808,7 +810,7 @@ extern int option_use_xim;
  */
 /* EXTPROTO */
 void rxvtlib_init_xlocale (rxvtlib * o)
-{
+{E_
     char *locale = NULL;
 
     (void) locale;
@@ -842,7 +844,7 @@ void rxvtlib_init_xlocale (rxvtlib * o)
  */
 /* INTPROTO */
 void            rxvtlib_tt_winsize (rxvtlib *o, int fd)
-{
+{E_
     struct winsize  ws;
 
     if (fd < 0)
@@ -856,7 +858,7 @@ void            rxvtlib_tt_winsize (rxvtlib *o, int fd)
 
 /* EXTPROTO */
 void            rxvtlib_tt_resize (rxvtlib *o)
-{
+{E_
     rxvtlib_tt_winsize (o, o->cmd_fd);
 }
 
@@ -865,7 +867,7 @@ void            rxvtlib_tt_resize (rxvtlib *o)
 /*{{{ Convert the keypress event into a string */
 /* INTPROTO */
 void            rxvtlib_lookup_key (rxvtlib *o, XEvent * ev)
-{
+{E_
     int             ctrl, meta, shft, len;
     KeySym          keysym;
     static XComposeStatus compose = { NULL, 0 };
@@ -1379,7 +1381,7 @@ void            rxvtlib_lookup_key (rxvtlib *o, XEvent * ev)
 /* attempt to `write' COUNT to the input buffer */
 /* EXTPROTO */
 unsigned int    rxvtlib_cmd_write (rxvtlib *o, const unsigned char *str, unsigned int count)
-{
+{E_
     int             n;
 
     n = (count - (o->cmdbuf_ptr - o->cmdbuf_base));
@@ -1425,7 +1427,7 @@ unsigned int    rxvtlib_cmd_write (rxvtlib *o, const unsigned char *str, unsigne
  */
 /* INTPROTO */
 unsigned char rxvtlib_cmd_getc (rxvtlib * o)
-{
+{E_
     fd_set readfds;
     struct timeval value;
     int quick_timeout;
@@ -1523,7 +1525,7 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
 #else
 
 void rxvtlib_update_screen (rxvtlib * o)
-{
+{E_
     if (o->refresh_count >= (o->refresh_limit * (o->TermWin.nrow - 1))) {
 	if (o->refresh_limit < REFRESH_PERIOD)
 	    o->refresh_limit++;
@@ -1557,7 +1559,7 @@ void rxvtlib_update_screen (rxvtlib * o)
 }
 
 static int rxvt_fd_read (rxvtlib * o)
-{
+{E_
     int n, count = 0;
     if (o->cmdbuf_ptr >= o->cmdbuf_endp)
 	o->cmdbuf_ptr = o->cmdbuf_endp = o->cmdbuf_base;
@@ -1573,7 +1575,7 @@ static int rxvt_fd_read (rxvtlib * o)
 
 void rxvt_fd_read_watch (int fd, fd_set * reading, fd_set * writing,
 				fd_set * error, void *data)
-{
+{E_
     rxvtlib *o = (rxvtlib *) data;
     if (!rxvt_fd_read (o))
 	return;
@@ -1582,7 +1584,7 @@ void rxvt_fd_read_watch (int fd, fd_set * reading, fd_set * writing,
 }
 
 void rxvt_process_x_event (rxvtlib * o)
-{
+{E_
     o->refresh_count = 0;
     o->refresh_limit = 1;
     if (o->x_events_pending)
@@ -1613,7 +1615,7 @@ void rxvt_process_x_event (rxvtlib * o)
  */
 /* INTPROTO */
 unsigned char rxvtlib_cmd_getc (rxvtlib * o)
-{
+{E_
     int ch = -1;
     if (o->v_bufstr < o->v_bufptr)	/* output any pending chars */
 	rxvtlib_tt_write (o, NULL, 0);
@@ -1644,7 +1646,7 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
 
 /* INTPROTO */
 void            rxvtlib_mouse_report (rxvtlib *o, const XButtonEvent * ev)
-{
+{E_
     int             button_number, key_state = 0;
     int             x, y;
 
@@ -1699,7 +1701,7 @@ void            rxvtlib_mouse_report (rxvtlib *o, const XButtonEvent * ev)
 /*{{{ process an X event */
 /* INTPROTO */
 void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
-{
+{E_
     int reportmode;
     Window unused_root, unused_child;
     int unused_root_x, unused_root_y;
@@ -2204,7 +2206,7 @@ void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
  */
 /* INTPROTO */
 int             rxvtlib_check_our_parents (rxvtlib *o)
-{
+{E_
     int             i, pchanged;
     unsigned int    n;
     Window          root, oldp, *list;
@@ -2270,7 +2272,7 @@ int             rxvtlib_check_our_parents (rxvtlib *o)
  */
 /* EXTPROTO */
 void            rxvtlib_tt_printf (rxvtlib *o, const char *fmt, ...)
-{
+{E_
     va_list         arg_ptr;
     unsigned char   buf[256];
 
@@ -2285,7 +2287,7 @@ void            rxvtlib_tt_printf (rxvtlib *o, const char *fmt, ...)
 #ifdef PRINTPIPE
 /* EXTPROTO */
 FILE           *rxvtlib_popen_printer (rxvtlib *o)
-{
+{E_
     FILE           *stream = (FILE *) popen (o->rs[Rs_print_pipe], "w");
 
     if (stream == NULL)
@@ -2295,7 +2297,7 @@ FILE           *rxvtlib_popen_printer (rxvtlib *o)
 
 /* EXTPROTO */
 int             pclose_printer (FILE * stream)
-{
+{E_
     fflush (stream);
 /* pclose() reported not to work on SunOS 4.1.3 */
 # if defined (__sun__)		/* TODO: RESOLVE THIS */
@@ -2311,7 +2313,7 @@ int             pclose_printer (FILE * stream)
  */
 /* INTPROTO */
 void            rxvtlib_process_print_pipe (rxvtlib *o)
-{
+{E_
     int             done;
     FILE           *fd;
 
@@ -2359,7 +2361,7 @@ void            rxvtlib_process_print_pipe (rxvtlib *o)
 /*{{{ process escape sequences */
 /* INTPROTO */
 void            rxvtlib_process_escape_seq (rxvtlib *o)
-{
+{E_
     unsigned char   ch = rxvtlib_cmd_getc (o);
 
     switch (ch) {
@@ -2450,7 +2452,7 @@ void            rxvtlib_process_escape_seq (rxvtlib *o)
 /*{{{ process CSI (code sequence introducer) sequences `ESC[' */
 /* INTPROTO */
 void            rxvtlib_process_csi_seq (rxvtlib *o)
-{
+{E_
     unsigned char   ch, priv;
     unsigned int    nargs;
     int             arg[ESC_ARGS];
@@ -2657,7 +2659,7 @@ void            rxvtlib_process_csi_seq (rxvtlib *o)
 /* ARGSUSED */
 /* INTPROTO */
 void            rxvtlib_process_window_ops (rxvtlib *o, const int *args, int nargs)
-{
+{E_
     int             x, y;
     char           *s;
     XWindowAttributes wattr;
@@ -2734,7 +2736,7 @@ void            rxvtlib_process_window_ops (rxvtlib *o, const int *args, int nar
 /*{{{ process xterm text parameters sequences `ESC ] Ps ; Pt BEL' */
 /* INTPROTO */
 void            rxvtlib_process_xterm_seq (rxvtlib *o)
-{
+{E_
     unsigned char   ch, string[STRING_MAX];
     int             arg;
 
@@ -2783,7 +2785,7 @@ void            rxvtlib_process_xterm_seq (rxvtlib *o)
 /* INTPROTO */
 void            rxvtlib_process_terminal_mode (rxvtlib *o, int mode, int priv, unsigned int nargs,
 				       const int *arg)
-{
+{E_
     unsigned int    i;
     int             state;
 
@@ -2929,7 +2931,7 @@ void            rxvtlib_process_terminal_mode (rxvtlib *o, int mode, int priv, u
 /*{{{ process sgr sequences */
 /* INTPROTO */
 void            rxvtlib_process_sgr_mode (rxvtlib *o, unsigned int nargs, const int *arg)
-{
+{E_
     unsigned int    i;
 
     if (nargs == 0) {
@@ -3000,7 +3002,7 @@ void            rxvtlib_process_sgr_mode (rxvtlib *o, unsigned int nargs, const 
 /*{{{ process Rob Nation's own graphics mode sequences */
 /* INTPROTO */
 void            rxvtlib_process_graphics (rxvtlib *o)
-{
+{E_
     unsigned char   ch, cmd = rxvtlib_cmd_getc (o);
 
 #ifndef RXVT_GRAPHICS
@@ -3067,7 +3069,7 @@ void            rxvtlib_process_graphics (rxvtlib *o)
  */
 /* EXTPROTO */
 void            rxvtlib_AddToCNQueue (rxvtlib *o, int width, int height)
-{
+{E_
     XCNQueue_t     *rq, *nrq;
 
     nrq = (XCNQueue_t *) MALLOC (sizeof (XCNQueue_t));
@@ -3086,7 +3088,7 @@ void            rxvtlib_AddToCNQueue (rxvtlib *o, int width, int height)
 
 /* INTPROTO */
 int             rxvtlib_RemoveFromCNQueue (rxvtlib *o, int width, int height)
-{
+{E_
     XCNQueue_t     *rq, *prq;
     int		    new_ncol, new_nrow;
 
@@ -3126,7 +3128,7 @@ int             rxvtlib_RemoveFromCNQueue (rxvtlib *o, int width, int height)
 /*{{{ Read and process output from the application */
 /* EXTPROTO */
 void rxvtlib_main_loop (rxvtlib * o)
-{
+{E_
     int nlines;
     unsigned char ch, *str;
 
@@ -3194,7 +3196,7 @@ void rxvtlib_main_loop (rxvtlib * o)
 #ifndef STANDALONE
 void rxvt_fd_write_watch (int fd, fd_set * reading,
 				 fd_set * writing, fd_set * error, void *data)
-{
+{E_
     int riten, p;
     rxvtlib *o = (rxvtlib *) data;
     p = o->v_bufptr - o->v_bufstr;
@@ -3220,7 +3222,7 @@ void rxvt_fd_write_watch (int fd, fd_set * reading,
  */
 /* EXTPROTO */
 void            rxvtlib_tt_write (rxvtlib *o, const unsigned char *d, int len)
-{
+{E_
     int             p;
 #ifdef STANDALONE
     int             riten;
@@ -3326,7 +3328,7 @@ void            rxvtlib_tt_write (rxvtlib *o, const unsigned char *d, int len)
 #ifdef USE_XIM
 /* INTPROTO */
 void            rxvtlib_setSize (rxvtlib *o, XRectangle * size)
-{
+{E_
     size->x = TermWin_internalBorder;
     size->y = TermWin_internalBorder;
     size->width = Width2Pixel (o->TermWin.ncol);
@@ -3335,14 +3337,14 @@ void            rxvtlib_setSize (rxvtlib *o, XRectangle * size)
 
 /* INTPROTO */
 void            rxvtlib_setColor (rxvtlib *o, unsigned int *fg, unsigned int *bg)
-{
+{E_
     *fg = o->PixColors[Color_fg];
     *bg = o->PixColors[Color_bg];
 }
 
 /* INTPROTO */
 void            rxvtlib_IMSendSpot (rxvtlib *o)
-{
+{E_
     XPoint          spot;
     XVaNestedList   preedit_attr;
     XIMStyle        input_style;
@@ -3366,7 +3368,7 @@ void            rxvtlib_IMSendSpot (rxvtlib *o)
 
 /* INTPROTO */
 void            rxvtlib_setTermFontSet (rxvtlib *o)
-{
+{E_
     char           *string;
     long            length, i;
 
@@ -3417,7 +3419,7 @@ void            rxvtlib_setTermFontSet (rxvtlib *o)
 void            rxvtlib_setPreeditArea (rxvtlib *o, XRectangle * preedit_rect,
 				XRectangle * status_rect,
 				XRectangle * needed_rect)
-{
+{E_
     preedit_rect->x = needed_rect->width
 	+ (scrollbar_visible () && !(o->Options & Opt_scrollBar_right)
 	   ? (SB_WIDTH + o->sb_shadow * 2) : 0);
@@ -3442,7 +3444,7 @@ void            rxvtlib_setPreeditArea (rxvtlib *o, XRectangle * preedit_rect,
 /* INTPROTO */
 void            rxvtlib_IMDestroyCallback (XIM xim, XPointer client_data,
 				   XPointer call_data)
-{
+{E_
     rxvtlib *o;
     o = (rxvtlib *) client_data;
     o->Input_Context = NULL;
@@ -3453,7 +3455,7 @@ void            rxvtlib_IMDestroyCallback (XIM xim, XPointer client_data,
 /* INTPROTO */
 void            rxvtlib_IMInstantiateCallback (Display * display, XPointer client_data,
 				       XPointer call_data)
-{
+{E_
     rxvtlib *o;
     char           *p, *s, buf[64], tmp[1024];
     char           *end, *next_s;
@@ -3605,7 +3607,7 @@ void            rxvtlib_IMInstantiateCallback (Display * display, XPointer clien
 
 /* EXTPROTO */
 void            rxvtlib_IMSetStatusPosition (rxvtlib *o)
-{
+{E_
     XIMStyle        input_style;
     XRectangle      preedit_rect, status_rect, *needed_rect;
     XVaNestedList   preedit_attr, status_attr;
@@ -3642,7 +3644,7 @@ void            rxvtlib_IMSetStatusPosition (rxvtlib *o)
 
 /* INTPROTO */
 void            rxvtlib_XProcessEvent (rxvtlib *o, Display * display)
-{
+{E_
     XEvent          xev;
 
 #ifdef STANDALONE
@@ -3671,7 +3673,7 @@ void            rxvtlib_XProcessEvent (rxvtlib *o, Display * display)
  */
 /* INTPROTO */
 void            rxvtlib_run_command (rxvtlib *o, const char *const *argv, int do_sleep)
-{
+{E_
     ttymode_t       tio;
 #if defined (DEBUG_CMD) || defined(STANDALONE)
     int             i;
@@ -3868,7 +3870,7 @@ void            rxvtlib_run_command (rxvtlib *o, const char *const *argv, int do
 
 #ifndef STANDALONE
 pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *const argv[])
-{
+{E_
     struct tty_values {
 	char *ttydev;
 	short changettyowner;

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 #ifndef __EDIT_CMD_DEF_H
 #define __EDIT_CMD_DEF_H
 
@@ -108,6 +109,7 @@
 #define CK_Run_Another		456
 #define CK_Check_Save_And_Quit	457
 #define CK_Maximize		458
+#define CK_Close_Last		459
 
 /* macro */
 #define CK_Begin_Record_Macro	501

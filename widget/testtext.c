@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
+#include "inspect.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +13,7 @@
 #include <unistd.h>
 
 int main (int argc, char *argv[])
-{
+{E_
     static GtkWidget *window = NULL;
     GtkWidget *edit;
     int infile;

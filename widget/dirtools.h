@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 
 #ifndef _DIRTOOLS_H
 #define _DIRTOOLS_H
@@ -58,10 +59,22 @@ struct windows_file_attributes {
     unsigned long long file_size;
 };
 
+#ifdef MSWIN
+#define my_stat(f, s)           stat64(f, s)
+#define my_lstat(f, s)          lstat64(f, s)
+#define my_fstat(f, s)          fstat64(f, s)
+#define stat_posix_or_mswin     _stat64
+#else
+#define my_stat(f, s)           stat(f, s)
+#define my_lstat(f, s)          lstat(f, s)
+#define my_fstat(f, s)          fstat(f, s)
+#define stat_posix_or_mswin     stat
+#endif
+
 struct portable_stat {
     int os;
     int os_sub;
-    struct stat ustat;
+    struct stat_posix_or_mswin ustat;
     struct windows_file_attributes wattr;
 };
 

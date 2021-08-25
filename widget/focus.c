@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* focus.c - records a history of focusses for reverting focus, also does focus cycling
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -40,18 +42,18 @@ static Window current_ic_focus = -1;
 static Window dnd_focus = -1;
 
 void save_current_focus_for_dnd (Window new_focus)
-{
+{E_
     dnd_focus = current_focus;
     current_focus = new_focus;
 }
 
 void restore_current_focus_for_dnd (void)
-{
+{E_
     current_focus = dnd_focus;
 }
 
 void add_to_focus_stack (Window w)
-{
+{E_
     int i;
     i = focus_sp;
     while (i--)
@@ -74,7 +76,7 @@ void add_to_focus_stack (Window w)
 }
 
 void focus_stack_remove_window (Window w)
-{
+{E_
     int i;
     i = focus_sp;
     while (i--)
@@ -91,17 +93,17 @@ void focus_stack_remove_window (Window w)
 }
 
 Window CGetFocus(void)
-{
+{E_
     return current_focus;
 }
 
 Window CGetICFocus(void)
-{
+{E_
     return current_ic_focus;
 }
 
 void CFocusLast (void)
-{
+{E_
     Window w;
     if (!focus_sp)
 	return;
@@ -119,7 +121,7 @@ void CFocusLast (void)
    move focus to that widget.
  */
 static Window *get_last_focussed_in_main (Window main)
-{
+{E_
     static Window dummy;
     CWidget *w;
     w = CWidgetOfWindow (main);
@@ -138,13 +140,13 @@ struct focus_win focus_border =
 };
 
 Window get_focus_border_widget (void)
-{
+{E_
     return focus_border.current;
 }
 
 /* draw a focus window around wodget w */
 void create_focus_border (CWidget * w, int border)
-{
+{E_
     int x, y;
     XSetWindowAttributes xswa;
     xswa.colormap = CColormap;
@@ -210,7 +212,7 @@ void create_focus_border (CWidget * w, int border)
 }
 
 void destroy_focus_border (void)
-{
+{E_
     if (!focus_border.top)
 	return;
     XDestroyWindow (CDisplay, focus_border.top);
@@ -221,7 +223,7 @@ void destroy_focus_border (void)
 }
 
 int window_of_focus_border (Window win)
-{
+{E_
     if (!focus_border.top)
 	return 0;
     if (win == focus_border.top)
@@ -236,12 +238,12 @@ int window_of_focus_border (Window win)
 }
 
 void render_focus_border (Window win)
-{
+{E_
     (*look->render_focus_border) (win);
 }
 
 static void set_ic_focus (CWidget * w)
-{
+{E_
 #ifdef USE_XIM
     XIC ic;
     if (w->mainid) {
@@ -265,7 +267,7 @@ printf("CRoot=%lu parentid=%lu\n", (unsigned long) CRoot, (unsigned long) w->par
 
 /* This is called when the app (and not the WM) wants to change focus. */
 static void focus_widget (CWidget * w)
-{
+{E_
     CWidget *old;
 
     CRefreshSpot ();
@@ -312,7 +314,7 @@ static void focus_widget (CWidget * w)
 }
 
 static void focus_main (Window main, int type)
-{
+{E_
     CWidget *w;
 
     CRefreshSpot ();
@@ -348,7 +350,7 @@ static void focus_main (Window main, int type)
    focus to a new different main window.
  */
 void process_external_focus (Window win, int type)
-{
+{E_
     CWidget *w;
 #ifdef FOCUS_DEBUG
     printf ("Entering process_external_focus()\n");
@@ -378,7 +380,7 @@ void process_external_focus (Window win, int type)
 }
 
 void focus_window (Window win)
-{
+{E_
     CWidget *w;
     w = CWidgetOfWindow (win);
     if (w)
@@ -387,7 +389,7 @@ void focus_window (Window win)
 
 /* CFocus() is a macro for */
 void CFocusNormal (CWidget * w)
-{
+{E_
     if (!w)
 	return;
     if (!w->takes_focus)
@@ -402,7 +404,7 @@ void CFocusNormal (CWidget * w)
 extern int option_never_raise_wm_windows;
 
 int CTryFocus (CWidget * w, int raise_wm_window)
-{
+{E_
     if (!option_never_raise_wm_windows) {
 	CFocus (w);
 	if (raise_wm_window)
@@ -430,7 +432,7 @@ int CTryFocus (CWidget * w, int raise_wm_window)
 }
 
 void CFocusDebug (CWidget *w, int line, char *file)
-{
+{E_
 /* NLS ? */
     printf ("CFocus(%x): %s:%d (ident = %s)\n", (unsigned int) w->winid, file, line, w->ident);
     CFocusNormal (w);
@@ -439,7 +441,7 @@ void CFocusDebug (CWidget *w, int line, char *file)
 
 /* get next sibling of w that has takes_focus set (i.e. that takes user input of any sort) */
 CWidget *CNextFocus (CWidget * w)
-{
+{E_
     int i, j;
     if (!w)
 	return 0;
@@ -461,7 +463,7 @@ CWidget *CNextFocus (CWidget * w)
 
 /* previous sibling of same */
 CWidget *CPreviousFocus (CWidget * w)
-{
+{E_
     int i, j;
     i = j = find_previous_child_of (w->parentid, w->winid);
     for (;;) {
@@ -482,7 +484,7 @@ CWidget *CPreviousFocus (CWidget * w)
 /* first child of widget that takes focus (eg w is a window and
     a button in the window is returned) */
 CWidget *CChildFocus (CWidget * w)
-{
+{E_
     int j, i = find_first_child_of (w->winid);
     if(!i)
 	return 0;
@@ -509,7 +511,7 @@ CWidget *CChildFocus (CWidget * w)
    If it does not take focus, then its first child is focussed.
    If it has no children, the next descendent is searched for. */
 CWidget *CFindFirstDescendent (Window win)
-{
+{E_
     int i, j;
 
     i = find_first_child_of (win);

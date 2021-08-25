@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
+#include "inspect.h"
 #include "rxvtlib.h"
 #include <stringtools.h>
 
@@ -57,7 +59,7 @@ int rxvt_get_fontwidest (rxvtlib *o, XFontStruct * f);
 #ifdef STANDALONE
 XErrorHandler   xerror_handler (const Display * display,
 				const XErrorEvent * event)
-{
+{E_
     print_error ("XError: Request: %d . %d, Error: %d", event->request_code,
 		 event->minor_code, event->error_code);
     return 0;
@@ -67,7 +69,7 @@ XErrorHandler   xerror_handler (const Display * display,
 /* color aliases, fg/bg bright-bold */
 /* INTPROTO */
 void            rxvtlib_color_aliases (rxvtlib *o, int idx)
-{
+{E_
     if (o->rs[Rs_color + idx] && isdigit (*(o->rs[Rs_color + idx]))) {
 	int             i = atoi (o->rs[Rs_color + idx]);
 
@@ -88,7 +90,7 @@ void            rxvtlib_color_aliases (rxvtlib *o, int idx)
  */
 /* INTPROTO */
 void            rxvtlib_set_colorfgbg (rxvtlib *o)
-{
+{E_
     unsigned int    i;
     char           *p;
     int             fg = -1, bg = -1;
@@ -145,7 +147,7 @@ void            rxvtlib_set_colorfgbg (rxvtlib *o)
 
 /* INTPROTO */
 void            rxvtlib_Get_Colours (rxvtlib *o)
-{
+{E_
     int             i;
 
     for (i = 0; i < (o->Xdepth <= 2 ? 2 : NRS_COLORS); i++) {
@@ -265,7 +267,7 @@ Cursor Font_cursor = 0;
 /* Create_Windows() - Open and map the window */
 /* INTPROTO */
 void            rxvtlib_Create_Windows (rxvtlib *o, int argc, const char *const *argv)
-{
+{E_
     XClassHint      classHint;
     XWMHints        wmHint;
 
@@ -439,7 +441,7 @@ void            rxvtlib_Create_Windows (rxvtlib *o, int argc, const char *const 
 /* window resizing - assuming the parent window is the correct size */
 /* INTPROTO */
 void            rxvtlib_resize_subwindows (rxvtlib *o, int width, int height)
-{
+{E_
     int             x = 0, y = 0;
     int             old_width = o->TermWin.width, old_height = o->TermWin.height;
 
@@ -488,7 +490,7 @@ void            rxvtlib_resize_subwindows (rxvtlib *o, int width, int height)
 
 /* EXTPROTO */
 void            rxvtlib_resize_all_windows (rxvtlib *o)
-{
+{E_
     rxvtlib_szhints_recalc (o);
     XSetWMNormalHints (o->Xdisplay, o->TermWin.parent[0], &o->szHint);
     rxvtlib_AddToCNQueue (o, o->szHint.width, o->szHint.height);
@@ -502,7 +504,7 @@ void            rxvtlib_resize_all_windows (rxvtlib *o)
  */
 /* EXTPROTO */
 void            rxvtlib_resize_window (rxvtlib *o, unsigned int width, unsigned int height)
-{
+{E_
     int             new_ncol, new_nrow;
 
     new_ncol = (width - o->szHint.base_width) / o->TermWin.fwidth;
@@ -536,7 +538,7 @@ void            rxvtlib_resize_window (rxvtlib *o, unsigned int width, unsigned 
  */
 /* EXTPROTO */
 void            rxvtlib_set_widthheight (rxvtlib *o, unsigned int width, unsigned int height)
-{
+{E_
     XWindowAttributes wattr;
 
     if (width == 0 || height == 0) {
@@ -562,7 +564,7 @@ void            rxvtlib_set_widthheight (rxvtlib *o, unsigned int width, unsigne
 
 /* INTPROTO */
 void            rxvtlib_szhints_set (rxvtlib *o)
-{
+{E_
     int             x, y, flags;
     unsigned int    width, height;
 
@@ -608,7 +610,7 @@ void            rxvtlib_szhints_set (rxvtlib *o)
 
 /* INTPROTO */
 void            rxvtlib_szhints_recalc (rxvtlib *o)
-{
+{E_
     o->szHint.base_width = (2 * TermWin_internalBorder);
     o->szHint.base_height = (2 * TermWin_internalBorder);
     o->szHint.base_width +=
@@ -625,7 +627,7 @@ void            rxvtlib_szhints_recalc (rxvtlib *o)
 /* xterm sequences - title, iconName, color (exptl) */
 /* INTPROTO */
 void            rxvtlib_set_title (rxvtlib *o, const char *str)
-{
+{E_
 #ifndef SMART_WINDOW_TITLE
     XStoreName (o->Xdisplay, o->TermWin.parent[0], str);
 #else
@@ -642,7 +644,7 @@ void            rxvtlib_set_title (rxvtlib *o, const char *str)
 
 /* INTPROTO */
 void            rxvtlib_set_iconName (rxvtlib *o, const char *str)
-{
+{E_
 #ifndef SMART_WINDOW_TITLE
     XSetIconName (o->Xdisplay, o->TermWin.parent[0], str);
 #else
@@ -660,7 +662,7 @@ void            rxvtlib_set_iconName (rxvtlib *o, const char *str)
 #ifdef XTERM_COLOR_CHANGE
 /* INTPROTO */
 void            rxvtlib_set_window_color (rxvtlib *o, int idx, const char *color)
-{
+{E_
     const char     *msg = "can't load color \"%s\"";
     XColor          xcol;
     int             i;
@@ -747,7 +749,7 @@ void            rxvtlib_set_window_color (rxvtlib *o, int idx, const char *color
  */
 /* EXTPROTO */
 void            rxvtlib_xterm_seq (rxvtlib *o, int op, const char *str)
-{
+{E_
     int             changed = 0;
 
     assert (str != NULL);
@@ -806,7 +808,7 @@ void            rxvtlib_xterm_seq (rxvtlib *o, int op, const char *str)
  */
 /* EXTPROTO */
 void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname)
-{
+{E_
     const char     *msg = "can't load font \"%s\"";
     XFontStruct    *xfont = 0;
     int             idx = 0;	/* index into rs[Rs_font] */
@@ -1019,7 +1021,7 @@ void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname)
 
 
 int rxvt_get_fontwidest (rxvtlib *o, XFontStruct * f)
-{
+{E_
     int i, cw, fw = 0;
 
     if (f->min_bounds.width == f->max_bounds.width)
@@ -1038,7 +1040,7 @@ int rxvt_get_fontwidest (rxvtlib *o, XFontStruct * f)
 /* ------------------------------------------------------------------------- */
 /* INTPROTO */
 void            rxvtlib_init_vars (rxvtlib *o)
-{
+{E_
     o->Options = Opt_scrollBar | Opt_scrollTtyOutput;
     o->sb_shadow = 0;
     o->TermWin.ncol = 80;
@@ -1070,7 +1072,7 @@ extern Display *CDisplay;
 /* ------------------------------------------------------------------------- */
 /* INTPROTO */
 const char    **rxvtlib_init_resources (rxvtlib *o, int argc, const char *const *argv)
-{
+{E_
     int             i, r_argc;
     char           *val;
     const char     *tmp;
@@ -1255,7 +1257,7 @@ const char    **rxvtlib_init_resources (rxvtlib *o, int argc, const char *const 
 /* ------------------------------------------------------------------------- */
 /* INTPROTO */
 void            rxvtlib_init_env (rxvtlib *o)
-{
+{E_
     char           *val;
 
 /* these don't need to be static but do so to placate some mem checkers */
@@ -1311,7 +1313,7 @@ void            rxvtlib_init_env (rxvtlib *o)
 /* main() */
 /* INTPROTO */
 int rxvtlib_main (rxvtlib * o, int argc, const char *const *argv, int do_sleep)
-{
+{E_
     const char **cmd_argv;
 
 /*

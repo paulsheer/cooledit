@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* loadfile.c - loads a file into memory
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -27,7 +29,7 @@ int readall (int fd, char *buf, int len);
    which must be free'd. Returns NULL on error. */
 /*The returned data is terminated by a null character.*/
 char *loadfile (const char *filename, long *filelen)
-{
+{E_
     long filel;
     int file;
     struct stat info;
@@ -63,7 +65,7 @@ char *loadfile (const char *filename, long *filelen)
 
 
 int savefile (const char *filename, const char *data, int len, int permissions)
-{
+{E_
     int file;
     int count = len;
     if ((file = creat (filename, permissions)) < 0)

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 #ifndef __CW_GLOBAL_H
 #define __CW_GLOBAL_H
 

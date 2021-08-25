@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* mousemark.c - mouse stuff marking dragging
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #ifndef GTK
 #include "coolwidget.h"
@@ -96,7 +98,7 @@ static mime_type_list_t mime_type_recieve_utf8 =
 static char dnd_directory[MAX_PATH_LEN] = "/";
 
 char *striptrailing (char *s, int c)
-{
+{E_
     int i;
     i = strlen (s) - 1;
 
@@ -112,7 +114,7 @@ char *striptrailing (char *s, int c)
 
 /* return the prepending directory (see CDndFileList() below) */
 char *CDndDirectory (void)
-{
+{E_
     return dnd_directory;
 }
 
@@ -121,7 +123,7 @@ char *CDndDirectory (void)
    Strips trailing slashes.
  */
 void CSetDndDirectory (char *d)
-{
+{E_
     if (!d)
 	return;
     strcpy (dnd_directory, d);
@@ -142,7 +144,7 @@ void CSetDndDirectory (char *d)
    Alters t
  */
 char *CDndFileList (char *t, int *l, int *num_files)
-{
+{E_
     char *p, *q, *r, *result;
     int i, len, done = 0;
 
@@ -192,7 +194,7 @@ char *CDndFileList (char *t, int *l, int *num_files)
 Window get_focus_border_widget (void);
 
 static void widget_apply_leave (DndClass * dnd, Window widgets_window)
-{
+{E_
     CWidget *w;
     w = CWidgetOfWindow (widgets_window);
     if (get_focus_border_widget () == widgets_window)
@@ -202,7 +204,7 @@ static void widget_apply_leave (DndClass * dnd, Window widgets_window)
 }
 
 static int widget_insert_drop (DndClass * dnd, unsigned char *data, int length, int remaining, Window into, Window from, Atom type)
-{
+{E_
     CWidget *w;
     char *p;
     w = CWidgetOfWindow (into);
@@ -233,7 +235,7 @@ static int widget_insert_drop (DndClass * dnd, unsigned char *data, int length, 
 }
 
 static int array_length (Atom * a)
-{
+{E_
     int n;
     for (n = 0; a[n]; n++);
     return n;
@@ -241,7 +243,7 @@ static int array_length (Atom * a)
 
 /* X11R5 does not have XGetAtomNames function: */
 static Status my_XGetAtomNames (Display * display, Atom * atoms, int count, char **names_return)
-{
+{E_
     int i;
     for (i = 0; i < count; i++)
 	if (!(names_return[i] = XGetAtomName (display, atoms[i])))
@@ -253,7 +255,7 @@ static int widget_apply_position (DndClass * dnd, Window widgets_window, Window 
 		      Atom action, int x, int y, Time t, Atom * typelist,
 	int *want_position, Atom * supported_action, Atom * desired_type,
 				  XRectangle * rectangle)
-{
+{E_
     CWidget *w;
     Window child_return;
     int xt, yt;
@@ -350,7 +352,7 @@ static int widget_apply_position (DndClass * dnd, Window widgets_window, Window 
 }
 
 static void widget_get_data (DndClass * dnd, Window window, unsigned char **data, int *length, Atom type)
-{
+{E_
     int t = DndText;
     long start_mark, end_mark;
     CWidget *w;
@@ -371,19 +373,19 @@ static void widget_get_data (DndClass * dnd, Window window, unsigned char **data
 }
 
 static int widget_exists (DndClass * dnd, Window window)
-{
+{E_
     return (CWidgetOfWindow (window) != 0);
 }
 
 static void handle_expose_events (DndClass * dnd, XEvent * xevent)
-{
+{E_
     if (!xevent->xexpose.count)
 	render_focus_border (xevent->xexpose.window);
     return;
 }
 
 static void xdnd_set_dnd_mime_types_ (mime_type_list_t mt_send, mime_type_list_t mt_recv)
-{
+{E_
     int i;
     mouse_shut ();
     xdnd_typelist_receive = malloc ((NUM_SIMPLE_TYPES + 1) * sizeof (Atom *));
@@ -406,7 +408,7 @@ static void xdnd_set_dnd_mime_types_ (mime_type_list_t mt_send, mime_type_list_t
 }
 
 void xdnd_set_dnd_mime_types (int utf8)
-{
+{E_
     if (utf8)
         xdnd_set_dnd_mime_types_ (mime_type_send_utf8, mime_type_recieve_utf8);
     else
@@ -414,7 +416,7 @@ void xdnd_set_dnd_mime_types (int utf8)
 }
 
 void mouse_init (void)
-{
+{E_
     CDndClass->handle_expose_events = handle_expose_events;
     CDndClass->widget_insert_drop = widget_insert_drop;
     CDndClass->widget_exists = widget_exists;
@@ -426,7 +428,7 @@ void mouse_init (void)
 }
 
 void mouse_shut (void)
-{
+{E_
     if (xdnd_typelist_receive) {
 	int i;
 	for (i = 0; xdnd_typelist_send[i]; i++)
@@ -443,7 +445,7 @@ void mouse_shut (void)
 #endif  /* !GTK */
 
 struct mouse_funcs *mouse_funcs_new (void *data, struct mouse_funcs *m)
-{
+{E_
     struct mouse_funcs *p;
     p = CMalloc (sizeof (*m));
     memcpy (p, m, sizeof (*m));
@@ -454,7 +456,7 @@ struct mouse_funcs *mouse_funcs_new (void *data, struct mouse_funcs *m)
 #endif /* HAVE_DND */
 
 void mouse_mark (XEvent * event, int double_click, struct mouse_funcs *funcs)
-{
+{E_
     void *data;
     static unsigned long win_press = 0;
     static int state = 0;	/* 0 = button up, 1 = button pressed, 2 = button pressed and dragging */

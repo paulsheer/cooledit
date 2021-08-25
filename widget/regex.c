@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* Extended regular expression matching and search library,
    version 0.12.
    (Implements POSIX draft P10003.2/D11.2, except for
@@ -21,6 +22,7 @@
    02111-1307, USA.
 */
 
+#include "inspect.h"
 #include "global.h"
 
 #undef word
@@ -136,7 +138,7 @@ static char re_syntax_table[CHAR_SET_SIZE];
 
 static void
 init_syntax_once ()
-{
+{E_
    register int c;
    static int done = 0;
 
@@ -507,7 +509,7 @@ static void
 extract_number (dest, source)
     int *dest;
     unsigned char *source;
-{
+{E_
   int temp = SIGN_EXTEND_CHAR (*(source + 1)); 
   *dest = *source & 0377;
   *dest += temp << 8;
@@ -579,7 +581,7 @@ static int debug = 0;
 void
 print_fastmap (fastmap)
     char *fastmap;
-{
+{E_
   unsigned was_a_range = 0;
   unsigned i = 0;  
   
@@ -612,7 +614,7 @@ void
 print_partial_compiled_pattern (start, end)
     unsigned char *start;
     unsigned char *end;
-{
+{E_
   int mcnt, mcnt2;
   unsigned char *p = start;
   unsigned char *pend = end;
@@ -842,7 +844,7 @@ print_partial_compiled_pattern (start, end)
 void
 print_compiled_pattern (bufp)
     struct re_pattern_buffer *bufp;
-{
+{E_
   unsigned char *buffer = bufp->buffer;
 
   print_partial_compiled_pattern (buffer, buffer + bufp->used);
@@ -873,7 +875,7 @@ print_double_string (where, string1, size1, string2, size2)
     const char *string2;
     int size1;
     int size2;
-{
+{E_
   unsigned this_char;
   
   if (where == NULL)
@@ -926,7 +928,7 @@ reg_syntax_t re_syntax_options;
 reg_syntax_t
 re_set_syntax (syntax)
     reg_syntax_t syntax;
-{
+{E_
   reg_syntax_t ret = re_syntax_options;
   
   re_syntax_options = syntax;
@@ -1603,7 +1605,7 @@ static register_info_type *reg_info_dummy;
 static
 regex_grow_registers (num_regs)
      int num_regs;
-{
+{E_
   if (num_regs > regs_allocated_size)
     {
       RETALLOC_IF (regstart,	 num_regs, const char *);
@@ -1650,7 +1652,7 @@ regex_compile (pattern, size, syntax, bufp)
      int size;
      reg_syntax_t syntax;
      struct re_pattern_buffer *bufp;
-{
+{E_
   /* We fetch characters from PATTERN here.  Even though PATTERN is
      `char *' (i.e., signed), we declare these variables as unsigned, so
      they can be reliably used as array indices.  */
@@ -2704,7 +2706,7 @@ store_op1 (op, loc, arg)
     re_opcode_t op;
     unsigned char *loc;
     int arg;
-{
+{E_
   *loc = (unsigned char) op;
   STORE_NUMBER (loc + 1, arg);
 }
@@ -2717,7 +2719,7 @@ store_op2 (op, loc, arg1, arg2)
     re_opcode_t op;
     unsigned char *loc;
     int arg1, arg2;
-{
+{E_
   *loc = (unsigned char) op;
   STORE_NUMBER (loc + 1, arg1);
   STORE_NUMBER (loc + 3, arg2);
@@ -2733,7 +2735,7 @@ insert_op1 (op, loc, arg, end)
     unsigned char *loc;
     int arg;
     unsigned char *end;    
-{
+{E_
   register unsigned char *pfrom = end;
   register unsigned char *pto = end + 3;
 
@@ -2752,7 +2754,7 @@ insert_op2 (op, loc, arg1, arg2, end)
     unsigned char *loc;
     int arg1, arg2;
     unsigned char *end;    
-{
+{E_
   register unsigned char *pfrom = end;
   register unsigned char *pto = end + 5;
 
@@ -2771,7 +2773,7 @@ static boolean
 at_begline_loc_p (pattern, p, syntax)
     const char *pattern, *p;
     reg_syntax_t syntax;
-{
+{E_
   const char *prev = p - 2;
   boolean prev_prev_backslash = prev > pattern && prev[-1] == '\\';
   
@@ -2790,7 +2792,7 @@ static boolean
 at_endline_loc_p (p, pend, syntax)
     const char *p, *pend;
     int syntax;
-{
+{E_
   const char *next = p;
   boolean next_backslash = *next == '\\';
   const char *next_next = p + 1 < pend ? p + 1 : 0;
@@ -2812,7 +2814,7 @@ static boolean
 group_in_compile_stack (compile_stack, regnum)
     compile_stack_type compile_stack;
     regnum_t regnum;
-{
+{E_
   int this_element;
 
   for (this_element = compile_stack.avail - 1;  
@@ -2842,7 +2844,7 @@ compile_range (p_ptr, pend, translate, syntax, b)
     char *translate;
     reg_syntax_t syntax;
     unsigned char *b;
-{
+{E_
   unsigned this_char;
 
   const char *p = *p_ptr;
@@ -2898,7 +2900,7 @@ compile_range (p_ptr, pend, translate, syntax, b)
 int
 re_compile_fastmap (bufp)
      struct re_pattern_buffer *bufp;
-{
+{E_
   int j, k;
 #ifdef MATCH_MAY_ALLOCATE
   fail_stack_type fail_stack;
@@ -3207,7 +3209,7 @@ re_set_registers (bufp, regs, num_regs, starts, ends)
     struct re_registers *regs;
     unsigned num_regs;
     regoff_t *starts, *ends;
-{
+{E_
   if (num_regs)
     {
       bufp->regs_allocated = REGS_REALLOCATE;
@@ -3234,7 +3236,7 @@ re_search (bufp, string, size, startpos, range, regs)
      const char *string;
      int size, startpos, range;
      struct re_registers *regs;
-{
+{E_
   return re_search_2 (bufp, NULL, 0, string, size, startpos, range, 
 		      regs, size);
 }
@@ -3270,7 +3272,7 @@ re_search_2 (bufp, string1, size1, string2, size2, startpos, range, regs, stop)
      int range;
      struct re_registers *regs;
      int stop;
-{
+{E_
   int val;
   register char *fastmap = bufp->fastmap;
   register char *translate = bufp->translate;
@@ -3478,7 +3480,7 @@ re_match (bufp, string, size, pos, regs)
      const char *string;
      int size, pos;
      struct re_registers *regs;
-{
+{E_
   int result = re_match_2_internal (bufp, NULL, 0, string, size,
 				    pos, regs, size);
 #ifndef REGEX_MALLOC
@@ -3510,7 +3512,7 @@ re_match_2 (bufp, string1, size1, string2, size2, pos, regs, stop)
      int pos;
      struct re_registers *regs;
      int stop;
-{
+{E_
   int result = re_match_2_internal (bufp, string1, size1, string2, size2,
 				    pos, regs, stop);
 #ifndef REGEX_MALLOC
@@ -3529,7 +3531,7 @@ re_match_2_internal (bufp, string1, size1, string2, size2, pos, regs, stop)
      int pos;
      struct re_registers *regs;
      int stop;
-{
+{E_
   /* General temporaries.  */
   int mcnt;
   unsigned char *p1;
@@ -4854,7 +4856,7 @@ static boolean
 group_match_null_string_p (p, end, reg_info)
     unsigned char **p, *end;
     register_info_type *reg_info;
-{
+{E_
   int mcnt;
   /* Point to after the args to the start_memory.  */
   unsigned char *p1 = *p + 2;
@@ -4963,7 +4965,7 @@ static boolean
 alt_match_null_string_p (p, end, reg_info)
     unsigned char *p, *end;
     register_info_type *reg_info;
-{
+{E_
   int mcnt;
   unsigned char *p1 = p;
   
@@ -5000,7 +5002,7 @@ static boolean
 common_op_match_null_string_p (p, end, reg_info)
     unsigned char **p, *end;
     register_info_type *reg_info;
-{
+{E_
   int mcnt;
   boolean ret;
   int reg_no;
@@ -5090,7 +5092,7 @@ bcmp_translate (s1, s2, len, translate)
      unsigned char *s1, *s2;
      register int len;
      char *translate;
-{
+{E_
   register unsigned char *p1 = s1, *p2 = s2;
   while (len)
     {
@@ -5116,7 +5118,7 @@ re_compile_pattern (pattern, length, bufp)
      const char *pattern;
      int length;
      struct re_pattern_buffer *bufp;
-{
+{E_
   reg_errcode_t ret;
   
   /* GNU code is written to assume at least RE_NREGS registers will be set
@@ -5149,7 +5151,7 @@ static struct re_pattern_buffer re_comp_buf;
 char *
 re_comp (s)
     const char *s;
-{
+{E_
   reg_errcode_t ret;
   
   if (!s)
@@ -5190,7 +5192,7 @@ re_comp (s)
 int
 re_exec (s)
     const char *s;
-{
+{E_
   const int len = strlen (s);
   return
     0 <= re_search (&re_comp_buf, s, len, 0, len, (struct re_registers *) 0);
@@ -5240,7 +5242,7 @@ regcomp (preg, pattern, cflags)
     regex_t *preg;
     const char *pattern; 
     int cflags;
-{
+{E_
   reg_errcode_t ret;
   unsigned syntax
     = (cflags & REG_EXTENDED) ?
@@ -5318,7 +5320,7 @@ regexec (preg, string, nmatch, pmatch, eflags)
     size_t nmatch; 
     regmatch_t pmatch[]; 
     int eflags;
-{
+{E_
   int ret;
   struct re_registers regs;
   regex_t private_preg;
@@ -5382,7 +5384,7 @@ regerror (errcode, preg, errbuf, errbuf_size)
     const regex_t *preg;
     char *errbuf;
     size_t errbuf_size;
-{
+{E_
   const char *msg;
   size_t msg_size;
 
@@ -5418,7 +5420,7 @@ regerror (errcode, preg, errbuf, errbuf_size)
 void
 regfree (preg)
     regex_t *preg;
-{
+{E_
   if (preg->buffer != NULL)
     free (preg->buffer);
   preg->buffer = NULL;

@@ -1,11 +1,13 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* coolnext.c - CNextEvent function and support, and various event
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
 /* #define DEBUG */
 /* #define DEBUG_ENTRY */
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -48,7 +50,7 @@ int option_middle_button_pastes = 1;
 
 /* converts button presses from buttons 2 through 5 to button presses from 2 only, also gets double clicks */
 void resolve_button (XEvent * xevent, CEvent * cwevent)
-{
+{E_
     static Time thyme_press = 0, thyme_release = 0;
     static Window window = 0;
     static int x, y;
@@ -97,7 +99,7 @@ void resolve_button (XEvent * xevent, CEvent * cwevent)
 }
 
 static long lower_window_callback (CWidget * w)
-{
+{E_
     if (w->position & WINDOW_ALWAYS_LOWERED)
 	XLowerWindow (CDisplay, w->winid);
     return 0;
@@ -105,12 +107,12 @@ static long lower_window_callback (CWidget * w)
 
 /*sends all windows that are marked top_bottom = 1 to the bottom */
 void CLowerWindows (void)
-{
+{E_
     for_all_widgets ((for_all_widgets_cb_t) lower_window_callback, 0, 0);
 }
 
 static long raise_window_callback (CWidget * w)
-{
+{E_
     if (w->position & WINDOW_ALWAYS_RAISED)
 	XRaiseWindow (CDisplay, w->winid);
     return 0;
@@ -118,7 +120,7 @@ static long raise_window_callback (CWidget * w)
 
 /*sends all windows that are marked top_bottom = 2 to the top */
 void CRaiseWindows (void)
-{
+{E_
     for_all_widgets ((for_all_widgets_cb_t) raise_window_callback, 0, 0);
 }
 
@@ -141,7 +143,7 @@ static XEvent event_sent[NUM_EVENTS_CACHED];
 
 /* returns 0, if buffer is full, else returns 1 */
 int push_event (XEvent * ev)
-{
+{E_
     unsigned char j = event_send_last + 1;
     if (event_read_last == j) {		/* no more space */
 #ifdef DEBUG
@@ -175,7 +177,7 @@ extern int block_push_event;	/* see initapp.c */
 
 /* pops the oldest event, returns 0 if empty */
 int pop_event (XEvent * ev)
-{
+{E_
     if (event_read_last == event_send_last)
 	return 0;		/* "stack" is empty */
     block_push_event = 1;
@@ -188,7 +190,7 @@ int pop_event (XEvent * ev)
 
 /* use this instead of XSextEvent to send an event to your own application */
 int CSendEvent (XEvent * e)
-{
+{E_
     int r = 0;
     block_push_event = 1;
     r = push_event (e);
@@ -198,7 +200,7 @@ int CSendEvent (XEvent * e)
 
 /* sends an event (type = msg) to the given widget */
 int CSendMessage (CWidget * w, int msg)
-{
+{E_
     CEvent cwevent;
     XEvent xevent;
 
@@ -216,7 +218,7 @@ int CSendMessage (CWidget * w, int msg)
 }
 
 int CQueueSize ()
-{
+{E_
     int r = event_read_last;
     int s = event_send_last;
     s -= r;
@@ -227,7 +229,7 @@ int CQueueSize ()
 
 /* returns nonzero if pending on either internal or X queue */
 int CPending ()
-{
+{E_
     if (CQueueSize ())
 	return 1;
     if (XEventsQueued (CDisplay, QueuedAfterFlush))
@@ -240,7 +242,7 @@ int CPending ()
    it removes it and returns it.
  */
 int CExposePending (Window w, XEvent * ev)
-{
+{E_
     XEvent *e;
     int r;
     unsigned char i = event_read_last;
@@ -267,7 +269,7 @@ int CExposePending (Window w, XEvent * ev)
    event_return may be passed as 0 if unneeded.
  */
 int CCheckWindowEvent (Window w, long event_mask, int do_sync)
-{
+{E_
     XEvent ** event_return = 0;
     unsigned char i = event_send_last - 1;
     unsigned char j = event_read_last - 1;
@@ -321,13 +323,13 @@ int CCheckWindowEvent (Window w, long event_mask, int do_sync)
 }
 
 int CKeyPending (void)
-{
+{E_
     return CCheckWindowEvent (0, KeyPressMask, 1);
 }
 
 /* send an expose event via the internal queue */
 int CSendExpose (Window win, int x, int y, int w, int h)
-{
+{E_
     XEvent e;
     memset (&e, 0, sizeof (e));
     e.xexpose.type = Expose;
@@ -361,7 +363,7 @@ static CRegion regions[MAX_NUM_REGIONS + 1];
 #define area(c) abs(((c).x1-(c).x2)*((c).y1-(c).y2))
 
 static CRegion add_regions (CRegion r1, CRegion r2)
-{
+{E_
     CRegion r;
     memset(&r, '\0', sizeof(r));
     r.x2 = max (max (r1.x1, r1.x2), max (r2.x1, r2.x2));
@@ -378,7 +380,7 @@ static CRegion add_regions (CRegion r1, CRegion r2)
 
 /* returns 1 when the stack is full, 0 otherwise */
 static int push_region (XExposeEvent * e)
-{
+{E_
     CRegion p;
 
     memset(&p, '\0', sizeof(p));
@@ -420,7 +422,7 @@ static int push_region (XExposeEvent * e)
    the first region, returns 1 on empty.
  */
 static int pop_region (XExposeEvent * e, Window w)
-{
+{E_
     e->type = 0;
     if (last_region) {
 	int i = 0;
@@ -448,7 +450,7 @@ static int pop_region (XExposeEvent * e, Window w)
 }
 
 static void pop_all_regions (Window w)
-{
+{E_
     XEvent e;
     memset (&e, 0, sizeof (e));
     while (!pop_region (&(e.xexpose), w)) {
@@ -466,12 +468,12 @@ static void pop_all_regions (Window w)
 /* xim.c */
 
 KeySym CKeySym (XEvent * e)
-{
+{E_
     return key_sym_xlat (e, 0, 0);
 }
 
 int mod_type_key (KeySym x)
-{
+{E_
     switch ((int) x) {
 #ifdef XK_Shift_L
     case XK_Shift_L:
@@ -524,7 +526,7 @@ int mod_type_key (KeySym x)
 /* get a 15 bit "almost unique" key sym that includes keyboard modifier
    info in the top 3 bits */
 short CKeySymMod (XEvent * ev)
-{
+{E_
     KeySym p;
     XEvent e;
     int state;
@@ -556,7 +558,7 @@ short CKeySymMod (XEvent * ev)
 
 /* returns 1 if the key pressed is usually a key to goto next focus */
 int is_focus_change_key (KeySym k, int command)
-{
+{E_
     return (k == XK_Tab || k == XK_KP_Tab || k == XK_ISO_Left_Tab || k == XK_Down ||
 	k == XK_Up || k == XK_Left || k == XK_Right || k == XK_KP_Down ||
 	    k == XK_KP_Up || k == XK_KP_Left || k == XK_KP_Right || command == CK_Right
@@ -565,7 +567,7 @@ int is_focus_change_key (KeySym k, int command)
 
 /* returns 1 if the key pressed is usually a key to goto previous focus */
 int is_focus_prev_key (KeySym k, int command, unsigned int state)
-{
+{E_
     return (k == XK_ISO_Left_Tab || (((state) & ShiftMask) &&
     (k == XK_Tab || k == XK_KP_Tab || command == CK_Tab)) || k == XK_Left
 	    || k == XK_Up || k == XK_KP_Left || k == XK_KP_Up || command == CK_Left || command == CK_Up);
@@ -580,7 +582,7 @@ int is_focus_prev_key (KeySym k, int command, unsigned int state)
    left and right.)
  */
 static int CCheckTab (XEvent * xevent, CEvent * cwevent)
-{
+{E_
     if (xevent->type == KeyPress) {
 	KeySym k;
 	CWidget *w;
@@ -606,7 +608,7 @@ static int CCheckTab (XEvent * xevent, CEvent * cwevent)
 }
 
 void click_on_widget (CWidget * w)
-{
+{E_
     XEvent e;
     CFocus (w);
     if (w->options & WIDGET_HOTKEY_ACTIVATES) {
@@ -624,7 +626,7 @@ void click_on_widget (CWidget * w)
 
 
 int match_hotkey (KeySym a, KeySym b)
-{
+{E_
     if (isalpha (a & 0xFF) && isalpha (b & 0xFF) && my_lower_case (a) == my_lower_case (b))
 	return 1;
     if (a == b)
@@ -636,7 +638,7 @@ int match_hotkey (KeySym a, KeySym b)
    Check for hot keys of buttons, sends a ButtonPress to the button if the key found.
  */
 static int CCheckButtonHotKey (XEvent * xevent, CEvent * cwevent)
-{
+{E_
     if (xevent->type == KeyPress) {
 	KeySym k;
 	CWidget *w, *p;
@@ -663,7 +665,7 @@ static int CCheckButtonHotKey (XEvent * xevent, CEvent * cwevent)
 }
 
 static long check_hotkey_callback (CWidget * w, long k, long do_focus)
-{
+{E_
     if (w->takes_focus && !w->disabled)
 	if (match_hotkey (w->hotkey, k)) {
 	    if (do_focus)
@@ -675,7 +677,7 @@ static long check_hotkey_callback (CWidget * w, long k, long do_focus)
 
 /* checks all widgets for a hotkey if alt is pressed */
 int CCheckGlobalHotKey (XEvent * xevent, CEvent * cwevent, int do_focus)
-{
+{E_
     KeySym k;
     k = CKeySym (xevent);
     if (!k)
@@ -689,9 +691,7 @@ int CCheckGlobalHotKey (XEvent * xevent, CEvent * cwevent, int do_focus)
 /* }}} */
 
 
-#ifdef DEBUG_ENTRY
-
-char *event_names[] =
+static char *event_names[] =
 {
     "??zero??",
     "??one??",
@@ -730,12 +730,18 @@ char *event_names[] =
     "MappingNotify"
 };
 
-int num_event_names = sizeof (event_names) / sizeof (num_event_names);
+static int num_event_names = sizeof (event_names) / sizeof (num_event_names);
 
-#endif
+const char *get_event_name(int type)
+{E_
+    if (type < 0 || type >= num_event_names)
+        return "unknown";
+    return event_names[type];
+}
+
 
 int run_callbacks (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     static char no_ident[33] = "";
     int handled = 0;
 
@@ -778,7 +784,7 @@ int run_callbacks (CWidget * w, XEvent * xevent, CEvent * cwevent)
 
 /* sets the mapped member of widget whose window is w, returning the previous state */
 static int set_mapped (Window win, int i)
-{
+{E_
     int y;
     CWidget *w;
     w = CWidgetOfWindow (win);
@@ -795,51 +801,13 @@ int compose_key_which = 0;
 static unsigned int key_board_state = 0;
 
 unsigned int CGetKeyBoardState (void)
-{
+{E_
     return key_board_state;
-}
-
-extern int option_latin2;
-
-static void set_compose_key (XEvent * xevent, int type)
-{
-    KeySym compose_key;
-    compose_key = CKeySym (xevent);
-
-    if (!option_latin2) {
-	if (compose_key == MyComposeKey || compose_key == XK_Multi_key) {
-	    compose_key_pressed = (type == KeyPress);
-	} else {
-	    if (!(xevent->xkey.state & ControlMask))
-		compose_key_pressed = 0;
-	}
-    } else {
-#if defined(XK_dead_belowdot) && defined(XK_dead_acute)
-	if (compose_key >= XK_dead_acute &&
-	    compose_key <= XK_dead_belowdot) {
-	    if (compose_key_pressed)
-		return;
-	    compose_key_pressed = 1;
-	    compose_key_which = compose_key;
-	} else
-#endif
-	{
-	    if (!(xevent->xkey.state & ControlMask))
-		if (compose_key != XK_Shift_L &&
-		    compose_key != XK_Shift_R &&
-		    compose_key != XK_Alt_L &&
-		    compose_key != XK_Alt_R &&
-		    compose_key != XK_Mode_switch) {
-		    compose_key_pressed = 0;
-		    compose_key_which = 0;
-		}
-	}
-    }
 }
 
 /* returns cwevent->insert == -1 and cwevent->command == 0 if no significant key pressed */
 static void translate_key (XEvent * xevent, CEvent * cwevent)
-{
+{E_
     cwevent->xlat_len = 0;
     cwevent->key = key_sym_xlat (xevent, cwevent->xlat, &cwevent->xlat_len);
     if (!cwevent->key)
@@ -856,7 +824,7 @@ static void translate_key (XEvent * xevent, CEvent * cwevent)
 int option_toolhint_milliseconds1 = 500;
 
 static void render_text_ordinary (Window win, int x, int y, char *q)
-{
+{E_
     char *p;
     int h = 0;
     for (;;) {
@@ -872,7 +840,7 @@ static void render_text_ordinary (Window win, int x, int y, char *q)
 }
 
 static int eh_toolhint (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     if (xevent->type == Expose)
 	if (!xevent->xexpose.count && w->label) {
 	    CSetColor (color_widget (4));
@@ -885,12 +853,12 @@ static int eh_toolhint (CWidget * w, XEvent * xevent, CEvent * cwevent)
 }
 
 static void hide_toolhint (void)
-{
+{E_
     CDestroyWidget ("_toolhint");
 }
 
 static void show_toolhint (Window win, int xp, int yp)
-{
+{E_
     int width, height, x, y;
     CWidget *w, *t;
     w = CWidgetOfWindow (win);
@@ -912,7 +880,7 @@ static void show_toolhint (Window win, int xp, int yp)
 }
 
 void CSetToolHint (const char *ident, const char *text)
-{
+{E_
     CWidget *w;
     if (!text)
 	return;
@@ -949,7 +917,7 @@ static int watch_table_last = 0;
 /* returns non-zero if table is full */
 int _CAddWatch (char *file, int line, int fd, void (*callback) (int, fd_set *, fd_set *, fd_set *, void *),
 		int how, void *data)
-{
+{E_
     int i;
     if (!callback || fd < 0 || !how) {
 	fprintf (stderr, "bad args to CAddWatch??");
@@ -981,7 +949,7 @@ int _CAddWatch (char *file, int line, int fd, void (*callback) (int, fd_set *, f
 }
 
 void CRemoveWatch (int fd, void (*callback) (int, fd_set *, fd_set *, fd_set *, void *), int how)
-{
+{E_
     int i;
     for (i = 0; i < watch_table_last; i++) {
 	if (!watch_table[i])
@@ -1007,7 +975,7 @@ void CRemoveWatch (int fd, void (*callback) (int, fd_set *, fd_set *, fd_set *, 
 }
 
 void remove_all_watch (void)
-{
+{E_
     int i;
     for (i = 0; i < watch_table_last; i++) {
 	if (!watch_table[i])
@@ -1021,7 +989,7 @@ void remove_all_watch (void)
 static int CIdle = 0;
 
 int CIsIdle (void)
-{
+{E_
     return CIdle;
 }
 
@@ -1029,7 +997,7 @@ extern void _alarmhandler (void);
 extern int got_alarm;
 
 static int run_watches (void)
-{
+{E_
     int r, n = 0, i, found_watch;
     fd_set reading, writing, error;
     FD_ZERO (&reading);
@@ -1138,7 +1106,7 @@ extern int font_depth;
 void CNextEvent_check_font (XEvent * xevent, CEvent * cwevent);
 
 void CNextEvent (XEvent * xevent, CEvent * cwevent)
-{
+{E_
     int d;
     d = font_depth;
     CNextEvent_check_font (xevent, cwevent);
@@ -1153,7 +1121,7 @@ void CNextEvent (XEvent * xevent, CEvent * cwevent)
 
 /* xevent or cwevent or both my be passed as NULL */
 void CNextEvent_check_font (XEvent * xevent, CEvent * cwevent)
-{
+{E_
     static char idle = 1;
     static char no_ident[33];
     int i = 0;
@@ -1360,7 +1328,6 @@ printf("event type=%d\n", type);
     case KeyRelease:
 	key_board_state = xevent->xkey.state;
 	win = xevent->xkey.window = CGetFocus ();
-	set_compose_key (xevent, type);
 	break;
     case ConfigureNotify:{
 	    CWidget *m;
@@ -1509,7 +1476,7 @@ printf("CRoot=%lu parentid=%lu\n", (unsigned long) CRoot, (unsigned long) m->par
 
 
 int CHandleGlobalKeys (CWidget *w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     int handled = 0;
 
     if (!handled)
@@ -1528,7 +1495,7 @@ int inbounds (int x, int y, int x1, int y1, int x2, int y2);
 
 /*-----------------------------------------------------------------------*/
 int eh_button (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     static Window last_win = 0;
     switch (xevent->type) {
     case MotionNotify:
@@ -1594,7 +1561,7 @@ int eh_button (CWidget * w, XEvent * xevent, CEvent * cwevent)
 
 /*-----------------------------------------------------------------------*/
 int eh_bitmap (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     switch (xevent->type) {
     case Expose:
 	if (!xevent->xexpose.count)
@@ -1608,13 +1575,13 @@ extern struct look *look;
 
 /*-----------------------------------------------------------------------*/
 int eh_window (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     return (*look->window_handler) (w, xevent, cwevent);
 }
 
 /*-----------------------------------------------------------------------*/
 int eh_bar (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     switch (xevent->type) {
 #if 0
     case ResizeNotify:	
@@ -1631,7 +1598,7 @@ int eh_bar (CWidget * w, XEvent * xevent, CEvent * cwevent)
 
 /*-----------------------------------------------------------------------*/
 int eh_progress (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     switch (xevent->type) {
     case Expose:
 	if (!xevent->xexpose.count)
@@ -1644,7 +1611,7 @@ int eh_progress (CWidget * w, XEvent * xevent, CEvent * cwevent)
 
 /*-----------------------------------------------------------------------*/
 int eh_status (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     switch (xevent->type) {
     case Expose:
 	if (!xevent->xexpose.count)
@@ -1656,7 +1623,7 @@ int eh_status (CWidget * w, XEvent * xevent, CEvent * cwevent)
 
 /*-----------------------------------------------------------------------*/
 int eh_text (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     switch (xevent->type) {
     case Expose:
 	if (!xevent->xexpose.count)
@@ -1668,7 +1635,7 @@ int eh_text (CWidget * w, XEvent * xevent, CEvent * cwevent)
 
 /*-----------------------------------------------------------------------*/
 int eh_sunken (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
     switch (xevent->type) {
     case Expose:
 	if (!xevent->xexpose.count)
@@ -1679,7 +1646,7 @@ int eh_sunken (CWidget * w, XEvent * xevent, CEvent * cwevent)
 }
 /*-----------------------------------------------------------------------*/
 int eh_bwimage (CWidget * w, XEvent * xevent, CEvent * cwevent)
-{
+{E_
 /*      case C_8BITIMAGE_WIDGET:
    case C_BWIMAGE_WIDGET: */
 #ifdef HAVE_BWIMAGE

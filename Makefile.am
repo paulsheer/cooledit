@@ -1,4 +1,4 @@
-SUBDIRS = rxvt widget editor lib syntax pixmap man notosans
+SUBDIRS = rxvt widget remotefs editor lib syntax pixmap man notosans
 
 
 ACLOCAL_AMFLAGS = -I m4

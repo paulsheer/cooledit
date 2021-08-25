@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
+#include "inspect.h"
 #include "rxvtlib.h"
 
 /*--------------------------------*-C-*---------------------------------*
@@ -49,7 +51,7 @@
  */
 /* EXTPROTO */
 int             rxvtlib_scale_pixmap (rxvtlib *o, const char *geom)
-{
+{E_
 #ifdef XPM_BACKGROUND
     int             w = 0, h = 0, x = 0, y = 0;
     int             n, flags, changed = 0;
@@ -145,7 +147,7 @@ int             rxvtlib_scale_pixmap (rxvtlib *o, const char *geom)
 
 /* EXTPROTO */
 void            rxvtlib_resize_pixmap (rxvtlib *o)
-{
+{E_
 #ifdef XPM_BACKGROUND
     XGCValues       gcvalue;
     GC              gc;
@@ -381,7 +383,7 @@ void            rxvtlib_resize_pixmap (rxvtlib *o)
 
 /* EXTPROTO */
 Pixmap          rxvtlib_set_bgPixmap (rxvtlib *o, const char *file)
-{
+{E_
 #ifdef XPM_BACKGROUND
     char           *f;
 

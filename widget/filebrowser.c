@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* filebrowser.c - draws an interactive file browser
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -42,31 +44,31 @@ int option_file_browser_height = FILE_BROWSER_START_HEIGHT;
 
 void CDrawBrowser (const char *ident, Window parent, int x, int y,
 		   const char *dir, const char *file, const char *label, char *host)
-{
+{E_
     (*look->draw_browser) (ident, parent, x, y, host, dir, file, label);
 }
 
 char *CGetFile (Window parent, int x, int y,
 		const char *dir, const char *file, const char *label, char *host)
-{
+{E_
     return (*look->get_file_or_dir) (parent, x, y, host, dir, file, label, 0);
 }
 
 char *CGetDirectory (Window parent, int x, int y,
 		     const char *dir, const char *file, const char *label, char *host)
-{
+{E_
     return (*look->get_file_or_dir) (parent, x, y, host, dir, file, label, GETFILE_GET_DIRECTORY);
 }
 
 char *CGetSaveFile (Window parent, int x, int y,
 		    const char *dir, const char *file, const char *label, char *host)
-{
+{E_
     return (*look->get_file_or_dir) (parent, x, y, host, dir, file, label, 0);
 }
 
 char *CGetLoadFile (Window parent, int x, int y,
 		    const char *dir, const char *file, const char *label, char *host)
-{
+{E_
     return (*look->get_file_or_dir) (parent, x, y, host, dir, file, label, GETFILE_GET_EXISTING_FILE);
 }
 

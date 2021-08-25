@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* editmenu.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include "edit.h"
 
@@ -23,17 +25,17 @@ extern WMenu *edit_menubar;
 #define CFocus(x) 
 
 static void menu_cmd (int i)
-{
+{E_
     send_message (wedit->widget.parent, (Widget *) wedit, WIDGET_COMMAND, i);
 }
 
 static void menu_key (int i)
-{
+{E_
     send_message (wedit->widget.parent, (Widget *) wedit, WIDGET_KEY, i);
 }
 
 void edit_wrap_cmd ()
-{
+{E_
     char *f;
     char s[12];
     sprintf (s, "%d", option_word_wrap_line_length);
@@ -49,7 +51,7 @@ void edit_wrap_cmd ()
 }
 
 void edit_about_cmd ()
-{
+{E_
     edit_message_dialog (wedit->mainid, 20, 20, " About ",
 		      "\n"
 		      "                Cooledit  v3.11.5\n"
@@ -99,7 +101,7 @@ void edit_options_dialog (void);
 void menu_options (void)		{ edit_options_dialog (); }
 
 static menu_entry FileMenu[] =
-{
+{E_
     {' ', N_("&Open/load...     C-o"), 'O', menu_load_cmd},
     {' ', N_("&New              C-n"), 'N', menu_new_cmd},
     {' ', "", ' ', 0},
@@ -115,7 +117,7 @@ static menu_entry FileMenu[] =
  };
 
 static menu_entry FileMenuEmacs[] =
-{
+{E_
     {' ', N_("&Open/load...     C-o"), 'O', menu_load_cmd},
     {' ', N_("&New            C-x k"), 'N', menu_new_cmd},
     {' ', "", ' ', 0},
@@ -131,7 +133,7 @@ static menu_entry FileMenuEmacs[] =
 };
 
 static menu_entry EditMenu[] =
-{
+{E_
     {' ', N_("&Toggle Mark       F3"), 'T', menu_mark_cmd},
     {' ', N_("&Mark Columns    S-F3"), 'T', menu_markcol_cmd},
     {' ', "", ' ', 0},
@@ -148,7 +150,7 @@ static menu_entry EditMenu[] =
 };
 
 static menu_entry EditMenuEmacs[] =
-{
+{E_
     {' ', N_("&Toggle Mark       F3"), 'T', menu_mark_cmd},
     {' ', N_("&Mark Columns    S-F3"), 'T', menu_markcol_cmd},
     {' ', "", ' ', 0},
@@ -165,21 +167,21 @@ static menu_entry EditMenuEmacs[] =
 };
 
 static menu_entry SearReplMenu[] =
-{
+{E_
     {' ', N_("&Search...         F7"), 'S', menu_search_cmd},
     {' ', N_("search &Again     F17"), 'A', menu_search_again_cmd},
     {' ', N_("&Replace...        F4"), 'R', menu_replace_cmd}
 };
 
 static menu_entry SearReplMenuEmacs[] =
-{
+{E_
     {' ', N_("&Search...         F7"), 'S', menu_search_cmd},
     {' ', N_("search &Again     F17"), 'A', menu_search_again_cmd},
     {' ', N_("&Replace...        F4"), 'R', menu_replace_cmd}
 };
 
 static menu_entry CmdMenu[] =
-{
+{E_
     {' ', N_("&Goto line...            M-l"), 'G', menu_goto_line},
     {' ', N_("goto matching &Bracket   M-b"), 'B', menu_goto_bracket},
     {' ', "", ' ', 0},
@@ -202,7 +204,7 @@ static menu_entry CmdMenu[] =
 };
 
 static menu_entry CmdMenuEmacs[] =
-{
+{E_
     {' ', N_("&Goto line...            M-l"), 'G', menu_goto_line},
     {' ', N_("goto matching &Bracket   M-b"), 'B', menu_goto_bracket},
     {' ', "", ' ', 0},
@@ -226,7 +228,7 @@ static menu_entry CmdMenuEmacs[] =
 extern void menu_save_mode_cmd (void);
 
 static menu_entry OptMenu[] =
-{
+{E_
     {' ', N_("&General...  "), 'G', menu_options},
     {' ', N_("&Save mode..."), 'S', menu_save_mode_cmd}
 #if 0
@@ -235,7 +237,7 @@ static menu_entry OptMenu[] =
 };
 
 static menu_entry OptMenuEmacs[] =
-{
+{E_
     {' ', N_("&General...  "), 'G', menu_options},
     {' ', N_("&Save mode..."), 'S', menu_save_mode_cmd}
 #if 0
@@ -248,7 +250,7 @@ static menu_entry OptMenuEmacs[] =
 Menu EditMenuBar[N_menus];
 
 void edit_init_menu_normal (void)
-{
+{E_
     EditMenuBar[0] = create_menu (_(" File "), FileMenu, menu_entries (FileMenu));
     EditMenuBar[1] = create_menu (_(" Edit "), EditMenu, menu_entries (EditMenu));
     EditMenuBar[2] = create_menu (_(" Sear/Repl "), SearReplMenu, menu_entries (SearReplMenu));
@@ -257,7 +259,7 @@ void edit_init_menu_normal (void)
 }
 
 void edit_init_menu_emacs (void)
-{
+{E_
     EditMenuBar[0] = create_menu (_(" File "), FileMenuEmacs, menu_entries (FileMenuEmacs));
     EditMenuBar[1] = create_menu (_(" Edit "), EditMenuEmacs, menu_entries (EditMenuEmacs));
     EditMenuBar[2] = create_menu (_(" Sear/Repl "), SearReplMenuEmacs, menu_entries (SearReplMenuEmacs));
@@ -266,7 +268,7 @@ void edit_init_menu_emacs (void)
 }
 
 void edit_done_menu (void)
-{
+{E_
     int i;
     for (i = 0; i < N_menus; i++)
 	destroy_menu (EditMenuBar[i]);
@@ -274,7 +276,7 @@ void edit_done_menu (void)
 
 
 void edit_drop_menu_cmd (WEdit * e, int which)
-{
+{E_
     if (edit_menubar->active)
 	return;
     edit_menubar->active = 1;
@@ -287,13 +289,13 @@ void edit_drop_menu_cmd (WEdit * e, int which)
 
 
 void edit_menu_cmd (WEdit * e)
-{
+{E_
     edit_drop_menu_cmd (e, -1);
 }
 
 
 int edit_drop_hotkey_menu (WEdit * e, int key)
-{
+{E_
     int m = 0;
     switch (key) {
     case ALT ('f'):
@@ -328,17 +330,17 @@ int edit_drop_hotkey_menu (WEdit * e, int key)
 extern CWidget *wedit;
 
 void CSetEditMenu (const char *ident)
-{
+{E_
     wedit = CIdent (ident);
 }
 
 CWidget *CGetEditMenu (void)
-{
+{E_
     return wedit;
 }
 
 static void menu_cmd (unsigned long i)
-{
+{E_
     XEvent e;
     if (wedit) {
 	memset (&e, 0, sizeof (XEvent));
@@ -351,12 +353,12 @@ static void menu_cmd (unsigned long i)
 }
 
 void CEditMenuCommand (int i)
-{
+{E_
     menu_cmd ((unsigned long) i);
 }
 
 static void menu_key (KeySym i, int state)
-{
+{E_
     int cmd;
     if (edit_translate_key (0, i, state, &cmd, 0, 0)) {
 	if (cmd > 0)
@@ -365,12 +367,12 @@ static void menu_key (KeySym i, int state)
 }
 
 static void menu_ctrl_key (unsigned long i)
-{
+{E_
     menu_key ((KeySym) i, ControlMask);
 }
 
 void CDrawEditMenuButtons (const char *ident, Window parent, Window focus_return, int x, int y)
-{
+{E_
     int d;
 
     CDrawMenuButton (catstrs (ident, ".filemenu", NULL), parent, focus_return, x, y, AUTO_WIDTH, AUTO_HEIGHT, 8,

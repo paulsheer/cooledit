@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* wrapsurf.c
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -24,6 +25,7 @@ used for different surfaces.
 
 #define TD_MULCONSTANT 4096
 
+#include "inspect.h"
 #include <config.h>
 #include <math.h>
 #include <stdlib.h>
@@ -42,7 +44,7 @@ extern TD_Short_Point *temp;
 
 
 static void xchg (int *a, int *b)
-{
+{E_
     int t = *a;
     *a = *b;
     *b = t;
@@ -50,7 +52,7 @@ static void xchg (int *a, int *b)
 
 
 void TD_drawwrapsurface (TD_Solid * s, int which)
-{
+{E_
 
     TD_Surface *surf = &s->surf[which];
     int w = surf->w;

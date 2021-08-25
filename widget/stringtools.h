@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* stringtools.h - convenient string utility functions
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -36,6 +37,7 @@ CStr CStr_dupstr (CStr s);
 void CStr_free(CStr *s);
 CStr CStr_cpy (const char *s, int l);
 
+char *replace_str (const char *in, const char *a, const char *b);
 int strendswith(const char *s, const char *p);
 
 char **interpret_shell_cmdline (const char *s);
@@ -80,10 +82,12 @@ extern int easy_patterns;
 char *convert_pattern (char *pattern, int match_type, int do_group);
 int regexp_match (char *pattern, char *string, int match_type);
 char *name_trunc (const char *txt, int trunc_len);
-char *pathdup_debug (const char *cfile, int cline, const char *host, const char *p);
-#define pathdup(host,p)         pathdup_debug(__FILE__, __LINE__,(host),(p))
+char *pathdup_debug (const char *cfile, int cline, const char *host, const char *p, char *errmsg);
+#define pathdup(host,p,errmsg)         pathdup_debug(__FILE__, __LINE__,(host),(p),(errmsg))
 char *vsprintf_alloc (const char *fmt, va_list ap);
 char *sprintf_alloc (const char *fmt,...);
+int readall (int fd, char *buf, int len);
+int writeall (int fd, char *buf, int len);
 char *Citoa (int i);
 #define itoa(c)         Citoa(c)
 size_t strnlen (const char *s, size_t count);
@@ -93,6 +97,9 @@ int change_directory (const char *path, char *errmsg);
 char *get_current_wd (char *buffer, int size);
 char *strcasechr (const char *p, int c);
 char *space_string (const char *s);
+int strlcpy (char *dst, const char *src, int siz);
+void string_chomp (char *_p);
+
 
 #define my_lower_case(c) tolower(c & 0xFF)
 

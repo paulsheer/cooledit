@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* manpage.c - draws an interactive man page browser
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <stdio.h>
 #include <my_string.h>
@@ -19,70 +21,77 @@
 
 #include "coollocal.h"
 #include "loadfile.h"
+#include "manpage.h"
 
 #include "edit.h"
 #include "editcmddef.h"
 
+#define MANPAGE_RELOAD_LAST     ((const char *) (void *) 1UL)
 CWidget *CManpageDialog (Window in, int x, int y, int columns, int lines, const char *manpage);
+static int current_column_width (void);
 
 /* must be a power of 2 */
-#define NUM_HISTORY 16
+#define NUM_HISTORY 64
+#define LAST_HISTORY            ((history_current - 1) & (NUM_HISTORY - 1))
+
 static struct history {
     char *text;
+    char *manpage;
     int line;
+    int columns;
 } history[NUM_HISTORY] =
 
 {
     {
-	0, 0
+	0, 0, 0, 0
     },
     {
-	0, 0
+	0, 0, 0, 0
     },
     {
-	0, 0
+	0, 0, 0, 0
     },
     {
-	0, 0
-    },
-
-    {
-	0, 0
-    },
-    {
-	0, 0
-    },
-    {
-	0, 0
-    },
-    {
-	0, 0
+	0, 0, 0, 0
     },
 
     {
-	0, 0
+	0, 0, 0, 0
     },
     {
-	0, 0
+	0, 0, 0, 0
     },
     {
-	0, 0
+	0, 0, 0, 0
     },
     {
-	0, 0
+	0, 0, 0, 0
     },
 
     {
-	0, 0
+	0, 0, 0, 0
     },
     {
-	0, 0
+	0, 0, 0, 0
     },
     {
-	0, 0
+	0, 0, 0, 0
     },
     {
-	0, 0
+	0, 0, 0, 0
+    },
+
+    {
+	0, 0, 0, 0
+    },
+    {
+	0, 0, 0, 0
+    },
+    {
+	0, 0, 0, 0
+    },
+    {
+	0, 0, 0, 0
     }
 };
 
@@ -91,7 +100,7 @@ static unsigned int history_current = 0;
 #define my_is_letter(ch) (isalpha (ch) || ch == '\b' || ch == '_' || ch == '-')
 
 void check_prev_next (void)
-{
+{E_
     if (history[history_current & (NUM_HISTORY - 1)].text)
 	CIdent ("mandisplayfile.next")->disabled = 0;
     else {
@@ -112,42 +121,38 @@ void check_prev_next (void)
     }
 }
 
-void add_to_history (char *t)
-{
-    char **h;
-    history_current &= (NUM_HISTORY - 1);
-    if (history[history_current].text)
-	free (history[history_current].text);
-    h = &(history[(history_current + 1) & (NUM_HISTORY - 1)].text);
-    if (*h) {
-	free (*h);
-	*h = 0;
+static void free_history_item (struct history *h)
+{E_
+    if (h->text || h->manpage) {
+        assert (h->manpage);
+        assert (h->text);
+        free (h->text);
+        h->text = NULL;
+        free (h->manpage);
+        h->manpage = NULL;
     }
-    history[history_current++].text = (char *) strdup (t);
+}
+
+static void add_to_history (char *text, const char *manpage, int columns)
+{E_
+    struct history *h;
+    history_current &= (NUM_HISTORY - 1);
+    free_history_item (&history[history_current]);
+    free_history_item (&history[(history_current + 1) & (NUM_HISTORY - 1)]);
+    h = &history[history_current++];
+    h->text = (char *) text;
+    h->manpage = (char *) strdup (manpage);
+    h->line = 0;
+    h->columns = columns;
 }
 
 int mansearch_callback (CWidget * w, XEvent * x, CEvent * c);
 int mansearchagain_callback (CWidget * w, XEvent * x, CEvent * c);
 
-int manpageclear_callback (CWidget * w, XEvent * x, CEvent * c)
-{
-    int i;
-    CDestroyWidget ("mandisplayfile");
-    for (i = 0; i < NUM_HISTORY; i++) {
-	if (history[i].text) {
-	    free (history[i].text);
-	    history[i].text = 0;
-	    history[i].line = 0;
-	}
-    }
-    history_current = 0;
-    return 0;
-}
-
 int calc_text_pos2 (CWidget * w, long b, long *q, int l);
 
 int manpage_callback (CWidget * w, XEvent * x, CEvent * c)
-{
+{E_
     int p, q;
     unsigned char m[128] = "";
     char *t;
@@ -192,33 +197,111 @@ int manpage_callback (CWidget * w, XEvent * x, CEvent * c)
 }
 
 void record_line (void)
-{
+{E_
     CWidget *w;
     if (!(w = CIdent ("mandisplayfile.text")))
 	return;
-    if (!history[(history_current - 1) & (NUM_HISTORY - 1)].text)
+    if (!history[LAST_HISTORY].text)
 	return;
-    history[(history_current - 1) & (NUM_HISTORY - 1)].line = w->firstline;
+    history[LAST_HISTORY].line = w->firstline;
+}
+
+char *option_man_cmdline = MAN_CMD;
+
+extern char **environ;
+
+static char **set_env_var (char *new_var)
+{E_
+    int n, i, j, l;
+    char **r;
+    for (n = 0; environ[n]; n++);
+    l = strcspn (new_var, "=");
+    r = (char **) malloc (sizeof (const char *) * (n + 2));
+    for (i = j = 0; j < n; j++) {
+	assert (environ[j]);
+	if (!strncmp (environ[j], new_var, l))
+	    continue;
+	r[i++] = environ[j];
+    }
+    r[i++] = new_var;
+    r[i] = NULL;
+    return r;
+}
+
+static char *run_man_shell_cmd (const char *manpage, int columns)
+{E_
+    int man_pipe = -1;
+    char *t = NULL;
+    char *argv[4];
+    char columns_env_var[64];
+    char **the_env;
+    pid_t the_pid;
+    Window win = 0;
+    CWidget *w;
+    char *r;
+
+    snprintf (columns_env_var, sizeof (columns_env_var), "COLUMNS=%d", columns);
+
+    the_env = set_env_var (columns_env_var);
+
+    w = CIdent ("mandisplayfile");
+    if (w)
+        win = w->winid;
+
+/*  See  configure.ac  where MAN_CMD is set to:  */
+/*  man -a -Tutf8 -Z %m | grotty -c  */
+    argv[0] = "sh";
+    argv[1] = "-c";
+    argv[2] = r = replace_str (option_man_cmdline, "%m", manpage);
+    argv[3] = NULL;
+
+    if (win)
+        CHourGlass (win);
+    CHourGlass (CFirstWindow);
+    if ((the_pid = triple_pipe_open_env (0, &man_pipe, 0, 1, argv[0], argv, the_env)) <= 0) {	/* "1" is to pipe both stderr AND stdout into man_pipe */
+        CErrorDialog (CFirstWindow, 20, 20, _(" Manual page "), _(" Fail trying to run man, check 'option_man_cmdline' in the file ~/.cedit/.cooledit.ini "));
+        if (win)
+            CUnHourGlass (win);
+        CUnHourGlass (CFirstWindow);
+        free (r);
+        free (the_env);
+        return 0;
+    }
+    t = read_pipe (man_pipe, 0, &the_pid);
+    close (man_pipe);
+    free (r);
+    free (the_env);
+    if (win)
+        CUnHourGlass (win);
+    CUnHourGlass (CFirstWindow);
+    return t;
 }
 
 int manpageprev_callback (CWidget * w, XEvent * x, CEvent * c)
-{
+{E_
     record_line ();
     history_current--;
     check_prev_next ();
-    CRedrawTextbox ("mandisplayfile.text", history[(history_current - 1) & (NUM_HISTORY - 1)].text, 1);
-    CSetTextboxPos (CIdent ("mandisplayfile.text"), TEXT_SET_LINE, history[(history_current - 1) & (NUM_HISTORY - 1)].line);
+    CRedrawTextbox ("mandisplayfile.text", history[LAST_HISTORY].text, 1);
+    CSetTextboxPos (CIdent ("mandisplayfile.text"), TEXT_SET_LINE, history[LAST_HISTORY].line);
     CFocus (CIdent ("mandisplayfile.text"));
     return 0;
 }
 
 int manpagenext_callback (CWidget * w, XEvent * x, CEvent * c)
-{
+{E_
     record_line ();
     history_current++;
     check_prev_next ();
-    CRedrawTextbox ("mandisplayfile.text", history[(history_current - 1) & (NUM_HISTORY - 1)].text, 1);
-    CSetTextboxPos (CIdent ("mandisplayfile.text"), TEXT_SET_LINE, history[(history_current - 1) & (NUM_HISTORY - 1)].line);
+    CRedrawTextbox ("mandisplayfile.text", history[LAST_HISTORY].text, 1);
+    CSetTextboxPos (CIdent ("mandisplayfile.text"), TEXT_SET_LINE, history[LAST_HISTORY].line);
+    CFocus (CIdent ("mandisplayfile.text"));
+    return 0;
+}
+
+int manpagereload_callback (CWidget * w, XEvent * x, CEvent * c)
+{E_
+    CManpageDialog (0, 0, 0, 0, 0, NULL);
     CFocus (CIdent ("mandisplayfile.text"));
     return 0;
 }
@@ -229,14 +312,14 @@ extern int replace_whole;
 extern int replace_case;
 
 int text_get_byte (unsigned char *text, long index)
-{
+{E_
     return text[index];
 }
 
 void Ctextboxsearch (CWidget * w, int again)
-{
+{E_
     int cancel = 0;
-    CStr old = {0, 0};
+    static CStr old = {0, 0};
     CStr exp;
 
     if (!w) {
@@ -293,84 +376,115 @@ void Ctextboxsearch (CWidget * w, int again)
 }
 
 int mansearch_callback (CWidget * w, XEvent * x, CEvent * c)
-{
+{E_
     Ctextboxsearch (CIdent ("mandisplayfile.text"), 0);
     CFocus (CIdent ("mandisplayfile.text"));
     return 0;
 }
 
 int mansearchagain_callback (CWidget * w, XEvent * x, CEvent * c)
-{
+{E_
     Ctextboxsearch (CIdent ("mandisplayfile.text"), 1);
     CFocus (CIdent ("mandisplayfile.text"));
     return 0;
 }
 
-char *option_man_cmdline = MAN_CMD;
+/* main widget: */
+CWidget *man = 0;
+
+int open_man (char *def)
+{E_
+    Window parent;
+    CWidget *w;
+    char *page;
+    w = CIdent ("mandisplayfile.text");
+    parent = w ? w->winid : 0;
+    page = CInputDialog ("getman", parent, 0, 0, 400, def, _(" Goto Manual Page "), _(" Enter a man page to open : "));
+    CFocus (CIdent ("mandisplayfile.text"));
+    if (!page)
+	return 1;
+    if (!*page)
+	return 1;
+    man = CManpageDialog (0, 0, 0, START_WIDTH, START_HEIGHT, page);
+    free (page);
+    return 1;
+}
+
+int mangoto_callback (CWidget * w, XEvent * xe, CEvent * ce)
+{E_
+    CStr s;
+    s = CLastInput ("getman.inpt_dlg");
+    return open_man (s.data);
+}
+
+static int current_column_width (void)
+{E_
+    int columns = -1;
+    CWidget *w;
+
+    if (!(w = CIdent ("mandisplayfile.text")))
+        return -1;
+
+    CPushFont ("editor", 0);
+    columns = (w->width - 7) / FONT_MEAN_WIDTH;
+    CPopFont ();
+
+    return columns < 40 ? 40 : columns;
+}
 
 CWidget *CManpageDialog (Window in, int x, int y, int columns, int lines, const char *manpage)
-{
+{E_
+    char *t = NULL;
+    char *do_free = NULL;
+    struct history *h;
     CWidget *res;
-    char *t;
-    char *argv[] =
-    {
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-    };
-    int i = 0, man_pipe, fre = 1, line = 0;
+    int line = 0;
+    int columns_;
 
     record_line ();
 
+    h = &history[LAST_HISTORY];
+
     if (manpage) {
-        pid_t the_pid;
-	Window win = 0;
-	CWidget *w;
-	char *p, *q, *r;
-	w = CIdent ("mandisplayfile");
-	if (w)
-	    win = w->winid;
-	i = 0;
-	p = q = (char *) strdup (option_man_cmdline);
-	r = p;
-	for (i = 0; i < 32; i++) {
-	    q = strchr (p, ' ');
-	    if (strcmp (p, "%m"))
-		argv[i] = p;
-	    else
-		argv[i] = (char *) manpage;
-	    if (!q)
-		break;
-	    *q = 0;
-	    p = q + 1;
-	}
-	if (win)
-	    CHourGlass (win);
-	CHourGlass (CFirstWindow);
-	if ((the_pid = triple_pipe_open (0, &man_pipe, 0, 1, argv[0], argv)) <= 0) {	/* "1" is to pipe both stderr AND stdout into man_pipe */
-	    CErrorDialog (CFirstWindow, 20, 20, _(" Manual page "), _(" Fail trying to run man, check 'option_man_cmdline' in the file ~/.cedit/.cooledit.ini "));
-	    if (win)
-		CUnHourGlass (win);
-	    free (r);
-	    return 0;
-	}
-	free (r);
-	t = read_pipe (man_pipe, 0, &the_pid);
-	close (man_pipe);
-	if (win)
-	    CUnHourGlass (win);
-	CUnHourGlass (CFirstWindow);
+        if ((columns_ = current_column_width ()) != -1)
+            columns = columns_;
+        do_free = t = run_man_shell_cmd (manpage, columns);
+        if (t && *t) {
+            add_to_history (t, manpage, columns);
+            do_free = NULL;
+        }
     } else {
-	if (!(t = history[(history_current - 1) & (NUM_HISTORY - 1)].text))
-	    return 0;
-	line = history[(history_current - 1) & (NUM_HISTORY - 1)].line;
-	fre = 0;
+        h = &history[LAST_HISTORY];
+	if (!h->text) {
+            res = NULL;
+            goto out;
+        }
+
+        assert (h->manpage);
+        assert (h->text);
+
+        if ((columns_ = current_column_width ()) == -1 || columns_ == columns) {
+            line = h->line;
+            manpage = h->manpage;
+            t = h->text;
+        } else {
+            columns = columns_;
+            line = h->line;
+            manpage = h->manpage;
+            do_free = t = run_man_shell_cmd (manpage, columns);
+            if (t && *t) {
+                free (h->text);
+                h->text = t;
+                do_free = NULL;
+            }
+        }
     }
 
     if (!t) {
 	CErrorDialog (CFirstWindow, 20, 20, _(" Manual Page "), get_sys_error (_(" Error reading from pipe, check 'option_man_cmdline' in the file ~/.cedit/.cooledit.ini ")));
-	return 0;
+        res = NULL;
+        goto out;
     } else if (*t) {
-	if (fre)
-	    add_to_history (t);
 	if (CIdent ("mandisplayfile.text")) {
 	    CRedrawTextbox ("mandisplayfile.text", t, 0);
 	} else {
@@ -397,35 +511,42 @@ CWidget *CManpageDialog (Window in, int x, int y, int columns, int lines, const 
 	    CGetHintPos (&x, 0);
 	    (CDrawButton ("mandisplayfile.next", win, x, y, AUTO_WIDTH, AUTO_HEIGHT, _(" Next ")))->position = POSITION_BOTTOM;
 	    CGetHintPos (&x, 0);
+	    (CDrawButton ("mandisplayfile.reload", win, x, y, AUTO_WIDTH, AUTO_HEIGHT, _(" Reload ")))->position = POSITION_BOTTOM;
+	    CGetHintPos (&x, 0);
 	    (CDrawButton ("mandisplayfile.search", win, x, y, AUTO_WIDTH, AUTO_HEIGHT, _(" Search ")))->position = POSITION_BOTTOM;
 	    CGetHintPos (&x, 0);
 	    (CDrawButton ("mandisplayfile.again", win, x, y, AUTO_WIDTH, AUTO_HEIGHT, _(" Again ")))->position = POSITION_BOTTOM;
+            CGetHintPos (&x, 0);
+            (CDrawButton ("mandisplayfile.goto", win, x, y, AUTO_WIDTH, AUTO_HEIGHT, _(" Goto ")))->position = POSITION_BOTTOM;
 	    if (!in) {
 		CGetHintPos (&x, 0);
-		(CDrawPixmapButton ("mandisplayfile.done", win, x, y, PIXMAP_BUTTON_TICK))->position = POSITION_BOTTOM;
-		CGetHintPos (&x, 0);
-		(CDrawPixmapButton ("mandisplayfile.clear", win, x, y, PIXMAP_BUTTON_CROSS))->position = POSITION_BOTTOM;
+		(CDrawPixmapButton ("mandisplayfile.done", win, x, y, PIXMAP_BUTTON_CROSS))->position = POSITION_BOTTOM;
 		CSetSizeHintPos ("mandisplayfile");
 		CMapDialog ("mandisplayfile");
 		CSetWindowResizable ("mandisplayfile", FONT_MEAN_WIDTH * 15, FONT_PIX_PER_LINE * 15, 1600, 1200);	/* minimum and maximum sizes */
 	    }
 	    CAddCallback ("mandisplayfile.done", manpage_callback);
-	    CAddCallback ("mandisplayfile.clear", manpageclear_callback);
 	    CAddCallback ("mandisplayfile.text", manpage_callback);
-	    CAddCallback ("mandisplayfile.next", manpagenext_callback);
 	    CAddCallback ("mandisplayfile.prev", manpageprev_callback);
+	    CAddCallback ("mandisplayfile.next", manpagenext_callback);
+	    CAddCallback ("mandisplayfile.reload", manpagereload_callback);
 	    CAddCallback ("mandisplayfile.search", mansearch_callback);
 	    CAddCallback ("mandisplayfile.again", mansearchagain_callback);
+            CAddCallback ("mandisplayfile.goto", mangoto_callback);
 	}
 	check_prev_next ();
-	if (t && fre)
-	    free (t);
     } else {
 	CErrorDialog (CFirstWindow, 20, 20, _(" Manual page "), _(" Fail trying to popen man, check 'option_man_cmdline' in the file ~/.cedit/.cooledit.ini "));
-	return 0;
+	res = NULL;
+        goto out;
     }
     res = CIdent ("mandisplayfile");
     if (res)
-	return res;
-    return CIdent ("mandisplayfile.text");
+	goto out;
+    res = CIdent ("mandisplayfile.text");
+
+  out:
+    if (do_free)
+        free (do_free);
+    return res;
 }

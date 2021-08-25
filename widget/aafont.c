@@ -1,8 +1,10 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* aafont.c - generic library for drawing anti-aliased fonts
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
+#include "inspect.h"
 #include <config.h>
 #include <assert.h>
 #ifdef HAVE_STDLIB_H
@@ -27,6 +29,11 @@
 #include FT_FREETYPE_H
 #endif
 
+/* harfbuzz library is C++  :-(  */
+void _ZSt20__throw_system_errori(void)
+{E_
+    abort();
+}
 
 /*
  * list management
@@ -45,16 +52,36 @@ Display *aa_display;
 int aa_depth;
 Window aa_root;
 Visual *aa_visual;
+#ifdef AA_LOG_LOAD_FONT
+static unsigned char *aa_log_nessage = NULL;
+#endif
+
 
 int option_rgb_order = RedFirst;
 int option_interchar_spacing = 0;
 
 void XAaInit (Display * display, Visual * visual, int depth, Window root)
-{
+{E_
     aa_display = display;
     aa_depth = depth;
     aa_root = root;
     aa_visual = visual;
+#ifdef AA_LOG_LOAD_FONT
+    if (!aa_log_nessage) {
+        aa_log_nessage = (unsigned char *) malloc ((FONT_LAST_UNICHAR + 1) / 8);
+        memset (aa_log_nessage, '\0', (FONT_LAST_UNICHAR + 1) / 8);
+    }
+#endif
+}
+
+void XAaCacheClean (void)
+{
+#ifdef AA_LOG_LOAD_FONT
+    if (aa_log_nessage) {
+        free (aa_log_nessage);
+        aa_log_nessage = NULL;
+    }
+#endif
 }
 
 struct aa_glyph_cache {
@@ -77,7 +104,7 @@ struct aa_font_cache {
 } *font_cache_list = 0;
 
 static void aa_insert (void)
-{
+{E_
     struct aa_font_cache *p;
     p = malloc (sizeof (*font_cache_list));
     memset (p, 0, sizeof (*font_cache_list));
@@ -90,7 +117,7 @@ static void aa_insert (void)
 }
 
 static void aa_free (struct aa_font_cache *f)
-{
+{E_
     int i, j;
     if (f->f->font_struct)
         XFreeFontInfo (0, f->f->font_struct, 0);
@@ -109,7 +136,7 @@ static void aa_free (struct aa_font_cache *f)
 
 /* passing fg == bg == 0 finds any load_id */
 static struct aa_font_cache *aa_find (int load_id, unsigned long fg, unsigned long bg)
-{
+{E_
     struct aa_font_cache *p;
     for (p = font_cache_list; p; p = p->next)
 	if (load_id && p->f->load_id == load_id && p->fg == fg && p->bg == bg)
@@ -119,7 +146,7 @@ static struct aa_font_cache *aa_find (int load_id, unsigned long fg, unsigned lo
 
 /* passing fg == bg == 0 finds any load_id */
 static struct aa_font_cache *aa_find_metrics_only (int load_id)
-{
+{E_
     struct aa_font_cache *p;
     for (p = font_cache_list; p; p = p->next)
 	if (load_id && p->f->load_id == load_id)
@@ -129,7 +156,7 @@ static struct aa_font_cache *aa_find_metrics_only (int load_id)
 
 /* returns zero on not found */
 static int _aa_remove (int load_id)
-{
+{E_
     struct aa_font_cache *p, *q = 0;
     for (p = font_cache_list; p; p = p->next) {
 	if (load_id && p->f->load_id == load_id) {
@@ -151,7 +178,7 @@ static int _aa_remove (int load_id)
 }
 
 static void aa_remove (int load_id)
-{
+{E_
     while (_aa_remove (load_id));
 }
 
@@ -162,7 +189,7 @@ static unsigned long aa_convolve_3 (int i, int j, unsigned char *source, int sou
 				  int byte_order, int bytes_per_pixel, int rgb_order, int red_shift,
 				  int green_shift, int blue_shift, int red_mask, int green_mask,
 				  int blue_mask)
-{
+{E_
     unsigned long red, green, blue;
 #include "conv.c"
     red /= (256 * 3);
@@ -174,7 +201,7 @@ static unsigned long aa_convolve_3 (int i, int j, unsigned char *source, int sou
 static unsigned long aa_convolve_1 (int i, int j, unsigned char *source,
 				    int source_bytes_per_line,
                                     int byte_order, int bytes_per_pixel)
-{
+{E_
     if (byte_order == MSBFirst) {
 	switch (bytes_per_pixel) {
 	case 1:
@@ -203,7 +230,7 @@ static unsigned long aa_convolve_1 (int i, int j, unsigned char *source,
 
 /* fourth level */
 static Pixmap aa_shrink_pixmap (struct aa_font_cache *f, Pixmap pixmap, int width, int height)
-{
+{E_
     XImage *image, *shrunk;
     int i, j, w, h, bytes_per_pixel;
     int imw, imh;
@@ -281,7 +308,7 @@ static Pixmap aa_shrink_pixmap (struct aa_font_cache *f, Pixmap pixmap, int widt
 
 /* third level */
 static void aa_create_pixmap (struct aa_font_cache *f, int j, int i, struct aa_glyph_cache *glyph, int metrics_only)
-{
+{E_
     Pixmap w;
     int direction, ascent, descent, height;
     XCharStruct ch;
@@ -503,7 +530,7 @@ int load_one_freetype_font (FT_Face *face, const char *filename, int *desired_he
 
 /* third level */
 static void aa_create_pixmap_freetype (struct aa_font_cache *f, unsigned long the_chr, struct aa_glyph_cache *glyph, int metrics_only)
-{
+{E_
     int found = 0, font_i;
     int h, H, w, W;
     int U, u;
@@ -535,7 +562,6 @@ static void aa_create_pixmap_freetype (struct aa_font_cache *f, unsigned long th
                 cache->load_failed = 1;
                 continue;
             }
-
 
 #if 0
 /* #warning remove debug code */
@@ -575,9 +601,6 @@ u = 1000000000;
                 printf("Loaded font %s (nom=%d real=%d) in attempt to find unicode code point 0x%X. (0x%lX-0x%lX etc.)\n", cache->freetype_fname, desired_height, cache->loaded_height, (unsigned int) t, max_block_from, max_block_to);
             }
 #endif
-
-            printf("Loaded font %s (nom=%d real=%d) in attempt to find unicode code point 0x%X.\n", cache->freetype_fname, desired_height, cache->loaded_height, (unsigned int) t);
-
         }
 
         face = (FT_Face) cache->face;
@@ -595,6 +618,10 @@ u = 1000000000;
                 if (!error && face->glyph->bitmap.width) {
                     found = 1;
                     U = cache->loaded_height;
+                    if (!cache->load_logged) {
+                        cache->load_logged = 1;
+                        printf("Loaded font %s (height=%d) for unicode code point 0x%X.\n", cache->freetype_fname, cache->loaded_height, (unsigned int) t);
+                    }
                     break;
                 }
             }
@@ -611,6 +638,17 @@ u = 1000000000;
 #endif
         glyph->width = 0;
         glyph->descent = 0;
+
+#ifdef AA_LOG_LOAD_FONT
+        assert (aa_log_nessage);
+        if (the_chr >= 0 && the_chr <= FONT_LAST_UNICHAR) {
+            if (!(aa_log_nessage[the_chr / 8] & (1 << (the_chr % 8)))) {
+                aa_log_nessage[the_chr / 8] |= (1 << (the_chr % 8));
+                printf("No font found for character 0x%X.\n", (unsigned int) the_chr);
+            }
+        }
+#endif
+
         return;
     }
 
@@ -641,7 +679,7 @@ u = 1000000000;
 
 
 static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int dy, FT_Bitmap *bitmap, FT_Glyph_Metrics *metrics, int u, int U, int w, int h, int W, int H, int blank)
-{
+{E_
     XImage *shrunk;
     Pixmap pixmap;
     int i, j;
@@ -1070,7 +1108,7 @@ for (j = 0; j < w; j++) {
 
 /* second level */
 static void aa_create_pixmap_ (struct aa_font_cache *f, int j, int i, int metrics_only)
-{
+{E_
     if (!f->glyph[j]) {
         int i;
 	f->glyph[j] = malloc (sizeof (struct aa_glyph_cache) * 256);
@@ -1098,7 +1136,7 @@ static void aa_create_pixmap_ (struct aa_font_cache *f, int j, int i, int metric
 
 int _XAaDrawImageStringWC (Display * display, Drawable d, GC gc, const struct aa_font *aa_font, int x, int y, const char *s,
 			   XChar2b * wc, C_wchar_t * swc, int length, int *descent_r, int scale, int metrics_only)
-{
+{E_
     int i, x_start = x;
     int descent = -10240;
     struct aa_font_cache *f;
@@ -1177,28 +1215,28 @@ int _XAaDrawImageStringWC (Display * display, Drawable d, GC gc, const struct aa
 }
 
 int XAaTextWidth (const struct aa_font *f, const char *s, int length, int *descent, int scale)
-{
+{E_
     return _XAaDrawImageStringWC (0, 0, 0, f, 0, 0, s, 0, 0, length, descent, scale, 1);
 }
 
 int XAaTextWidth16 (const struct aa_font *f, XChar2b * s, C_wchar_t * swc, int length, int *descent, int scale)
-{
+{E_
     return _XAaDrawImageStringWC (0, 0, 0, f, 0, 0, 0, s, swc, length, descent, scale, 1);
 }
 
 int XAaDrawImageString16 (Display * display, Drawable d, GC gc, const struct aa_font *f, int x, int y, XChar2b * wc, C_wchar_t * swc,
 			  int length, int scale)
-{
+{E_
     return _XAaDrawImageStringWC (display, d, gc, f, x, y, 0, wc, swc, length, 0, scale, 0);
 }
 
 int XAaDrawImageString (Display * display, Drawable d, GC gc, const struct aa_font *f, int x, int y, char *s, int length, int scale)
-{
+{E_
     return _XAaDrawImageStringWC (display, d, gc, f, x, y, s, 0, 0, length, 0, scale, 0);
 }
 
 void XAaFree (int load_id)
-{
+{E_
     aa_remove (load_id);
 }
 

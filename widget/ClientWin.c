@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* $XConsortium: ClientWin.c,v 1.4 94/04/17 20:15:50 rws Exp $ */
 
 /* 
@@ -27,6 +28,7 @@ in this Software without prior written authorization from the X Consortium.
 
 */
 
+#include "inspect.h"
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 
@@ -34,7 +36,7 @@ static Window TryChildren (Display * dpy, Window win, Atom WM_STATE);
 /* Find a window with WM_STATE, else return win itself, as per ICCCM */
 
 Window my_XmuClientWindow (Display * dpy, Window win)
-{
+{E_
     Atom WM_STATE;
     Atom type = None;
     int format;
@@ -56,7 +58,7 @@ Window my_XmuClientWindow (Display * dpy, Window win)
 }
 
 static Window TryChildren (Display * dpy, Window win, Atom WM_STATE)
-{
+{E_
     Window root, parent;
     Window *children;
     unsigned int nchildren;

@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /* pool.h
-   Copyright (C) 1996-2018 Paul Sheer
+   Copyright (C) 1996-2022 Paul Sheer
  */
 
 
@@ -38,7 +39,7 @@ unsigned char *pool_break (POOL *p);
 void pool_free (POOL *p);
 
 /* returns the number of bytes written into p */
-unsigned long pool_write (POOL * p, unsigned char *d, unsigned long l);
+unsigned long pool_write (POOL * p, const unsigned char *d, unsigned long l);
 
 /* returns the number of bytes read into d */
 unsigned long pool_read (POOL * p, unsigned char *d, unsigned long l);

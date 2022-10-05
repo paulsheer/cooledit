@@ -2067,8 +2067,9 @@ int sprintf_p (char *str, const char *fmt,...)
 	q = p;
     }
     va_end (ap);
-    sprintf (s, q);		/* print trailing leftover */
-    return (unsigned long) s - (unsigned long) str + strlen (s);
+    strcpy (s, q);		/* print trailing leftover */
+    s += strlen (s);
+    return (s - str);
 }
 
 static void regexp_error (WEdit *edit)

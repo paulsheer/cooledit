@@ -86,6 +86,7 @@ char *pathdup_debug (const char *cfile, int cline, const char *host, const char 
 #define pathdup(host,p,errmsg)         pathdup_debug(__FILE__, __LINE__,(host),(p),(errmsg))
 char *vsprintf_alloc (const char *fmt, va_list ap);
 char *sprintf_alloc (const char *fmt,...);
+size_t vfmtlen (const char *fmt, va_list ap);
 int readall (int fd, char *buf, int len);
 int writeall (int fd, char *buf, int len);
 char *Citoa (int i);

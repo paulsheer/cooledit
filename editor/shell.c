@@ -906,11 +906,14 @@ static int execute_background_shell (struct shell_cmd *s, char *script, char *na
 		    nulldevice_wr = open ("/dev/null", O_WRONLY);
 		    nulldevice_rd = open ("/dev/null", O_RDONLY);
 		    close (0);
-		    dup (nulldevice_rd);
+		    if (dup (nulldevice_rd) == -1)
+                        exit (1);
 		    close (1);
-		    dup (nulldevice_wr);
+		    if (dup (nulldevice_wr) == -1)
+                        exit (1);
 		    close (2);
-		    dup (nulldevice_wr);
+                    if (dup (nulldevice_wr) == -1)
+                        exit (1);
 		    set_signal_handlers_to_default ();
 		    execlp (argv[0], argv[0], NULL);
 		    exit (0);	/* should never reach */

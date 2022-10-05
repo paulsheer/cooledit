@@ -160,23 +160,33 @@ fail for other reasons: */
 	nulldevice_rd = open ("/dev/null", O_RDONLY);
 
 	close (0);
-	if (in)
-	    dup (f0[0]);
-	else
-	    dup (nulldevice_rd);
+	if (in) {
+	    if (dup (f0[0]) == -1)
+                exit (1);
+	} else {
+	    if (dup (nulldevice_rd) == -1)
+                exit (1);
+        }
 	close (1);
-	if (out)
-	    dup (f1[1]);
-	else
-	    dup (nulldevice_wr);
+	if (out) {
+	    if (dup (f1[1]) == -1)
+                exit (1);
+	} else {
+	    if (dup (nulldevice_wr) == -1)
+                exit (1);
+        }
 	close (2);
-	if (err)
-	    dup (f2[1]);
-	else {
-	    if (mix)
-		dup (f1[1]);
-	    else
-		dup (nulldevice_wr);
+	if (err) {
+	    if (dup (f2[1]) == -1)
+                exit (1);
+	} else {
+	    if (mix) {
+		if (dup (f1[1]) == -1)
+                    exit (1);
+	    } else {
+		if (dup (nulldevice_wr) == -1)
+                    exit (1);
+            }
 	}
 	close (f0[0]);
 	close (f0[1]);

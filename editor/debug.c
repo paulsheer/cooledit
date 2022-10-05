@@ -267,7 +267,7 @@ static void xdebug_remove_variable (Debug * d, int i)
 
 static char **xdebug_get_line (void *data, int line, int *numfields, int *tagged)
 {E_
-    static char *fields[3];
+    static char *fields[10];
     Debug *d = (Debug *) data;
     *numfields = 3;
     if (!d->variable[line].name || !d->variable[line].output)

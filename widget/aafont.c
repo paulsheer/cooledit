@@ -379,7 +379,8 @@ static int windows_mapping[32] = {
 #endif
 
 
-const char *hex_chars[16][7] = {
+#if 0
+static const char *hex_chars[16][7] = {
 {
    " xx ",
    "x  x",
@@ -524,6 +525,7 @@ const char *hex_chars[16][7] = {
    "x   ",
    "x   ",
 }};
+#endif
 
 static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int dy, FT_Bitmap *bitmap, FT_Glyph_Metrics *metrics, int u, int U, int w, int h, int W, int H, int blank);
 int load_one_freetype_font (FT_Face *face, const char *filename, int *desired_height, int *loaded_height);

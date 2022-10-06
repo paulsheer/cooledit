@@ -4633,7 +4633,7 @@ static int send_mesg (struct remotefs *rfs, struct reader_data *d, CStr * msg, i
         if (do_connect (rfs, errmsg))
             return -1;
         if (crypto_enabled) {
-            if (!rfs->remotefs_private->sock_data->password[0]) {
+            if (!rfs->remotefs_private->sock_data->password[0] || user_msg[0]) {
               password_again:
                 *errmsg = '\0';
                 if ((*remotefs_password_cb_fn) (remotefs_password_cb_user_data, password_attempts++, rfs->remotefs_private->remote, &crypto_enabled, rfs->remotefs_private->sock_data->password,
@@ -4657,8 +4657,11 @@ static int send_mesg (struct remotefs *rfs, struct reader_data *d, CStr * msg, i
                     retries = 0;
                     goto retry;
                 }
-                if (enable_error)
+                if (enable_error) {
+                    retries = 0;
                     goto password_again;
+                }
+                *user_msg = '\0';
             }
         }
     }

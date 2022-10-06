@@ -31,9 +31,12 @@ void housekeeping_inspect (void)
     snprintf (inspect_data__->timestamp, sizeof (inspect_data__->timestamp), "T%013lu\n", (unsigned long) now);
 }
 
+#define INSPECT_DIR     "/inspect"
+#define CEDIT_DIR       "/.cedit"
+
 void init_inspect (void)
 {
-    char dir[1024];
+    char *dir;
     const char *home;
     int fd;
 
@@ -41,10 +44,12 @@ void init_inspect (void)
     if (!home)
         return;
 
+    dir = alloca (strlen (home) + sizeof (CEDIT_DIR) + sizeof (INSPECT_DIR) + 1);
+
     strcpy (dir, home);
-    strcat (dir, "/.cedit");
+    strcat (dir, CEDIT_DIR);
     mkdir (dir, 0700);
-    strcat (dir, "/inspect");
+    strcat (dir, INSPECT_DIR);
     mkdir (dir, 0700);
     snprintf (mmap_fname, sizeof (mmap_fname), "%s/inspect%ld", dir, (long) getpid ());
 

@@ -352,9 +352,9 @@ static void menu_cmd (unsigned long i)
     }
 }
 
-void CEditMenuCommand (int i)
+void CEditMenuCommand (unsigned long i)
 {E_
-    menu_cmd ((unsigned long) i);
+    menu_cmd (i);
 }
 
 static void menu_key (KeySym i, int state)

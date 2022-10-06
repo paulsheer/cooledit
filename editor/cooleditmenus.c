@@ -20,9 +20,12 @@
 
 extern Window main_window;
 
+void bookmark_select (void);
+
 void menu_man_cmd (unsigned long ignore)		{ edit_man_page_cmd (CGetEditMenu()->editor); }
 void menu_print_dialog (unsigned long ignore)		{ cooledit_print_dialog (CGetEditMenu()->editor); }
 void menu_insert_shell_output (unsigned long ignore)	{ edit_insert_shell_output (CGetEditMenu()->editor); }
+void menu_bookmark_select (unsigned long ignore)	{ bookmark_select (); }
 
 void menu_jump_to_file (unsigned long ignored);
 void edit_a_script_cmd (unsigned long ignored);
@@ -151,7 +154,6 @@ void edit_about_cmd (unsigned long ignored)
       "\n"), VERSION);
 }
 
-void bookmark_select (void);
 
 void CDrawCooleditMenuButtons (Window parent, int x, int y)
 {E_
@@ -195,40 +197,27 @@ void CDrawCooleditMenuButtons (Window parent, int x, int y)
 /* Toolhint for the 'Readme' menu button */
     CSetToolHint ("menu.readme", _("Help, Copyright and useful info"));
 #ifdef HAVE_PYTHON
-    CAddMenuItem ("menu.commandmenu", "", ' ', (void *) 0, 0L);
-    CAddMenuItem ("menu.commandmenu",
-		  _("Reload Python scripts"), '~', menu_python_reload, 0L);
+    CAddMenuItem ("menu.commandmenu", "", ' ', (callfn) NULL, 0);
+    CAddMenuItem ("menu.commandmenu", _("Reload Python scripts"), '~', menu_python_reload, 0);
 #endif
-    CAddMenuItem ("menu.commandmenu", "", ' ', (void *) 0, 0L);
-    CAddMenuItem ("menu.commandmenu",
-		_("Shell command\tEscape"), '~', (void (*) (unsigned long data)) menu_insert_shell_output, (unsigned long) 0);
-    CAddMenuItem ("menu.commandmenu",
-		_("Terminal\tShift-F1"), '~', (void (*) (unsigned long data)) CEditMenuCommand, (unsigned long) CK_Terminal);
-    CAddMenuItem ("menu.commandmenu",
-		  _("Show manual page...\tCtrl-F1"), '~', menu_man_cmd, 0L);
-    CAddMenuItem ("menu.commandmenu",
-	      _("Change current directory..."), '~', menu_change_directory_cmd, 0L);
-    CAddMenuItem ("menu.commandmenu",
-		_("Complete\tCtrl-Tab"), '~', (void (*) (unsigned long data)) CEditMenuCommand, (unsigned long) CK_Complete);
-    CAddMenuItem ("menu.commandmenu",
-		_("Insert unicode...\tAlt-i"), '~', (void (*) (unsigned long data)) CEditMenuCommand, (unsigned long) CK_Insert_Unicode);
-    CAddMenuItem ("menu.commandmenu",
-		_("paragraph indent mode\tShift-F6/F16"), '~', (void (*) (unsigned long data)) CEditMenuCommand, (unsigned long) CK_Paragraph_Indent_Mode);
+    CAddMenuItem ("menu.commandmenu", "", ' ', (callfn) NULL, 0);
+    CAddMenuItem ("menu.commandmenu", _("Shell command\tEscape"), '~', menu_insert_shell_output, 0);
+    CAddMenuItem ("menu.commandmenu", _("Terminal\tShift-F1"), '~', CEditMenuCommand, CK_Terminal);
+    CAddMenuItem ("menu.commandmenu", _("Show manual page...\tCtrl-F1"), '~', menu_man_cmd, 0);
+    CAddMenuItem ("menu.commandmenu", _("Change current directory..."), '~', menu_change_directory_cmd, 0);
+    CAddMenuItem ("menu.commandmenu", _("Complete\tCtrl-Tab"), '~', CEditMenuCommand, CK_Complete);
+    CAddMenuItem ("menu.commandmenu", _("Insert unicode...\tAlt-i"), '~', CEditMenuCommand, CK_Insert_Unicode);
+    CAddMenuItem ("menu.commandmenu", _("paragraph indent mode\tShift-F6/F16"), '~', CEditMenuCommand, CK_Paragraph_Indent_Mode);
 
-    CInsertMenuItemAfter ("menu.filemenu", _("New"),
-		_("Jump to file\tCtrl-j"), '~', menu_jump_to_file, (unsigned long) CK_Jump_To_File);
-    CAddMenuItem ("menu.filemenu", "", ' ', (void *) 0, 0);
-    CAddMenuItem ("menu.filemenu",
-		_("Print..."), '~', menu_print_dialog, 0L);
-    CAddMenuItem ("menu.filemenu", "", ' ', (void *) 0, 0);
-    CAddMenuItem ("menu.filemenu",
-		_("Find file...\tCtrl-Alt-f"), '~', (void (*) (unsigned long data)) CEditMenuCommand, (unsigned long) CK_Find_File);
-    CAddMenuItem ("menu.filemenu",
-		_("Ctags code index...\tCtrl-Alt-i"), '~', (void (*) (unsigned long data)) CEditMenuCommand, (unsigned long) CK_Ctags);
+    CInsertMenuItemAfter ("menu.filemenu", _("New"), _("Jump to file\tCtrl-j"), '~', menu_jump_to_file, CK_Jump_To_File);
+    CAddMenuItem ("menu.filemenu", "", ' ', (callfn) NULL, 0);
+    CAddMenuItem ("menu.filemenu", _("Print..."), '~', menu_print_dialog, 0);
+    CAddMenuItem ("menu.filemenu", "", ' ', (callfn) NULL, 0);
+    CAddMenuItem ("menu.filemenu", _("Find file...\tCtrl-Alt-f"), '~', CEditMenuCommand, CK_Find_File);
+    CAddMenuItem ("menu.filemenu", _("Ctags code index...\tCtrl-Alt-i"), '~', CEditMenuCommand, CK_Ctags);
 
-    CAddMenuItem ("menu.editmenu", "", ' ', (void *) 0, 0L);
-    CAddMenuItem ("menu.editmenu",
-		_("List bookmarks..."), '~', (void (*) (unsigned long data)) bookmark_select, 0L);
+    CAddMenuItem ("menu.editmenu", "", ' ', (callfn) NULL, 0);
+    CAddMenuItem ("menu.editmenu", _("List bookmarks..."), '~', menu_bookmark_select, 0);
 }
 
 

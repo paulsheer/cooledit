@@ -849,7 +849,7 @@ void CPullUp (CWidget * button);
 
 /* set the editor that editmenu will send commands to */
 void CSetEditMenu (const char *ident);
-void CEditMenuCommand (int i);
+void CEditMenuCommand (unsigned long i);
 CWidget *CGetEditMenu (void);
 void CEditMenuKey (KeySym i, int state);
 

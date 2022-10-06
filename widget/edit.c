@@ -2871,10 +2871,15 @@ int edit_execute_command (WEdit * edit, int command, ...)
 
 void edit_execute_macro (WEdit * edit, struct macro_rec *macro)
 {E_
+    static int call_depth = 0;
     int i;
-    edit->force |= REDRAW_PAGE;
-    for (i = 0; i < macro->macro_i; i++)
-	edit_execute_cmd (edit, macro->macro[i].command, macro->macro[i].ch);
-    edit_update_screen (edit);
+    call_depth++;
+    if (call_depth < 20) {
+        edit->force |= REDRAW_PAGE;
+        for (i = 0; i < macro->macro_i; i++)
+            edit_execute_cmd (edit, macro->macro[i].command, macro->macro[i].ch);
+        edit_update_screen (edit);
+    }
+    call_depth--;
 }
 

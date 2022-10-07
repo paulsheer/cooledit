@@ -263,7 +263,7 @@ static struct compose_international compose_nonascii_unicode[] = { \
     {0x2014, '-', '=',          "EM DASH"},
     {0x20ac, 'C', '=',          "EURO SIGN"},
     {0x2122, 'T', 'M',          "TRADE MARK SIGN"},
-    {0x2248, '=', '~',          "ALMOST EQUAL TO"},
+    {0x2245, '=', '~',          "APPROXIMATELY EQUAL TO"},
     {0x2260, '=', '/',          "NOT EQUAL TO"},
     {0x2264, '=', '<',          "LESS-THAN OR EQUAL TO"},
     {0x2265, '=', '>',          "GREATER-THAN OR EQUAL TO"},

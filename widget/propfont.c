@@ -376,10 +376,14 @@ static void convert_text (WEdit * edit, long bol, long q, cache_type * p, cache_
             column_marker = book_mark_all[i]->column_marker - 1;        /* column 1 is index 0 */
     }
 
+#if 0   /* this 'last' calculation is bogus for characters like u115BD which is very narrow yet consumes 4 bytes */
     last = q + (x_max - x) / 2 + 2;	/* for optimization, we say that the last character 
 					   of this line cannot have an offset greater than this.
 					   This can be used to rule out uncommon text styles,
 					   like a character with a cursor, or selected text */
+#else
+    (void) last;
+#endif
 
     memset(text, '\0', sizeof(text));
 
@@ -442,9 +446,13 @@ static void convert_text (WEdit * edit, long bol, long q, cache_type * p, cache_
 		break;
 	    q++;
 	}
+#if 0
     } else if ((m2 < q || m1 > last) && (edit->curs1 < q || edit->curs1 > last) && \
 	       (edit->found_start + edit->found_len < q || edit->found_start > last) &&
 	       (edit->bracket < q || edit->bracket > last)) {
+#else
+    } else if ((m2 < q) && (edit->curs1 < q) && (edit->found_start + edit->found_len < q) && (edit->bracket < q)) {
+#endif
 	for (;;) {
 	    c = edit_get_wide_byte (edit, q);
 	    *p = get_style_fast (edit, q, c);

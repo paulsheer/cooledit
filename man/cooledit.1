@@ -1207,9 +1207,17 @@ options of the form,
 .fi
 
 are supported. Any number of comma-separated fonts will \fIall\fP be loaded as and when a character
-code-point needs to be rendered. 15 is the desired pixel size.
+code-point needs to be rendered. \fB15\fP is the desired pixel size.
 
-Cooledit searches the \fBshare/cooledit/fonts/\fP directory for all installed fonts.
+Cooledit searches the directories
+\fB./notosans/\fP,
+\fI<prefix>\fP\fB/share/cooledit/fonts/\fP,
+\fB/usr/local/share/fonts/noto\fP, and
+\fB/usr/local/share/fonts/misc\fP
+for all installed fonts. The latter two directories are the \fBFreeBSD\fP install paths for the \fBnoto\fP
+and \fBfont-misc-misc\fP packages. The \fBFreeBSD\fP \fBnoto\fP package is large, so you may want to
+install \fBcooledit\fP from source. As of \fBFreeBSD\fP 13, their fonts are missing \fBNotoSansMath-Regular.ttf\fP and \fBNotoMusic-Regular.ttf\fP.
+
 
 .PP
 .SH 2. Truetype fonts on file

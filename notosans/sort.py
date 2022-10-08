@@ -6,6 +6,17 @@
 import os, re, sys, os
 from PIL import PcfFontFile
 
+
+# FreeBSD packages:
+#   noto-2.0 (which implies: noto-tc noto-sc noto-kr noto-jp noto-hk noto-extra noto-emoji noto-basic)
+#   font-misc-misc
+
+# These two are missing from FreeBSD:
+#   NotoSansMath-Regular.ttf
+#   NotoMusic-Regular.ttf
+
+
+
 priority_order = """
 NotoSans-Regular.ttf
 NotoSansSymbols-Regular.ttf

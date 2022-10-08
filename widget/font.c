@@ -112,23 +112,10 @@ int load_one_freetype_font (FT_Face *face, const char *filename, int *desired_he
         }
     }
 
-#if 0
-if (1 && !strstr(filename, "8x13B.pcf.gz")) {
-
-if (FT_Set_Pixel_Sizes((*face), 48, 48)){
-printf("ERROR\nERROR\nERROR\nERROR\nERROR\nERROR\nERROR\nERROR\nERROR\n");
-}
-nominal_height = 48;
-
-}else
-#endif
-
     if (size_index != -1 && !FT_Select_Size((*face), size_index)) {
         nominal_height = (*face)->available_sizes[size_index].height;
-/*printf("a.1.1 nom=%d\n", nominal_height); */
     } else if (!FT_Set_Pixel_Sizes((*face), nominal_height, nominal_height)) {
         nominal_height = (*face)->size->metrics.y_ppem;
-/*printf("a.1.2 nom=%d\n", nominal_height);*/
     } else {
 	fprintf (stderr, "Font %s, fail setting size to %d.\n%s", filename, nominal_height, font_error_string);
         if ((*face)->num_fixed_sizes) {
@@ -146,9 +133,6 @@ nominal_height = 48;
         *desired_height = nominal_height;
     *loaded_height = nominal_height;
 
-/*printf("a.2: nom=%d loaded=%d %s\n", *desired_height, *loaded_height, filename);
-*/
-
     return 0;
 }
 
@@ -162,9 +146,10 @@ static int load_font_from_file (const char *fname, struct aa_font *r, int desire
 
     for (;;) {
         int l;
-        char *t = 0;
+        char t[MAX_PATH_LEN] = "";
+        char v[MAX_PATH_LEN / 2] = "";
         FT_Face face = 0;
-        FILE *fontfile;
+        FILE *fontfile = NULL;
         int loaded_height = 0;
 
         fname = next;
@@ -184,31 +169,42 @@ static int load_font_from_file (const char *fname, struct aa_font *r, int desire
             next = NULL;
         }
 
-        if ((l = (int) (end_of_name - fname)) < 1)
+        l = (int) (end_of_name - fname);
+        if (l < 1 || l >= sizeof(v) - 1)
             continue;
 
-        t = CMalloc(l + 1);
-        memcpy(t, fname, l);
-        t[l] = '\0';
+        strlcpy (v, fname, l + 1);
 
-        if (!(fontfile = fopen(t, "r"))) {
-            char *path;
-            path = CMalloc(strlen (LIBDIR) + strlen(t) + 16);
-            strcpy(path, LIBDIR);
-            strcat(path, "/fonts/");
-            strcat(path, t);
-            free(t);
-            t = path;
-            fontfile = fopen(t, "r");
+        if (!fontfile) {
+            snprintf (t, MAX_PATH_LEN, "%s", v);
+            fontfile = fopen (t, "r");
+        }
+
+        if (!fontfile) {
+            snprintf (t, MAX_PATH_LEN, "notosans/%s", v);
+            fontfile = fopen (t, "r");
+        }
+
+        if (!fontfile) {
+            snprintf (t, MAX_PATH_LEN, "%s/%s/%s", LIBDIR, "fonts", v);
+            fontfile = fopen (t, "r");
+        }
+
+        if (!fontfile) {
+            snprintf (t, MAX_PATH_LEN, "%s/%s", "/usr/local/share/fonts/noto", v);
+            fontfile = fopen (t, "r");
+        }
+
+        if (!fontfile) {
+            snprintf (t, MAX_PATH_LEN, "%s/%s", "/usr/local/share/fonts/misc", v);
+            fontfile = fopen (t, "r");
         }
 
         if (!(fontfile)) { /* test if it is a file */
             if (r->font_freetype.n_fonts == 0) {  /* if the first one is not a loadable file, probably the user specified a X Font, so don't print an error */
-                free(t);
                 return l;
             }
-	    fprintf (stderr, "No such file %s.\n", t);
-            free(t);
+	    fprintf (stderr, "No such file %s in ./, notosans/, %s/%s/, %s/, or %s/.\n", v, LIBDIR, "/fonts", "/usr/local/share/fonts/noto", "/usr/local/share/fonts/misc");
             continue;
         } else {
             fclose(fontfile);
@@ -216,19 +212,17 @@ static int load_font_from_file (const char *fname, struct aa_font *r, int desire
 
         if (r->font_freetype.n_fonts > sizeof(r->font_freetype.faces) / sizeof(r->font_freetype.faces[0])) {
             fprintf(stderr, "Font %s cannot be loaded -- too many fonts.\n%s\n", t, font_error_string);
-            free(t);
             continue;
         }
 
         if (r->font_freetype.n_fonts >= 1) {    /* just load the name */
-            r->font_freetype.faces[r->font_freetype.n_fonts++].freetype_fname = t;
+            r->font_freetype.faces[r->font_freetype.n_fonts++].freetype_fname = (char *) strdup (t);
             continue;
         }
 
 /* a.0: dnh=24 drh=136 afh=100   notosans/NotoSans-Regular.ttf */
 
         if (load_one_freetype_font (&face, t, &r->font_freetype.desired_height, &loaded_height)) {
-            free(t);
             continue;
         }
 
@@ -264,11 +258,10 @@ small buttons and menus. We also want a condensed text editing style. */
         if (!r->font_freetype.measured_height) {
             FT_Done_Face(face);
 	    fprintf (stderr, "Font %s does not have a defined height.\n%s", t, font_error_string);
-            free(t);
             return 1;
         }
 
-        r->font_freetype.faces[r->font_freetype.n_fonts].freetype_fname = t;
+        r->font_freetype.faces[r->font_freetype.n_fonts].freetype_fname = (char *) strdup (t);
         r->font_freetype.faces[r->font_freetype.n_fonts].face = (void *) face;
         r->font_freetype.faces[r->font_freetype.n_fonts].loaded_height = loaded_height;
         r->font_freetype.n_fonts++;

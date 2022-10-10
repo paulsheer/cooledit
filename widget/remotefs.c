@@ -5601,7 +5601,7 @@ static void run_service (struct service *serv)
             next = i->next;
             i->magic = 0;
             if (i->discard)
-                printf ("removing %u, discarding %lld bytes\n", i->id, i->discard);
+                printf ("removing %u, discarding %ld bytes\n", i->id, (long) i->discard);
             else
                 printf ("removing %u\n", i->id);
             if (i->sock_data.crypto_data.symauth) {

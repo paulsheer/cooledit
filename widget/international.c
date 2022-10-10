@@ -260,6 +260,7 @@ static struct compose_international compose_nonascii_unicode[] = { \
     {0x02dd, ' ', '~',          "DOUBLE ACUTE ACCENT"},
     {0x03a0, 'T', 'T',          "GREEK CAPITAL LETTER PI"},
     {0x03c0, 't', 't',          "GREEK SMALL LETTER PI"},
+    {0x1E9E, 'S', 'S',          "LATIN CAPITAL LETTER SHARP S"},
     {0x2014, '-', '=',          "EM DASH"},
     {0x20ac, 'C', '=',          "EURO SIGN"},
     {0x2122, 'T', 'M',          "TRADE MARK SIGN"},

@@ -12,8 +12,13 @@
  * For 32-bit builds AES-NI is not supported.
  */
 
+#ifdef __clang__
+#define AES_CLANG_ATTR  __attribute__((__always_inline__, __nodebug__, __target__("aes")))
+#else
+#define AES_CLANG_ATTR
 #pragma GCC optimize("O6")
 #pragma GCC target("aes")
+#endif
 
 #include "inspect.h"
 #include <assert.h>
@@ -508,6 +513,7 @@ int aes_has_aesni (void)
     return aesni;
 }
 
+AES_CLANG_ATTR
 void aes_ni_cbc_encrypt (const unsigned char *in, unsigned char *out, int len, const struct aes_key_st *key, unsigned char _iv[16])
 {E_
     int auth = 0;
@@ -561,6 +567,7 @@ void aes_ni_cbc_encrypt (const unsigned char *in, unsigned char *out, int len, c
     memcpy (_iv, &b, 16);
 }
 
+AES_CLANG_ATTR
 void aes_ni_cbc_decrypt (const unsigned char *in, unsigned char *out, int len, const struct aes_key_st *key, unsigned char _iv[16])
 {E_
     struct aes_block b;
@@ -629,6 +636,7 @@ static __m128i aes_128_key_expansion_aa (__m128i key, __m128i keygened)
     return _mm_xor_si128 (key, keygened);
 }
 
+AES_CLANG_ATTR
 int aes_ni_set_encrypt_key (const unsigned char *ikey, struct aes_key_st *key)
 {E_
     __m128i k[28];
@@ -675,6 +683,7 @@ int aes_ni_set_encrypt_key (const unsigned char *ikey, struct aes_key_st *key)
     return 0;
 }
 
+AES_CLANG_ATTR
 int aes_ni_set_decrypt_key (const unsigned char *ikey, struct aes_key_st *key)
 {E_
     return aes_ni_set_encrypt_key (ikey, key);

@@ -5869,6 +5869,18 @@ int main (int argc, char **argv)
         printf ("                                       If AESKEYFILE exists it will be read.\n");
         printf ("  -h                                   Print help and exit.\n");
         printf ("\n");
+#ifdef __clang_version__
+        printf ("(compiled with Clang [%s])\n", __VERSION__);
+#elif (defined(__MINGW32__) || defined(__MINGW64__))
+        printf ("(compiled with x86_64-w64-mingw32-gcc [%s])\n", __VERSION__);
+#elif defined(__GNUC__) && defined(__VERSION__)
+        printf ("(compiled with gcc [%s])\n", __VERSION__);
+#elif defined(__VERSION__)
+        printf ("(compiled with [%s])\n", __VERSION__);
+#else
+        printf ("(compiled with [%s])\n", "<unknown>");
+#endif
+        printf ("\n");
         exit (1);
     }
 

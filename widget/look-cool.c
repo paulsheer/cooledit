@@ -11,7 +11,9 @@
 #include <my_string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#ifndef __FreeBSD__
 #include <sys/sysmacros.h>
+#endif
 
 #include "coolwidget.h"
 
@@ -420,7 +422,7 @@ static Window draw_file_browser (const char *identifier, Window parent, int x, i
     char errmsg[REMOTEFS_ERR_MSG_LEN] = "";
     char dir[MAX_PATH_LEN + 1];
 
-    strlcpy (dir, directory, MAX_PATH_LEN);
+    Cstrlcpy (dir, directory, MAX_PATH_LEN);
 
     if (parent == CRoot)
 	win = CDrawMainWindow (identifier, label);
@@ -681,7 +683,7 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
         strcpy (last_ipinput, HOST);
 	CHourGlass (CFirstWindow);
 
-        strlcpy (dir, directory->text.data, MAX_PATH_LEN);
+        Cstrlcpy (dir, directory->text.data, MAX_PATH_LEN);
 	CRedrawFilelist (idf, f = get_file_entry_list (ipinput ? ipinput->text.data : 0, dir, FILELIST_FILES_ONLY, filterinput->text.data, errmsg), 0);
         if (f && strcmp (dir, directory->text.data)) {
             CRedrawText (catstrs (identifier, ".dir", NULL), "%s", dir);
@@ -819,7 +821,7 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
         remotefs_error_code_t error_code = 0;
         char dir[MAX_PATH_LEN + 1];
 
-        strlcpy (dir, directory->text.data, MAX_PATH_LEN);
+        Cstrlcpy (dir, directory->text.data, MAX_PATH_LEN);
         u = remotefs_lookup (ipinput ? ipinput->text.data : 0, dir);
         if (strcmp (dir, directory->text.data))
             CRedrawText (catstrs (identifier, ".dir", NULL), "%s", dir);

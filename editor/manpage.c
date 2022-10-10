@@ -210,20 +210,24 @@ char *option_man_cmdline = MAN_CMD;
 
 extern char **environ;
 
-static char **set_env_var (char *new_var)
+static char **set_env_var (char *new_var[], int nn)
 {E_
-    int n, i, j, l;
+    int exists, n, i, j, k, *l;
     char **r;
+    l = (int *) alloca (nn * sizeof (int));
     for (n = 0; environ[n]; n++);
-    l = strcspn (new_var, "=");
-    r = (char **) malloc (sizeof (const char *) * (n + 2));
+    for (k = 0; k < nn; k++)
+        l[k] = strcspn (new_var[k], "=");
+    r = (char **) malloc (sizeof (const char *) * (n + nn + 2));
     for (i = j = 0; j < n; j++) {
-	assert (environ[j]);
-	if (!strncmp (environ[j], new_var, l))
-	    continue;
-	r[i++] = environ[j];
+        assert (environ[j]);
+        for (exists = k = 0; k < nn && !exists; k++)
+            exists = !strncmp (environ[j], new_var[k], l[k]);
+        if (!exists)
+            r[i++] = environ[j];
     }
-    r[i++] = new_var;
+    for (k = 0; k < nn; k++)
+        r[i++] = new_var[k];
     r[i] = NULL;
     return r;
 }
@@ -233,16 +237,21 @@ static char *run_man_shell_cmd (const char *manpage, int columns)
     int man_pipe = -1;
     char *t = NULL;
     char *argv[4];
-    char columns_env_var[64];
+    char ev1[64];
+    char ev2[64];
+    char *new_env_var[2];
     char **the_env;
     pid_t the_pid;
     Window win = 0;
     CWidget *w;
     char *r;
 
-    snprintf (columns_env_var, sizeof (columns_env_var), "COLUMNS=%d", columns);
+    snprintf (ev1, sizeof (ev1), "MANWIDTH=%d", columns - 2);  /* For FreeBSD. Requires a little white-space "2". */
+    snprintf (ev2, sizeof (ev2), "COLUMNS=%d", columns);
+    new_env_var[0] = ev1;
+    new_env_var[1] = ev2;
 
-    the_env = set_env_var (columns_env_var);
+    the_env = set_env_var (new_env_var, 2);
 
     w = CIdent ("mandisplayfile");
     if (w)

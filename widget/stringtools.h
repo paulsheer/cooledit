@@ -98,7 +98,7 @@ int change_directory (const char *path, char *errmsg);
 char *get_current_wd (char *buffer, int size);
 char *strcasechr (const char *p, int c);
 char *space_string (const char *s);
-int strlcpy (char *dst, const char *src, int siz);
+int Cstrlcpy (char *dst, const char *src, int siz);
 void string_chomp (char *_p);
 
 

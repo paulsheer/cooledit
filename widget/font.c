@@ -173,7 +173,7 @@ static int load_font_from_file (const char *fname, struct aa_font *r, int desire
         if (l < 1 || l >= sizeof(v) - 1)
             continue;
 
-        strlcpy (v, fname, l + 1);
+        Cstrlcpy (v, fname, l + 1);
 
         if (!fontfile) {
             snprintf (t, MAX_PATH_LEN, "%s", v);

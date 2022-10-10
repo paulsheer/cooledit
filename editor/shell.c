@@ -257,7 +257,9 @@ struct shell_cmd default_scripts[] =
 	SHELL_OPTION_INSERT_BLOCK_FILE,
 	0,
 	"#!/bin/sh\n" \
-	"indent -kr -pcs %b 2>%e\n"
+	"I=indent\n" \
+	"if which gindent >/dev/null 2>&1 ; then I=gindent ; fi\n" \
+	"$I -kr -pcs %b 2>%e\n"
     },
     {
 	gettext_noop (" Sort "),
@@ -1322,7 +1324,7 @@ void load_scripts ()
     if (!s || !*s)
 	goto load_default_scripts;
 
-#define BUILTING_SCRIPTS_VERSION        19
+#define BUILTING_SCRIPTS_VERSION        21
 
     if (!strncmp (s, "BUILTIN SHELL SCRIPTS VERSION ", 30)) {
         old_version = atoi (s + 30);

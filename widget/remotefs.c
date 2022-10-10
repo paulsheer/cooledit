@@ -44,7 +44,9 @@
 #ifndef MSWIN
 #include <sys/socket.h>
 #include <sys/signal.h>
+#ifndef __FreeBSD__
 #include <sys/sysmacros.h>
+#endif
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
@@ -4295,6 +4297,15 @@ static void *remotefs_sockaddr_t_address (remotefs_sockaddr_t * a)
     return (void *) &sa4->sin_addr;
 }
 
+static int remotefs_sockaddr_t_sockaddrlen (remotefs_sockaddr_t *a)
+{E_
+#ifndef LEGACY_IP4_ONLY
+    if (a->ss.ss_family == AF_INET6)
+        return sizeof (struct sockaddr_storage);
+#endif
+    return sizeof (struct sockaddr_in);
+}
+
 static int remotefs_sockaddr_t_addresslen (remotefs_sockaddr_t *a)
 {E_
 #ifndef LEGACY_IP4_ONLY
@@ -4369,7 +4380,7 @@ static SOCKET listen_socket (const char *listen_address, int listen_port)
         return INVALID_SOCKET;
     }
 
-    if (bind (s, (struct sockaddr *) &a, sizeof (a)) == SOCKET_ERROR) {
+    if (bind (s, (struct sockaddr *) &a, remotefs_sockaddr_t_sockaddrlen (&a)) == SOCKET_ERROR) {
         perrorsocket ("bind");
         closesocket (s);
         return INVALID_SOCKET;
@@ -4486,7 +4497,7 @@ static SOCKET connect_socket (struct sock_data *sock_data, const char *address, 
     }
 
   try_again:
-    r = connect (sock_data->sock, (struct sockaddr *) &a, sizeof (a));
+    r = connect (sock_data->sock, (struct sockaddr *) &a, remotefs_sockaddr_t_sockaddrlen (&a));
 
 LOG(r);
 
@@ -5534,8 +5545,8 @@ static void run_service (struct service *serv)
     FD_SET (serv->h, &rd);
     n = MAX (n, serv->h);
 
-    tv.tv_sec = 0;
-    tv.tv_usec = 1000000;
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
     r = select (n + 1, &rd, NULL, NULL, &tv);
     if (!r) {
         FD_ZERO (&rd);
@@ -5583,7 +5594,9 @@ static void run_service (struct service *serv)
             next = i->next;
             i->magic = 0;
             printf ("removing %u\n", i->id);
-            symauth_free (i->sock_data.crypto_data.symauth);
+            if (i->sock_data.crypto_data.symauth) {
+                symauth_free (i->sock_data.crypto_data.symauth);
+            }
             free (i);
             *j = next;
         } else {

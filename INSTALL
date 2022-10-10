@@ -1,7 +1,7 @@
 
 # Simple build assuming freetype is installed:
 
-./configure
+./configure --disable-shared 
 make
 make install
 

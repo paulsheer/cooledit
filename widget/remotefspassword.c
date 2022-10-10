@@ -174,7 +174,7 @@ int password_find (const char *host, int *crypto_enabled, char *pass, int pass_l
     for (p = list_first; p; p = p->next) {
         if (!strcmp (host, p->host)) {
             *crypto_enabled = p->crypto_enabled;
-            strlcpy (pass, p->pass, pass_len);
+            Cstrlcpy (pass, p->pass, pass_len);
             return 0;
         }
     }

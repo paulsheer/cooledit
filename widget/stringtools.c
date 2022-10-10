@@ -107,7 +107,7 @@ void catstrs_clean (void)
 	}
 }
 
-int strlcpy (char *dst, const char *src, int siz)
+int Cstrlcpy (char *dst, const char *src, int siz)
 {E_
     char *d = dst;
     const char *s = src;

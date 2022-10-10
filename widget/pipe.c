@@ -83,6 +83,44 @@ int PATH_search (const char *file)
 }
 
 
+int execve_path_search (const char *file, char *const argv[], char *const envp[])
+{
+    char *path, *p, *q;
+    int done = 0;
+
+    path = getenv ("PATH");
+    if (!path || !*path)
+        return execve (file, argv, envp);
+
+    p = q = path;
+
+    while (!done) {
+        int fd;
+        char *v;
+        while (*q && *q != ':')
+            q++;
+        if (!*q)
+            done = 1;
+        if (!strlen (p))
+            continue;
+        v = (char *) malloc ((q - p) + strlen (file) + 2);
+        strncpy (v, p, q - p);
+        strcpy (v + (q - p), "/");
+        strcat (v, file);
+        if ((fd = open (v, O_RDONLY)) >= 0) {
+            close (fd);
+            return execve (v, argv, envp);
+        }
+        free (v);
+        p = q + 1;
+        q = p;
+    }
+
+    errno = ENOENT;
+    return -1;
+}
+
+
 /*
    This opens a process as a pipe. 'in', 'out' and 'err' are pointers to file handles
    which are filled in by popen. 'in' refers to stdin of the process, to
@@ -199,7 +237,7 @@ fail for other reasons: */
 	close (nulldevice_wr);
 	set_signal_handlers_to_default ();
         if (envp)
-	    execvpe (file, argv, envp);
+	    execve_path_search (file, argv, envp);
         else
 	    execvp (file, argv);
 	exit (1);

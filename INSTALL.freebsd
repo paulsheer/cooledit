@@ -1,0 +1,109 @@
+
+
+The following FreeBSD packages are required:
+
+    pkg install gdb
+    pkg install aspell
+    pkg install en-aspell
+    pkg install gindent
+    pkg install pkgconf
+    pkg install freetype2
+    pkg install groff
+
+
+Cooledit's native font directory is /opt/cooledit/share/cooledit/fonts/
+If you intend to delete this directory, then FreeBSD has font packages
+as follows.
+
+
+These font packages are required:
+
+    pkg install font-misc-misc
+    pkg install noto-basic
+    pkg install noto-emoji
+    pkg install noto-extra
+
+Optional packages for Chinese/Japanese/Korean "CJK" characters: Choose at
+least one otherwise large areas of the Unicode map will be blank:
+
+    pkg install noto-hk
+    pkg install noto-tc
+    pkg install noto-sc
+    pkg install noto-kr
+    pkg install noto-jp
+
+The following interesting fonts are missing from FreeBSD. You may want
+to copy them to /usr/local/share/fonts/noto/
+
+    NotoMusic-Regular.ttf
+    NotoSansMath-Regular.ttf
+
+The following less-common language fonts are missing from FreeBSD. You
+may want to copy them to copy them to /usr/local/share/fonts/noto/
+
+    NotoLoopedLao-Regular.ttf
+    NotoSansBassaVah-Regular.ttf
+    NotoSansBhaiksuki-Regular.ttf
+    NotoSansCaucasianAlbanian-Regular.ttf
+    NotoSansChorasmian-Regular.ttf
+    NotoSansCyproMinoan-Regular.ttf
+    NotoSansDuployan-Regular.ttf
+    NotoSansElbasan-Regular.ttf
+    NotoSansElymaic-Regular.ttf
+    NotoSansGrantha-Regular.ttf
+    NotoSansGunjalaGondi-Regular.ttf
+    NotoSansHanifiRohingya-Regular.ttf
+    NotoSansHatran-Regular.ttf
+    NotoSansIndicSiyaqNumbers-Regular.ttf
+    NotoSansKhudawadi-Regular.ttf
+    NotoSansLinearA-Regular.ttf
+    NotoSansMahajani-Regular.ttf
+    NotoSansManichaean-Regular.ttf
+    NotoSansMarchen-Regular.ttf
+    NotoSansMasaramGondi-Regular.ttf
+    NotoSansMedefaidrin-Regular.ttf
+    NotoSansMendeKikakui-Regular.ttf
+    NotoSansMeroitic-Regular.ttf
+    NotoSansMiao-Regular.ttf
+    NotoSansModi-Regular.ttf
+    NotoSansMro-Regular.ttf
+    NotoSansMultani-Regular.ttf
+    NotoSansNabataean-Regular.ttf
+    NotoSansNandinagari-Regular.ttf
+    NotoSansNewa-Regular.ttf
+    NotoSansOldHungarian-Regular.ttf
+    NotoSansOldNorthArabian-Regular.ttf
+    NotoSansOldPermic-Regular.ttf
+    NotoSansOldSogdian-Regular.ttf
+    NotoSansPahawhHmong-Regular.ttf
+    NotoSansPalmyrene-Regular.ttf
+    NotoSansPauCinHau-Regular.ttf
+    NotoSansPsalterPahlavi-Regular.ttf
+    NotoSansSharada-Regular.ttf
+    NotoSansSiddham-Regular.ttf
+    NotoSansSignWriting-Regular.ttf
+    NotoSansSogdian-Regular.ttf
+    NotoSansSoraSompeng-Regular.ttf
+    NotoSansSoyombo-Regular.ttf
+    NotoSansSyriac-Regular.ttf
+    NotoSansTakri-Regular.ttf
+    NotoSansTamilSupplement-Regular.ttf
+    NotoSansTangsa-Regular.ttf
+    NotoSansTirhuta-Regular.ttf
+    NotoSansVithkuqi-Regular.ttf
+    NotoSansWancho-Regular.ttf
+    NotoSansWarangCiti-Regular.ttf
+    NotoSansZanabazarSquare-Regular.ttf
+    NotoSerifAhom-Regular.ttf
+    NotoSerifDivesAkuru-Regular.ttf
+    NotoSerifDogra-Regular.ttf
+    NotoSerifKhojki-Regular.ttf
+    NotoSerifMakasar-Regular.ttf
+    NotoSerifNyiakengPuachueHmong-Regular.ttf
+    NotoSerifOldUyghur-Regular.ttf
+    NotoSerifTangut-Regular.ttf
+    NotoSerifTibetan-Regular.ttf
+    NotoSerifToto-Regular.ttf
+    NotoSerifYezidi-Regular.ttf
+    NotoTraditionalNushu-Regular.ttf
+

@@ -42,12 +42,17 @@ else
     echo "" ;
     exit 1 ; 
 fi
-TST_MAN_CMD='for i in `man -a -w ls` ; do man -Tutf8 -Z $i | grotty ; echo ; echo --- ; echo ; done' ;
-THE_MAN_CMD='for i in `man -a -w %m` ; do man -Tutf8 -Z $i | grotty ; echo ; echo --- ; echo ; done' ;
+if test "x`uname`" = xFreeBSD ; then
+  TST_MAN_CMD='for i in `man -a -w ls` ; do man $i ; echo ; echo --- ; echo ; done' ;
+  THE_MAN_CMD='for i in `man -a -w %m` ; do man $i ; echo ; echo --- ; echo ; done' ;
+else
+  TST_MAN_CMD='for i in `man -a -w ls` ; do man -Tutf8 -Z $i | grotty ; echo ; echo --- ; echo ; done' ;
+  THE_MAN_CMD='for i in `man -a -w %m` ; do man -Tutf8 -Z $i | grotty ; echo ; echo --- ; echo ; done' ;
+fi ;
 touch TESTTHIS ;
 echo $ac_n "checking whether '$TST_MAN_CMD' works... " ;
 sh -c "$TST_MAN_CMD" 1>conftestman 2>&1 ;
-if grep -q 'Copyright.*Free.Software.Foundation' conftestman ; then
+if egrep -q '(FreeBSD General Commands Manual|Copyright.*Free.Software.Foundation)' conftestman ; then
         MAN_CMD="$THE_MAN_CMD" ;
         echo "yes" ;
 else

@@ -240,6 +240,18 @@ int             rxvtlib_get_pty (rxvtlib *o)
 	o->ttydev = 0;
     }
 
+#ifdef __FreeBSD__
+    fd = posix_openpt(O_RDWR);
+    if (fd >= 0) {
+	if (grantpt (fd) == 0	/* change slave permissions */
+	    && unlockpt (fd) == 0) {	/* slave now unlocked */
+	    ptydev = o->ttydev = (char *) strdup (ptsname (fd));	/* get slave's name */
+	    o->changettyowner = 0;
+	    goto Found;
+	}
+	close (fd);
+    }
+#endif
 #ifdef PTYS_ARE__GETPTY
     if ((ptydev = o->ttydev = (char *) strdup (_getpty (&fd, O_RDWR | O_NDELAY, 0622, 0))) != NULL)
 	goto Found;

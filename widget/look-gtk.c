@@ -670,7 +670,7 @@ static void look_gtk_render_passwordinput_tidbits (CWidget * wdt, int isfocussed
     int w = wdt->width, h = wdt->height;
     Window win = wdt->winid;
     bevel_background_color = COLOR_WHITE;
-    if ((win == CGetFocus ())) {
+    if (win == CGetFocus ()) {
 	render_bevel (win, 1, 1, w - 2, h - 2, 2, 1);	/*most outer border bevel */
 	CSetColor (color_widget (0));
 	XDrawRectangle (CDisplay, win, CGC, 0, 0, w - 1, h - 1);

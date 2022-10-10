@@ -489,13 +489,13 @@ int CGetCloseColor (XColor * cells, int ncells, XColor color, long *error)
 
     mask >>= min (BitsPerRGBofVisual (CVisual), 5);
     for (i = 0; i < ncells; i++) {
-	e = 8 * abs ((int) (color.red & mask) - (cells[i].red & mask)) + 10 * abs ((int) (color.green & mask) - (cells[i].green & mask)) + 5 * abs ((int) (color.blue & mask) - (cells[i].blue & mask));
+	e = 8 * abs ((int) (color.red & mask) - (int) (cells[i].red & mask)) + 10 * abs ((int) (color.green & mask) - (int) (cells[i].green & mask)) + 5 * abs ((int) (color.blue & mask) - (int) (cells[i].blue & mask));
 	if (e < merror) {
 	    merror = e;
 	    min = i;
 	}
     }
-    merror = 8 * abs ((int) (color.red & mask) - (cells[min].red & mask)) + 10 * abs ((int) (color.green & mask) - (cells[min].green & mask)) + 5 * abs ((int) (color.blue & mask) - (cells[min].blue & mask));
+    merror = 8 * abs ((int) (color.red & mask) - (int) (cells[min].red & mask)) + 10 * abs ((int) (color.green & mask) - (int) (cells[min].green & mask)) + 5 * abs ((int) (color.blue & mask) - (int) (cells[min].blue & mask));
     if (error)
 	*error = (long) merror;
     return min;

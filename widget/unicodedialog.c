@@ -64,8 +64,10 @@ static void render_unicode (CWidget * wdt, int force_full)
 	    h = (FONT_PIX_PER_LINE + 5) * j + 5;
 	    CSetBackgroundColor (COLOR_WHITE);
 	    if (i == 16) {
+                char c;
 		CSetColor (COLOR_FLAT);
-		CImageText (win, w, h + FONT_BASE_LINE, "0123456789ABCDEF" + j, 1);
+                c = "0123456789ABCDEF"[j];
+		CImageText (win, w, h + FONT_BASE_LINE, &c, 1);
 	    } else {
                 if (force_full || !CCheckWindowEvent (0, KeyPressMask, 1)) {
 /* the part inside this block takes a long time to render due to having to load fonts and possibly
@@ -100,11 +102,13 @@ scale larger glyphs */
 	CImageText (win, w, h + FONT_BASE_LINE, c, strlen (c));
     }
     for (i = 3; i < 16; i++) {
+        char c;
 	w = (col_spacing + 5) * i + 5;
 	h = (FONT_PIX_PER_LINE + 5) * j + 5;
 	CSetBackgroundColor (COLOR_WHITE);
 	CSetColor (COLOR_FLAT);
-	CImageText (win, w, h + FONT_BASE_LINE, "0123456789ABCDEF" + i, 1);
+        c = "0123456789ABCDEF"[i];
+	CImageText (win, w, h + FONT_BASE_LINE, &c, 1);
     }
 
     w = wdt->width;

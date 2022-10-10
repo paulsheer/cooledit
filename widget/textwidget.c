@@ -125,7 +125,7 @@ static char *get_block (CWidget * w, long start_mark, long end_mark, int *type, 
 {E_
     CStr s;
     char *t, *t2;
-    *l = abs (w->mark2 - w->mark1);
+    *l = labs (w->mark2 - w->mark1);
     t = CMalloc (*l + 1);
     s = (*w->textbox_funcs->textbox_text_cb) (w->textbox_funcs->hook1, w->textbox_funcs->hook2);
     memcpy (t, s.data + min (w->mark1, w->mark2), *l);
@@ -700,7 +700,7 @@ static void text_get_selection (CWidget * w)
     CStr s, r;
     char *t;
     int len;
-    len = abs (w->mark2 - w->mark1);
+    len = labs (w->mark2 - w->mark1);
     s = (*w->textbox_funcs->textbox_text_cb) (w->textbox_funcs->hook1, w->textbox_funcs->hook2);
     t = CMalloc (len + 1);
     memcpy (t, s.data + min (w->mark1, w->mark2), len);

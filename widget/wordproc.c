@@ -35,7 +35,7 @@ static long line_start (WEdit * edit, long line)
 {E_
     static long p = -1, l = 0;
     int c;
-    if (p == -1 || abs (l - line) > abs (edit->curs_line - line)) {
+    if (p == -1 || labs (l - line) > labs (edit->curs_line - line)) {
 	l = edit->curs_line;
 	p = edit->curs1;
     }

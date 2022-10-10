@@ -75,10 +75,10 @@ void resolve_button (XEvent * xevent, CEvent * cwevent)
 	if (xevent->type != ButtonRepeat) {
 	    if (window == xevent->xany.window)
 		if (abs (x - cwevent->x) < 4 && abs (y - cwevent->y) < 4) {
-		    if (abs (xevent->xmotion.time - thyme_press) < option_mouse_double_click &&
+		    if (labs ((long) xevent->xmotion.time - (long) thyme_press) < option_mouse_double_click &&
 			xevent->type == ButtonPress)
 			thyme_press = cwevent->double_click = 1;
-		    if (abs (xevent->xmotion.time - thyme_release) < option_mouse_double_click &&
+		    if (labs ((long) xevent->xmotion.time - (long) thyme_release) < option_mouse_double_click &&
 			xevent->type == ButtonRelease)
 			thyme_release = cwevent->double_click = 1;
 		}

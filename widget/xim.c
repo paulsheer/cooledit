@@ -345,7 +345,7 @@ XIMStyle get_input_style (void)
 	return 0;
     }
     for (i = 0; !found && i < xim_styles->count_styles; i++) {
-	if ((xim_styles->supported_styles[i] == (XIMPreeditPosition | XIMStatusNothing))) {
+	if (xim_styles->supported_styles[i] == (XIMPreeditPosition | XIMStatusNothing)) {
 	    found = 1;
 	    input_style = xim_styles->supported_styles[i];
 	}
@@ -357,7 +357,7 @@ XIMStyle get_input_style (void)
 	}
     }
     for (i = 0; !found && i < xim_styles->count_styles; i++) {
-	if ((xim_styles->supported_styles[i] == (XIMPreeditNothing | XIMStatusNothing))) {
+	if (xim_styles->supported_styles[i] == (XIMPreeditNothing | XIMStatusNothing)) {
 	    found = 1;
 	    input_style = xim_styles->supported_styles[i];
 	}

@@ -677,7 +677,7 @@ static char *get_block (CWidget * w, long start_mark, long end_mark, int *type, 
 	*l = 0;
 	return (char *) strdup ("");
     }
-    *l = abs (w->mark2 - w->mark1);
+    *l = labs (w->mark2 - w->mark1);
     t = CMalloc (*l + 1);
     memcpy (t, w->text.data + min (w->mark1, w->mark2), *l);
     t[*l] = 0;

@@ -3977,7 +3977,7 @@ static int recv_ack (struct reader_data *d, int *got_ack, int *got_stop, enum re
     decode_msg_ack (&ack, &error_code, &version);
 
     *got_ack = 1;
-    *got_stop = (ack.error_code != RFSERR_SUCCESS);
+    *got_stop = (error_code != RFSERR_SUCCESS);
 
     return 0;
 }
@@ -5329,6 +5329,7 @@ struct client_item {
 #define KILL_SOFT       1
 #define KILL_HARD       2
     int kill;
+    long long discard;
 };
 
 static void add_client (struct service *serv)
@@ -5564,7 +5565,13 @@ static void run_service (struct service *serv)
         assert (i->magic == CLIENT_MAGIC);
         if (FD_ISSET (i->sock_data.sock, &rd)) {
             if (i->kill) {
-                i->kill = KILL_HARD;
+                int discard;
+                char discard_data[16384];
+                /* empty the receive queue as a way of waiting for the remote to shutdown its end: */
+                if ((discard = recv (i->sock_data.sock, discard_data, sizeof (discard_data), 0)) <= 0)
+                    i->kill = KILL_HARD;
+                else
+                    i->discard += discard;
             } else {
                 process_client (i);
                 time (&i->last_accessed);
@@ -5593,7 +5600,10 @@ static void run_service (struct service *serv)
             SHUTSOCK (&i->sock_data);
             next = i->next;
             i->magic = 0;
-            printf ("removing %u\n", i->id);
+            if (i->discard)
+                printf ("removing %u, discarding %lld bytes\n", i->id, i->discard);
+            else
+                printf ("removing %u\n", i->id);
             if (i->sock_data.crypto_data.symauth) {
                 symauth_free (i->sock_data.crypto_data.symauth);
             }

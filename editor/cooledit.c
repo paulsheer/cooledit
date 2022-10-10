@@ -11,6 +11,7 @@
 
 #include <signal.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #if HAVE_SYS_WAIT_H
 # include <sys/wait.h>
 #endif
@@ -32,6 +33,7 @@
 #include "rxvt/rxvtexport.h"
 #include "debug.h"
 #include "find.h"
+#include "aafont.h"
 #include "postscript.h"
 #include "remotefs.h"
 #include "remotefspassword.h"

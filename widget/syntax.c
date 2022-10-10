@@ -1005,6 +1005,26 @@ FILE *spelling_pipe_in = 0;
 FILE *spelling_pipe_out = 0;
 pid_t ispell_pid = 0;
 
+static char *default_wholechars (void)
+{E_
+    int c, l;
+    char *r, *p;
+    l = 2 + ('z' - 'a' + 1) + ('Z' - 'A' + 1) + (0xff - 0xa0 + 1);
+    p = r = (char *) malloc (l + 2);
+    r[l] = '\0';
+    r[l + 1] = 1;
+    *p++ = '-'; /* replaceable */
+    *p++ = '-';
+    for (c = 'a'; c <= 'z'; c++)
+        *p++ = c;
+    for (c = 'A'; c <= 'Z'; c++)
+        *p++ = c;
+    for (c = 0xa0; c <= 0xff; c++)
+        *p++ = c;
+    assert (*p == '\0');
+    assert (p[1] == 1);
+    return r;
+}
 
 /* adds a keyword for underlining into the keyword list for this context, returns 1 if too many words */
 static int edit_syntax_add_keyword (WEdit * edit, char *keyword, int context, time_t t)
@@ -1038,8 +1058,8 @@ static int edit_syntax_add_keyword (WEdit * edit, char *keyword, int context, ti
 #endif
     c->keyword[j]->keyword = (char *) strdup (keyword);
     c->keyword[j]->first = *c->keyword[j]->keyword;
-    c->keyword[j]->whole_word_chars_left = (char *) strdup ("--abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ¡¢£¤¥¦§§¨©©ª«¬­®®¯°±²³´µ¶¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ");
-    c->keyword[j]->whole_word_chars_right = (char *) strdup ("--abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ¡¢£¤¥¦§§¨©©ª«¬­®®¯°±²³´µ¶¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ");
+    c->keyword[j]->whole_word_chars_left = default_wholechars ();
+    c->keyword[j]->whole_word_chars_right = default_wholechars ();
     c->keyword[j]->whole_word_chars_left[0] = (c->first_left == '\'' ? '-' : '\'');
     c->keyword[j]->whole_word_chars_right[0] = (c->first_right == '\'' ? '-' : '\'');
     c->keyword[j]->time = t;

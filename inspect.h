@@ -4,6 +4,10 @@
 
 #define E_
 
+void init_inspect (void);
+void inspect_clean_exit (void);
+void housekeeping_inspect (void);
+
 #else
 
 

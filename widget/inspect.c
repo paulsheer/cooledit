@@ -1,6 +1,27 @@
 /* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 
 #include "inspect.h"
+#include <stdlib.h>
+
+#if defined(NO_INSPECT) || !defined(__GNUC__) || !defined(__x86_64__)
+
+struct inspect_st__;
+
+void init_inspect (void)
+{
+}
+
+void inspect_clean_exit (void)
+{
+}
+
+void housekeeping_inspect (void)
+{
+}
+
+struct inspect_st__ *inspect_data__ = NULL;
+
+#else
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -77,5 +98,7 @@ void init_inspect (void)
     memset (inspect_data__, '\0', sizeof (struct inspect_st__));
     inspect_data__->dummy = ('#' << 24) | '#';
 }
+
+#endif
 
 

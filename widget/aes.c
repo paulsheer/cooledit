@@ -440,8 +440,7 @@ void aes_cbc128_decrypt (const unsigned char *in, unsigned char *out, int len, c
             ivec[n] = c;
         }
         if (len <= 16) {
-            for (; n < 16; ++n)
-                ivec[n] = in[n];
+            memcpy (&ivec[n], in + n, 16 - n);  /* use memcpy instead of loop to avoid wierd warning on 32-bit gcc */
             break;
         }
         len -= 16;

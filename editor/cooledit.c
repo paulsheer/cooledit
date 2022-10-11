@@ -1386,8 +1386,8 @@ void init_usual_items (struct menu_item *m)
     ADD_USUAL(" Window cycle\tCtrl-F6/Shift-Tab ", '~', window_cycle_callback, 0);
     ADD_USUAL(" Close window\tF10 ", '~', close_window_callback, 0);
     ADD_USUAL(" Close deepest window\tAlt-F10 ", '~', close_last_callback, 0);
-    ADD_USUAL(" Close all and exit\t", 0, exit_app, 1);
-    ADD_USUAL(" Save all and exit\t", 0, exit_app, 2);
+    ADD_USUAL(" Close all and exit\tCtrl-F10", 0, exit_app, 1);
+    ADD_USUAL(" Save all and exit\tAlt-x", 0, exit_app, 2);
     ADD_USUAL(" Save desktop\tCtrl-F2 ", '~', save_desk_callback, 0);
     ADD_USUAL(" File browser...\t", '~', menu_browse_cmd, 0);
     ADD_USUAL("  ", 0, NULL, 0);
@@ -1651,6 +1651,34 @@ static int write_config (int clean)
     char *f, *t;
     int result = 0;
     char s[1024];
+    int i, unsaved, choice;
+
+    for (unsaved = i = 0; i < last_edit; i++)
+        unsaved += !!edit[i]->editor->modified;
+
+    if (clean == 1) {
+        if (unsaved) {
+            char *m;
+            m = sprintf_alloc (" You have %d modified files that have not been saved. \n Confirm close all windows without saving... ", unsaved);
+            choice = CQueryDialog (edit[current_edit]->mainid, 20, 20, " Confirm ", m, "Cancel", "Confirm", "Save All", NULL);
+            free (m);
+            if (choice <= 0)
+                return 2;
+            if (choice == 2)
+                clean = 2;
+        } else {
+            if (CQueryDialog (edit[current_edit]->mainid, 20, 20, " Confirm ", " Close all windows on the desktop... ", "Cancel", "Confirm", NULL) == 0)
+                return 2;
+        }
+    } else if (clean == 2) {
+        char *m;
+        m = sprintf_alloc (" Save %d modified files and close all windows on the desktop... ", unsaved);
+        choice = CQueryDialog (edit[current_edit]->mainid, 20, 20, " Confirm ", m, "Cancel", "Confirm", NULL);
+        free (m);
+        if (choice <= 0)
+            return 2;
+    }
+
     t = f = CMalloc (65536);
     *f = 0;
     current_to_top ();

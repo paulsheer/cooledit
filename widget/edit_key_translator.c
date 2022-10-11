@@ -257,7 +257,7 @@ int edit_translate_key (unsigned int x_keycode, long x_key, int x_state, int *cm
 	case XK_M:
 	    command = CK_Mail;
 	    goto fin;
-#if 0
+#if 1
 	case XK_x:
 	case XK_X:
 	    command = CK_Save_And_Quit;
@@ -569,7 +569,7 @@ int edit_translate_key (unsigned int x_keycode, long x_key, int x_state, int *cm
 	    case XK_F6:
 		command = CK_Cycle;
 		goto fin;
-#if 0
+#if 1
 	    case XK_F10:
 		command = CK_Check_Save_And_Quit;
 		goto fin;

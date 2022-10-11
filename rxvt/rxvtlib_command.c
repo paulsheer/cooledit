@@ -835,7 +835,9 @@ void rxvtlib_init_xlocale (rxvtlib * o)
 	print_error ("Setting locale failed.");
     else {
 	/* To avoid Segmentation Fault in C locale */
+#ifndef UTF8_FONT
 	rxvtlib_setTermFontSet (o);
+#endif
 #ifndef STANDALONE
 	if (option_use_xim)
 #endif
@@ -3379,6 +3381,7 @@ void            rxvtlib_IMSendSpot (rxvtlib *o)
 }
 
 /* INTPROTO */
+#ifndef UTF8_FONT
 void            rxvtlib_setTermFontSet (rxvtlib *o)
 {E_
     char           *string;
@@ -3426,6 +3429,7 @@ void            rxvtlib_setTermFontSet (rxvtlib *o)
 	FREE (string);
     }
 }
+#endif
 
 /* INTPROTO */
 void            rxvtlib_setPreeditArea (rxvtlib *o, XRectangle * preedit_rect,
@@ -3481,6 +3485,7 @@ void            rxvtlib_IMInstantiateCallback (Display * display, XPointer clien
     XVaNestedList   preedit_attr = NULL;
     XVaNestedList   status_attr = NULL;
     XIMCallback     ximcallback;
+    XFontSet        fontset;
 
     o = (rxvtlib *) client_data;
 
@@ -3569,6 +3574,14 @@ void            rxvtlib_IMInstantiateCallback (Display * display, XPointer clien
 	XCloseIM (xim);
 	return;
     }
+
+#ifdef UTF8_FONT
+#warning finish
+    fontset = 0;
+#else
+    fontset = o->TermWin.fontset;
+#endif
+
     if (input_style & XIMPreeditPosition) {
 	rxvtlib_setSize (o, &rect);
 	rxvtlib_setPosition (o, &spot);
@@ -3578,7 +3591,7 @@ void            rxvtlib_IMInstantiateCallback (Display * display, XPointer clien
 					    XNSpotLocation, &spot,
 					    XNForeground, fg,
 					    XNBackground, bg,
-					    XNFontSet, o->TermWin.fontset, NULL);
+					    XNFontSet, fontset, NULL);
     } else if (input_style & XIMPreeditArea) {
 	rxvtlib_setColor (o, &fg, &bg);
 
@@ -3593,11 +3606,11 @@ void            rxvtlib_IMInstantiateCallback (Display * display, XPointer clien
 	preedit_attr = XVaCreateNestedList (0, XNArea, &rect,
 					    XNForeground, fg,
 					    XNBackground, bg,
-					    XNFontSet, o->TermWin.fontset, NULL);
+					    XNFontSet, fontset, NULL);
 	status_attr = XVaCreateNestedList (0, XNArea, &status_rect,
 					   XNForeground, fg,
 					   XNBackground, bg,
-					   XNFontSet, o->TermWin.fontset, NULL);
+					   XNFontSet, fontset, NULL);
     }
     o->Input_Context = XCreateIC (xim, XNInputStyle, input_style,
 			       XNClientWindow, o->TermWin.parent[0],

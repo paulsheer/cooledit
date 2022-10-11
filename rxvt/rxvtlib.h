@@ -77,6 +77,14 @@ enum {
     SECONDARY
 };
 
+#define UTF8_FONT
+#undef UTF8_FONT
+
+#ifdef UTF8_FONT
+#define NO_BOLDFONT
+#endif
+
+
 struct _rxvtlib {
  char    *ttydev ;
  short    changettyowner ;
@@ -579,6 +587,7 @@ struct _TermWin_t {
     Window          parent[4],	/* parent[0] is our window                 */
                     vt;		/* vt100 window                             */
     GC              gc;		/* GC for drawing text                      */
+#ifndef UTF8_FONT
     XFontStruct    *font;	/* main font structure                      */
 #ifndef NO_BOLDFONT
     XFontStruct    *boldFont;	/* bold font                                */
@@ -587,6 +596,7 @@ struct _TermWin_t {
     XFontStruct    *mfont;	/* Multichar font structure                 */
 #endif
     XFontSet        fontset;
+#endif
 #ifdef XPM_BACKGROUND
     Pixmap          pixmap;
 #ifdef XPM_BUFFERING

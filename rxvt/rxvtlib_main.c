@@ -429,7 +429,12 @@ void            rxvtlib_Create_Windows (rxvtlib *o, int argc, const char *const 
     {
 	XGCValues       gcvalue;
 
+#ifdef UTF8_FONT
+#warning finish
+	gcvalue.font = 0;
+#else
 	gcvalue.font = o->TermWin.font->fid;
+#endif
 	gcvalue.foreground = o->PixColors[Color_fg];
 	gcvalue.background = o->PixColors[Color_bg];
 	gcvalue.graphics_exposures = 0;
@@ -895,6 +900,7 @@ void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname)
 	    o->rs[Rs_font + idx] = newfont[idx];
 	}
     }
+#ifndef UTF8_FONT
     if (o->TermWin.font) {
 	XFreeFont (o->Xdisplay, o->TermWin.font);
 	o->TermWin.font = 0;
@@ -920,6 +926,7 @@ void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname)
 	}
     }
     o->TermWin.font = xfont;
+#endif
 
 #ifndef NO_BOLDFONT
 /* fail silently */
@@ -953,10 +960,17 @@ void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname)
 
 /* alter existing GC */
     if (!init) {
+#ifdef UTF8_FONT
+#warning check this
+#else
 	XSetFont (o->Xdisplay, o->TermWin.gc, o->TermWin.font->fid);
+#endif
 	rxvtlib_menubar_expose (o);
     }
 /* set the sizes */
+#ifdef UTF8_FONT
+#warning finish get size
+#else
     {
 	int             fh, fw = 0;
 
@@ -972,6 +986,7 @@ void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname)
 	o->TermWin.fwidth = fw;
 	o->TermWin.fheight = fh;
     }
+#endif
 
 /* check that size of boldFont is okay */
 #ifndef NO_BOLDFONT
@@ -1212,7 +1227,9 @@ const char    **rxvtlib_init_resources (rxvtlib *o, int argc, const char *const 
 	    o->rs[Rs_mfont + i] = o->def_mfontName[i];
 #endif
     }
+#ifndef UTF8_FONT
     o->TermWin.fontset = NULL;
+#endif
 
 #ifdef XTERM_REVERSE_VIDEO
 /* this is how xterm implements reverseVideo */

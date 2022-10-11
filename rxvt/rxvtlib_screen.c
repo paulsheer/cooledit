@@ -1968,7 +1968,9 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
     rend_t         *drp, *srp;	/* drawn-rend-pointer, screen-rend-pointer   */
     text_t         *dtp, *stp;	/* drawn-text-pointer, screen-text-pointer   */
     XGCValues       gcvalue;	/* Graphics Context values                   */
+#ifndef UTF8_FONT
     XFontStruct    *wf;		/* which font are we in                      */
+#endif
 
     /* is there an old outline cursor on screen? */
 #ifndef NO_BOLDFONT
@@ -2000,9 +2002,13 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
  * always go back to the base font - it's much safer
  */
     wbyte = 0;
+#ifdef UTF8_FONT
+#warning finish
+#else
     XSetFont (o->Xdisplay, o->TermWin.gc, o->TermWin.font->fid);
     draw_string = XDrawString;
     draw_image_string = XDrawImageString;
+#endif
     boldlast = 0;
 
 /*
@@ -2026,7 +2032,9 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 # ifndef NO_BOLDFONT
 	if (o->TermWin.boldFont == NULL) {
 # endif
+#ifndef UTF8_FONT
 	    wf = o->TermWin.font;
+#endif
 	    j = wbyte;
 	    for (col = o->TermWin.ncol - 2; col >= 0; col--) {
 # if ! defined (NO_BRIGHTCOLOR) && ! defined (VERYBOLD)
@@ -2044,10 +2052,15 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 		if (dtp[col] == ' ') {	/* TODO: check character set? */
 		    continue;
 		}
+#ifdef UTF8_FONT
+#warning finish
+#else
 		if (wf->per_char == NULL
 		    || dtp[col] < wf->min_char_or_byte2
 		    || dtp[col] > wf->max_char_or_byte2
-		    || FONT_WIDTH (wf, dtp[col]) == FONT_RBEAR (wf, dtp[col])) {
+		    || FONT_WIDTH (wf, dtp[col]) == FONT_RBEAR (wf, dtp[col]))
+#endif
+                {
 		    dtp[col + 1] = 0;
 # if defined(MULTICHAR_SET) && ! defined(NO_BOLDOVERSTRIKE_MULTI)
 		    if ((srp[col] & RS_multiMask) == RS_multi2) {
@@ -2185,7 +2198,12 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 	    len = 0;
 	    o->buffer[len++] = stp[col];
 	    ypixelc = Row2Pixel(row);
+#ifdef UTF8_FONT
+#warning finish
+	    ypixel = ypixelc + 0;
+#else
 	    ypixel = ypixelc + o->TermWin.font->ascent;
+#endif
 	    xpixel = Col2Pixel (col);
 	    fontdiff = 0;
 	    wlen = 1;
@@ -2369,7 +2387,12 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 		    DRAW_STRING (draw_string, xpixel + 1, ypixel, o->buffer,
 				 wlen);
 #endif
+#ifdef UTF8_FONT
+#warning finish
+	    if ((rend & RS_Uline) && (1 /* ???? */))
+#else
 	    if ((rend & RS_Uline) && (o->TermWin.font->descent > 1))
+#endif
 		XDrawLine (o->Xdisplay, drawBuffer, o->TermWin.gc,
 			   xpixel, ypixel + 1,
 			   xpixel + Width2Pixel (len) - 1, ypixel + 1);

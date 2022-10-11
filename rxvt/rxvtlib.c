@@ -362,14 +362,17 @@ void rxvtlib_shut (rxvtlib * o)
 
     myfree (o->tabs);
 
+#ifndef UTF8_FONT
     if (o->TermWin.fontset)
 	XFreeFontSet (o->Xdisplay, o->TermWin.fontset);
+#endif
 #ifdef USE_XIM
     if (o->Input_Context)
 	XDestroyIC (o->Input_Context);
 #endif		/* USE_XIM */
     if (o->TermWin.gc)
 	XFreeGC (o->Xdisplay, o->TermWin.gc);
+#ifndef UTF8_FONT
 #ifdef MULTICHAR_SET
     if (o->TermWin.mfont)
 	XFreeFont (o->Xdisplay, o->TermWin.mfont);
@@ -379,6 +382,7 @@ void rxvtlib_shut (rxvtlib * o)
 #ifndef NO_BOLDFONT
     if (o->TermWin.boldFont)
 	XFreeFont (o->Xdisplay, o->TermWin.boldFont);
+#endif
 #endif
 
     myfree (o->ttydev);

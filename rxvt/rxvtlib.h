@@ -576,7 +576,7 @@ struct _TermWin_t {
                     saveLines;	/* number of lines that fit in scrollback   */
     unsigned short  nscrolled,	/* number of line actually scrolled         */
                     view_start;	/* scrollback view starts here              */
-    Window          parent[6],	/* parent[0] is our window                 */
+    Window          parent[4],	/* parent[0] is our window                 */
                     vt;		/* vt100 window                             */
     GC              gc;		/* GC for drawing text                      */
     XFontStruct    *font;	/* main font structure                      */

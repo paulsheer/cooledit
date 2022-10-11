@@ -47,11 +47,11 @@ int rxvt_event (XEvent * xevent)
 	    memset (l, 0, sizeof (*l));
 	    free (l);
 	    l = prev;
-	} else if (win && (l->rxvt->TermWin.parent[0] == win
+	} else if (win && (l->rxvt->TermWin.vt == win
+			   || l->rxvt->TermWin.parent[0] == win
 			   || l->rxvt->TermWin.parent[1] == win
 			   || l->rxvt->TermWin.parent[2] == win
 			   || l->rxvt->TermWin.parent[3] == win
-			   || l->rxvt->TermWin.parent[4] == win
 			   || l->rxvt->scrollBar.win == win
 			   || l->rxvt->menuBar.win == win)) {
 	    l->rxvt->x_events_pending = 1;

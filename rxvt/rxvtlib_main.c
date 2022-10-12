@@ -2,6 +2,10 @@
 #include "inspect.h"
 #include "rxvtlib.h"
 #include <stringtools.h>
+#ifdef UTF8_FONT
+#include <app_glob.c>
+#include <font.h>
+#endif
 
 /*--------------------------------*-C-*---------------------------------*
  * File:	main.c
@@ -425,16 +429,20 @@ void            rxvtlib_Create_Windows (rxvtlib *o, int argc, const char *const 
 # endif
 #endif
 
+#ifdef UTF8_FONT
+    {
+	XGCValues gcvalue;
+	gcvalue.foreground = o->PixColors[Color_fg];
+	gcvalue.background = o->PixColors[Color_bg];
+	gcvalue.graphics_exposures = 0;
+	o->TermWin.gc = XCreateGC (o->Xdisplay, o->TermWin.vt, GCForeground | GCBackground | GCGraphicsExposures, &gcvalue);
+    }
+#else
 /* graphics context for the vt window */
     {
 	XGCValues       gcvalue;
 
-#ifdef UTF8_FONT
-#warning finish
-	gcvalue.font = 0;
-#else
 	gcvalue.font = o->TermWin.font->fid;
-#endif
 	gcvalue.foreground = o->PixColors[Color_fg];
 	gcvalue.background = o->PixColors[Color_bg];
 	gcvalue.graphics_exposures = 0;
@@ -442,6 +450,7 @@ void            rxvtlib_Create_Windows (rxvtlib *o, int argc, const char *const 
 				GCForeground | GCBackground |
 				GCFont | GCGraphicsExposures, &gcvalue);
     }
+#endif
 }
 /* window resizing - assuming the parent window is the correct size */
 /* INTPROTO */
@@ -814,7 +823,9 @@ void            rxvtlib_xterm_seq (rxvtlib *o, int op, const char *str)
 /* EXTPROTO */
 void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname)
 {E_
+#ifndef UTF8_FONT
     const char     *msg = "can't load font \"%s\"";
+#endif
     XFontStruct    *xfont = 0;
     int             idx = 0;	/* index into rs[Rs_font] */
     int             recheckfonts;
@@ -960,16 +971,22 @@ void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname)
 
 /* alter existing GC */
     if (!init) {
-#ifdef UTF8_FONT
-#warning check this
-#else
+#ifndef UTF8_FONT
 	XSetFont (o->Xdisplay, o->TermWin.gc, o->TermWin.font->fid);
 #endif
 	rxvtlib_menubar_expose (o);
     }
 /* set the sizes */
 #ifdef UTF8_FONT
-#warning finish get size
+    CPushFont ("editor", 0);
+    o->TermWin.fprop = 0;
+    o->TermWin.mprop = 0;
+    o->TermWin.bprop = 0;
+    o->TermWin.fwidth = FONT_MEAN_WIDTH;
+    o->TermWin.fheight = FONT_HEIGHT;
+    recheckfonts = 0;
+    (void) recheckfonts;
+    CPopFont ();
 #else
     {
 	int             fh, fw = 0;
@@ -986,7 +1003,6 @@ void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname)
 	o->TermWin.fwidth = fw;
 	o->TermWin.fheight = fh;
     }
-#endif
 
 /* check that size of boldFont is okay */
 #ifndef NO_BOLDFONT
@@ -1003,6 +1019,7 @@ void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname)
 	}
     }
 #endif				/* NO_BOLDFONT */
+#endif                          /* !UTF8_FONT */
 
 #ifdef MULTICHAR_SET
     if (recheckfonts)
@@ -1028,7 +1045,9 @@ void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname)
 	rxvtlib_scr_touch (o);
     }
     return;
+#ifndef UTF8_FONT
   Abort:
+#endif
     print_error ("aborting");	/* fatal problem */
     o->killed = EXIT_FAILURE | DO_EXIT;
     /* NOTREACHED */

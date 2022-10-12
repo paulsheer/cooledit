@@ -80,10 +80,6 @@ enum {
 #define UTF8_FONT
 #undef UTF8_FONT
 
-#ifdef UTF8_FONT
-#define NO_BOLDFONT
-#endif
-
 
 struct _rxvtlib {
  char    *ttydev ;
@@ -676,7 +672,7 @@ struct _row_col_t {
 # ifdef KANJI
 #  define TERMENV	"kterm"
 # else
-#  define TERMENV	"xterm"
+#  define TERMENV	"rxvt"
 # endif
 #endif
 

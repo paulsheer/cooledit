@@ -5,6 +5,11 @@
 #include "edit.h"
 
 
+#ifdef UTF8_FONT
+#define XSetFont(d, gc, fid)    do { } while (0)
+#endif
+
+
 /*--------------------------------*-C-*--------------------------------------*
  * File:	screen.c
  *---------------------------------------------------------------------------*
@@ -1923,6 +1928,52 @@ void            rxvtlib_scr_printscreen (rxvtlib *o, int fullhist)
 #endif
 }
 
+#ifdef UTF8_FONT
+static int bfont;
+
+unsigned long scale_brightness (unsigned long c, unsigned long denominator, unsigned long numerator)
+{
+    unsigned long ret = 0L;
+    Visual *v;
+    unsigned long cr, cg, cb;
+    unsigned long r, g, b;
+    int br, bg, bb;
+    v = CVisual;
+    if (v->class != TrueColor)
+        return c;
+
+#define shift(cm, m, bm, q_mask) \
+    m = v->q_mask; \
+    cm = m & c; \
+    bm = 0; \
+    while (!(m & 1) && bm < 64) { \
+        m >>= 1; \
+        cm >>= 1; \
+        bm++; \
+    } \
+    cm = cm * denominator / numerator; \
+    ret |= (cm << bm); \
+
+    shift (cr, r, br, red_mask);
+    shift (cg, g, bg, green_mask);
+    shift (cb, b, bb, blue_mask);
+
+    return ret;
+}
+
+static int draw_image_string_ (Display * display, Drawable d, GC gc, int x, int y, char *string, int length)
+{
+    XGCValues values_return;
+    XGetGCValues (display, gc, GCForeground | GCBackground, &values_return);
+    if (bfont)
+        CSetColor (scale_brightness (values_return.foreground, 2, 3));
+    else
+        CSetColor (values_return.foreground);
+    CSetBackgroundColor (values_return.background);
+    return CImageString (d, x, y, string);
+}
+#endif
+
 /* ------------------------------------------------------------------------- */
 /*
  * Refresh the screen
@@ -1973,10 +2024,14 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 #endif
 
     /* is there an old outline cursor on screen? */
+#ifndef UTF8_FONT
 #ifndef NO_BOLDFONT
-    int             bfont = 0;	/* we've changed font to bold font           */
+    int             bfont;	/* we've changed font to bold font           */
+#endif
 #endif
     int             (*draw_string) (), (*draw_image_string) ();
+
+    bfont = 0;
 
     if (type == NO_REFRESH)
 	return;
@@ -2003,7 +2058,9 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
  */
     wbyte = 0;
 #ifdef UTF8_FONT
-#warning finish
+    CPushFont ("editor", 0);
+    draw_string = draw_image_string_;
+    draw_image_string = draw_image_string_;
 #else
     XSetFont (o->Xdisplay, o->TermWin.gc, o->TermWin.font->fid);
     draw_string = XDrawString;
@@ -2029,12 +2086,11 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 	srp = o->screen.rend[scrrow];
 	dtp = o->drawn_text[row];
 	drp = o->drawn_rend[row];
+#ifndef UTF8_FONT
 # ifndef NO_BOLDFONT
 	if (o->TermWin.boldFont == NULL) {
 # endif
-#ifndef UTF8_FONT
 	    wf = o->TermWin.font;
-#endif
 	    j = wbyte;
 	    for (col = o->TermWin.ncol - 2; col >= 0; col--) {
 # if ! defined (NO_BRIGHTCOLOR) && ! defined (VERYBOLD)
@@ -2053,7 +2109,7 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 		    continue;
 		}
 #ifdef UTF8_FONT
-#warning finish
+                if (font_per_char (dtp[col]) <= 0)
 #else
 		if (wf->per_char == NULL
 		    || dtp[col] < wf->min_char_or_byte2
@@ -2080,6 +2136,7 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 # ifndef NO_BOLDFONT
 	}
 # endif
+#endif
     }
 #endif				/* ! NO_BOLDOVERSTRIKE */
 
@@ -2199,8 +2256,7 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 	    o->buffer[len++] = stp[col];
 	    ypixelc = Row2Pixel(row);
 #ifdef UTF8_FONT
-#warning finish
-	    ypixel = ypixelc + 0;
+	    ypixel = ypixelc + FONT_ASCENT;
 #else
 	    ypixel = ypixelc + o->TermWin.font->ascent;
 #endif
@@ -2348,7 +2404,12 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 	    if (gcmask)
 		XChangeGC (o->Xdisplay, o->TermWin.gc, gcmask, &gcvalue);
 #ifndef NO_BOLDFONT
-	    if (!wbyte && MONO_BOLD (rend) && o->TermWin.boldFont != NULL) {
+#ifdef UTF8_FONT
+	    if (!wbyte && MONO_BOLD (rend))
+#else
+	    if (!wbyte && MONO_BOLD (rend) && o->TermWin.boldFont != NULL)
+#endif
+            {
 		bfont = 1;
 		XSetFont (o->Xdisplay, o->TermWin.gc, o->TermWin.boldFont->fid);
 		rend &= ~RS_Bold;	/* we've taken care of it */
@@ -2389,7 +2450,7 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 #endif
 #ifdef UTF8_FONT
 #warning finish
-	    if ((rend & RS_Uline) && (1 /* ???? */))
+	    if ((rend & RS_Uline) && 1)
 #else
 	    if ((rend & RS_Uline) && (o->TermWin.font->descent > 1))
 #endif
@@ -2461,6 +2522,9 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 	XSync (o->Xdisplay, False);
 
     o->want_refresh = 0;		/* screen is current */
+#ifdef UTF8_FONT
+    CPopFont ();
+#endif
 }
 
 /* EXTPROTO */

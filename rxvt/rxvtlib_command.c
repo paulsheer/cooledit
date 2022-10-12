@@ -3576,8 +3576,8 @@ void            rxvtlib_IMInstantiateCallback (Display * display, XPointer clien
     }
 
 #ifdef UTF8_FONT
-#warning finish
-    fontset = 0;
+    CPushFont ("editor", 0);
+    fontset = current_font->f.font_set;
 #else
     fontset = o->TermWin.fontset;
 #endif
@@ -3628,6 +3628,10 @@ void            rxvtlib_IMInstantiateCallback (Display * display, XPointer clien
     }
     if (input_style & XIMPreeditArea)
 	rxvtlib_IMSetStatusPosition (o);
+
+#ifdef UTF8_FONT
+    CPopFont ();
+#endif
 }
 
 /* EXTPROTO */

@@ -9,6 +9,7 @@
 #include "coollocal.h"
 #include "aafont.h"
 #include "stringtools.h"
+#include "font.h"
 
 
 
@@ -24,8 +25,6 @@ const char *font_error_string = "Use <x-font-name>/3 or <x-font-name>/1 or <font
 static int last_font_load_id = 1;
 static void utf8_to_wchar_t (const unsigned char *s, int l, C_wchar_t ** r_ret, int *l_ret, enum font_encoding e);
 
-unsigned char *wcrtomb_wchar_to_utf8 (C_wchar_t c);
-int mbrtowc_utf8_to_wchar (C_wchar_t * c, const char *t, int n, void *x /* no shifting with utf8 */ );
 
 int load_one_freetype_font (FT_Face *face, const char *filename, int *desired_height, int *loaded_height)
 {E_

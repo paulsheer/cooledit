@@ -60,6 +60,35 @@
  * ERASE_ROWS : set <num> rows starting from row <row> to the foreground colour
  */
 
+#ifdef UTF8_FONT
+
+static inline text_t char_to_text_t (rxvt_buf_char_t c)
+{
+    text_t r;
+    r.s[0] = c >> 16;
+    r.s[1] = c >> 8;
+    r.s[2] = c >> 0;
+    return r;
+}
+
+static inline rxvt_buf_char_t text_t_to_char (text_t c)
+{
+    rxvt_buf_char_t r;
+    r = c.s[0];
+    r <<= 8;
+    r |= c.s[1];
+    r <<= 8;
+    r |= c.s[2];
+    return r;
+}
+
+#else
+
+#define char_to_text_t(c)       (c)
+#define text_t_to_char(c)       (c)
+
+#endif
+
 /* ------------------------------------------------------------------------- *
  *                        SCREEN `COMMON' ROUTINES                           *
  * ------------------------------------------------------------------------- */
@@ -67,9 +96,10 @@
 /* INTPROTO */
 void            blank_line (text_t * et, rend_t * er, int width, rend_t efs)
 {E_
-    MEMSET (et, ' ', width);
-    for (; width--;)
+    for (; width--;) {
 	*er++ = efs;
+	*et++ = char_to_text_t (' ');
+    }
 }
 
 /* ------------------------------------------------------------------------- */
@@ -80,14 +110,16 @@ void            rxvtlib_blank_screen_mem (rxvtlib *o, text_t ** tp, rend_t ** rp
 {E_
     int             width = o->TermWin.ncol;
     rend_t         *er;
+    text_t         *et;
 
     if (tp[row] == NULL) {
-	tp[row] = MALLOC (sizeof (text_t) * o->TermWin.ncol);
-	rp[row] = MALLOC (sizeof (rend_t) * o->TermWin.ncol);
+	tp[row] = (text_t *) MALLOC (sizeof (text_t) * o->TermWin.ncol);
+	rp[row] = (rend_t *) MALLOC (sizeof (rend_t) * o->TermWin.ncol);
     }
-    MEMSET (tp[row], ' ', width);
-    for (er = rp[row]; width--;)
+    for (er = rp[row], et = tp[row]; width--;) {
 	*er++ = efs;
+	*et++ = char_to_text_t (' ');
+    }
 }
 
 /* ------------------------------------------------------------------------- *
@@ -254,9 +286,9 @@ void            rxvtlib_scr_reset (rxvtlib *o)
 	if (o->TermWin.ncol != o->prev_ncol) {
 	    for (i = 0; i < total_rows; i++) {
 		if (o->screen.text[i]) {
-		    o->screen.text[i] = REALLOC (o->screen.text[i],
+		    o->screen.text[i] = (text_t *) REALLOC (o->screen.text[i],
 					      o->TermWin.ncol * sizeof (text_t));
-		    o->screen.rend[i] = REALLOC (o->screen.rend[i],
+		    o->screen.rend[i] = (rend_t *) REALLOC (o->screen.rend[i],
 					      o->TermWin.ncol * sizeof (rend_t));
 		    MIN_IT (o->screen.tlen[i], o->TermWin.ncol);
 		    if (o->TermWin.ncol > o->prev_ncol)
@@ -266,14 +298,14 @@ void            rxvtlib_scr_reset (rxvtlib *o)
 		}
 	    }
 	    for (i = 0; i < o->TermWin.nrow; i++) {
-		o->drawn_text[i] = REALLOC (o->drawn_text[i],
+		o->drawn_text[i] = (text_t *) REALLOC (o->drawn_text[i],
 					 o->TermWin.ncol * sizeof (text_t));
-		o->drawn_rend[i] = REALLOC (o->drawn_rend[i],
+		o->drawn_rend[i] = (rend_t *) REALLOC (o->drawn_rend[i],
 					 o->TermWin.ncol * sizeof (rend_t));
 		if (o->swap.text[i]) {
-		    o->swap.text[i] = REALLOC (o->swap.text[i],
+		    o->swap.text[i] = (text_t *) REALLOC (o->swap.text[i],
 					    o->TermWin.ncol * sizeof (text_t));
-		    o->swap.rend[i] = REALLOC (o->swap.rend[i],
+		    o->swap.rend[i] = (rend_t *) REALLOC (o->swap.rend[i],
 					    o->TermWin.ncol * sizeof (rend_t));
 		    MIN_IT (o->swap.tlen[i], o->TermWin.ncol);
 		    if (o->TermWin.ncol > o->prev_ncol)
@@ -311,19 +343,19 @@ void            rxvtlib_scr_reset_realloc (rxvtlib *o)
 
     total_rows = o->TermWin.nrow + o->TermWin.saveLines;
 /* *INDENT-OFF* */
-    o->screen.text = REALLOC(o->screen.text, total_rows   * sizeof(text_t *));
-    o->buf_text    = REALLOC(o->buf_text   , total_rows   * sizeof(text_t *));
-    o->drawn_text  = REALLOC(o->drawn_text , o->TermWin.nrow * sizeof(text_t *));
-    o->swap.text   = REALLOC(o->swap.text  , o->TermWin.nrow * sizeof(text_t *));
+    o->screen.text = (text_t **) REALLOC(o->screen.text, total_rows   * sizeof(text_t *));
+    o->buf_text    = (text_t **) REALLOC(o->buf_text   , total_rows   * sizeof(text_t *));
+    o->drawn_text  = (text_t **) REALLOC(o->drawn_text , o->TermWin.nrow * sizeof(text_t *));
+    o->swap.text   = (text_t **) REALLOC(o->swap.text  , o->TermWin.nrow * sizeof(text_t *));
 
     o->screen.tlen = REALLOC(o->screen.tlen, total_rows   * sizeof(short));
     o->buf_tlen    = REALLOC(o->buf_tlen   , total_rows   * sizeof(short));
     o->swap.tlen   = REALLOC(o->swap.tlen  , total_rows   * sizeof(short));
 
-    o->screen.rend = REALLOC(o->screen.rend, total_rows   * sizeof(rend_t *));
-    o->buf_rend    = REALLOC(o->buf_rend   , total_rows   * sizeof(rend_t *));
-    o->drawn_rend  = REALLOC(o->drawn_rend , o->TermWin.nrow * sizeof(rend_t *));
-    o->swap.rend   = REALLOC(o->swap.rend  , o->TermWin.nrow * sizeof(rend_t *));
+    o->screen.rend = (rend_t **) REALLOC(o->screen.rend, total_rows   * sizeof(rend_t *));
+    o->buf_rend    = (rend_t **) REALLOC(o->buf_rend   , total_rows   * sizeof(rend_t *));
+    o->drawn_rend  = (rend_t **) REALLOC(o->drawn_rend , o->TermWin.nrow * sizeof(rend_t *));
+    o->swap.rend   = (rend_t **) REALLOC(o->swap.rend  , o->TermWin.nrow * sizeof(rend_t *));
 /* *INDENT-ON* */
 }
 
@@ -757,7 +789,7 @@ void            rxvtlib_scr_scroll_text (rxvtlib *o, int count)
 /* EXTPROTO */
 void            rxvtlib_scr_add_lines (rxvtlib *o, const unsigned char *str, int nlines, int len)
 {E_
-    char            c;
+    rxvt_buf_char_t c;
     int             i, j, row, last_col, checksel, clearsel;
     text_t         *stp;
     rend_t         *srp;
@@ -808,8 +840,33 @@ void            rxvtlib_scr_add_lines (rxvtlib *o, const unsigned char *str, int
 	o->chstat = WBYTE;
 #endif
 
-    for (i = 0; i < len;) {
+    for (i = 0; i < len || o->utf8buflen;) {
+#ifdef UTF8_FONT
+        if (!o->utf8buflen && str[i] < 0xC0) {
+	    c = str[i++];       /* inline the common case */
+        } else {
+            int e, l;
+            l = len - i;
+            if (l > 6 - o->utf8buflen)
+                l = 6 - o->utf8buflen;
+            memcpy (o->utf8buf + o->utf8buflen, str + i, l);
+            o->utf8buflen += l;
+            i += l;
+            e = mbrtowc_utf8_to_wchar (&c, o->utf8buf, o->utf8buflen, NULL);
+            if (e == -2) {
+                break;      /* waiting for more chars to complete the encoding */
+            } else if (e <= 0 || c > FONT_LAST_UNICHAR) {
+                c = o->utf8buf[0];  /* write through bogus char whatever it is */
+                memmove (o->utf8buf, o->utf8buf + 1, o->utf8buflen - 1);
+                o->utf8buflen -= 1;
+            } else {
+                memmove (o->utf8buf, o->utf8buf + e, o->utf8buflen - e);
+                o->utf8buflen -= e;
+            }
+        }
+#else
 	c = str[i++];
+#endif
 	switch (c) {
 	case '\t':
 	    rxvtlib_scr_tab (o, 1);
@@ -892,7 +949,7 @@ void            rxvtlib_scr_add_lines (rxvtlib *o, const unsigned char *str, int
 	    srp[o->screen.cur.col + 1] &= ~RS_multiMask;
 	}
 #endif
-	stp[o->screen.cur.col] = c;
+	stp[o->screen.cur.col] = char_to_text_t (c);
 	srp[o->screen.cur.col] = o->rstyle;
 	if (o->screen.cur.col < (last_col - 1))
 	    o->screen.cur.col++;
@@ -1018,7 +1075,7 @@ void            rxvtlib_scr_backindex (rxvtlib *o)
 	    t0[i] = t0[i - 1];
 	    r0[i] = r0[i - 1];
 	}
-	t0[0] = ' ';
+	t0[0] = char_to_text_t (' ');
 	r0[0] = DEFAULT_RSTYLE;
 /* TODO: Multi check on last character */
     }
@@ -1056,7 +1113,7 @@ void            rxvtlib_scr_forwardindex (rxvtlib *o)
 	    t0[i] = t0[i + 1];
 	    r0[i] = r0[i + 1];
 	}
-	t0[i] = ' ';
+	t0[i] = char_to_text_t (' '); 
 	r0[i] = DEFAULT_RSTYLE;
 /* TODO: Multi check on first character */
     }
@@ -1303,7 +1360,7 @@ void            rxvtlib_scr_E (rxvtlib *o)
 	t = o->screen.text[i];
 	r = o->screen.rend[i];
 	for (j = 0; j < o->TermWin.ncol; j++) {
-	    *t++ = 'E';
+	    *t++ = char_to_text_t ('E');
 	    *r++ = fs;
 	}
 	o->screen.tlen[i] = o->TermWin.ncol;	/* make the `E's selectable */
@@ -1801,7 +1858,7 @@ void            rxvtlib_scr_expose (rxvtlib *o, int x, int y, int width, int hei
 
     for (i = rc[PART_BEG].row; i <= rc[PART_END].row; i++)
 	MEMSET(&(o->drawn_text[i][rc[PART_BEG].col]), 0,
-	       rc[PART_END].col - rc[PART_BEG].col + 1);
+	       (rc[PART_END].col - rc[PART_BEG].col + 1) * sizeof (text_t));
 
     rxvtlib_scr_refresh (o, SLOW_REFRESH);
 }
@@ -1961,7 +2018,7 @@ unsigned long scale_brightness (unsigned long c, unsigned long denominator, unsi
     return ret;
 }
 
-static int draw_image_string_ (Display * display, Drawable d, GC gc, int x, int y, char *string, int length)
+static int draw_image_string_ (Display * display, Drawable d, GC gc, int x, int y, rxvt_buf_char_t *string, int length)
 {
     XGCValues values_return;
     XGetGCValues (display, gc, GCForeground | GCBackground, &values_return);
@@ -1970,7 +2027,7 @@ static int draw_image_string_ (Display * display, Drawable d, GC gc, int x, int 
     else
         CSetColor (values_return.foreground);
     CSetBackgroundColor (values_return.background);
-    return CImageString (d, x, y, string);
+    return CImageTextWC (d, x, y, NULL, string, length);
 }
 #endif
 
@@ -2044,10 +2101,10 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
     if (o->currmaxcol < o->TermWin.ncol) {
 	o->currmaxcol = o->TermWin.ncol;
 	if (o->buffer)
-	    o->buffer = REALLOC (o->buffer, (sizeof (char) * (o->currmaxcol + 1)));
+	    o->buffer = (rxvt_buf_char_t *) REALLOC (o->buffer, (sizeof (rxvt_buf_char_t) * (o->currmaxcol + 1)));
 
 	else
-	    o->buffer = MALLOC ((sizeof (char) * (o->currmaxcol + 1)));
+	    o->buffer = (rxvt_buf_char_t *) MALLOC ((sizeof (rxvt_buf_char_t) * (o->currmaxcol + 1)));
     }
     row_offset = o->TermWin.saveLines - o->TermWin.view_start;
     fprop = o->TermWin.fprop;
@@ -2191,7 +2248,7 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 	if (o->screen.cur.row + o->TermWin.view_start != o->oldcursor.row
 	    || o->screen.cur.col != o->oldcursor.col) {
 	    if (o->oldcursor.row < o->TermWin.nrow && o->oldcursor.col < o->TermWin.ncol) {
-		o->drawn_text[o->oldcursor.row][o->oldcursor.col] = 0;
+		o->drawn_text[o->oldcursor.row][o->oldcursor.col] = char_to_text_t (0);
 #ifdef MULTICHAR_SET
 		if (o->oldcursormulti) {
 		    col = o->oldcursor.col + o->oldcursormulti;
@@ -2231,9 +2288,9 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 	    /* compare new text with old - if exactly the same then continue */
 	    rt1 = srp[col];	/* screen rendition */
 	    rt2 = drp[col];	/* drawn rendition  */
-	    if ((stp[col] == dtp[col])	/* must match characters to skip */
+	    if ((text_t_to_char (stp[col]) == text_t_to_char (dtp[col]))	/* must match characters to skip */
 		&&((rt1 == rt2)	/* either rendition the same or  */
-		   ||((stp[col] == ' ')	/* space w/ no bg change */
+		   ||((text_t_to_char (stp[col]) == ' ')	/* space w/ no bg change */
 		      &&(GET_BGATTR (rt1) == GET_BGATTR (rt2))))) {
 #ifdef MULTICHAR_SET
 		/* if first byte is Kanji then compare second bytes */
@@ -2253,7 +2310,7 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 	    rend = drp[col] = srp[col];
 
 	    len = 0;
-	    o->buffer[len++] = stp[col];
+	    o->buffer[len++] = text_t_to_char (stp[col]);
 	    ypixelc = Row2Pixel(row);
 #ifdef UTF8_FONT
 	    ypixel = ypixelc + FONT_ASCENT;
@@ -2269,6 +2326,9 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
  */
 	    if (fprop == 0) {	/* Fixed width font */
 #ifdef MULTICHAR_SET
+#ifdef UTF8_FONT
+#error
+#endif
 		if (((rend & RS_multiMask) == RS_multi1)
 		    && col < o->TermWin.ncol - 1
 		    && ((srp[col + 1]) & RS_multiMask) == RS_multi2) {
@@ -2325,7 +2385,7 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 			    break;
 			if (len == o->currmaxcol)
 			    break;
-			if ((stp[col] == dtp[col]) && (srp[col] == drp[col])) {
+			if ((text_t_to_char (stp[col]) == text_t_to_char (dtp[col])) && (srp[col] == drp[col])) {
 #ifdef INEXPENSIVE_LOCAL_X_CALLS
 			    if (o->display_is_local)
 				break;
@@ -2336,7 +2396,7 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 			    dtp[col] = stp[col];
 			    drp[col] = srp[col];
 			}
-			o->buffer[len++] = stp[col];
+			o->buffer[len++] = text_t_to_char (stp[col]);
 		    }
 		    col--;	/* went one too far.  move back */
 		    len -= j;	/* dump any matching trailing chars */
@@ -2839,8 +2899,15 @@ void            rxvtlib_selection_make (rxvtlib *o, Time tm)
 	return;			/* nothing selected, go away */
 
     i = (o->selection.end.row - o->selection.beg.row + 1) * (o->TermWin.ncol + 1) + 1;
-    str = MALLOC (i * sizeof (char));
 
+#ifdef UTF8_FONT
+    /* conservative allocation assumng every char is 4-bytes */
+    str = MALLOC (i * strlen ((char *) wcrtomb_wchar_to_utf8 (FONT_LAST_UNICHAR)));
+#else
+    str = MALLOC (i * sizeof (char));
+#endif
+
+#warning selection
     new_selection_text = (unsigned char *)str;
 
     col = max (o->selection.beg.col, 0);
@@ -2853,8 +2920,37 @@ void            rxvtlib_selection_make (rxvtlib *o, Time tm)
 	t = &(o->screen.text[row][col]);
 	if ((end_col = o->screen.tlen[row]) == -1)
 	    end_col = o->TermWin.ncol;
-	for (; col < end_col; col++)
-	    *str++ = *t++;
+
+#ifdef UTF8_FONT
+
+#define DO_ONE_CHAR \
+            rxvt_buf_char_t u; \
+            u = text_t_to_char (*t++); \
+            if (u < 128) { \
+	        *str++ = u; /* optimise the common case */ \
+            } else { \
+                char *q; \
+                q = (char *) wcrtomb_wchar_to_utf8 (u); \
+                *str++ = *q++; \
+                if (*q) { \
+                    *str++ = *q++; \
+                    if (*q) { \
+                        *str++ = *q++; \
+                        if (*q) \
+                            *str++ = *q++; \
+                    } \
+                } \
+            }
+
+#else
+
+#define DO_ONE_CHAR     *str++ = text_t_to_char (*t++)
+
+#endif
+
+	for (; col < end_col; col++) {
+            DO_ONE_CHAR;
+        }
 	col = 0;
 	if (o->screen.tlen[row] != -1)
 	    *str++ = '\n';
@@ -2867,8 +2963,9 @@ void            rxvtlib_selection_make (rxvtlib *o, Time tm)
     if (end_col == -1 || o->selection.end.col <= end_col)
 	end_col = o->selection.end.col;
     MIN_IT (end_col, o->TermWin.ncol);	/* CHANGE */
-    for (; col < end_col; col++)
-	*str++ = *t++;
+    for (; col < end_col; col++) {
+        DO_ONE_CHAR;
+    }
 #ifndef NO_OLD_SELECTION
     if (o->selection_style == OLD_SELECT)
 	if (end_col == o->TermWin.ncol)

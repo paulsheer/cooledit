@@ -77,6 +77,8 @@ struct font_object {
 
 int font_per_char (C_wchar_t c);
 int font_per_char_descent (C_wchar_t c);
+int mbrtowc_utf8_to_wchar (C_wchar_t * c, const char *t, int n, void *x /* no shifting with utf8 */ );
+unsigned char *wcrtomb_wchar_to_utf8 (C_wchar_t c);
 
 void CFreeAllFonts (void);
 int CPushFont (const char *name, ...);

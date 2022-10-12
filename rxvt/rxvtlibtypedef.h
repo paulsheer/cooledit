@@ -48,6 +48,15 @@
 
 typedef struct _rxvtlib rxvtlib;
 
+#define UTF8_FONT
+// #undef UTF8_FONT
+
+#ifdef UTF8_FONT
+typedef int rxvt_buf_char_t;
+#else
+typedef char rxvt_buf_char_t;
+#endif
+
 #ifndef _RXVT_H			/* include once only */
 #ifndef HAVE_XPOINTER
 typedef char   *XPointer;
@@ -62,7 +71,14 @@ typedef struct _row_col_t row_col_t;
 # error if you disable both selection styles, how can you select, silly?
 #endif
 #endif				/* _RXVT_H */
+#if defined(UTF8_FONT) && 1
+struct text_t_s_ {
+    unsigned char s[3]; /* large enough for any unicode character */
+};
+typedef struct text_t_s_ text_t;
+#else
 typedef unsigned char text_t;
+#endif
 typedef struct _screen_t screen_t;
 typedef struct save_t save_t;
 #ifdef HAVE_TERMIOS_H

@@ -836,6 +836,8 @@ void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname)
     static XFontStruct *boldFont;
 #endif
 
+    (void) boldFont;
+
     if (init) {
 #ifndef NO_BOLDFONT
 	boldFont = NULL;

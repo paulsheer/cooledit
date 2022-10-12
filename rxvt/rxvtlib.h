@@ -77,14 +77,16 @@ enum {
     SECONDARY
 };
 
-#define UTF8_FONT
-#undef UTF8_FONT
-
 
 struct _rxvtlib {
  char    *ttydev ;
  short    changettyowner ;
  unsigned int num_fds ;
+
+#ifdef UTF8_FONT
+ char utf8buf[6];
+ int utf8buflen;
+#endif
 
 /*
  * File:	feature.h
@@ -208,7 +210,9 @@ struct _rxvtlib {
 /*
  * Printer pipe which will be used for emulation of attached vt100 printer
  */
+#if 0
 #define PRINTPIPE	"lpr"
+#endif
 
 /*------------------------------RESOURCES-------------------------------*/
 /*
@@ -1030,7 +1034,7 @@ enum Rs_resource_list {
 # define MEMSET(a, b, c)	memset ((a), (b), (c))
 
 #define MALLOC(sz)		malloc (sz)
-#define CALLOC(type, n)		calloc ((n), sizeof(type))
+#define CALLOC(type, n)		(type *) calloc ((n), sizeof(type))
 #define REALLOC(mem, sz)	((mem) ? realloc ((mem), (sz)) : malloc(sz))
 #define FREE(ptr)		free (ptr)
 
@@ -1273,10 +1277,14 @@ EXTERN KeySym   ks_smallfont;
 #ifndef _SCREEN_H		/* include once only */
 #define _SCREEN_H
 
+#ifdef UTF8_FONT
+#define rend_t		unsigned int
+#else
 #if defined(MULTICHAR_SET)
 #define rend_t		unsigned int
 #else
 #define rend_t		unsigned short
+#endif
 #endif
 
 /*
@@ -2075,7 +2083,7 @@ int      encoding_method;
     (X)->per_char[(Y) - (X)->min_char_or_byte2].rbearing
 
 #define DELIMIT_TEXT(x) \
-    (((x) == ' ' || (x) == '\t') ? 2 : (strchr(o->rs[Rs_cutchars], (x)) != NULL))
+    ((text_t_to_char(x) == ' ' || text_t_to_char(x) == '\t') ? 2 : ((text_t_to_char(x) <= 255 && strchr(o->rs[Rs_cutchars], text_t_to_char(x)) != NULL)))
 #ifdef MULTICHAR_SET
 # define DELIMIT_REND(x)	(((x) & RS_multiMask) ? 1 : 0)
 #else
@@ -2190,7 +2198,7 @@ struct _bgPixmap_t {
 #endif
     int old_width;
     int old_height;
-    char *buffer;
+    rxvt_buf_char_t *buffer;
     int currmaxcol;
 #ifdef MULTICHAR_SET
     int oldcursormulti;

@@ -331,7 +331,6 @@ static void aa_create_pixmap (struct aa_font_cache *f, int j, int i, struct aa_g
     XFreePixmap (aa_display, w);
 }
 
-static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int dy, FT_Bitmap *bitmap, FT_Glyph_Metrics *metrics, int u, int U, int w, int h, int W, int H, int blank);
 
 
 #ifdef MAP_WINDOWS
@@ -527,7 +526,7 @@ static const char *hex_chars[16][7] = {
 }};
 #endif
 
-static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int dy, FT_Bitmap *bitmap, FT_Glyph_Metrics *metrics, int u, int U, int w, int h, int W, int H, int blank);
+static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int dy, FT_Bitmap *bitmap, FT_Glyph_Metrics *metrics, int u_, int U_, int u, int U, int w, int h, int W, int H, int blank);
 int load_one_freetype_font (FT_Face *face, const char *filename, int *desired_height, int *loaded_height);
 
 /* third level */
@@ -536,6 +535,7 @@ static void aa_create_pixmap_freetype (struct aa_font_cache *f, unsigned long th
     int found = 0, font_i;
     int h, H, w, W;
     int U, u;
+    int U_, u_;
 
     FT_Face face;
     FT_Glyph_Metrics *metrics;
@@ -665,22 +665,37 @@ u = 1000000000;
 
     u = f->f->font_freetype.desired_height;
 
+/* force fixed font won't be populated the first time this is called. This
+ * does not matter, since the first call is to get the mean font width based
+ * on fixed-width characters: */
+    if (!f->f->mean_font_width) {
+        assert (metrics_only);
+    }
+    if (f->f->force_fixed_width && f->f->mean_font_width && W > f->f->mean_font_width) {
+        u_ = f->f->mean_font_width;
+        U_ = W;
+    } else {
+        u_ = u;
+        U_ = U;
+    }
+
     if (U <= u)
         U = u;
 
     h = f->f->font_freetype.measured_height;
     H = h * U / u;
 
-    w = glyph->width = W * u / U;
+    w = glyph->width = W * u_ / U_;
+
     glyph->descent = (metrics->height - metrics->horiBearingY) * u / U / 64;
     dy = f->f->font_freetype.measured_ascent * U / u - metrics->horiBearingY / 64;
 
     if (!metrics_only)
-        glyph->pixmap = aa_render_glyph (f->gc, f->fg, f->bg, dx, dy, &face->glyph->bitmap, metrics, u, U, w, h, W, H, the_chr == ' ');
+        glyph->pixmap = aa_render_glyph (f->gc, f->fg, f->bg, dx, dy, &face->glyph->bitmap, metrics, u_, U_, u, U, w, h, W, H, the_chr == ' ');
 }
 
 
-static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int dy, FT_Bitmap *bitmap, FT_Glyph_Metrics *metrics, int u, int U, int w, int h, int W, int H, int blank)
+static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int dy, FT_Bitmap *bitmap, FT_Glyph_Metrics *metrics, int u_, int U_, int u, int U, int w, int h, int W, int H, int blank)
 {E_
     XImage *shrunk;
     Pixmap pixmap;
@@ -723,8 +738,8 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
         dy = h * U / u - bitmap->rows;
     if (dy < 0)
         dy = 0;
-    if (dx > w * U / u - bitmap->width)
-        dx = w * U / u - bitmap->width;
+    if (dx > w * U_ / u_ - bitmap->width)
+        dx = w * U_ / u_ - bitmap->width;
     if (dx < 0)
         dx = 0;
 
@@ -924,8 +939,8 @@ for (j = 0; j < w; j++) {
         int x, y; \
         int c3 = 0, C3 = 0; \
         int Y1, Y2, X1, X2; \
-        X1 = ii * U / u - dx; \
-        X2 = (ii + 1) * U / u - dx; \
+        X1 = ii * U_ / u_ - dx; \
+        X2 = (ii + 1) * U_ / u_ - dx; \
         Y1 = jj * U / u - dy; \
         Y2 = (jj + 1) * U / u - dy; \
         for (y = Y1; y <= Y2; y++)  \
@@ -939,11 +954,11 @@ for (j = 0; j < w; j++) {
                 c1 = color_y_x; \
                 C1 = 255; \
                 if (x == X1) { \
-                    c2 += c1 * (255 - ((256 * ii * U / u) - (256 * (ii * U / u)))) / 255; \
-                    C2 += C1 * (255 - ((256 * ii * U / u) - (256 * (ii * U / u)))) / 255; \
+                    c2 += c1 * (255 - ((256 * ii * U_ / u_) - (256 * (ii * U_ / u_)))) / 255; \
+                    C2 += C1 * (255 - ((256 * ii * U_ / u_) - (256 * (ii * U_ / u_)))) / 255; \
                 } else if (x == X2) { \
-                    c2 += c1 * ((256 * (ii + 1) * U / u) - (256 * ((ii + 1) * U / u))) / 255; \
-                    C2 += C1 * ((256 * (ii + 1) * U / u) - (256 * ((ii + 1) * U / u))) / 255; \
+                    c2 += c1 * ((256 * (ii + 1) * U_ / u_) - (256 * ((ii + 1) * U_ / u_))) / 255; \
+                    C2 += C1 * ((256 * (ii + 1) * U_ / u_) - (256 * ((ii + 1) * U_ / u_))) / 255; \
                 } else { \
                     c2 += c1; \
                     C2 += C1; \
@@ -1046,7 +1061,7 @@ for (j = 0; j < w; j++) {
         } \
     } while (0)
 
-    if (U == u) {
+    if (U == u && U_ == u_) {
         for (j = 0; j < h; j++) {
             switch (bitmap->pixel_mode) {
             case FT_PIXEL_MODE_MONO:

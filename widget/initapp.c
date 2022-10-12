@@ -398,6 +398,8 @@ static void init_load_font (void)
     char *f;
     if (CPushFont ("editor", init_font, &editor_encoding))
 	exit (1);
+    if (CPushFontForceFixed ("rxvt", init_font, &editor_encoding))
+	exit (1);
     f = CMalloc (strlen (init_widget_font) + 256);
     sprintf (f, init_widget_font, FONT_HEIGHT);
     if (CPushFont ("widget", f, &widget_encoding)) {

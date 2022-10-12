@@ -161,7 +161,7 @@ char **rxvt_args (char **argv)
 {E_
     char **a;
     char *b[] =
-	{ "rxvt", "-fg", "white", "-bg", "black", "-font", "8x13bold", "-sl", "5000", "-si", "+sk", "-e", 0 };
+	{ "rxvt", "-fg", "white", "-bg", "black", "-font", "8x13bold", "-sl", "30000", "-si", "+sk", "-e", 0 };
     int i = 0, j, k;
     if (argv)
 	for (i = 0; argv[i]; i++);

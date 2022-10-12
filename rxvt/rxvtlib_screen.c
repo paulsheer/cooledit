@@ -2023,7 +2023,7 @@ static int draw_image_string_ (Display * display, Drawable d, GC gc, int x, int 
     XGCValues values_return;
     XGetGCValues (display, gc, GCForeground | GCBackground, &values_return);
     if (bfont)
-        CSetColor (scale_brightness (values_return.foreground, 2, 3));
+        CSetColor (scale_brightness (values_return.foreground, 3, 5));
     else
         CSetColor (values_return.foreground);
     CSetBackgroundColor (values_return.background);
@@ -2115,7 +2115,7 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
  */
     wbyte = 0;
 #ifdef UTF8_FONT
-    CPushFont ("editor", 0);
+    CPushFont ("rxvt");
     draw_string = draw_image_string_;
     draw_image_string = draw_image_string_;
 #else

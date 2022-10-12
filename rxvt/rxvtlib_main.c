@@ -980,7 +980,7 @@ void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname)
     }
 /* set the sizes */
 #ifdef UTF8_FONT
-    CPushFont ("editor", 0);
+    CPushFont ("rxvt");
     o->TermWin.fprop = 0;
     o->TermWin.mprop = 0;
     o->TermWin.bprop = 0;

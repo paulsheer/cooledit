@@ -30,6 +30,8 @@ struct freetype_face {
 
 struct aa_font {
     int load_id;
+    int mean_font_width;
+    int force_fixed_width;
     XFontSet font_set;
     XFontStruct *font_struct;
     struct freetype_face font_freetype;
@@ -82,6 +84,7 @@ unsigned char *wcrtomb_wchar_to_utf8 (C_wchar_t c);
 
 void CFreeAllFonts (void);
 int CPushFont (const char *name, ...);
+int CPushFontForceFixed (const char *name, ...);
 void CPopFont (void);
 int CIsFixedFont (void);
 

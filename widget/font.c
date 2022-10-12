@@ -875,7 +875,7 @@ static XFontSet get_font_set (char *name)
 }
 
 /* loads a font and sets the current font to it */
-static struct font_object *load_font (const char *name, const char *xname_, enum font_encoding *e)
+static struct font_object *load_font (const char *name, const char *xname_, enum font_encoding *e, int force_fixed_width)
 {E_
     char compactname[80];
     char *xname;
@@ -989,6 +989,8 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
 	XDrawImageString (CDisplay, w, CGC, 0, 0, " AZ~", 4);
     FIXED_FONT = check_font_fixed ();
     get_font_dimensions ();
+    n->f.mean_font_width = FONT_MEAN_WIDTH;
+    n->f.force_fixed_width = force_fixed_width;
     if (FONT_MEAN_WIDTH <= 2) {
 	fprintf (stderr, _("%s: display %s cannot load font\n\t%s\n"), CAppName, DisplayString (CDisplay), xname);
         free (xname);
@@ -1011,22 +1013,43 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
 
 int font_depth = 0;
 
+static int CPushFont_ (int force_fixed_width, const char *name, const char *xname, enum font_encoding *e);
+
 int CPushFont (const char *name, ...)
 {E_
     va_list ap;
+    enum font_encoding *e;
+    const char *xname;
+
+    va_start (ap, name);
+    xname = va_arg (ap, const char *);
+    e = va_arg (ap, enum font_encoding *);
+    va_end (ap);
+    return CPushFont_ (0, name, xname, e);
+}
+
+int CPushFontForceFixed (const char *name, ...)
+{E_
+    va_list ap;
+    enum font_encoding *e;
+    const char *xname;
+
+    va_start (ap, name);
+    xname = va_arg (ap, const char *);
+    e = va_arg (ap, enum font_encoding *);
+    va_end (ap);
+    return CPushFont_ (1, name, xname, e);
+}
+
+static int CPushFont_ (int force_fixed_width, const char *name, const char *xname, enum font_encoding *e)
+{E_
     struct font_stack *p;
     struct font_object *f;
     f = find_font (name);
     if (f) {
 	f->ref++;
     } else {
-        enum font_encoding *e;
-        const char *xname;
-        va_start (ap, name);
-        xname = va_arg (ap, const char *);
-        e = va_arg (ap, enum font_encoding *);
-        va_end (ap);
-        if (!*e) {
+        if (!e || !*e) {
 	    fprintf (stderr, "CPushFont passed NULL encoding\n");
 	    fflush (stderr);
 	    abort ();
@@ -1046,7 +1069,7 @@ int CPushFont (const char *name, ...)
 	    fflush (stderr);
 	    abort ();
 	}
-	f = load_font (name, xname, e);
+	f = load_font (name, xname, e, force_fixed_width);
 	if (!f)
 	    return 1;
 	f->ref = 1;

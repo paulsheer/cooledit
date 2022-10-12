@@ -10,8 +10,6 @@
 #include "global.h"
 #include "my_string.h"
 
-#define clear(x,type) memset((x), 0, sizeof(type))
-
 
 #define C_ALNUM(c)  (((c) >= 'A' && (c) <= 'Z') || ((c) >= 'a' && (c) <= 'z') || ((c) >= '0' && (c) <= '9') || ((c) == '_'))
 
@@ -42,9 +40,6 @@ int strendswith(const char *s, const char *p);
 
 char **interpret_shell_cmdline (const char *s);
 void free_shell_cmdline (char **r);
-
-short *shortset (short *s, int c, size_t n);
-short *integerset (short *s, int c, size_t n);
 
 /*move to col character from beginning of line with i in the line somewhere. */
 /*If col is past the end of the line, it returns position of end of line. */
@@ -92,7 +87,6 @@ int writeall (int fd, char *buf, int len);
 char *Citoa (int i);
 #define itoa(c)         Citoa(c)
 size_t strnlen (const char *s, size_t count);
-void destroy (void **p);
 char *get_temp_file_name (void);
 int change_directory (const char *path, char *errmsg);
 char *get_current_wd (char *buffer, int size);

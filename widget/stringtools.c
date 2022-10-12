@@ -302,15 +302,6 @@ int strendswith(const char *s, const char *p)
     return !strcmp(s + sl - pl, p);
 }
 
-/* alternative to free() */
-void destroy (void **p)
-{E_
-    if (*p) {
-	free (*p);
-	*p = 0;
-    }
-}
-
 char *strcasechr (const char *p, int c)
 {E_
     unsigned char *s = (unsigned char *) p;
@@ -347,14 +338,6 @@ int change_directory (const char *path, char *errmsg)
     return (*u->remotefs_chdir) (u, path, current_dir, MAX_PATH_LEN, errmsg);
 }
 
-
-short *shortset (short *s, int c, size_t n)
-{E_
-    short *r = s;
-    while (n--)
-	*s++ = c;
-    return r;
-}
 
 char *name_trunc (const char *txt, int trunc_len)
 {E_

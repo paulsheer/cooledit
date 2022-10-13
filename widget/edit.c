@@ -1691,10 +1691,10 @@ void edit_mark_cmd (WEdit * edit, int unmark)
 static unsigned long my_type_of (int c)
 {E_
     int x, r = 0;
-    char *p, *q;
+    char *p;
+    c &= 0xFF;
     if (!c)
 	return 0;
-    c &= 0xFF;
     if (c == '!') {
 	if (*option_chars_move_whole_word == '!')
 	    return 2;
@@ -1710,16 +1710,13 @@ static unsigned long my_type_of (int c)
 	c = '0';
     else if (isspace (c))
 	c = ' ';
-    q = strchr (option_chars_move_whole_word, c);
-    if (!q)
-	return 0xFFFFFFFFUL;
-    do {
-	for (x = 1, p = option_chars_move_whole_word; (unsigned long) p < (unsigned long) q; p++)
-	    if (*p == '!')
-		x <<= 1;
-	r |= x;
-    } while ((q = strchr (q + 1, c)));
-    return r;
+    for (x = 1, p = option_chars_move_whole_word; *p; p++) {
+        if (*p == '!')
+	    x <<= 1;
+        else if (*p == c)
+	    r |= x;
+    }
+    return (~r & 0xFFFFFFFF);
 }
 
 void edit_left_word_move (WEdit * edit, int s)

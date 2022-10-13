@@ -49,7 +49,7 @@
 typedef struct _rxvtlib rxvtlib;
 
 #define UTF8_FONT
-#undef UTF8_FONT
+// #undef UTF8_FONT
 
 #ifdef UTF8_FONT
 typedef int rxvt_buf_char_t;

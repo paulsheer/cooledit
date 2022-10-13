@@ -85,8 +85,8 @@ struct _rxvtlib {
 
 #ifdef UTF8_FONT
  char utf8buf[6];
- int utf8buflen;
 #endif
+ int utf8buflen;
 
 /*
  * File:	feature.h

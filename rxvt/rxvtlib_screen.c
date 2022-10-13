@@ -949,6 +949,8 @@ void            rxvtlib_scr_add_lines (rxvtlib *o, const unsigned char *str, int
 	    srp[o->screen.cur.col + 1] &= ~RS_multiMask;
 	}
 #endif
+
+#ifdef UTF8_FONT
         if (is_unicode_doublewidth_char (c)) {
 	    stp[o->screen.cur.col] = char_to_text_t (c);
 	    srp[o->screen.cur.col] = o->rstyle;
@@ -957,7 +959,9 @@ void            rxvtlib_scr_add_lines (rxvtlib *o, const unsigned char *str, int
 	        stp[o->screen.cur.col] = char_to_text_t (ZERO_WIDTH_EMPTY_CHAR);
 	        srp[o->screen.cur.col] = o->rstyle;
             }
-        } else {
+        } else
+#endif
+        {
 	    stp[o->screen.cur.col] = char_to_text_t (c);
 	    srp[o->screen.cur.col] = o->rstyle;
         }

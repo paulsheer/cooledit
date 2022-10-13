@@ -954,7 +954,7 @@ void            rxvtlib_scr_add_lines (rxvtlib *o, const unsigned char *str, int
         if (is_unicode_doublewidth_char (c)) {
 	    stp[o->screen.cur.col] = char_to_text_t (c);
 	    srp[o->screen.cur.col] = o->rstyle;
-	    /* if (o->screen.cur.col < (last_col - 1)) */ {
+	    if (o->screen.cur.col < (last_col - 1)) {
                 o->screen.cur.col++;
 	        stp[o->screen.cur.col] = char_to_text_t (ZERO_WIDTH_EMPTY_CHAR);
 	        srp[o->screen.cur.col] = o->rstyle;
@@ -2754,20 +2754,40 @@ int _rxvtlib_selection_paste (rxvtlib * o, Window win, unsigned int prop, int De
     return 0;
 }
 
+#define RXVTLIB_SELECTION_PASTE__RESET          NULL, 0, 0, 0
 /*
  * Respond to a notification that a primary selection has been sent
  * repeated in editwidget.c
  */
 void rxvtlib_selection_paste (rxvtlib * o, Window win, unsigned int prop, int delete_prop)
 {E_
+#ifdef UTF8_FONT
+    static int attempt_next_conversion = 0;
+#endif
     struct timeval tv, tv_start;
     unsigned long bytes_after;
     Atom actual_type;
     int actual_fmt;
     unsigned long nitems;
     unsigned char *s = 0;
+
+#ifdef UTF8_FONT
+    if (!o /* RXVTLIB_SELECTION_PASTE__RESET */) {
+        attempt_next_conversion = 0;
+        return;
+    }
+#endif
+
     if (prop == None)
+    {
+#ifdef UTF8_FONT
+        if (!attempt_next_conversion) {
+            attempt_next_conversion = 1;
+            XConvertSelection (o->Xdisplay, XA_PRIMARY, XA_STRING, XInternAtom (o->Xdisplay, "VT_SELECTION", False), o->TermWin.vt, 0);
+        }
+#endif
 	return;
+    }
     if (XGetWindowProperty
 	(o->Xdisplay, win, prop, 0, 8, False, AnyPropertyType, &actual_type, &actual_fmt, &nitems,
 	 &bytes_after, &s) != Success) {
@@ -2842,13 +2862,20 @@ void            rxvtlib_selection_request (rxvtlib *o, Time tm, int x, int y)
     else if (XGetSelectionOwner (o->Xdisplay, XA_PRIMARY) == None)
 	rxvtlib_selection_paste (o, Xroot, XA_CUT_BUFFER0, False);
     else {
+#ifdef UTF8_FONT
+        rxvtlib_selection_paste (RXVTLIB_SELECTION_PASTE__RESET);
+#endif
 	prop = XInternAtom (o->Xdisplay, "VT_SELECTION", False);
 #ifdef MULTICHAR_SET
 	ct = XInternAtom (o->Xdisplay, "COMPOUND_TEXT", False);
 	XConvertSelection (o->Xdisplay, XA_PRIMARY, ct, prop, o->TermWin.vt, tm);
 #else
+#ifdef UTF8_FONT
+	XConvertSelection (o->Xdisplay, XA_PRIMARY, ATOM_UTF8_STRING, prop, o->TermWin.vt, tm);
+#else
 	XConvertSelection (o->Xdisplay, XA_PRIMARY, XA_STRING, prop, o->TermWin.vt,
 			   tm);
+#endif
 #endif
     }
 }
@@ -3455,7 +3482,11 @@ void            rxvtlib_selection_rotate (rxvtlib *o, int x, int y)
 void            rxvtlib_selection_send (rxvtlib *o, const XSelectionRequestEvent * rq)
 {E_
     XEvent          ev;
+#ifdef UTF8_FONT
+    Atom            target_list[5];
+#else
     Atom            target_list[4];
+#endif
     Atom            target;
     static Atom     xa_targets = None;
     static Atom     xa_compound_text = None;
@@ -3486,8 +3517,14 @@ void            rxvtlib_selection_send (rxvtlib *o, const XSelectionRequestEvent
     if (rq->target == xa_targets) {
 	target_list[0] = (Atom32) xa_targets;
 	target_list[1] = (Atom32) XA_STRING;
+#ifdef UTF8_FONT
+	target_list[2] = (Atom32) ATOM_UTF8_STRING;
+	target_list[3] = (Atom32) xa_text;
+	target_list[4] = (Atom32) xa_compound_text;
+#else
 	target_list[2] = (Atom32) xa_text;
 	target_list[3] = (Atom32) xa_compound_text;
+#endif
 
 	XChangeProperty (o->Xdisplay, rq->requestor, rq->property, rq->target,
 			 32, PropModeReplace,
@@ -3509,6 +3546,13 @@ void            rxvtlib_selection_send (rxvtlib *o, const XSelectionRequestEvent
 	XChangeProperty (o->Xdisplay, rq->requestor, rq->property,
 			 target, 8, PropModeReplace, ct.value, ct.nitems);
 	ev.xselection.property = rq->property;
+#ifdef UTF8_FONT
+    } else if (rq->target == ATOM_UTF8_STRING) {
+	XChangeProperty (o->Xdisplay, rq->requestor, rq->property,
+			 ATOM_UTF8_STRING, 8, PropModeReplace,
+			 (unsigned char *) o->selection.text, o->selection.len);
+	ev.xselection.property = rq->property;
+#endif
     }
     XSendEvent (o->Xdisplay, rq->requestor, False, 0, &ev);
 }

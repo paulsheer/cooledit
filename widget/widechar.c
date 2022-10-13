@@ -579,7 +579,7 @@ static struct widetable is_wide_table[] = {
 
 
 int is_unicode_doublewidth_char (C_wchar_t c)
-{
+{E_
     int lower = 0;
     int upper = sizeof (is_wide_table) / sizeof (is_wide_table[0]) - 1;
     int i = (sizeof (is_wide_table) / sizeof (is_wide_table[0])) / 2;

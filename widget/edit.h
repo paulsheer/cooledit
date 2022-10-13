@@ -915,7 +915,7 @@ int option_editor_bg_highlighted = 12;
 int option_editor_fg_cursor = 18;
 
 char *option_whole_chars_search = "0123456789abcdefghijklmnopqrstuvwxyz_";
-char *option_chars_move_whole_word = "!=&|<>^~ !:;, !'!`!.?!\"!( !) !Aa0 !+-*/= |<> ![ !] !\\#! ";
+char *option_chars_move_whole_word = "!=&|<>^~ !:;, !'!`!.?!\"!( !) !Aa0_ !+-*/= |<> ![ !] !\\#! ";
 char *option_backup_ext = "~";
 
 #else				/* ! _EDIT_C */

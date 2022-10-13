@@ -1697,7 +1697,7 @@ static unsigned long my_type_of (int c)
 	return 0;
     if (c == '!') {
 	if (*option_chars_move_whole_word == '!')
-	    return 2;
+	    return 0x40000000UL;
 	return 0x80000000UL;
     }
     if (isupper (c))
@@ -1716,7 +1716,7 @@ static unsigned long my_type_of (int c)
         else if (*p == c)
 	    r |= x;
     }
-    return (~r & 0xFFFFFFFF);
+    return r;
 }
 
 void edit_left_word_move (WEdit * edit, int s)

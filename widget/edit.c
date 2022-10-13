@@ -2279,7 +2279,6 @@ int edit_is_movement_command(int command)
     case CK_Unmark:
     case CK_Copy:
     case CK_XStore:
-    case CK_Maximize:
 	return 1;
     }
     return 0;

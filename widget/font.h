@@ -71,6 +71,7 @@ struct font_object {
 #define FONT_PER_CHAR(x)		font_per_char(x)
 #define FONT_USE_FONT_SET		(!current_font->f.font_struct && !current_font->f.font_freetype.n_fonts && current_font->f.font_set)
 #define FONT_LAST_UNICHAR		0x10FFFFUL
+#define ZERO_WIDTH_EMPTY_CHAR           (FONT_LAST_UNICHAR + 1)
 #define FONT_ANTIALIASING		current_font->anti_aliasing
 #define FONT_PER_CHAR_DESCENT(x)	font_per_char_descent(x)
 #define FONT_OVERHEAD			option_text_line_spacing
@@ -81,10 +82,12 @@ int font_per_char (C_wchar_t c);
 int font_per_char_descent (C_wchar_t c);
 int mbrtowc_utf8_to_wchar (C_wchar_t * c, const char *t, int n, void *x /* no shifting with utf8 */ );
 unsigned char *wcrtomb_wchar_to_utf8 (C_wchar_t c);
+int is_unicode_doublewidth_char (C_wchar_t c);
 
 void CFreeAllFonts (void);
 int CPushFont (const char *name, ...);
 int CPushFontForceFixed (const char *name, ...);
+int CPushFontHonorFixedDoubleWidth (const char *name, ...);
 void CPopFont (void);
 int CIsFixedFont (void);
 

@@ -1041,6 +1041,19 @@ int CPushFontForceFixed (const char *name, ...)
     return CPushFont_ (1, name, xname, e);
 }
 
+int CPushFontHonorFixedDoubleWidth (const char *name, ...)
+{E_
+    va_list ap;
+    enum font_encoding *e;
+    const char *xname;
+
+    va_start (ap, name);
+    xname = va_arg (ap, const char *);
+    e = va_arg (ap, enum font_encoding *);
+    va_end (ap);
+    return CPushFont_ (2, name, xname, e);
+}
+
 static int CPushFont_ (int force_fixed_width, const char *name, const char *xname, enum font_encoding *e)
 {E_
     struct font_stack *p;

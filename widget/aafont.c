@@ -536,6 +536,7 @@ static void aa_create_pixmap_freetype (struct aa_font_cache *f, unsigned long th
     int h, H, w, W;
     int U, u;
     int U_, u_;
+    int mfw;
 
     FT_Face face;
     FT_Glyph_Metrics *metrics;
@@ -664,16 +665,26 @@ u = 1000000000;
     }
 
     u = f->f->font_freetype.desired_height;
+    mfw = f->f->mean_font_width;
+    if (f->f->force_fixed_width == 2 && is_unicode_doublewidth_char (the_chr))
+        mfw *= 2;
 
 /* force fixed font won't be populated the first time this is called. This
  * does not matter, since the first call is to get the mean font width based
  * on fixed-width characters: */
-    if (!f->f->mean_font_width) {
+    if (!mfw) {
         assert (metrics_only);
     }
-    if (f->f->force_fixed_width && f->f->mean_font_width && W > f->f->mean_font_width) {
-        u_ = f->f->mean_font_width;
+    if (f->f->force_fixed_width && mfw && W > mfw) {
+/* squash glyph width */
+        u_ = mfw;
         U_ = W;
+    } else if (f->f->force_fixed_width && mfw && W < mfw) {
+/* rather pad than scale */
+        dx += (mfw - W) / 2;
+        W = mfw;
+        u_ = u;
+        U_ = U;
     } else {
         u_ = u;
         U_ = U;

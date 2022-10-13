@@ -949,8 +949,18 @@ void            rxvtlib_scr_add_lines (rxvtlib *o, const unsigned char *str, int
 	    srp[o->screen.cur.col + 1] &= ~RS_multiMask;
 	}
 #endif
-	stp[o->screen.cur.col] = char_to_text_t (c);
-	srp[o->screen.cur.col] = o->rstyle;
+        if (is_unicode_doublewidth_char (c)) {
+	    stp[o->screen.cur.col] = char_to_text_t (c);
+	    srp[o->screen.cur.col] = o->rstyle;
+	    /* if (o->screen.cur.col < (last_col - 1)) */ {
+                o->screen.cur.col++;
+	        stp[o->screen.cur.col] = char_to_text_t (ZERO_WIDTH_EMPTY_CHAR);
+	        srp[o->screen.cur.col] = o->rstyle;
+            }
+        } else {
+	    stp[o->screen.cur.col] = char_to_text_t (c);
+	    srp[o->screen.cur.col] = o->rstyle;
+        }
 	if (o->screen.cur.col < (last_col - 1))
 	    o->screen.cur.col++;
 	else {
@@ -2285,6 +2295,7 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 	dtp = o->drawn_text[row];
 	drp = o->drawn_rend[row];
 	for (col = 0; col < o->TermWin.ncol; col++) {
+            rxvt_buf_char_t ec;
 	    /* compare new text with old - if exactly the same then continue */
 	    rt1 = srp[col];	/* screen rendition */
 	    rt2 = drp[col];	/* drawn rendition  */
@@ -2310,14 +2321,14 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 	    rend = drp[col] = srp[col];
 
 	    len = 0;
-	    o->buffer[len++] = text_t_to_char (stp[col]);
+	    o->buffer[len++] = ec = text_t_to_char (stp[col]);
 	    ypixelc = Row2Pixel(row);
 #ifdef UTF8_FONT
 	    ypixel = ypixelc + FONT_ASCENT;
 #else
 	    ypixel = ypixelc + o->TermWin.font->ascent;
 #endif
-	    xpixel = Col2Pixel (col);
+	    xpixel = Col2Pixel (col + (ec == ZERO_WIDTH_EMPTY_CHAR));
 	    fontdiff = 0;
 	    wlen = 1;
 
@@ -2928,6 +2939,8 @@ void            rxvtlib_selection_make (rxvtlib *o, Time tm)
             u = text_t_to_char (*t++); \
             if (u < 128) { \
 	        *str++ = u; /* optimise the common case */ \
+            } else if (u == ZERO_WIDTH_EMPTY_CHAR) { \
+                /* pass */ \
             } else { \
                 char *q; \
                 q = (char *) wcrtomb_wchar_to_utf8 (u); \

@@ -860,6 +860,33 @@ void            rxvtlib_scr_add_lines (rxvtlib *o, const unsigned char *str, int
                 memmove (o->utf8buf, o->utf8buf + 1, o->utf8buflen - 1);
                 o->utf8buflen -= 1;
             } else {
+
+/* handle a double-wide char trying to write across the right border: */
+                if (is_unicode_doublewidth_char (c) && o->screen.cur.col == (last_col - 1)) {
+                    o->screen.tlen[row] = (last_col - 1);
+                    if (o->screen.flags & Screen_Autowrap)
+                        o->screen.flags |= Screen_WrapNext;
+                    else
+                        o->screen.flags &= ~Screen_WrapNext;
+
+                    /* this block of code is the same as below */
+                    if (o->screen.flags & Screen_WrapNext) {
+                        o->screen.tlen[row] = -1;
+                        if (o->screen.cur.row == o->screen.bscroll) {
+                            rxvtlib_scroll_text (o, o->screen.tscroll, o->screen.bscroll, 1, 0);
+                            j = o->screen.bscroll + o->TermWin.saveLines;
+                            rxvtlib_blank_screen_mem (o, o->screen.text, o->screen.rend, j, o->rstyle);
+                            o->screen.tlen[j] = 0;
+                        } else if (o->screen.cur.row < (o->TermWin.nrow - 1))
+                            row = (++o->screen.cur.row) + o->TermWin.saveLines;
+                        stp = o->screen.text[row];	/* _must_ refresh */
+                        srp = o->screen.rend[row];	/* _must_ refresh */
+                        o->screen.cur.col = 0;
+                        o->screen.flags &= ~Screen_WrapNext;
+                        continue;
+                    }
+                }
+
                 memmove (o->utf8buf, o->utf8buf + e, o->utf8buflen - e);
                 o->utf8buflen -= e;
             }

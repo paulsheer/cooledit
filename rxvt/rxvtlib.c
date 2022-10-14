@@ -72,7 +72,7 @@ static  const char *const def_colorName[] = {
 
     "Black",			
 #ifndef NO_BRIGHTCOLOR
-    "Red3",			
+    "Red",			
     "Green3",			
     "Yellow3",			
     "Blue",
@@ -82,7 +82,7 @@ static  const char *const def_colorName[] = {
 
     "Grey25",			
 #endif				/* NO_BRIGHTCOLOR */
-    "Red",			
+    "Orange red",
     "Green",			
     "Yellow",			
     "Sky Blue",

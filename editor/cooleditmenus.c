@@ -80,11 +80,12 @@ static char **latin_get_line (void *data, int line_number, int *num_fields, int 
 
 void latin_help_table (unsigned long line)
 {E_
+    const char *msg = " Non-ASCII Key Composing to Unicode: use Alt-\\ and any order two keys... \n (See COMPOSING INTERNATIONAL CHARACTERS in the man page for non-Latin composing) ";
     struct latin_help_info w;
     memset (&w, '\0', sizeof (w));
     w.magic = LATIN_HELP_INFO_MAGIC;
     compose_help (&w.r, &w.n);
-    CFieldedTextboxMessageDialog (main_window, 20, 20, 77, 23, " Non-ASCII Key Composing to Unicode: use Alt-\\ and any order two keys...", latin_get_line, 0, (void *) &w);
+    CFieldedTextboxMessageDialog (main_window, 20, 20, 77, 23, msg, latin_get_line, 0, (void *) &w);
     free_compose_help (w.r, w.n);
 }
 

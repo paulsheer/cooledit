@@ -1124,24 +1124,58 @@ option doubles its width, default off.
 To use \fBcooledit\fP's built-in character composing
 see "Non-ASCII key composing..." in the \fBReadme\fP menu.
 .PP
-To enable the standard Compose key behavior for Linux, edit
-\fB/etc/default/keyboard\fP and add the line,
+To compose non-Latin characters or to enable standard "Compose Key" behavior for
+Linux you will first need to set your X Server to recognize a regular key as a Compose Key.
+Edit the configuration file \fB/etc/default/keyboard\fP and add the line,
 
 .nf
 XKBOPTIONS="compose:ralt"
 .fi
 
-for using the right \fBAlt\fP key as a "compose" key. Then reboot. The following
-shell commands will enable English UTF8 key composing and Asian language key composing
-with the proper OS support:
+for using the \fBr\fPight \fBAlt\fP key as a Compose Key. Then reboot.
+.PP
+Alternatively do as follows to configure your Compose Key. First look in this
+file to find how the X Windows System can map the compose key, then use the
+\fBsetxkbmap\fP command to pick a key.
+
+.nf
+grep 'compose:' /usr/share/X11/xkb/rules/base.lst
+grep 'compose:' /usr/X11R6/share/X11/xkb/rules/base.lst
+grep 'compose:' /usr/local/share/X11/xkb/rules/base.lst
+setxkbmap -option compose:ralt
+.fi
+
+Note the importance of the \fBXMODIFIERS\fP and \fBLANG\fP environment variables.
+\fBXMODIFIERS\fP tells \fBcooledit\fP what "Input Method (IM)" service to connect to.
+\fBLANG\fP tells \fBcooledit\fP that UTF8 is supported.
+.PP
+The following shell commands will enable English UTF8 key composing and Asian language key composing
+with the \fBibus\fP IM package properly installed. The following OS packages may be needed say, for Chinese
+support: \fBibus\fP, \fBlanguage-pack-zh-hans-base\fP, \fBibus-pinyin\fP, \fBdbus-x11\fP.
+Note the "next input method" and "trigger" options in the setup GUI: you may need to press these keys within \fBcooledit\fP to enable the input method.
 
 .nf
 export XMODIFIERS=@im=ibus
 export LANG=en_US.UTF-8
 ibus-setup
+ibus-daemon --xim
 .fi
 
-or, for just English and, say, other Latin diacriticals,
+The following shell commands will enable English UTF8 key composing and Asian language key composing
+with the \fBscim\fP IM package properly installed. The following OS packages may be needed say, for Chinese
+support: \fBscim\fP, \fBscim-pinyin\fP.
+Note the "next input method" and "trigger" options in the setup GUI: you may need to press these keys within \fBcooledit\fP to enable the input method.
+
+.nf
+export XMODIFIERS=@im=SCIM
+export LANG=en_US.UTF-8
+scim-setup
+scim -e pinyin -f x11
+.fi
+
+.PP
+
+For composing plain English and, say, other Latin diacriticals,
 
 .nf
 export XMODIFIERS=
@@ -1159,7 +1193,7 @@ i-press
 i-release
 .fi
 
-will insert an character "i" with an acute accent.
+will insert a character "i" with an acute accent.
 
 .PP
 .SH BINARY FILES

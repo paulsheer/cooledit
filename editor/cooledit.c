@@ -2162,6 +2162,7 @@ extern int (*global_callback) (XEvent *x);
 int rxvt_event (XEvent * xevent);
 const char *get_default_widget_font (void);
 const char *get_default_editor_font (void);
+const char *get_default_editor_font_large (void);
 
 
 
@@ -2232,12 +2233,14 @@ int main (int argc, char **argv)
 	    for (i = 0; i < n; i++)
 		printf ("\tcooledit -font '%s'\n", example_fonts[i]);
 	    printf ("\tcooledit -font default\n" \
+		    "\tcooledit -font large # use 9x15B instead of 8x13B\n" \
 		    "\tcooledit -font 8x13bold\n" \
 		    "\tcooledit -font 1-%d\n", n);
 	    printf ("\n");
 	    printf ("Examples using fonts on file on the local machine: \n");
 	    printf ("\tcooledit -font NotoSansMono-Bold.ttf:14\n");
 	    printf ("\tcooledit -font 8x13B.pcf.gz,NotoColorEmoji-OLD.ttf:35 --widget-font  NotoSans-Regular.ttf:14     # then hit  Alt-I  then  End  then  PgDn  until 0x1F300\n");
+	    printf ("\tcooledit -font 9x15B.pcf.gz\n");
 	    printf ("\tcooledit -font /usr/share/fonts/truetype/ttf-dejavu/DejaVuSans-Bold.ttf:20\n");
 	    printf ("\n");
 	    printf ("The default font is:\n");
@@ -2271,9 +2274,12 @@ int main (int argc, char **argv)
 	process_command_line (argc, argv);
     }
 
-    if (option_font2)
+    if (option_font2) {
 	if (!strcmp (option_font2, "default"))
 	    option_font2 = (char *) strdup (get_default_editor_font ());
+	if (!strcmp (option_font2, "large"))
+	    option_font2 = (char *) strdup (get_default_editor_font_large ());
+    }
 
     if (option_widget_font2)
 	if (!strcmp (option_widget_font2, "default"))

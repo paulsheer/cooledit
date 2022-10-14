@@ -381,6 +381,11 @@ const char *get_default_editor_font (void)
     return "8x13B.pcf.gz," ALL_TTF_RESIZABLE_FONTS;
 }
 
+const char *get_default_editor_font_large (void)
+{E_
+    return "9x15B.pcf.gz," ALL_TTF_RESIZABLE_FONTS;
+}
+
 const char *get_default_widget_font (void)
 {E_
     return ALL_TTF_RESIZABLE_FONTS ":14";

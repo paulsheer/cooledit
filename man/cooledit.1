@@ -1223,7 +1223,8 @@ Fonts are specified on the command-line and not from any menu.
 
 Two fonts groups are loaded, one using the \fB-font\fP option and one using the \fB--widget-font\fP
 option. Both proportional and fixed-width fonts are supported, but fixed-width fonts are most
-appropriate for code editing. Type \fBcooledit -fn ?\fP for help. Fonts glyphs are looked up
+appropriate for code editing. Type \fBcooledit -fn ?\fP for help. \fBcooledit -fn large\fP configures
+a slightly larger font for higher-DPI displays. Fonts glyphs are looked up
 interpreting UTF-8 encoding on the raw edit text buffer and then indexing the glyph. No other
 interpretation takes place and if the glyph is not present, then Cooledit renders a substitute Hex
 sequence. If the \fB--locale-encoding\fP option is set then OS Locale settings are used instead of

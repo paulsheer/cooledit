@@ -1,7 +1,7 @@
 
 syntaxdir = $(datadir)/cooledit/fonts
 
-syntax_DATA = sort.py 8x13B-ISO8859-1.pcf.gz 8x13B.pcf.gz NotoKufiArabic-Regular.ttf NotoLoopedLao-Regular.ttf NotoLoopedLaoUI-Regular.ttf \
+syntax_DATA = sort.py 8x13B-ISO8859-1.pcf.gz 8x13B.pcf.gz 9x15B.pcf.gz NotoKufiArabic-Regular.ttf NotoLoopedLao-Regular.ttf NotoLoopedLaoUI-Regular.ttf \
         NotoMusic-Regular.ttf NotoNastaliqUrdu-Regular.ttf NotoSansAdlam-Regular.ttf NotoSansAnatolianHieroglyphs-Regular.ttf NotoSansArabic-Regular.ttf \
         NotoSansArmenian-Regular.ttf NotoSansAvestan-Regular.ttf NotoSansBalinese-Regular.ttf NotoSansBamum-Regular.ttf NotoSansBassaVah-Regular.ttf \
         NotoSansBatak-Regular.ttf NotoSansBengali-Regular.ttf NotoSansBhaiksuki-Regular.ttf NotoSansBrahmi-Regular.ttf NotoSansBuginese-Regular.ttf \

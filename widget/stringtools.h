@@ -94,6 +94,8 @@ char *strcasechr (const char *p, int c);
 char *space_string (const char *s);
 int Cstrlcpy (char *dst, const char *src, int siz);
 void string_chomp (char *_p);
+char **set_env_var (char *new_var[], int nn);
+int execve_path_search (const char *file, char *const argv[], char *const envp[]);
 
 
 #define my_lower_case(c) tolower(c & 0xFF)

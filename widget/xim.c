@@ -207,6 +207,8 @@ void cim_check_spot_change (Window win)
 {E_
 #ifdef USE_XIM
     XIC ic = 0;
+    if (!CIM)
+        return;
     if (new_spot.x != hold_spot.x || new_spot.y != hold_spot.y) {
 	XVaNestedList preedit_attr;
 	if ((ic = get_window_ic (win, 0, 0))) {
@@ -298,7 +300,7 @@ KeySym key_sym_xlat (XEvent * ev, char *xlat, int *xlat_len)
 
 #ifdef USE_XIM
 
-void setSize (CWidget * w, XRectangle * size)
+static void setSize (CWidget * w, XRectangle * size)
 {E_
     size->x = 0;
     size->y = 0;
@@ -306,27 +308,43 @@ void setSize (CWidget * w, XRectangle * size)
     size->height = 1600;
 }
 
-void setColor (CWidget * w, unsigned long *fg, unsigned long *bg)
+static void setColor (CWidget * w, unsigned long *fg, unsigned long *bg)
 {E_
     *fg = COLOR_BLACK;
     *bg = COLOR_WHITE;
 }
 
+void destroy_input_context_ (XIC *ic)
+{
+    if (*ic) {
+        XDestroyIC (*ic);
+        *ic = 0;
+    }
+}
 
 static long destroy_input_context (CWidget * w)
 {E_
-    if (w->input_context) {
-        XDestroyIC (w->input_context);
-        w->input_context = 0;
-    }
+    destroy_input_context_ (&w->input_context);
     return 0;
+}
+
+static set_input_context_cb_t set_input_context_cb = NULL;
+static destroy_input_context_cb_t destroy_input_context_cb = NULL;
+
+void xim_set_input_cb (set_input_context_cb_t create_cb, destroy_input_context_cb_t destroy_cb)
+{
+    set_input_context_cb = create_cb;
+    destroy_input_context_cb = destroy_cb;
 }
 
 void IMDestroyCallback (XIM xim, XPointer client_data, XPointer call_data)
 {E_
     XRegisterIMInstantiateCallback (CDisplay, NULL, NULL, NULL, IMInstantiateCallback, NULL);
     for_all_widgets ((for_all_widgets_cb_t) destroy_input_context, 0, 0);
+    if (CIM && destroy_input_context_cb)
+        (*destroy_input_context_cb) ();
     x_server_xim_reported_enabled = 0;
+    CIM = 0; /* We should do a XCloseIM(CIM), but this exposes and XLib bug */
 }
 
 /* returns zero on error */
@@ -370,18 +388,14 @@ XIMStyle get_input_style (void)
     return input_style;
 }
 
-long create_input_context (CWidget * w, XIMStyle input_style)
+long create_input_context_ (const char *msg, XIMStyle input_style, XIC *input_context, Window winid)
 {E_
     XVaNestedList preedit_attr = 0;
     XPoint spot;
     XRectangle rect;
     XIMCallback ximcallback;
     unsigned long fg, bg;
-    if (w->kind != C_WINDOW_WIDGET)
-	return 0;
-    if (w->mainid)
-	return 0;
-    if (w->input_context)
+    if (*input_context)
 	return 0;
     if (!CIM)
 	return 1;
@@ -395,13 +409,13 @@ long create_input_context (CWidget * w, XIMStyle input_style)
 printf ("XIMPreeditPosition\n");
 #endif
 
-	setSize (w, &rect);
+	setSize (NULL, &rect);
 
 #ifdef XIM_DEBUG
 printf("CRoot=%lu parentid=%lu\n", (unsigned long) CRoot, (unsigned long) w->parentid);
 #endif
-	setPosition (w->winid, &spot);
-	setColor (w, &fg, &bg);
+	setPosition (winid, &spot);
+	setColor (NULL, &fg, &bg);
 	preedit_attr = XVaCreateNestedList (0, 
 					    XNArea, &rect,
 					    XNSpotLocation, &spot,
@@ -410,9 +424,10 @@ printf("CRoot=%lu parentid=%lu\n", (unsigned long) CRoot, (unsigned long) w->par
 					    XNFontSet, current_font->f.font_set,
 					    NULL);
     }
-    w->input_context = XCreateIC (CIM, XNInputStyle, input_style,
-				  XNClientWindow, w->winid,
-				  XNFocusWindow, w->winid,
+
+    *input_context = XCreateIC (CIM, XNInputStyle, input_style,
+				  XNClientWindow, winid,
+				  XNFocusWindow, winid,
 				  XNDestroyCallback, &ximcallback,
 			       preedit_attr ? XNPreeditAttributes : NULL,
 				  preedit_attr,
@@ -424,12 +439,22 @@ printf("w->input_context = %p\n", (void *) w->input_context);
 
     if (preedit_attr)
 	XFree (preedit_attr);
-    if (!w->input_context) {
-	xim_print_error ("Failed to create input context for widget %s", w->ident);
+    if (!*input_context) {
+	xim_print_error ("Failed to create input context for widget %s", msg);
 	return 1;
     }
     x_server_xim_reported_enabled = 1;
     return 0;
+}
+
+long create_input_context (CWidget * w, XIMStyle input_style)
+{E_
+    if (w->kind != C_WINDOW_WIDGET)
+	return 0;
+    if (w->mainid)      /* main windows only */
+	return 0;
+
+    return create_input_context_ (w->ident, input_style, &w->input_context, w->winid);
 }
 
 long set_status_position (CWidget * w)
@@ -439,6 +464,7 @@ long set_status_position (CWidget * w)
 
 static void IMInstantiateCallback (Display * display, XPointer client_data, XPointer call_data)
 {E_
+    static int init = 0;
     char *p;
     XIMStyle input_style = 0;
     XIMCallback ximcallback;
@@ -453,13 +479,19 @@ printf ("IMInstantiateCallback\n");
     ximcallback.callback = IMDestroyCallback;
     ximcallback.client_data = NULL;
 
-    /* try with XMODIFIERS env. var. */
-    if (CIM == NULL && (p = XSetLocaleModifiers ("")) != NULL && *p)
-	CIM = XOpenIM (CDisplay, NULL, NULL, NULL);
-    if (CIM == NULL && (p = XSetLocaleModifiers ("@im=control")) != NULL && *p)
-	CIM = XOpenIM (CDisplay, NULL, NULL, NULL);
-    if (CIM == NULL && (p = XSetLocaleModifiers ("@im=none")) != NULL && *p)
-	CIM = XOpenIM (CDisplay, NULL, NULL, NULL);
+    if (!init) {
+        init = 1;
+        /* try with XMODIFIERS env. var. */
+        if (CIM == NULL && (p = XSetLocaleModifiers ("")) != NULL && *p)
+	    CIM = XOpenIM (CDisplay, NULL, NULL, NULL);
+        if (CIM == NULL && (p = XSetLocaleModifiers ("@im=control")) != NULL && *p)
+	    CIM = XOpenIM (CDisplay, NULL, NULL, NULL);
+        if (CIM == NULL && (p = XSetLocaleModifiers ("@im=none")) != NULL && *p)
+	    CIM = XOpenIM (CDisplay, NULL, NULL, NULL);
+    } else {
+        /* don't call XSetLocaleModifiers except once at startup. Otherwise and internal XLib bug accessess free'd memory */
+        CIM = XOpenIM (CDisplay, NULL, NULL, NULL);
+    }
 
 #ifdef XIM_DEBUG
 printf("CIM=%p\n", (void *) CIM);
@@ -481,6 +513,9 @@ printf("CIM=%p\n", (void *) CIM);
 	input_style = 0;
 	XCloseIM (CIM);
 	CIM = 0;
+    }
+    if (CIM && set_input_context_cb) {
+        (*set_input_context_cb) (input_style);
     }
     CPopFont ();
 }

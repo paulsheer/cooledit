@@ -9,5 +9,12 @@
 /* #endif */
 
 void init_xlocale (void);
+long create_input_context_ (const char *msg, XIMStyle input_style, XIC *input_context, Window winid);
+void destroy_input_context_ (XIC *ic);
+
+typedef void (*set_input_context_cb_t) (XIMStyle input_style);
+typedef void (*destroy_input_context_cb_t) (void);
+void xim_set_input_cb (set_input_context_cb_t create_cb, destroy_input_context_cb_t destroy_cb);
+
 
 #endif	/* _XIM_H */

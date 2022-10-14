@@ -8,6 +8,7 @@
 #include "rxvt/rxvtlib.h"
 #include "coolwidget.h"
 #include "font.h"
+#include "xim.h"
 
 struct rxvts {
     rxvtlib *rxvt;
@@ -111,6 +112,40 @@ void rxvt_selection_clear (void)
 	o->selection.len = 0;
     }
     return;
+}
+
+/* Case 1: create an input context on first creation of the rxvt terminal for the case when input method registration has ALREADY happened */
+void rxvt_set_input_context (rxvtlib *o, XIMStyle input_style)
+{
+    CPushFont ("rxvt");
+    create_input_context_ ("rxvt", input_style, &o->Input_Context, o->TermWin.parent[0]);
+    CPopFont ();
+}
+
+/* Case 2: create an input context when a new input method becomes available AFTER the rxvt terminal has was created */
+static void rxvt_set_input_context_cb (XIMStyle input_style)
+{
+    struct rxvts *l;
+    if (!rxvt_list)
+	return;
+    for (l = rxvt_list->next; l; l = l->next) {
+        rxvt_set_input_context (l->rxvt, input_style);
+    }
+}
+
+static void rxvt_destroy_input_context_cb (void)
+{
+    struct rxvts *l;
+    if (!rxvt_list)
+	return;
+    for (l = rxvt_list->next; l; l = l->next) {
+        destroy_input_context_ (&l->rxvt->Input_Context);
+    }
+}
+
+void rxvt_init (void)
+{
+    xim_set_input_cb (rxvt_set_input_context_cb, rxvt_destroy_input_context_cb);
 }
 
 #if 0

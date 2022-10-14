@@ -165,6 +165,34 @@ void string_chomp (char *_p)
     *t = '\0';
 }
 
+extern char **environ;
+
+char **set_env_var (char *new_var[], int nn)
+{E_
+    int exists, n, i, j, k, *l;
+    char **r;
+    l = (int *) alloca (nn * sizeof (int));
+    for (n = 0; environ[n]; n++);
+    for (k = 0; k < nn; k++) {
+        assert (new_var[k]);
+        assert (new_var[k][0]);
+        l[k] = strcspn (new_var[k], "=");
+    }
+    r = (char **) malloc (sizeof (const char *) * (n + nn + 2));
+    for (i = j = 0; j < n; j++) {
+        assert (environ[j]);
+        for (exists = k = 0; k < nn && !exists; k++)
+            exists = !strncmp (environ[j], new_var[k], l[k]);
+        if (!exists)
+            r[i++] = environ[j];
+    }
+    for (k = 0; k < nn; k++)
+        if (new_var[k][l[k]] == '=')       /* a missing equals sign means to delete environment variable */
+            r[i++] = new_var[k];
+    r[i] = NULL;
+    return r;
+}
+
 #define Ctolower(c)             (((c) >= 'A' && (c) <= 'Z') ? ((c) + 'a' - 'A') : (c))
 
 int Cstrncasecmp (const char *p1, const char *p2, size_t n)

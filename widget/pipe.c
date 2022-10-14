@@ -89,7 +89,7 @@ int execve_path_search (const char *file, char *const argv[], char *const envp[]
     int done = 0;
 
     path = getenv ("PATH");
-    if (!path || !*path)
+    if (!path || !*path || *file == '/')
         return execve (file, argv, envp);
 
     p = q = path;

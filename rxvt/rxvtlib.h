@@ -83,6 +83,9 @@ struct _rxvtlib {
  short    changettyowner ;
  unsigned int num_fds ;
 
+ char *envvar[32];
+ int n_envvar;
+
 #ifdef UTF8_FONT
  char utf8buf[6];
 #endif

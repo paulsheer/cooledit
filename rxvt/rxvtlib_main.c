@@ -128,7 +128,9 @@ void            rxvtlib_set_colorfgbg (rxvtlib *o)
 		 "%d", bg);
     else
 	STRCPY (p, "default");
-    putenv (env_colorfgbg);
+
+#define PUTENV(e)       do { o->envvar[o->n_envvar++] = (char *) strdup (e); } while (0)
+    PUTENV (env_colorfgbg);
 
 #ifndef NO_BRIGHTCOLOR
     o->colorfgbg = DEFAULT_RSTYLE;
@@ -1107,12 +1109,12 @@ extern Display *CDisplay;
 
 /* ------------------------------------------------------------------------- */
 /* INTPROTO */
-const char    **rxvtlib_init_resources (rxvtlib *o, int argc, const char *const *argv)
+char    **rxvtlib_init_resources (rxvtlib *o, int argc, const char *const *argv)
 {E_
     int             i, r_argc;
     char           *val;
     const char     *tmp;
-    const char    **cmd_argv, **r_argv;
+    char           **cmd_argv, **r_argv;
 
 /*
  * Look for -exec option.  Find => split and make cmd_argv[] of command args
@@ -1120,18 +1122,18 @@ const char    **rxvtlib_init_resources (rxvtlib *o, int argc, const char *const 
     for (r_argc = 0; r_argc < argc; r_argc++)
 	if (!strcmp (argv[r_argc], "-e") || !strcmp (argv[r_argc], "-exec"))
 	    break;
-    r_argv = (const char **)MALLOC (sizeof (char *) * (r_argc + 1));
+    r_argv = (char **)MALLOC (sizeof (char *) * (r_argc + 1));
 
     for (i = 0; i < r_argc; i++)
-	r_argv[i] = (const char *)argv[i];
+	r_argv[i] = (char *) argv[i];
     r_argv[i] = NULL;
     if (r_argc == argc)
 	cmd_argv = NULL;
     else {
-	cmd_argv = (const char **)MALLOC (sizeof (char *) * (argc - r_argc));
+	cmd_argv = (char **)MALLOC (sizeof (char *) * (argc - r_argc));
 
 	for (i = 0; i < argc - r_argc - 1; i++)
-	    cmd_argv[i] = (const char *)argv[i + r_argc + 1];
+	    cmd_argv[i] = (char *) argv[i + r_argc + 1];
 	cmd_argv[i] = NULL;
     }
 
@@ -1330,29 +1332,33 @@ void            rxvtlib_init_env (rxvtlib *o)
  * @ TERM:      terminal name
  * @ TERMINFO:	path to terminfo directory
  */
-    putenv (env_display);
-    putenv (env_windowid);
+    PUTENV (env_display);
+    PUTENV (env_windowid);
 #ifdef RXVT_TERMINFO
-    putenv ("TERMINFO=" RXVT_TERMINFO);
+    PUTENV ("TERMINFO=" RXVT_TERMINFO);
 #endif
     if (o->Xdepth <= 2)
-	putenv ("COLORTERM=" COLORTERMENV "-mono");
+	PUTENV ("COLORTERM=" COLORTERMENV "-mono");
     else
-	putenv ("COLORTERM=" COLORTERMENVFULL);
+	PUTENV ("COLORTERM=" COLORTERMENVFULL);
     if (o->rs[Rs_term_name] != NULL) {
 	sprintf (env_term, "TERM=%.40s", o->rs[Rs_term_name]);
-	putenv (env_term);
+	PUTENV (env_term);
     } else {
-	putenv ("TERM=" TERMENV);
+	PUTENV ("TERM=" TERMENV);
     }
 }
+
+void rxvt_set_input_context (rxvtlib *o, XIMStyle input_style);
+XIMStyle get_input_style (void);
+
 
 /* ------------------------------------------------------------------------- */
 /* main() */
 /* INTPROTO */
 int rxvtlib_main (rxvtlib * o, int argc, const char *const *argv, int do_sleep)
 {E_
-    const char **cmd_argv;
+    char **cmd_argv;
 
 /*
  * Save and then give up any super-user privileges
@@ -1378,7 +1384,9 @@ int rxvtlib_main (rxvtlib * o, int argc, const char *const *argv, int do_sleep)
     if (o->killed)
 	return EXIT_FAILURE;
 
+#ifdef STANDALONE
     rxvtlib_init_xlocale (o);
+#endif
 
     rxvtlib_scr_reset (o);		/* initialize screen */
     rxvtlib_Gr_reset (o);		/* reset graphics */
@@ -1408,6 +1416,8 @@ int rxvtlib_main (rxvtlib * o, int argc, const char *const *argv, int do_sleep)
 #endif
     XMapWindow (o->Xdisplay, o->TermWin.vt);
     XMapWindow (o->Xdisplay, o->TermWin.parent[0]);
+
+    rxvt_set_input_context (o, get_input_style ());
 
     rxvtlib_init_env (o);
     rxvtlib_init_command (o, cmd_argv, do_sleep);

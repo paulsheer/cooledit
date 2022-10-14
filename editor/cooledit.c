@@ -2160,6 +2160,7 @@ static struct mouse_funcs main_mouse_funcs =
 
 extern int (*global_callback) (XEvent *x);
 int rxvt_event (XEvent * xevent);
+void rxvt_init (void);
 const char *get_default_widget_font (void);
 const char *get_default_editor_font (void);
 const char *get_default_editor_font_large (void);
@@ -2298,6 +2299,7 @@ int main (int argc, char **argv)
     initial_columns = start_width;
     initial_lines = start_height;
 
+    rxvt_init ();
     cooledit_init ();
 
     set_editor_encoding (option_utf_interpretation2, option_locale_encoding);

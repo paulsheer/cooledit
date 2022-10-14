@@ -325,6 +325,9 @@ void rxvtlib_shut (rxvtlib * o)
 {E_
     int i;
 
+    for (i = 0; i < o->n_envvar; i++)
+        myfree (o->envvar[i]);
+
     for (i = 0; i < o->TermWin.nrow; i++) {
 	if (o->swap.text)
 	    myfree (o->swap.text[i]);

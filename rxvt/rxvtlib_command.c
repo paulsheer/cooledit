@@ -2,6 +2,7 @@
 #include "inspect.h"
 #include "rxvtlib.h"
 #include <coolwidget.h>
+#include <xim.h>
 #include <stringtools.h>
 
 /*--------------------------------*-C-*---------------------------------*
@@ -765,7 +766,7 @@ void            rxvtlib_get_ourmods (rxvtlib *o)
 
 /*{{{ init_command() */
 /* EXTPROTO */
-void            rxvtlib_init_command (rxvtlib *o, const char *const *argv, int do_sleep)
+void            rxvtlib_init_command (rxvtlib *o, char *const argv[], int do_sleep)
 {E_
 /*
  * Initialize the command connection.
@@ -811,10 +812,7 @@ void            rxvtlib_init_command (rxvtlib *o, const char *const *argv, int d
 }
 /*}}} */
 
-#ifndef STANDALONE
-extern int option_use_xim;
-#endif
-
+#ifdef STANDALONE
 /*{{{ Xlocale */
 /*
  * This is more or less stolen straight from XFree86 xterm.
@@ -850,6 +848,7 @@ void rxvtlib_init_xlocale (rxvtlib * o)
 #endif
 }
 /*}}} */
+#endif
 
 /*{{{ window resizing */
 /*
@@ -886,6 +885,8 @@ void            rxvtlib_lookup_key (rxvtlib *o, XEvent * ev)
     KeySym          keysym;
     static XComposeStatus compose = { NULL, 0 };
     static unsigned char kbuf[KBUFSZ];
+    static wchar_t kbuf_wchar[KBUFSZ];
+    int             wlen;
     static int      numlock_state = 0;
 
 #ifdef DEBUG_CMD
@@ -915,12 +916,25 @@ void            rxvtlib_lookup_key (rxvtlib *o, XEvent * ev)
     len = 0;
     if (o->Input_Context != NULL) {
 	Status          status_return;
-
 	kbuf[0] = '\0';
-	len = XmbLookupString (o->Input_Context, &ev->xkey, (char *)kbuf,
-			       sizeof (kbuf), &keysym, &status_return);
+        wlen = XwcLookupString (o->Input_Context, &ev->xkey, kbuf_wchar,
+                sizeof (kbuf_wchar) / sizeof (kbuf_wchar[0]), &keysym, &status_return);
 	valid_keysym = ((status_return == XLookupKeySym)
 			|| (status_return == XLookupBoth));
+        if (status_return == XLookupChars || status_return == XLookupBoth) {
+            int i;
+            len = 0;
+            for (i = 0; i < wlen; i++) {
+                unsigned char *p;
+                int l = 0;
+                p = font_wchar_to_charenc ((C_wchar_t) kbuf_wchar[i], &l);
+                if (len + l >= MAX_KBUF)
+                    break;
+                memcpy (&kbuf[len], p, l);
+                len += l;
+            }
+        }
+	kbuf[len] = '\0';       /* defensive? */
     } else
 	len = XLookupString (&ev->xkey, (char *)kbuf, sizeof (kbuf), &keysym,
 			     &compose);
@@ -1528,7 +1542,9 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
 	    if (o->killed)
 		return 0;
 #ifdef USE_XIM
+# ifdef STANDALONE
 	    rxvtlib_IMSendSpot (o);
+# endif
 #endif
 	}
     }
@@ -1567,7 +1583,9 @@ void rxvtlib_update_screen (rxvtlib * o)
 	rxvtlib_scr_refresh (o, o->refresh_type);
 	rxvtlib_scrollbar_show (o, 1);
 #ifdef USE_XIM
+# ifdef STANDALONE
 	rxvtlib_IMSendSpot (o);
+# endif
 #endif
     }
 }
@@ -2207,7 +2225,9 @@ void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
 	    o->refresh_count = o->refresh_limit = 0;
 	    rxvtlib_scrollbar_show (o, 1);
 #ifdef USE_XIM
+# ifdef STANDALONE
 	    rxvtlib_IMSendSpot (o);
+# endif
 #endif
 	}
 	break;
@@ -3069,7 +3089,9 @@ void            rxvtlib_process_graphics (rxvtlib *o)
     }
     rxvtlib_Gr_do_graphics (o, cmd, nargs, args, text);
 # ifdef USE_XIM
+#  ifdef STANDALONE
     rxvtlib_IMSendSpot (o);
+#  endif
 # endif
 #endif
 }
@@ -3340,6 +3362,7 @@ void            rxvtlib_tt_write (rxvtlib *o, const unsigned char *d, int len)
 }
 
 #ifdef USE_XIM
+#ifdef STANDALONE
 /* INTPROTO */
 void            rxvtlib_setSize (rxvtlib *o, XRectangle * size)
 {E_
@@ -3379,6 +3402,7 @@ void            rxvtlib_IMSendSpot (rxvtlib *o)
     XSetICValues (o->Input_Context, XNPreeditAttributes, preedit_attr, NULL);
     XFree (preedit_attr);
 }
+#endif
 
 /* INTPROTO */
 #ifndef UTF8_FONT
@@ -3457,6 +3481,7 @@ void            rxvtlib_setPreeditArea (rxvtlib *o, XRectangle * preedit_rect,
     status_rect->height = Height2Pixel (1);
 }
 
+#ifdef STANDALONE
 /* INTPROTO */
 void            rxvtlib_IMDestroyCallback (XIM xim, XPointer client_data,
 				   XPointer call_data)
@@ -3633,6 +3658,27 @@ void            rxvtlib_IMInstantiateCallback (Display * display, XPointer clien
     CPopFont ();
 #endif
 }
+#endif
+
+#ifndef STANDALONE
+
+void            rxvtlib_IMSetStatusPosition (rxvtlib *o)
+{E_
+    if (o->Input_Context) {
+        char *err;
+	XVaNestedList preedit_attr;
+        XPoint s;
+        s.x = 0;
+        s.y = 0;
+        preedit_attr = XVaCreateNestedList (0, XNSpotLocation, &s, NULL);
+        err = XSetICValues (o->Input_Context, XNPreeditAttributes, preedit_attr, NULL);
+        if (err)
+            printf ("XSetICValues returned \"%s\"\n", err);
+        XFree (preedit_attr);
+    }
+}
+
+#else
 
 /* EXTPROTO */
 void            rxvtlib_IMSetStatusPosition (rxvtlib *o)
@@ -3669,6 +3715,7 @@ void            rxvtlib_IMSetStatusPosition (rxvtlib *o)
 	XFree (status_attr);
     }
 }
+#endif
 #endif				/* USE_XIM */
 
 /* INTPROTO */
@@ -3701,7 +3748,7 @@ void            rxvtlib_XProcessEvent (rxvtlib *o, Display * display)
  * the slave.
  */
 /* INTPROTO */
-void            rxvtlib_run_command (rxvtlib *o, const char *const *argv, int do_sleep)
+void            rxvtlib_run_command (rxvtlib *o, char *const argv[], int do_sleep)
 {E_
     ttymode_t       tio;
 #if defined (DEBUG_CMD) || defined(STANDALONE)
@@ -3775,15 +3822,16 @@ void            rxvtlib_run_command (rxvtlib *o, const char *const *argv, int do
 	return;
     }
     if (o->cmd_pid == 0) {		/* child */
+
+#define UNSETENV(e)       do { o->envvar[o->n_envvar++] = (char *) strdup (e); } while (0)
+
 	/* signal (SIGHUP, Exit_signal); */
 	/* signal (SIGINT, Exit_signal); */
-#ifdef HAVE_UNSETENV
 	/* avoid passing old settings and confusing term size */
-	unsetenv ("LINES");
-	unsetenv ("COLUMNS");
+	UNSETENV ("LINES");
+	UNSETENV ("COLUMNS");
 	/* avoid passing termcap since terminfo should be okay */
-	unsetenv ("TERMCAP");
-#endif				/* HAVE_UNSETENV */
+	UNSETENV ("TERMCAP");
 	/* establish a controlling teletype for the new session */
 	rxvtlib_get_tty (o);
 	if (o->killed)
@@ -3838,9 +3886,10 @@ void            rxvtlib_run_command (rxvtlib *o, const char *const *argv, int do
             if (do_sleep)
 		while (1)
 		    sleep (60);
-	    execvp (argv[0], (char *const *)argv);
+            execve_path_search (argv[0], argv, set_env_var (o->envvar, o->n_envvar));
 	} else {
 	    const char     *argv0, *shell;
+	    char           *args[2];
 
 	    if ((shell = getenv ("SHELL")) == NULL || *shell == '\0')
 		shell = "/bin/sh";
@@ -3855,7 +3904,9 @@ void            rxvtlib_run_command (rxvtlib *o, const char *const *argv, int do
 		STRCPY (&p[1], argv0);
 		argv0 = p;
 	    }
-	    execlp (shell, argv0, NULL);
+            args[0] = (char *) strdup (argv0);
+            args[1] = NULL;
+            execve_path_search (shell, args, set_env_var (o->envvar, o->n_envvar));
 	}
 	exit (EXIT_FAILURE);
 	return;
@@ -3972,12 +4023,14 @@ pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *con
 	return -1;
     }
     if (o->cmd_pid == 0) {	/* child */
-#ifdef HAVE_UNSETENV
-	unsetenv ("LINES");
-	unsetenv ("COLUMNS");
-	unsetenv ("TERMCAP");
-#endif				/* HAVE_UNSETENV */
-	putenv ("TERM=dumb");
+        char *envvar[32];
+        int n_envvar = 0;
+
+        envvar[n_envvar++] = "LINES";
+        envvar[n_envvar++] = "COLUMNS";
+        envvar[n_envvar++] = "TERMCAP";
+        envvar[n_envvar++] = "TERM=dumb";
+
 	rxvtlib_get_tty ((rxvtlib *) o);
 	SET_TTYMODE (o->cmd_fd, &tios);
 #if 0
@@ -3998,7 +4051,7 @@ pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *con
 #ifdef SIGTTOU
 	signal (SIGTTOU, SIG_IGN);
 #endif
-	execvp (file, (char *const *) argv);
+        execve_path_search (file, argv, set_env_var (envvar, n_envvar));
 	exit (1);
     }
     *in = *out = o->cmd_fd;

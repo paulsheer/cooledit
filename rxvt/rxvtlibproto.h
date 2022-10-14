@@ -59,9 +59,9 @@ int             rxvtlib_get_pty (rxvtlib *o);
 int             rxvtlib_get_tty (rxvtlib *o);
 void            debug_ttymode (const ttymode_t * ttymode);
 void            get_ttymode (ttymode_t * tio);
-void            rxvtlib_run_command (rxvtlib *o, const char *const *argv, int do_sleep);
+void            rxvtlib_run_command (rxvtlib *o, char *const argv[], int do_sleep);
 void            rxvtlib_get_ourmods (rxvtlib *o);
-void            rxvtlib_init_command (rxvtlib *o, const char *const *argv, int do_sleep);
+void            rxvtlib_init_command (rxvtlib *o, char *const argv[], int do_sleep);
 void            rxvtlib_init_xlocale (rxvtlib *o);
 void            rxvtlib_tt_winsize (rxvtlib *o, int fd);
 void            rxvtlib_tt_resize (rxvtlib *o);
@@ -138,7 +138,7 @@ void            rxvtlib_set_window_color (rxvtlib *o, int idx, const char *color
 void            rxvtlib_xterm_seq (rxvtlib *o, int op, const char *str);
 void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname);
 void            rxvtlib_init_vars (rxvtlib *o);
-const char    **rxvtlib_init_resources (rxvtlib *o, int argc, const char *const *argv);
+char          **rxvtlib_init_resources (rxvtlib *o, int argc, const char *const *argv);
 void            rxvtlib_init_env (rxvtlib *o);
 int             rxvtlib_main (rxvtlib *o, int argc, const char *const *argv, int do_sleep);
 menuitem_t     *menuitem_find (const menu_t * menu, const char *name);
@@ -264,7 +264,7 @@ int             rxvtlib_scrollbar_show (rxvtlib *o, int update);
 int             rxvtlib_scrollbar_mapping (rxvtlib *o, int map);
 void            rxvtlib_map_scrollBar (rxvtlib *o, int map);
 void            rxvtlib_usage (rxvtlib *o, int type);
-void            rxvtlib_get_options (rxvtlib *o, int argc, const char *const *argv);
+void            rxvtlib_get_options (rxvtlib *o, int argc, char *const *argv);
 Bool            rxvtlib_define_key (rxvtlib *o, XrmDatabase * database, XrmBindingList bindings,
 			    XrmQuarkList quarks, XrmRepresentation * type,
 			    XrmValue * value, XPointer closure);

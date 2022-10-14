@@ -208,30 +208,6 @@ void record_line (void)
 
 char *option_man_cmdline = MAN_CMD;
 
-extern char **environ;
-
-static char **set_env_var (char *new_var[], int nn)
-{E_
-    int exists, n, i, j, k, *l;
-    char **r;
-    l = (int *) alloca (nn * sizeof (int));
-    for (n = 0; environ[n]; n++);
-    for (k = 0; k < nn; k++)
-        l[k] = strcspn (new_var[k], "=");
-    r = (char **) malloc (sizeof (const char *) * (n + nn + 2));
-    for (i = j = 0; j < n; j++) {
-        assert (environ[j]);
-        for (exists = k = 0; k < nn && !exists; k++)
-            exists = !strncmp (environ[j], new_var[k], l[k]);
-        if (!exists)
-            r[i++] = environ[j];
-    }
-    for (k = 0; k < nn; k++)
-        r[i++] = new_var[k];
-    r[i] = NULL;
-    return r;
-}
-
 static char *run_man_shell_cmd (const char *manpage, int columns)
 {E_
     int man_pipe = -1;

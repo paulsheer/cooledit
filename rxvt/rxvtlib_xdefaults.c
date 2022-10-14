@@ -404,7 +404,7 @@ void            rxvtlib_usage (rxvtlib *o, int type)
 
 /*{{{ get command-line options before getting resources */
 /* EXTPROTO */
-void            rxvtlib_get_options (rxvtlib *o, int argc, const char *const *argv)
+void            rxvtlib_get_options (rxvtlib *o, int argc, char *const *argv)
 {E_
     int             i, bad_option = 0;
     static const char On[3] = "ON", Off[4] = "OFF";

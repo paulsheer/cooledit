@@ -226,6 +226,7 @@ extern char *option_foreground_green;
 extern char *option_foreground_blue;
 extern char *option_font2;
 extern char *option_widget_font2;
+extern char *option_8bit_term_font;
 
 extern char *option_man_cmdline;
 extern char *option_alternate_dictionary;
@@ -249,6 +250,7 @@ static struct {
 	{"option_foreground_blue", &option_foreground_blue},
 	{"option_font4", &option_font2},
 	{"option_widget_font4", &option_widget_font2},
+	{"option_8bit_term_font", &option_8bit_term_font},
 	{"option_backup_ext", &option_backup_ext},
 	{"option_man_cmdline3", &option_man_cmdline},
 	{"option_preferred_visual", &option_preferred_visual}, 

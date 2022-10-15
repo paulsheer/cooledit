@@ -99,6 +99,7 @@
 #define CK_Paragraph_Indent_Mode	425
 #define CK_Insert_Shell_Output	426
 #define CK_Raw			427
+#define CK_8BitTerminal		428
 
 /* application control */
 #define CK_Save_Desktop		451

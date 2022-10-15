@@ -2736,6 +2736,7 @@ int edit_execute_cmd (WEdit * edit, int command, CStr char_for_insertion)
     case CK_Find_File:
     case CK_Ctags:
     case CK_Terminal:
+    case CK_8BitTerminal:
     case CK_Terminal_App:
 #endif
     case CK_Complete:

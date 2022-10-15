@@ -982,7 +982,7 @@ void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname)
     }
 /* set the sizes */
 #ifdef UTF8_FONT
-    CPushFont ("rxvt");
+    CPushFont (o->fontname);
     o->TermWin.fprop = 0;
     o->TermWin.mprop = 0;
     o->TermWin.bprop = 0;
@@ -1347,6 +1347,8 @@ void            rxvtlib_init_env (rxvtlib *o)
     } else {
 	PUTENV ("TERM=" TERMENV);
     }
+    if (o->charset_8bit)
+        PUTENV ("LANG");
 }
 
 void rxvt_set_input_context (rxvtlib *o, XIMStyle input_style);

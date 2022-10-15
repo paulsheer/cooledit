@@ -3601,7 +3601,7 @@ void            rxvtlib_IMInstantiateCallback (Display * display, XPointer clien
     }
 
 #ifdef UTF8_FONT
-    CPushFont ("rxvt");
+    CPushFont (o->fontname);
     fontset = current_font->f.font_set;
 #else
     fontset = o->TermWin.fontset;

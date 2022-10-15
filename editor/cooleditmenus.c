@@ -204,6 +204,7 @@ void CDrawCooleditMenuButtons (Window parent, int x, int y)
     CAddMenuItem ("menu.commandmenu", "", ' ', (callfn) NULL, 0);
     CAddMenuItem ("menu.commandmenu", _("Shell command\tEscape"), '~', menu_insert_shell_output, 0);
     CAddMenuItem ("menu.commandmenu", _("Terminal\tShift-F1"), '~', CEditMenuCommand, CK_Terminal);
+    CAddMenuItem ("menu.commandmenu", _("8-Bit Terminal"), 0, CEditMenuCommand, CK_8BitTerminal);
     CAddMenuItem ("menu.commandmenu", _("Show manual page...\tCtrl-F1"), '~', menu_man_cmd, 0);
     CAddMenuItem ("menu.commandmenu", _("Change current directory..."), '~', menu_change_directory_cmd, 0);
     CAddMenuItem ("menu.commandmenu", _("Complete\tCtrl-Tab"), '~', CEditMenuCommand, CK_Complete);

@@ -163,12 +163,12 @@ int rxvt_alive (pid_t p)
 
 extern void (*user_selection_clear) (void);
 
-rxvtlib *rxvt_allocate (Window win, int c, char **a, int do_sleep)
+rxvtlib *rxvt_allocate (Window win, int c, char **a, int do_sleep, int charset_8bit)
 {E_
     rxvtlib *rxvt;
     struct rxvts *l;
     rxvt = (rxvtlib *) malloc (sizeof (rxvtlib));
-    rxvtlib_init (rxvt);
+    rxvtlib_init (rxvt, charset_8bit);
     user_selection_clear = (void (*)(void)) rxvt_selection_clear;
     rxvt->parent_window = win;
     rxvtlib_main (rxvt, c, (const char *const *) a, do_sleep);
@@ -251,7 +251,7 @@ void rxvtlib_shutall (void)
     }
 }
 
-rxvtlib *rxvt_start (Window win, char **argv, int do_sleep)
+rxvtlib *rxvt_start (Window win, char **argv, int do_sleep, int charset_8bit)
 {E_
     int a = 0;
     rxvtlib *rxvt;
@@ -259,7 +259,7 @@ rxvtlib *rxvt_start (Window win, char **argv, int do_sleep)
     b = rxvt_args (argv);
     while (b[a])
 	a++;
-    rxvt = rxvt_allocate (win, a, b, do_sleep);
+    rxvt = rxvt_allocate (win, a, b, do_sleep, charset_8bit);
     if (rxvt) {
 	rxvtlib_main_loop (rxvt);
 	rxvtlib_update_screen (rxvt);

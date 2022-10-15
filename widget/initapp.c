@@ -105,6 +105,7 @@ static char *init_display = DEFAULT_DISPLAY;
 char *init_geometry = DEFAULT_GEOM;
 char *init_font = 0;
 char *init_widget_font = 0;
+char *init_8bit_term_font = 0;
 char *init_bg_color = DEFAULT_BG_COLOR; /* not used *************/ 
 char *init_fg_color_red = DEFAULT_WIDGET_COLOR_R;
 char *init_fg_color_green = DEFAULT_WIDGET_COLOR_G;
@@ -391,6 +392,11 @@ const char *get_default_widget_font (void)
     return ALL_TTF_RESIZABLE_FONTS ":14";
 }
 
+const char *get_default_8bit_term_font (void)
+{E_
+    return "8x13B-ISO8859-1.pcf.gz";
+}
+
 const char *get_default_bookmark_font (void)
 {E_
     return ALL_TTF_RESIZABLE_FONTS ":13";
@@ -400,10 +406,14 @@ static void init_load_font (void)
 {E_
     static enum font_encoding widget_encoding = FONT_ENCODING_UTF8;
     static enum font_encoding bookmark_encoding = FONT_ENCODING_UTF8;
+    static enum font_encoding rxvt_8bit_encoding = FONT_ENCODING_8BIT;
+    static enum font_encoding rxvt_encoding = FONT_ENCODING_UTF8;
     char *f;
     if (CPushFont ("editor", init_font, &editor_encoding))
 	exit (1);
-    if (CPushFontHonorFixedDoubleWidth ("rxvt", init_font, &editor_encoding))
+    if (CPushFontHonorFixedDoubleWidth ("rxvt", init_font, &rxvt_encoding))
+	exit (1);
+    if (CPushFontForceFixed ("rxvt8bit", init_8bit_term_font, &rxvt_8bit_encoding))
 	exit (1);
     f = CMalloc (strlen (init_widget_font) + 256);
     sprintf (f, init_widget_font, FONT_HEIGHT);
@@ -1633,6 +1643,7 @@ void CInitialise (CInitData * config_start)
 
     option_interwidget_spacing = (*look->get_default_interwidget_spacing) ();
     init_widget_font = (char *) (*look->get_default_widget_font) ();
+    init_8bit_term_font = (char *) get_default_8bit_term_font ();
     init_font = (char *) get_default_editor_font ();
 
     given = config_start;
@@ -1664,6 +1675,8 @@ void CInitialise (CInitData * config_start)
 	init_font = given->font;
     if (given->widget_font)
 	init_widget_font = given->widget_font;
+    if (given->_8bit_term_font)
+	init_8bit_term_font = given->_8bit_term_font;
     if (given->bg)
 	init_bg_color = given->bg;
     if (given->fg_red)

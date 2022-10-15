@@ -48,7 +48,7 @@
 
 
 
-void rxvtlib_init (rxvtlib *o);
+void rxvtlib_init (rxvtlib *o, int charset_8bit);
 
 int             getdtablesize (void);
 void            privileges (int mode);

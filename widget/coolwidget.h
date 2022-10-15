@@ -55,6 +55,7 @@
 
 typedef struct initialisation {
     char *name, *display, *geometry, *font, *widget_font, *bg;
+    char *_8bit_term_font;
     char *fg_red, *fg_green, *fg_blue;	/* string doubles */
 #define CINIT_OPTION_USE_GREY 1
 #define CINIT_OPTION_VERBOSE 2

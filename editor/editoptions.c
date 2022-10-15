@@ -132,6 +132,7 @@ static struct key_list klist[] =
     {gettext_noop("Util"), CK_Util, 0, 0, 0, 0, 0, 0},
     {gettext_noop("Match_Bracket"), CK_Match_Bracket, 0, 0, 0, 0, 0, 0},
     {gettext_noop("Terminal"), CK_Terminal, 0, 0, 0, 0, 0, 0},
+    {gettext_noop("8BitTerminal"), CK_8BitTerminal, 0, 0, 0, 0, 0, 0},
     {gettext_noop("Terminal_App"), CK_Terminal_App, 0, 0, 0, 0, 0, 0},
     {gettext_noop("Insert Unicode"), CK_Insert_Unicode, 0, 0, 0, 0, 0, 0},
     {"\t \t", 0, 0, 0, 0, 0, 0, 0},

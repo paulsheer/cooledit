@@ -243,9 +243,14 @@ static  XpmAttributes xpmAttr;
 
 
 
-void rxvtlib_init (rxvtlib *o)
+void rxvtlib_init (rxvtlib *o, int charset_8bit)
 {E_
     memset (o, 0, sizeof (rxvtlib));
+    o->charset_8bit = charset_8bit;
+    if (charset_8bit)
+        o->fontname = "rxvt8bit";
+    else
+        o->fontname = "rxvt";
     o->cmd_fd = cmd_fd;
     o->cmd_pid = cmd_pid;
     o->Xfd = Xfd;

@@ -87,6 +87,8 @@ struct _rxvtlib {
  int n_envvar;
 
 #ifdef UTF8_FONT
+ const char *fontname;
+ int charset_8bit;
  char utf8buf[6];
 #endif
  int utf8buflen;

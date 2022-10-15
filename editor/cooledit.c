@@ -347,6 +347,7 @@ char *option_foreground_green = 0;
 char *option_foreground_blue = 0;
 char *option_font2 = 0;
 char *option_widget_font2 = 0;
+char *option_8bit_term_font = 0;
 
 static int option_command_line_doesnt_override = 0;
 static int get_help = 0;
@@ -382,6 +383,7 @@ void usage (void)
 	    "-B, --foreground-blue <value>            blue component, default: 1.4\n" \
 	    "-f, -fn, -font <font-name>               use   cooledit -font h   for help\n" \
 	    "--widget-font <font-name>                font of widgets and controls\n" \
+	    "--8bit-term-font <font-name>             font for the terminal in 8-bit mode\n" \
 	    "-S, --suppress-load-files                don't load saved desktop\n" \
 	    "-U, --suppress-load-options              don't load saved options\n" \
 	    "-E, -no-override                         command line doesn't override init file\n" \
@@ -454,6 +456,7 @@ struct prog_options cooledit_options[] =
     {'B', "", "--foreground-blue", ARG_STRING, &option_foreground_blue, 0, 0},
     {'f', "-fn", "-font", ARG_STRING, &option_font2, 0, 0},
     {0, "", "--widget-font", ARG_STRING, &option_widget_font2, 0, 0},
+    {0, "", "--8bit-term-font", ARG_STRING, &option_8bit_term_font, 0, 0},
     {'S', "", "--suppress-load-files", ARG_SET, 0, 0, &option_suppress_load_files_cmdline},
     {'U', "", "--suppress-load-options", ARG_SET, 0, 0, &option_suppress_load_options},
     {'E', "-no-override", "", ARG_SET, 0, 0, &option_command_line_doesnt_override},
@@ -1345,6 +1348,7 @@ void menu_jump_to_file (unsigned long ignored)
 
 extern char *init_font;
 extern char *init_widget_font;
+extern char *init_8bit_term_font;
 extern char *init_bg_color;
 
 void run_main_callback (unsigned long ignored)
@@ -1355,7 +1359,7 @@ void run_main_callback (unsigned long ignored)
     switch (fork()) {
 	case 0:
 	    set_signal_handlers_to_default ();
-	    execlp (argv_nought, argv_nought, "-Smf", init_font, "--widget-font", init_widget_font, "-lines", lines, "-columns", columns, NULL);
+	    execlp (argv_nought, argv_nought, "-Smf", init_font, "--widget-font", init_widget_font, "--8bit-term-font", init_8bit_term_font, "-lines", lines, "-columns", columns, NULL);
 	    exit (0);
 	case -1:
 	    CErrorDialog (0, 0, 0, _(" Run 'cooledit' "), get_sys_error (_(" Error trying to fork process ")));
@@ -1839,6 +1843,7 @@ static void cooledit_init (void)
     cooledit_startup.display = option_display;
     cooledit_startup.font = option_font2;
     cooledit_startup.widget_font = option_widget_font2;
+    cooledit_startup._8bit_term_font = option_8bit_term_font;
     cooledit_startup.bg = option_background_color;
     cooledit_startup.fg_red = option_foreground_red;
     cooledit_startup.fg_green = option_foreground_green;
@@ -1937,7 +1942,10 @@ static void main_loop (void)
 		    }
 		    break;
 		case CK_Terminal:
-		    rxvt_start (CRoot, 0, 0);
+		    rxvt_start (CRoot, 0, 0, 0);
+		    break;
+		case CK_8BitTerminal:
+		    rxvt_start (CRoot, 0, 0, 1);
 		    break;
 		case CK_Complete:
 		    complete_command (edit[current_edit]);
@@ -2164,6 +2172,7 @@ void rxvt_init (void);
 const char *get_default_widget_font (void);
 const char *get_default_editor_font (void);
 const char *get_default_editor_font_large (void);
+const char *get_default_8bit_term_font (void);
 
 
 
@@ -2285,6 +2294,10 @@ int main (int argc, char **argv)
     if (option_widget_font2)
 	if (!strcmp (option_widget_font2, "default"))
 	    option_widget_font2 = (char *) strdup (get_default_widget_font ());
+
+    if (option_8bit_term_font)
+	if (!strcmp (option_8bit_term_font, "default"))
+	    option_8bit_term_font = (char *) strdup (get_default_8bit_term_font ());
 
     if (option_font2)
 	if (strspn (option_font2, "0123456789") == strlen (option_font2)) {

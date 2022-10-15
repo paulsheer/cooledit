@@ -1074,7 +1074,7 @@ static int xdebug_run_program (Debug * d)
 	char *p, *gargv[2] = {0, 0};
 	struct _rxvtlib *rxvt;
         gargv[0] = d->progname;
-	rxvt = rxvt_start (CRoot, gargv, 1);
+	rxvt = rxvt_start (CRoot, gargv, 1, 0);
 	if (!rxvt) {
 	    d->xterm_pid = 0;
 	    d->pid = 0;

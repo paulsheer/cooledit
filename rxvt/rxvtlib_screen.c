@@ -844,6 +844,8 @@ void            rxvtlib_scr_add_lines (rxvtlib *o, const unsigned char *str, int
 #ifdef UTF8_FONT
         if (!o->utf8buflen && str[i] < 0xC0) {
 	    c = str[i++];       /* inline the common case */
+        } else if (o->charset_8bit) {
+	    c = str[i++];
         } else {
             int e, l;
             l = len - i;
@@ -2156,7 +2158,7 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
  */
     wbyte = 0;
 #ifdef UTF8_FONT
-    CPushFont ("rxvt");
+    CPushFont (o->fontname);
     draw_string = draw_image_string_;
     draw_image_string = draw_image_string_;
 #else
@@ -2997,6 +2999,8 @@ void            rxvtlib_selection_make (rxvtlib *o, Time tm)
             u = text_t_to_char (*t++); \
             if (u < 128) { \
 	        *str++ = u; /* optimise the common case */ \
+            } else if (o->charset_8bit) { \
+	        *str++ = u; \
             } else if (u == ZERO_WIDTH_EMPTY_CHAR) { \
                 /* pass */ \
             } else { \
@@ -3511,6 +3515,7 @@ void            rxvtlib_selection_send (rxvtlib *o, const XSelectionRequestEvent
     XEvent          ev;
 #ifdef UTF8_FONT
     Atom            target_list[5];
+    int             n_targets;
 #else
     Atom            target_list[4];
 #endif
@@ -3545,18 +3550,28 @@ void            rxvtlib_selection_send (rxvtlib *o, const XSelectionRequestEvent
 	target_list[0] = (Atom32) xa_targets;
 	target_list[1] = (Atom32) XA_STRING;
 #ifdef UTF8_FONT
-	target_list[2] = (Atom32) ATOM_UTF8_STRING;
-	target_list[3] = (Atom32) xa_text;
-	target_list[4] = (Atom32) xa_compound_text;
+	if (o->charset_8bit) {
+	    n_targets = 4;
+	    target_list[2] = (Atom32) xa_text;
+	    target_list[3] = (Atom32) xa_compound_text;
+	} else {
+            n_targets = 5;
+	    target_list[2] = (Atom32) ATOM_UTF8_STRING;
+	    target_list[3] = (Atom32) xa_text;
+	    target_list[4] = (Atom32) xa_compound_text;
+	}
+
+	XChangeProperty (o->Xdisplay, rq->requestor, rq->property, rq->target,
+	                 32, PropModeReplace, (unsigned char *)target_list, n_targets);
 #else
 	target_list[2] = (Atom32) xa_text;
 	target_list[3] = (Atom32) xa_compound_text;
-#endif
 
 	XChangeProperty (o->Xdisplay, rq->requestor, rq->property, rq->target,
 			 32, PropModeReplace,
 			 (unsigned char *)target_list,
 			 (sizeof (target_list) / sizeof (target_list[0])));
+#endif
 	ev.xselection.property = rq->property;
     } else if (rq->target == XA_STRING
 	       || rq->target == xa_compound_text || rq->target == xa_text) {

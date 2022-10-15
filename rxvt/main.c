@@ -9,7 +9,7 @@ int main (int argc, const char *const *argv)
 
 /* rxvtlib main struct is actually only about 10k */
     o = (void *) malloc (65536);
-    rxvtlib_init (o);
+    rxvtlib_init (o, 0);
     rxvtlib_main (o, argc, argv, 0);
     return 0;
 }

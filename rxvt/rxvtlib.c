@@ -373,10 +373,14 @@ void rxvtlib_shut (rxvtlib * o)
     if (o->Input_Context)
 	XDestroyIC (o->Input_Context);
 #endif		/* USE_XIM */
-#ifndef UTF8_FONT
     if (o->TermWin.gc)
 	XFreeGC (o->Xdisplay, o->TermWin.gc);
-#endif
+    if (o->scrollbarGC)
+	XFreeGC (o->Xdisplay, o->scrollbarGC);
+    if (o->topShadowGC)
+	XFreeGC (o->Xdisplay, o->topShadowGC);
+    if (o->botShadowGC)
+	XFreeGC (o->Xdisplay, o->botShadowGC);
 #ifndef UTF8_FONT
 #ifdef MULTICHAR_SET
     if (o->TermWin.mfont)

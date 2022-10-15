@@ -296,7 +296,7 @@ static void focus_widget (CWidget * w)
     } else {
       set_main:
 /* set that main windows 'last_child_focussed' */
-	XSetInputFocus (CDisplay, w->mainid, RevertToNone, CurrentTime);
+ 	XSetInputFocus (CDisplay, w->mainid, RevertToPointerRoot, CurrentTime);
 #ifdef FOCUS_DEBUG
 	printf("XSetInputFocus\n");
 #endif

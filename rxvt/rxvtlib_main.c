@@ -647,9 +647,9 @@ void            rxvtlib_set_title (rxvtlib *o, const char *str)
 #ifndef SMART_WINDOW_TITLE
     XStoreName (o->Xdisplay, o->TermWin.parent[0], str);
 #else
-    char           *name;
+    char           *name = NULL;
 
-    if (XFetchName (o->Xdisplay, o->TermWin.parent[0], &name))
+    if (!XFetchName (o->Xdisplay, o->TermWin.parent[0], &name))
 	name = NULL;
     if (name == NULL || strcmp (name, str))
 	XStoreName (o->Xdisplay, o->TermWin.parent[0], str);
@@ -666,7 +666,7 @@ void            rxvtlib_set_iconName (rxvtlib *o, const char *str)
 #else
     char           *name;
 
-    if (XGetIconName (o->Xdisplay, o->TermWin.parent[0], &name))
+    if (!XGetIconName (o->Xdisplay, o->TermWin.parent[0], &name))
 	name = NULL;
     if (name == NULL || strcmp (name, str))
 	XSetIconName (o->Xdisplay, o->TermWin.parent[0], str);

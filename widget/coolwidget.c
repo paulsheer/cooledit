@@ -893,6 +893,32 @@ CWidget *CRedrawText (const char *identifier, const char *fmt,...)
     return wdt;
 }
 
+static Window get_wm_last_in_focus_stack (Window winid)
+{
+    Window r = 0;
+    long *s = NULL;
+    Atom type = 0;
+    int format = 0;
+    unsigned long nitems = 0, remaining = 0;
+    Atom ATOM__NET_CLIENT_LIST_STACKING = 0;
+    Atom ATOM_WINDOW = 0;
+
+    ATOM__NET_CLIENT_LIST_STACKING = XInternAtom (CDisplay, "_NET_CLIENT_LIST_STACKING", False);
+    ATOM_WINDOW = XInternAtom (CDisplay, "WINDOW", False);
+    if (!ATOM__NET_CLIENT_LIST_STACKING)
+        return 0;
+    if (!XGetWindowProperty (CDisplay, CRoot, ATOM__NET_CLIENT_LIST_STACKING, 0 /* offset */ , 1024 /* length */ , False, AnyPropertyType,
+                             &type, &format, &nitems, &remaining, (unsigned char **) &s) &&
+        type == ATOM_WINDOW && s && format == 32 && nitems >= 2 && s[nitems - 2] != 0 && s[nitems - 1] == winid) {
+        r = s[nitems - 2];
+        XFree (s);
+/* printf("last focused => 0x%lx\n", s[nitems - 2]); */
+        return r;
+    }
+    XFree (s);
+    return 0;
+}
+
 void focus_stack_remove_window (Window w);
 void selection_clear (void);
 
@@ -902,6 +928,7 @@ void selection_clear (void);
  */
 int free_single_widget (int i_)
 {E_
+    Window wm_one_before_last = 0;
     const int i = i_;
     if (i && CIndex (i)) {
         CWidget *w = CIndex (i);
@@ -916,6 +943,23 @@ int free_single_widget (int i_)
 		set_cursor_position (0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	    XUnmapWindow (CDisplay, w->winid);
 	    XDestroyWindow (CDisplay, w->winid);
+
+/* We desire the behavior of reverting to the focus of the previous
+window, say the application 'Merp'. If the user clicks on [X] in
+cooledit's title bar, then cooledit closes immediately and the window
+manager automatically sets the focus to Merp. If cooledit asks for
+close-confirmation (say if an unsaved file) then focus remains with
+cooledit until the user decides. Then when cooledit does close, the
+window manager does NOT focus on Merp -- this is a usability bug. Only
+CFirstWindow has this problem, since no other windows ask for
+confirmation. To solve this problem we look at the window manager's
+stack of open applications; we should be the last window in the stack
+and the one before last is Merp: */
+            if (CFirstWindow == w->winid && (wm_one_before_last = get_wm_last_in_focus_stack (w->winid))) {
+                XSync (CDisplay, False);
+                XSetInputFocus (CDisplay, wm_one_before_last, RevertToPointerRoot, CurrentTime);
+                XSync (CDisplay, False);
+            }
 	    if (CFirstWindow == w->winid)
 		CFirstWindow = 0;
 	    focus_stack_remove_window (w->winid);	/* removes the window from the focus history stack */

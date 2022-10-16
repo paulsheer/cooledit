@@ -61,6 +61,7 @@
 int (*user_defined_key_function) (unsigned int state, unsigned int keycode, KeySym keysym) = 0;
 
 int option_interpret_numlock = 0;
+extern int option_utf_interpretation2;
 
 void edit_set_user_key_function (int (*user_def_key_func) (unsigned int, unsigned int, KeySym))
 {E_
@@ -107,6 +108,7 @@ int edit_translate_key (unsigned int x_keycode, long x_key, int x_state, int *cm
 
     static int num_lock = DEFAULT_NUM_LOCK;
     static int raw = 0;
+    static int raw_unicode = 0;
     static long decimal = 0;
     static long hex = 0;
     int i = 0;
@@ -154,17 +156,38 @@ int edit_translate_key (unsigned int x_keycode, long x_key, int x_state, int *cm
     if (raw) {
 	*xlat_len = 0;
 	if (!x_state) {
+            if (raw == 1 && x_key == 'u')
+                raw_unicode = 1;
+            if (raw_unicode) {
+		char u[2] =
+		{0, 0};
+                if (raw == 1) {
+		    raw++;
+		    goto fin;
+                }
+		u[0] = x_key;
+                hex += (strcspn ("0123456789abcdef", u) << (4 * (7 - raw)));
+		if (raw == 7) {
+		    char_for_insertion = hex;
+		    raw_unicode = raw = 0;
+                    goto fin;
+                }
+		raw++;
+                goto fin;
+            }
 	    if (strchr ("0123456789abcdefh", x_key)) {
 		char u[2] =
 		{0, 0};
 		if (raw == 3) {
 		    if (x_key == 'h') {
 			char_for_insertion = hex;
-			raw = 0;
-			goto fin;
+			raw_unicode = raw = 0;
+                        if (option_utf_interpretation2)
+		            goto fin;
+			goto fin_no_utf;
 		    } else {
 			if (x_key > '9') {
-			    raw = 0;
+			    raw_unicode = raw = 0;
 			    goto fin;
 			}
 		    }
@@ -174,18 +197,20 @@ int edit_translate_key (unsigned int x_keycode, long x_key, int x_state, int *cm
 		hex += (strcspn ("0123456789abcdef", u) << (4 * (2 - raw)));
 		if (raw == 3) {
 		    char_for_insertion = decimal;
-		    raw = 0;
-		    goto fin;
+		    raw_unicode = raw = 0;
+                    if (option_utf_interpretation2)
+		        goto fin;
+	            goto fin_no_utf;
 		}
 		raw++;
 		goto fin;
 	    }
 	}
 	if (raw > 1) {
-	    raw = 0;
+	    raw_unicode = raw = 0;
 	    goto fin;
 	}
-	raw = 0;
+	raw_unicode = raw = 0;
 
         switch (x_key) {
         case XK_BackSpace:
@@ -665,5 +690,12 @@ int edit_translate_key (unsigned int x_keycode, long x_key, int x_state, int *cm
 
 /* unchanged, key has no function here */
     return 0;
+
+  fin_no_utf:
+    *cmd = 0;
+    *xlat_len = 1;
+    *xlat = char_for_insertion;
+
+    return 1;
 }
 

@@ -1992,8 +1992,12 @@ void            rxvtlib_scr_bell (rxvtlib *o)
     if (o->Options & Opt_visualBell) {
 	rxvtlib_scr_rvideo_mode (o, !o->rvideo);	/* scr_refresh() also done */
 	rxvtlib_scr_rvideo_mode (o, !o->rvideo);	/* scr_refresh() also done */
-    } else
+    } else {
+#if 0
+/* no sane person wants their computer to beep at them */
 	XBell (o->Xdisplay, 0);
+#endif
+    }
 }
 
 /* ------------------------------------------------------------------------- */
@@ -2051,7 +2055,12 @@ unsigned long scale_brightness (unsigned long c, unsigned long denominator, unsi
         cm >>= 1; \
         bm++; \
     } \
-    cm = cm * denominator / numerator; \
+    if (denominator > numerator) \
+        cm = (cm + (m / 6)) * denominator / numerator; \
+    else \
+        cm = cm * denominator / numerator; \
+    if (cm > m) \
+        cm = m; \
     ret |= (cm << bm); \
 
     shift (cr, r, br, red_mask);

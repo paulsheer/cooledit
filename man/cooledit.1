@@ -857,6 +857,30 @@ indented more or less than the other lines.
 See also the 
 command-line option \fB"--auto-paragraph"\fP, above.
 .PP
+.SH RAW CHARACTER INPUT
+
+The quote key \fBCtrl-q\fP can be used to insert any decimal or
+hexidecimal number. Ctrl-q and then an ordinary key press interprets
+that key literally,  eg. Ctrl-q then
+Ctrl-m inserts an ascii Carriage Return or 13 decimal. This
+is useful to convert DOS text files to Unix and back. Just do
+a search and replace with   Ctrl-q Ctrl-j Ctrl-q Ctrl-m   as
+one string, and   Ctrl-q Ctrl-j   as the other. Ctrl-q Ctrl-l is 
+a line-break character.
+
+You can also type out a three digit decimal number after Ctrl-q  to
+insert the character code point corresponding to that number. Hexidecial numbers can be inserted by typing the 
+two digit number and then pressing the \fBh\fP key. E.g. \fBCtrl-q 0 6
+4\fP inserts an \fB@\fP symbol decimal 64; the sequence \fBCtrl-q 1 4
+2\fP or \fBCtrl-q 8 e h\fP inserts an 8E hexidecimal. This use of Ctrl-q
+honors the \fBUTF8 Interpretion\fP switch in the \fIOptions-Switches\fP menu.
+This means it will not encode the result as UTF8 if the switch is off.
+
+\fBCtrl-q u\fP encodes full 6-digit UTF8 character. Try
+\fBCtrl-q u 0 1 f 6 0 0\fP to insert a smile emoticon, or 
+\fBCtrl-q u 0 0 9 0 5 3\fP to insert the Tao.
+
+.PP
 .SH MISCELLANEOUS USAGE
 
 The \fBinput widget\fP can be found in most dialogs and allows the editing
@@ -867,20 +891,6 @@ input widget's button.
 Pressing \fBAlt Ins\fP in the editor will show you a history of 
 cuts/copies you made to the X buffer. Pressing Space or Enter will insert
 the selected selection.
-
-The quote key \fBCtrl-q\fP can be used to insert any decimal or
-hexidecimal number. Ctrl-q and then an ordinary key press interprets
-that key literally,  eg. Ctrl-q then
-Ctrl-m inserts an ascii Carriage Return or 13 decimal. This
-is useful to convert DOS text files to Unix and back. Just do
-a search and replace with   Ctrl-q Ctrl-j Ctrl-q Ctrl-m   as
-one string, and   Ctrl-q Ctrl-j   as the other.
-
-You can also type out a three digit decimal number after Ctrl-q  to
-insert that number. Hexidecial numbers can be inserted by typing the 
-two digit number and then pressing the \fBh\fP key. E.g. \fBCtrl-q 0 6
-4\fP inserts an \fB@\fP symbol decimal 64; the sequence \fBCtrl-q 1 4
-2\fP or \fBCtrl-q 8 e h\fP inserts an 8E hexidecimal.
 
 To define a macro, press 
 .B Ctrl-R 

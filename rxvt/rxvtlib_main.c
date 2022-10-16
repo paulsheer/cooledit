@@ -1343,6 +1343,7 @@ void            rxvtlib_init_env (rxvtlib *o)
 	PUTENV ("COLORTERM=" COLORTERMENV "-mono");
     else
 	PUTENV ("COLORTERM=" COLORTERMENVFULL);
+    PUTENV ("CLICOLOR=1");      /* Enable colorize ls output on FreeBSD. See the FreeBSD man page for ls */
     if (o->rs[Rs_term_name] != NULL) {
 	sprintf (env_term, "TERM=%.40s", o->rs[Rs_term_name]);
 	PUTENV (env_term);

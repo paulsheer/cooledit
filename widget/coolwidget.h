@@ -940,6 +940,8 @@ pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *con
 
 /* see coolnext.c for details */
 int CCheckWindowEvent (Window w, long event_mask, int do_sync);
+long CUserInputEventToMask (int event_type);
+int CCheckSimilarEventsPending (Window w, int event_type, int do_sync);
 
 double my_log (double x);
 double my_sqrt (double x);

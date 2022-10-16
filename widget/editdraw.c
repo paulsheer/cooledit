@@ -536,7 +536,7 @@ static void edit_draw_this_line_proportional (WEdit * edit, long b, long row, lo
 
 int option_smooth_scrolling = 0;
 
-static int key_pending (WEdit * edit)
+static int event_pending (WEdit * edit, int event_type)
 {E_
     static int flush = 0, line = 0;
 #ifdef GTK
@@ -549,7 +549,7 @@ static int key_pending (WEdit * edit)
    slow machines will get good performance vs nice-refreshing */
 	if ((1 << flush) == ++line) {
 	    flush++;
-	    return CKeyPending ();
+	    return CCheckSimilarEventsPending (0, event_type, 0);
 	}
     }
 #endif
@@ -592,7 +592,7 @@ void edit_draw_proportional_invalidate (int row_start, int row_end, int x_max);
 
 /* cursor must be in screen for other than REDRAW_PAGE passed in force */
 static int render_edit_text (WEdit * edit, long start_y, long start_x, long end_y,
-		       long end_x)
+		       long end_x, int event_type)
 {E_
     int drawn_extents_y = 0;
     static int prev_curs_row = 0;
@@ -608,7 +608,7 @@ static int render_edit_text (WEdit * edit, long start_y, long start_x, long end_
     CPushFont ("editor", 0);
 
 #ifndef MIDNIGHT
-    key_pending (0);
+    event_pending (0, 0);
 #endif
 
 /*
@@ -645,7 +645,7 @@ static int render_edit_text (WEdit * edit, long start_y, long start_x, long end_
 		        int move, finish_up = 0;
 		        pos1 = h * (t + 1) / time_division;
 		        move = pos1 - pos2;
-		        if (CCheckWindowEvent (0, ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask, 0)) {
+		        if (CCheckSimilarEventsPending (0, event_type, 0)) {
                             if (t == time_division - 1) {
                                 finish_up = 1;
                             } else {
@@ -677,7 +677,7 @@ static int render_edit_text (WEdit * edit, long start_y, long start_x, long end_
 		        int move, finish_up = 0;
 		        pos1 = h * (t + 1) / time_division;
 		        move = pos1 - pos2;
-		        if (CCheckWindowEvent (0, ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask, 0)) {
+		        if (CCheckSimilarEventsPending (0, event_type, 0)) {
                             if (t == time_division - 1) {
                                 finish_up = 1;
                             } else {
@@ -735,7 +735,7 @@ static int render_edit_text (WEdit * edit, long start_y, long start_x, long end_
 
                 if (b != -1) {
                     int ye;
-                    if (key_pending (edit))
+                    if (event_pending (edit, event_type))
                         goto exit_render;
                     ye = edit_draw_this_line_proportional (edit, b, row, y, start_x, end_x, book_marks, n);
                     if (drawn_extents_y < ye)
@@ -835,7 +835,7 @@ extern int option_long_whitespace;
 
 #endif
 
-void edit_render (WEdit * edit, int page, int y_start, int x_start, int y_end, int x_end)
+static void edit_render (WEdit * edit, int page, int y_start, int x_start, int y_end, int x_end, int event_type)
 {E_
     int f = 0, drawn_extents_y;
     if (y_start < 0)
@@ -891,7 +891,7 @@ void edit_render (WEdit * edit, int page, int y_start, int x_start, int y_end, i
 	set_cursor_position (0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 #endif
 #endif
-    drawn_extents_y = render_edit_text (edit, y_start, x_start, y_end, x_end);
+    drawn_extents_y = render_edit_text (edit, y_start, x_start, y_end, x_end, event_type);
     if (edit->force)		/* edit->force != 0 means a key was pending and the redraw 
 				   was halted, so next time we must redraw everything in case stuff
 				   was left undrawn from a previous key press */
@@ -911,11 +911,11 @@ void edit_render_expose (WEdit * edit, XExposeEvent * xexpose)
     edit->num_widget_columns = (CWidthOf (edit->widget) - EDIT_FRAME_W) / FONT_MEAN_WIDTH;
     if (edit->force & (REDRAW_PAGE | REDRAW_COMPLETELY)) {
 	edit->force |= REDRAW_PAGE | REDRAW_COMPLETELY;
-	edit_render_keypress (edit);
+        edit_render (edit, 0, 0, 0, 0, 0, 0);
     } else {
         int y_start, x_start, y_end, x_end;
 	edit_convert_expose_to_area (xexpose, &y_start, &x_start, &y_end, &x_end);
-	edit_render (edit, 1, y_start, x_start, y_end, x_end);
+	edit_render (edit, 1, y_start, x_start, y_end, x_end, 0);
     }
     CPopFont ();
     EditExposeRedraw = 0;
@@ -924,7 +924,14 @@ void edit_render_expose (WEdit * edit, XExposeEvent * xexpose)
 void edit_render_keypress (WEdit * edit)
 {E_
     CPushFont ("editor", 0);
-    edit_render (edit, 0, 0, 0, 0, 0);
+    edit_render (edit, 0, 0, 0, 0, 0, KeyPress | KeyRelease);
+    CPopFont ();
+}
+
+void edit_render_event (WEdit * edit, int event_type)
+{E_
+    CPushFont ("editor", 0);
+    edit_render (edit, 0, 0, 0, 0, 0, event_type);
     CPopFont ();
 }
 

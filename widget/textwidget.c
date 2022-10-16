@@ -491,7 +491,6 @@ long render_textbox (CWidget * w, int redrawall, int event_type)
     int c = 0, r = 0, row, height, isfocussed, wrap_width = 32000,
      curs, lines_drawn = 0;
     int pending_events = 0;
-    unsigned long event_mask = 0;
 
     s = (*w->textbox_funcs->textbox_text_cb) (w->textbox_funcs->hook1, w->textbox_funcs->hook2);
 
@@ -542,18 +541,9 @@ long render_textbox (CWidget * w, int redrawall, int event_type)
 	        text_print_line (w, s.len, row);	/* print blank lines */
 	}
         /* check if there more events coming of the SAME type of event that generated this render */
-        if (!pending_events) {
-            if (event_type == ButtonPress)
-                event_mask |= ButtonPressMask;
-            if (event_type == ButtonRelease)
-                event_mask |= ButtonReleaseMask;
-            if (event_type == MotionNotify)
-                event_mask |= ButtonMotionMask;
-            if (event_type == KeyPress)
-                event_mask |= KeyPressMask;
-            if (event_mask && CCheckWindowEvent (w->winid, event_mask, 0))
+        if (!pending_events)
+            if (CCheckSimilarEventsPending (w->winid, event_type, 0))
                 pending_events = 1;
-        }
     }
 
     EditExposeRedraw = 0;

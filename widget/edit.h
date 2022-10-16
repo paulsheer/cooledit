@@ -560,6 +560,7 @@ long edit_move_forward3 (WEdit * edit, long current, int cols, long upto);
 long edit_move_backward (WEdit * edit, long current, int lines);
 void edit_scroll_screen_over_cursor (WEdit * edit);
 void edit_render_keypress (WEdit * edit);
+void edit_render_event (WEdit * edit, int event_type);
 void edit_scroll_upward (WEdit * edit, unsigned long i);
 void edit_scroll_downward (WEdit * edit, int i);
 void edit_scroll_right (WEdit * edit, int i);

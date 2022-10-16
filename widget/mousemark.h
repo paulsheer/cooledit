@@ -31,7 +31,7 @@ struct mouse_funcs {
     void (*move) (void *, long, int);	/* move cursor, int is row if needed */
     void (*motion) (void *, long);	/* move second mark position */
     void (*dclick) (void *, XEvent *);	/* called on double click (optional) */
-    void (*redraw) (void *, long);/* called before exit, passing mouse
+    void (*redraw) (void *, long, int); /* called before exit, passing mouse
 					   pos in buffer (optional) */
     int (*insert_drop) (void *, Window, unsigned char *, int, int, int, Atom, Atom);
     void (*delete_block) (void *);

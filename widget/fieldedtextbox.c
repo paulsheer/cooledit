@@ -807,7 +807,6 @@ static void render_fielded_textbox (CWidget * w, int redrawall, int event_type)
     static Window last_win = 0;
     static int last_firstcolumn = 0;
     int pending_events = 0;
-    unsigned long event_mask = 0;
     CPushFont ("editor", 0);
     if (redrawall) {
 	EditExposeRedraw = 1;
@@ -842,18 +841,9 @@ static void render_fielded_textbox (CWidget * w, int redrawall, int event_type)
         if (!pending_events)
 	    fielded_text_print_line (w, (row + w->firstline) << 16, row);
         /* check if there more events coming of the SAME type of event that generated this render */
-        if (!pending_events) {
-            if (event_type == ButtonPress)
-                event_mask |= ButtonPressMask;
-            if (event_type == ButtonRelease)
-                event_mask |= ButtonReleaseMask;
-            if (event_type == MotionNotify)
-                event_mask |= ButtonMotionMask;
-            if (event_type == KeyPress)
-                event_mask |= KeyPressMask;
-            if (event_mask && CCheckWindowEvent (w->winid, event_mask, 0))
+        if (!pending_events)
+            if (CCheckSimilarEventsPending (w->winid, event_type, 0))
                 pending_events = 1;
-        }
     }
 
     x = 0;
@@ -986,6 +976,9 @@ int eh_fielded_textbox (CWidget * w, XEvent * xevent, CEvent * cwevent)
     case FocusOut:
 	break;
     case KeyPress:
+	if (cwevent->command <= 0 && !cwevent->xlat_len)
+            if (cwevent->key == XK_Shift_L || cwevent->key == XK_Shift_R)
+                return 0;       /* creates unnecessary refreshes. especially with Shift and wheel mouse */
 	cwevent->ident = w->ident;
 	if (!(TEXTBOX_NO_KEYS & w->options)) {
 	    if (w->options & TEXTBOX_FILE_LIST && w->hook) {

@@ -326,7 +326,7 @@ static int widget_apply_position (DndClass * dnd, Window widgets_window, Window 
 	if (w->funcs->move)
 	    (*w->funcs->move) (w->funcs->data, click, yt);
 	if (w->funcs->redraw)
-	    (*w->funcs->redraw) (w->funcs->data, click);
+	    (*w->funcs->redraw) (w->funcs->data, click, 0);
     }
     CPopFont ();
 
@@ -513,7 +513,7 @@ void mouse_mark (XEvent * event, int double_click, struct mouse_funcs *funcs)
 	    state = 0;
 	}
 	if (funcs->redraw)
-	    (*funcs->redraw) (data, click);
+	    (*funcs->redraw) (data, click, event->type);
     } else if (event->type == ButtonRelease && state > 0 && win_press == (unsigned long) event->xbutton.window && !double_click) {
 	int x, y;
 	long start_mark, end_mark;
@@ -531,7 +531,7 @@ void mouse_mark (XEvent * event, int double_click, struct mouse_funcs *funcs)
 	}
 	state = 0;
 	if (funcs->redraw)
-	    (*funcs->redraw) (data, click);
+	    (*funcs->redraw) (data, click, event->type);
     } else if (event->type == MotionNotify && state > 0 && win_press == (unsigned long) event->xmotion.window && (event->xmotion.state & Button12345Mask)) {
 	int x, y;
 	if (!(event->xmotion.state & Button12345Mask))
@@ -549,7 +549,7 @@ void mouse_mark (XEvent * event, int double_click, struct mouse_funcs *funcs)
 	if (funcs->motion)
 	    (*funcs->motion) (data, click);
 	if (funcs->redraw)
-	    (*funcs->redraw) (data, click);
+	    (*funcs->redraw) (data, click, event->type);
     }
 }
 

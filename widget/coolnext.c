@@ -261,6 +261,33 @@ int CExposePending (Window w, XEvent * ev)
     return r && ev->type == Expose;
 }
 
+long CUserInputEventToMask (int event_type)
+{E_
+    unsigned long event_mask = 0;
+
+    if (event_type == ButtonPress)
+        event_mask |= ButtonPressMask;
+    if (event_type == ButtonRelease)
+        event_mask |= ButtonReleaseMask;
+    if (event_type == MotionNotify)
+        event_mask |= ButtonMotionMask;
+    if (event_type == KeyPress)
+        event_mask |= KeyPressMask;
+    if (event_type == KeyRelease)
+        event_mask |= KeyPressMask;     /* window draws are sometimes on key release, but the queue will have tells of key presses, to indicate the user has repeat key on */
+
+    return event_mask;
+}
+
+int CCheckSimilarEventsPending (Window w, int event_type, int do_sync)
+{E_
+    long mask;
+    mask = CUserInputEventToMask (event_type);
+    if (!mask)
+        return 0;
+    return CCheckWindowEvent (w, mask, do_sync);
+}
+
 /* 
    Searches the local queue for an event matching the window
    and mask. Does NOT remove the event, returns non-zero if found.

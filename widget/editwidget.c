@@ -231,13 +231,15 @@ void edit_translate_xy (int xs, int ys, int *x, int *y)
 
 extern int just_dropped_something;
 
-void mouse_redraw (WEdit * edit, long click)
+static void edit_update_screen_ (WEdit * e, int event_type);
+
+void mouse_redraw (WEdit * edit, long click, int event_type)
 {E_
     edit->force |= REDRAW_PAGE | REDRAW_LINE;
     edit_update_curs_row (edit);
     edit_update_curs_col (edit);
     edit->prev_col = edit_get_col (edit);
-    edit_update_screen (edit);
+    edit_update_screen_ (edit, event_type);
     edit->search_start = click;
 }
 
@@ -328,9 +330,9 @@ static void dclick (WEdit * edit, XEvent * event)
     release_mark (edit, event);
 }
 
-static void redraw (WEdit * edit, long click)
+static void redraw (WEdit * edit, long click, int event_type)
 {E_
-    mouse_redraw (edit, click);
+    mouse_redraw (edit, click, event_type);
 }
 
 void edit_insert_column_of_text (WEdit * edit, unsigned char *data, int size, int width);
@@ -414,7 +416,7 @@ struct mouse_funcs edit_mouse_funcs =
     (void (*)(void *, long, int)) move,
     0,
     (void (*)(void *, XEvent *)) dclick,
-    (void (*)(void *, long)) redraw,
+    (void (*)(void *, long, int)) redraw,
     (int (*)(void *, Window, unsigned char *, int, int, int, Atom, Atom)) insert_drop,
     (void (*)(void *)) edit_block_delete,
     DndText,
@@ -693,7 +695,7 @@ void link_scrollbar_to_editor (CWidget * scrollbar, CWidget * editor, XEvent * x
 	}
     }
     if (e->force) {
-	edit_render_keypress (e);
+	edit_render_event (e, xevent->type);
 	edit_status (e);
     }
     CPopFont ();
@@ -746,7 +748,7 @@ void link_hscrollbar_to_editor (CWidget * scrollbar, CWidget * editor, XEvent * 
 	}
     }
     if (e->force) {
-	edit_render_keypress (e);
+	edit_render_event (e, xevent->type);
 	edit_status (e);
     }
     CPopFont ();
@@ -962,7 +964,7 @@ void selection_clear (void)
 	(*user_selection_clear) ();
 }
 
-void edit_update_screen (WEdit * e)
+static void edit_update_screen_ (WEdit * e, int event_type)
 {E_
     if (!e)
 	return;
@@ -981,15 +983,20 @@ void edit_update_screen (WEdit * e)
 
 /* pop all events for this window for internal handling */
     if (e->force & (REDRAW_CHAR_ONLY | REDRAW_COMPLETELY)) {
-	edit_render_keypress (e);
-    } else if (CCheckWindowEvent (0, ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask, 1)) {
+	edit_render_event (e, event_type);
+    } else if (CCheckSimilarEventsPending (0, event_type, 1)) {
 	e->force |= REDRAW_PAGE;
 	CPopFont ();
 	return;
     } else {
-	edit_render_keypress (e);
+	edit_render_event (e, event_type);
     }
     CPopFont ();
+}
+
+void edit_update_screen (WEdit * e)
+{E_
+    edit_update_screen_ (e, KeyPress | KeyRelease);
 }
 
 int eh_editor (CWidget * w, XEvent * xevent, CEvent * cwevent)
@@ -1039,14 +1046,18 @@ int eh_editor (CWidget * w, XEvent * xevent, CEvent * cwevent)
 	if (xevent->type == MotionNotify && !(xevent->xmotion.state & Button12345Mask))
 	    return 0;
 	resolve_button (xevent, cwevent);
-	if ((cwevent->button == Button4 || cwevent->button == Button5)
-	    && (xevent->type == ButtonRelease)) {
-	    /* ahaack: wheel mouse mapped as button 4 and 5 */
-            if ((xevent->xbutton.state & ShiftMask))
-	        r = edit_execute_key_command (e, (cwevent->button == Button5) ? CK_Scroll_Down : CK_Scroll_Up, CStr_const ("", 0));
-            else
-	        r = edit_execute_key_command (e, (cwevent->button == Button5) ? CK_Quarter_Page_Down : CK_Quarter_Page_Up, CStr_const ("", 0));
-	    break;
+	if (cwevent->button == Button4 || cwevent->button == Button5) {
+	    if (xevent->type == ButtonPress)
+                return 0;
+	    if (xevent->type == ButtonRelease) {
+	        /* ahaack: wheel mouse mapped as button 4 and 5 */
+                if ((xevent->xbutton.state & ShiftMask))
+	            r = edit_execute_key_command (e, (cwevent->button == Button5) ? CK_Scroll_Down : CK_Scroll_Up, CStr_const ("", 0));
+                else
+	            r = edit_execute_key_command (e, (cwevent->button == Button5) ? CK_Quarter_Page_Down : CK_Quarter_Page_Up, CStr_const ("", 0));
+                e->force |= REDRAW_PAGE;
+	        break;
+            }
 	}
 	edit_mouse_mark (e, xevent, cwevent->double_click);
 	break;
@@ -1071,7 +1082,7 @@ int eh_editor (CWidget * w, XEvent * xevent, CEvent * cwevent)
 	    edit_mark_cmd (e, 1);
 	}
 #endif
-	break;
+        return 0;       /* creates unnecessary refreshes. especially with Shift and wheel mouse */
     case EditorCommand:
 	cwevent->ident = w->ident;
 	cwevent->command = xevent->xkey.keycode;
@@ -1113,8 +1124,11 @@ int eh_editor (CWidget * w, XEvent * xevent, CEvent * cwevent)
 	    edit_update_screen (e);
             return 0;
         }
-	if (cwevent->command <= 0 && !cwevent->xlat_len)
+	if (cwevent->command <= 0 && !cwevent->xlat_len) {
+            if (cwevent->key == XK_Shift_L || cwevent->key == XK_Shift_R)
+                return 0;       /* creates unnecessary refreshes. especially with Shift and wheel mouse */
 	    break;
+        }
 	if (cwevent->command <= 0 && ((cwevent->state & MyAltMask) || (cwevent->state & ControlMask)))
 	    if ((r = CHandleGlobalKeys (w, xevent, cwevent)))
 		break;
@@ -1126,7 +1140,7 @@ int eh_editor (CWidget * w, XEvent * xevent, CEvent * cwevent)
     default:
 	return 0;
     }
-    edit_update_screen (e);
+    edit_update_screen_ (e, xevent->type);
     return r;
 }
 

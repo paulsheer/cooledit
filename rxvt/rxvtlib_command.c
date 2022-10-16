@@ -1730,6 +1730,19 @@ void            rxvtlib_mouse_report (rxvtlib *o, const XButtonEvent * ev)
 #endif
 }
 
+static int rxvtlib_connection_data_present (rxvtlib * o)
+{E_
+    fd_set r;
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+    FD_ZERO (&r);
+    FD_SET (ConnectionNumber (o->Xdisplay), &r);
+    if (select (ConnectionNumber (o->Xdisplay) + 1, &r, 0, 0, &tv) <= 0)
+        return 0;
+    return FD_ISSET (ConnectionNumber (o->Xdisplay), &r);
+}
+
 /*{{{ process an X event */
 /* INTPROTO */
 void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
@@ -2169,17 +2182,34 @@ void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
 		    {
 			int i, v;
 
-			i = (ev->xbutton.state & ShiftMask) ? 1 : 5;
+			i = (ev->xbutton.state & ShiftMask) ? 1 : 6;
 			v = (ev->xbutton.button == Button4) ? UP : DN;
 # ifdef JUMP_MOUSE_WHEEL
 			rxvtlib_scr_page (o, v, i);
 			rxvtlib_scr_refresh (o, SMOOTH_REFRESH);
 			rxvtlib_scrollbar_show (o, 1);
 # else
-			for (; i--;) {
-			    rxvtlib_scr_page (o, v, 1);
-			    rxvtlib_scr_refresh (o, SMOOTH_REFRESH);
-			    rxvtlib_scrollbar_show (o, 1);
+			for (;;) {
+                            int delta;
+                            if (rxvtlib_connection_data_present (o)) {
+                                XEvent tev;
+                                if (XCheckTypedWindowEvent(o->Xdisplay, o->TermWin.vt, ButtonRelease, &tev)) {
+                                    rxvtlib_scr_page (o, v, i);
+                                    rxvtlib_process_x_event (o, &tev);
+                                    return;
+                                }
+	                        rxvtlib_scr_page (o, v, i);
+                                rxvtlib_scr_refresh (o, FAST_REFRESH);
+ 		                rxvtlib_scrollbar_show (o, 1);
+		                break;
+                            }
+                            delta = i > 3 ? 3 : i;
+	                    rxvtlib_scr_page (o, v, delta);
+                            rxvtlib_scr_refresh (o, FAST_REFRESH);
+ 		            rxvtlib_scrollbar_show (o, 1);
+                            i -= delta;
+                            if (i <= 0)
+                                break;
 			}
 # endif
 		    }

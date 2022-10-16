@@ -15,7 +15,7 @@ extern Atom ATOM_UTF8_STRING;
 
 /* Various rendering routines called internally */
 void render_bevel (Window win, int x1, int y1, int x2, int y2, int thick, int sunken);
-long render_textbox (CWidget * w, int redrawall);
+long render_textbox (CWidget * w, int redrawall, int event_type);
 void render_bitmap_button (CWidget * w, int state);
 void render_bw_image (CWidget * w, int x, int y, int rendw, int rendh);
 void render_button (CWidget * w);

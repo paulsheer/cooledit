@@ -501,7 +501,9 @@ void            rxvtlib_resize_subwindows (rxvtlib *o, int width, int height)
 
     rxvtlib_scr_clear (o);
     rxvtlib_resize_pixmap (o);
+#if 0   /* makes annoying pause, so comment out */
     XSync (o->Xdisplay, False);
+#endif
 }
 
 /* EXTPROTO */

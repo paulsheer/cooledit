@@ -230,7 +230,7 @@ static unsigned char *compose_line_cached (void *data, int l, int *tab, char **(
 }
 
 static long count_fielded_textbox_lines (CWidget * wdt);
-void render_fielded_textbox (CWidget * w, int redrawall);
+static void render_fielded_textbox (CWidget * w, int redrawall, int event_type);
 
 void link_scrollbar_to_fielded_textbox (CWidget * scrollbar, CWidget * textbox, XEvent * xevent, CEvent * cwevent, int whichscrbutton)
 {E_
@@ -255,18 +255,18 @@ void link_scrollbar_to_fielded_textbox (CWidget * scrollbar, CWidget * textbox, 
 	}
     }
     if (xevent->type == ButtonRelease)
-	render_fielded_textbox (textbox, 0);
+	render_fielded_textbox (textbox, 0, ButtonRelease);
     else {
 	c = CCheckWindowEvent (0, ButtonReleaseMask | ButtonMotionMask, 1);
 	if (redrawtext) {
 	    if (!c) {
-		render_fielded_textbox (textbox, 0);
+		render_fielded_textbox (textbox, 0, 0);
 		r = 0;
 	    } else {
 		r = 1;
 	    }
 	} else if (c && r) {
-	    render_fielded_textbox (textbox, 0);
+	    render_fielded_textbox (textbox, 0, 0);
 	    r = 0;
 	}
     }
@@ -300,18 +300,18 @@ void link_h_scrollbar_to_fielded_textbox (CWidget * scrollbar, CWidget * textbox
 	}
     }
     if (xevent->type == ButtonRelease)
-	render_fielded_textbox (textbox, 0);
+	render_fielded_textbox (textbox, 0, ButtonRelease);
     else {
 	c = CCheckWindowEvent (0, ButtonReleaseMask | ButtonMotionMask, 1);
 	if (redrawtext) {
 	    if (!c) {
-		render_fielded_textbox (textbox, 0);
+		render_fielded_textbox (textbox, 0, 0);
 		r = 0;
 	    } else {
 		r = 1;
 	    }
 	} else if (c && r) {
-	    render_fielded_textbox (textbox, 0);
+	    render_fielded_textbox (textbox, 0, 0);
 	    r = 0;
 	}
     }
@@ -801,11 +801,13 @@ extern int EditExposeRedraw;
 extern int EditClear;
 extern unsigned long edit_normal_background_color;
 
-void render_fielded_textbox (CWidget * w, int redrawall)
+static void render_fielded_textbox (CWidget * w, int redrawall, int event_type)
 {E_
     int row, height, isfocussed, curs, i, x;
     static Window last_win = 0;
     static int last_firstcolumn = 0;
+    int pending_events = 0;
+    unsigned long event_mask = 0;
     CPushFont ("editor", 0);
     if (redrawall) {
 	EditExposeRedraw = 1;
@@ -837,7 +839,21 @@ void render_fielded_textbox (CWidget * w, int redrawall)
 	    highlight_this_line = 1;
 	else
 	    highlight_this_line = 0;
-	fielded_text_print_line (w, (row + w->firstline) << 16, row);
+        if (!pending_events)
+	    fielded_text_print_line (w, (row + w->firstline) << 16, row);
+        /* check if there more events coming of the SAME type of event that generated this render */
+        if (!pending_events) {
+            if (event_type == ButtonPress)
+                event_mask |= ButtonPressMask;
+            if (event_type == ButtonRelease)
+                event_mask |= ButtonReleaseMask;
+            if (event_type == MotionNotify)
+                event_mask |= ButtonMotionMask;
+            if (event_type == KeyPress)
+                event_mask |= KeyPressMask;
+            if (event_mask && CCheckWindowEvent (w->winid, event_mask, 0))
+                pending_events = 1;
+        }
     }
 
     x = 0;
@@ -941,6 +957,29 @@ int eh_fielded_textbox (CWidget * w, XEvent * xevent, CEvent * cwevent)
 	if (!xevent->xmotion.state && xevent->type == MotionNotify)
 	    return 0;
 	resolve_button (xevent, cwevent);
+	if ((cwevent->button == Button4 || cwevent->button == Button5)
+	    && (xevent->type == ButtonRelease)) {
+	    /* ahaack: wheel mouse mapped as button 4 and 5 */
+	    CPushFont ("editor", 0);
+            if ((xevent->xbutton.state & ShiftMask)) {
+                if (cwevent->button == Button5)
+	            CSetTextboxPos (w, TEXT_SET_LINE, w->firstline + 1);
+                else
+	            CSetTextboxPos (w, TEXT_SET_LINE, w->firstline - 1);
+            } else {
+                int delta;
+                delta = (w->height / 6 / FONT_PIX_PER_LINE - 1);
+                if (delta < 2)
+                    delta = 2;
+                if (cwevent->button == Button5)
+	            CSetTextboxPos (w, TEXT_SET_LINE, w->firstline + delta);
+                else
+	            CSetTextboxPos (w, TEXT_SET_LINE, w->firstline - delta);
+            }
+	    CPopFont ();
+            handled = 1;
+	    break;
+	}
 	fielded_text_mouse_mark (w, xevent, cwevent);
 	break;
     case FocusIn:
@@ -973,7 +1012,7 @@ int eh_fielded_textbox (CWidget * w, XEvent * xevent, CEvent * cwevent)
 
 /* Now draw the changed text box, count will contain
    the number of textlines displayed */
-    render_fielded_textbox (w, redrawall);
+    render_fielded_textbox (w, redrawall, xevent->type);
     count = count_fielded_textbox_lines (w);
 
 /* now update the scrollbar position */

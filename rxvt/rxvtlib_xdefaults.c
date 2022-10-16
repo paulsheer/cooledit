@@ -130,9 +130,9 @@ static struct _optList optList[] = {
 #ifdef META8_OPTION
     BOOL (Rs_meta8, "meta8", NULL, Opt_meta8, NULL),
 #endif
-    STRG (Rs_color + Color_bg, "background", "bg", "color",
+    STRG (Rs_color + Color_bg, "background", "bg", "color",     /* black background set in rxvt.c:rxvt_args() */
 	  "background color"),
-    STRG (Rs_color + Color_fg, "foreground", "fg", "color",
+    STRG (Rs_color + Color_fg, "foreground", "fg", "color",     /* white foreground set in rxvt.c:rxvt_args() */
 	  "foreground color"),
     RSTRG (Rs_color + minCOLOR + 0, "color0", "color"),
     RSTRG (Rs_color + minCOLOR + 1, "color1", "color"),

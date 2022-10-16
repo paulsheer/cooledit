@@ -484,12 +484,14 @@ extern int EditClear;
 extern int highlight_this_line;
 extern unsigned long edit_normal_background_color;
 
-long render_textbox (CWidget * w, int redrawall)
+long render_textbox (CWidget * w, int redrawall, int event_type)
 {E_
     CStr s;
     long b;
     int c = 0, r = 0, row, height, isfocussed, wrap_width = 32000,
      curs, lines_drawn = 0;
+    int pending_events = 0;
+    unsigned long event_mask = 0;
 
     s = (*w->textbox_funcs->textbox_text_cb) (w->textbox_funcs->hook1, w->textbox_funcs->hook2);
 
@@ -530,13 +532,28 @@ long render_textbox (CWidget * w, int redrawall)
 		s.data[c] = 0;	/* mark where line wraps */
 	    }
 	    lines_drawn++;
-	    text_print_line (w, b, row);
+            if (!pending_events)
+	        text_print_line (w, b, row);
 	    if (c != b)
 		s.data[c] = r;	/* remove mark */
 	    b = c;
 	} else {
-	    text_print_line (w, s.len, row);	/* print blank lines */
+            if (!pending_events)
+	        text_print_line (w, s.len, row);	/* print blank lines */
 	}
+        /* check if there more events coming of the SAME type of event that generated this render */
+        if (!pending_events) {
+            if (event_type == ButtonPress)
+                event_mask |= ButtonPressMask;
+            if (event_type == ButtonRelease)
+                event_mask |= ButtonReleaseMask;
+            if (event_type == MotionNotify)
+                event_mask |= ButtonMotionMask;
+            if (event_type == KeyPress)
+                event_mask |= KeyPressMask;
+            if (event_mask && CCheckWindowEvent (w->winid, event_mask, 0))
+                pending_events = 1;
+        }
     }
 
     EditExposeRedraw = 0;
@@ -643,7 +660,8 @@ int CTextboxCursorMove (CWidget * wdt, KeySym key)
 	    wdt->firstcolumn++;
 	    break;
 	}
-	CSetTextboxPos (wdt, TEXT_SET_LINE, wdt->firstline + to_move);
+        if (handled)
+	    CSetTextboxPos (wdt, TEXT_SET_LINE, wdt->firstline + to_move);
     } else {
 	switch ((int) key) {
 	case CK_Up:
@@ -681,7 +699,8 @@ int CTextboxCursorMove (CWidget * wdt, KeySym key)
 	    wdt->firstcolumn++;
 	    break;
 	}
-	CSetTextboxPos (wdt, TEXT_SET_CURSOR_LINE, wdt->cursor);	/* just does some checks */
+        if (handled)
+	    CSetTextboxPos (wdt, TEXT_SET_CURSOR_LINE, wdt->cursor);	/* just does some checks */
     }
     CPopFont ();
     return handled;
@@ -755,10 +774,21 @@ int eh_textbox (CWidget * w, XEvent * xevent, CEvent * cwevent)
 	    && (xevent->type == ButtonRelease)) {
 	    /* ahaack: wheel mouse mapped as button 4 and 5 */
 	    CPushFont ("editor", 0);
-            if (cwevent->button == Button5)
-	        CSetTextboxPos (w, TEXT_SET_LINE, w->firstline + (w->height / 6 / FONT_PIX_PER_LINE - 1));
-            else
-	        CSetTextboxPos (w, TEXT_SET_LINE, w->firstline - (w->height / 6 / FONT_PIX_PER_LINE - 1));
+            if ((xevent->xbutton.state & ShiftMask)) {
+                if (cwevent->button == Button5)
+	            CSetTextboxPos (w, TEXT_SET_LINE, w->firstline + 1);
+                else
+	            CSetTextboxPos (w, TEXT_SET_LINE, w->firstline - 1);
+            } else {
+                int delta;
+                delta = (w->height / 6 / FONT_PIX_PER_LINE - 1);
+                if (delta < 2)
+                    delta = 2;
+                if (cwevent->button == Button5)
+	            CSetTextboxPos (w, TEXT_SET_LINE, w->firstline + delta);
+                else
+	            CSetTextboxPos (w, TEXT_SET_LINE, w->firstline - delta);
+            }
 	    CPopFont ();
             handled = 1;
 	    break;
@@ -779,7 +809,7 @@ int eh_textbox (CWidget * w, XEvent * xevent, CEvent * cwevent)
 
 /* Now draw the changed text box, count will contain
    the number of textlines displayed */
-    count = render_textbox (w, redrawall);
+    count = render_textbox (w, redrawall, xevent->type);
 
 /* now update the scrollbar position */
     if (w->vert_scrollbar) {
@@ -816,18 +846,18 @@ void link_scrollbar_to_textbox (CWidget * scrollbar, CWidget * textbox, XEvent *
 	}
     }
     if (xevent->type == ButtonRelease)
-	count = render_textbox (textbox, 0);
+	count = render_textbox (textbox, 0, ButtonRelease);
     else {
 	c = CCheckWindowEvent (0, ButtonReleaseMask | ButtonMotionMask, 1);
 	if (redrawtext) {
 	    if (!c) {
-		render_textbox (textbox, 0);
+		render_textbox (textbox, 0, 0);
 		r = 0;
 	    } else {
 		r = 1;
 	    }
 	} else if (c && r) {
-	    render_textbox (textbox, 0);
+	    render_textbox (textbox, 0, 0);
 	    r = 0;
 	}
     }

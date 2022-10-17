@@ -1730,6 +1730,11 @@ static int write_config (int clean)
     if (save_options_section (editor_options_file, "[Files]", t))
 	CErrorDialog (main_window, 20, 20, _(" Save desktop "), get_sys_error (_(" Error trying to save file ")));
     free (t);
+    t = NULL;
+    if (save_options_section (editor_options_file, "[Input Histories]", t = get_all_lists ()))
+	CErrorDialog (main_window, 20, 20, _(" Save desktop "), get_sys_error (_(" Error trying to save file ")));
+    free (t);
+    t = NULL;
     update_wlist ();
     return result;
 }

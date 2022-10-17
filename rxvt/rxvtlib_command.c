@@ -3845,8 +3845,11 @@ The default is ^?
 
 This can be switched back as follows:
 
-printf '\033[?67h' # set to ^H
-printf '\033[?67l' # set to ^?
+# set to ^H   ==>
+printf '\033[?67h'
+
+# set to ^?   ==>
+printf '\033[?67l'
 
 */
 

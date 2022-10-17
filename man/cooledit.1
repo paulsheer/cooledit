@@ -859,25 +859,29 @@ command-line option \fB"--auto-paragraph"\fP, above.
 .PP
 .SH RXVT/XTERM BACKSPACE NOT WORKING
 
-Some systems use \fB^?\fP for backspace, whereas others use \fB^H\fP.
-The terminal tries to make the correct guess for the local system.
-This does not work if you \fBssh\fP somewhere else.
+Some systems use \fB^?\fP (127d) for Backspace, whereas others use \fB^H\fP (8d).
+Cooledit's terminal will try to make the correct guess for the local system.
+This does not work if you \fBssh\fP somewhere else, and hence you may find
+that Backspace does not work.
 
 To set the backspace key to produce a \fB^H\fP character, run
 this command in your shell:
 
 .nf
-printf '\\033[?67h'
+printf '\\e[?67h'
 .fi
 
 To set the backspace key to produce a \fB^?\fP character, run
 this command in your shell:
 
 .nf
-printf '\\033[?67l'
+printf '\\e[?67l'
 .fi
 
 It is advisable to add the above commands to your login scripts.
+Most xterm/rxvt terminals support this control sequence, called
+"DECBKM - Backarrow Key Mode" from VT320 and later terminals, hence it is harmless.
+
 
 .PP
 .SH RAW CHARACTER INPUT

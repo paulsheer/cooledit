@@ -58,7 +58,6 @@ void            clean_exit (void);
 int             rxvtlib_get_pty (rxvtlib *o);
 int             rxvtlib_get_tty (rxvtlib *o);
 void            debug_ttymode (const ttymode_t * ttymode);
-void            get_ttymode (ttymode_t * tio);
 void            rxvtlib_run_command (rxvtlib *o, char *const argv[], int do_sleep);
 void            rxvtlib_get_ourmods (rxvtlib *o);
 void            rxvtlib_init_command (rxvtlib *o, char *const argv[], int do_sleep);

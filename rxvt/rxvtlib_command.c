@@ -568,7 +568,7 @@ void            debug_ttymode (const ttymode_t * ttymode)
 
 /*{{{ get_ttymode() */
 /* INTPROTO */
-void            get_ttymode (ttymode_t * tio)
+static void            get_ttymode (ttymode_t * tio, int *erase_char)
 {E_
 #ifdef HAVE_TERMIOS_H
 /*
@@ -599,6 +599,7 @@ void            get_ttymode (ttymode_t * tio)
 	tio->c_cc[VLNEXT] = CLNEXT;
 # endif
     }
+    *erase_char = tio->c_cc[VERASE];
     tio->c_cc[VEOF] = CEOF;
     tio->c_cc[VEOL] = VDISABLE;
 # ifdef VEOL2
@@ -647,6 +648,7 @@ void            get_ttymode (ttymode_t * tio)
 	tio->sg.sg_erase = CERASE;	/* ^H */
 	tio->sg.sg_kill = CKILL;	/* ^U */
     }
+    *erase_char = tio->sg.sg_erase;
     tio->sg.sg_flags = (CRMOD | ECHO | EVENP | ODDP);
 
 /* get special characters */
@@ -3781,6 +3783,7 @@ void            rxvtlib_XProcessEvent (rxvtlib *o, Display * display)
 void            rxvtlib_run_command (rxvtlib *o, char *const argv[], int do_sleep)
 {E_
     ttymode_t       tio;
+    int             erase_char = 0;
 #if defined (DEBUG_CMD) || defined(STANDALONE)
     int             i;
 #endif
@@ -3813,7 +3816,43 @@ void            rxvtlib_run_command (rxvtlib *o, char *const argv[], int do_slee
  * get tty settings before fork()
  * and make a reasonable guess at the value for BackSpace
  */
-    get_ttymode (&tio);
+    get_ttymode (&tio, &erase_char);
+
+/*
+
+Consider the following script:
+
+    for i in ansi xterm rxvt xterm-256color rxvt-unicode ; do echo "$i: `TERM=$i infocmp | tr ',' '\n' | grep kbs=`" ; done
+
+On Linux this outputs:
+
+    ansi:            kbs=^H
+    xterm:           kbs=^?
+    rxvt:            kbs=^?
+    xterm-256color:  kbs=^?
+    rxvt-unicode:    kbs=^?
+
+On FreeBSD this outputs:
+
+    ansi:            kbs=^H
+    xterm:           kbs=^H
+    rxvt:            kbs=^H
+    xterm-256color:  kbs=^H
+    rxvt-unicode:    kbs=^?
+
+The solution is to switch the mode accordinly using PrivMode_BackSpace.
+The default is ^?
+
+This can be switched back as follows:
+
+printf '\033[?67h' # set to ^H
+printf '\033[?67l' # set to ^?
+
+*/
+
+    if (erase_char == 8 /* ^H */) {
+	o->PrivateModes |= PrivMode_BackSpace;
+    }
 
 /* add value for scrollBar */
     if (scrollbar_visible ()) {

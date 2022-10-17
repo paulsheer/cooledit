@@ -376,7 +376,7 @@ diamond key).
    Shift-F9                C formatter
    Ctrl-Tab                complete word
    Alt-i                   insert unicode character
-   Shift/F1                rxvt terminal
+   Shift/F1                rxvt/xterm terminal
 
 .B Debug:
    Alt-F2                  toggle breakpoint
@@ -856,6 +856,29 @@ indented more or less than the other lines.
 .PP
 See also the 
 command-line option \fB"--auto-paragraph"\fP, above.
+.PP
+.SH RXVT/XTERM BACKSPACE NOT WORKING
+
+Some systems use \fB^?\fP for backspace, whereas others use \fB^H\fP.
+The terminal tries to make the correct guess for the local system.
+This does not work if you \fBssh\fP somewhere else.
+
+To set the backspace key to produce a \fB^H\fP character, run
+this command in your shell:
+
+.nf
+printf '\\033[?67h'
+.fi
+
+To set the backspace key to produce a \fB^?\fP character, run
+this command in your shell:
+
+.nf
+printf '\\033[?67l'
+.fi
+
+It is advisable to add the above commands to your login scripts.
+
 .PP
 .SH RAW CHARACTER INPUT
 

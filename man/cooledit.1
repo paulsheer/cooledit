@@ -1188,6 +1188,8 @@ Note the importance of the \fBXMODIFIERS\fP and \fBLANG\fP environment variables
 \fBXMODIFIERS\fP tells \fBcooledit\fP what "Input Method (IM)" service to connect to.
 \fBLANG\fP tells \fBcooledit\fP that UTF8 is supported.
 .PP
+Once you start \fBscim\fP or \fBibus-daemon\fP you cannot restart them without also restarting \fBcooledit\fP.
+.PP
 The following shell commands will enable English UTF8 key composing and Asian language key composing
 with the \fBibus\fP IM package properly installed. The following OS packages may be needed say, for Chinese
 support: \fBibus\fP, \fBlanguage-pack-zh-hans-base\fP, \fBibus-pinyin\fP, \fBdbus-x11\fP.

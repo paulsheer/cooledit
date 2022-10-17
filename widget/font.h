@@ -28,10 +28,16 @@ struct freetype_face {
     int measured_ascent;
 };
 
+enum force_fixed_width_enum {
+    FORCE_FIXED_WIDTH__DISABLE = 0,
+    FORCE_FIXED_WIDTH__SINGLEWIDTH = 1,
+    FORCE_FIXED_WIDTH__UNICODETERMINALMODE = 2         /* double-wide chars are 2X the width */
+};
+
 struct aa_font {
     int load_id;
     int mean_font_width;
-    int force_fixed_width;
+    enum force_fixed_width_enum force_fixed_width;
     XFontSet font_set;
     XFontStruct *font_struct;
     struct freetype_face font_freetype;

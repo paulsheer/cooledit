@@ -666,7 +666,7 @@ u = 1000000000;
 
     u = f->f->font_freetype.desired_height;
     mfw = f->f->mean_font_width;
-    if (f->f->force_fixed_width == 2 && is_unicode_doublewidth_char (the_chr))
+    if (f->f->force_fixed_width == FORCE_FIXED_WIDTH__UNICODETERMINALMODE && is_unicode_doublewidth_char (the_chr))
         mfw *= 2;
 
 /* force fixed font won't be populated the first time this is called. This
@@ -675,11 +675,11 @@ u = 1000000000;
     if (!mfw) {
         assert (metrics_only);
     }
-    if (f->f->force_fixed_width && mfw && W > mfw) {
+    if (f->f->force_fixed_width != FORCE_FIXED_WIDTH__DISABLE && mfw && W > mfw) {
 /* squash glyph width */
         u_ = mfw;
         U_ = W;
-    } else if (f->f->force_fixed_width && mfw && W < mfw) {
+    } else if (f->f->force_fixed_width != FORCE_FIXED_WIDTH__DISABLE && mfw && W < mfw) {
 /* rather pad than scale */
         dx += (mfw - W) / 2;
         W = mfw;

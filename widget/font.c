@@ -875,7 +875,7 @@ static XFontSet get_font_set (char *name)
 }
 
 /* loads a font and sets the current font to it */
-static struct font_object *load_font (const char *name, const char *xname_, enum font_encoding *e, int force_fixed_width)
+static struct font_object *load_font (const char *name, const char *xname_, enum font_encoding *e, enum force_fixed_width_enum force_fixed_width)
 {E_
     char compactname[80];
     char *xname;
@@ -1013,7 +1013,7 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
 
 int font_depth = 0;
 
-static int CPushFont_ (int force_fixed_width, const char *name, const char *xname, enum font_encoding *e);
+static int CPushFont_ (enum force_fixed_width_enum force_fixed_width, const char *name, const char *xname, enum font_encoding *e);
 
 int CPushFont (const char *name, ...)
 {E_
@@ -1025,7 +1025,7 @@ int CPushFont (const char *name, ...)
     xname = va_arg (ap, const char *);
     e = va_arg (ap, enum font_encoding *);
     va_end (ap);
-    return CPushFont_ (0, name, xname, e);
+    return CPushFont_ (FORCE_FIXED_WIDTH__DISABLE, name, xname, e);
 }
 
 int CPushFontForceFixed (const char *name, ...)
@@ -1038,7 +1038,7 @@ int CPushFontForceFixed (const char *name, ...)
     xname = va_arg (ap, const char *);
     e = va_arg (ap, enum font_encoding *);
     va_end (ap);
-    return CPushFont_ (1, name, xname, e);
+    return CPushFont_ (FORCE_FIXED_WIDTH__SINGLEWIDTH, name, xname, e);
 }
 
 int CPushFontHonorFixedDoubleWidth (const char *name, ...)
@@ -1051,10 +1051,10 @@ int CPushFontHonorFixedDoubleWidth (const char *name, ...)
     xname = va_arg (ap, const char *);
     e = va_arg (ap, enum font_encoding *);
     va_end (ap);
-    return CPushFont_ (2, name, xname, e);
+    return CPushFont_ (FORCE_FIXED_WIDTH__UNICODETERMINALMODE, name, xname, e);
 }
 
-static int CPushFont_ (int force_fixed_width, const char *name, const char *xname, enum font_encoding *e)
+static int CPushFont_ (enum force_fixed_width_enum force_fixed_width, const char *name, const char *xname, enum font_encoding *e)
 {E_
     struct font_stack *p;
     struct font_object *f;

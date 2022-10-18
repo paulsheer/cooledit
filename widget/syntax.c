@@ -14,6 +14,8 @@
 #include "stringtools.h"
 #endif
 
+/* (@) */
+
 /* bytes */
 #define SYNTAX_MARKER_DENSITY 512
 
@@ -61,7 +63,7 @@ static void *syntax_malloc (size_t x)
 static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole_left, char *whole_right, int line_start, int brace_match)
 {E_
     int depth = 0;
-    unsigned char *p, *q;
+    const unsigned char *p, *q;
     int c, d, j;
     if (!*text)
 	return -1;
@@ -74,27 +76,27 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 	    return -1;
     for (p = (unsigned char *) text, q = p + strlen ((char *) p); (unsigned long) p < (unsigned long) q; p++, i++) {
 	switch (*p) {
-	case '\001':    /* '*'  elastic wildcard */
+	case '\001':		/* '*'  elastic wildcard */
 	    p++;
 	    for (;;) {
 		c = edit_get_byte (edit, i);
-                COUNT_BRACE(c, depth);
+		COUNT_BRACE (c, depth);
 		if (!*p)
 		    if (whole_right)
 			if (!strchr (whole_right, c))
 			    break;
-                if (brace_match && depth > 0) {
-                    /* refuse to check for end of elastic wildcard if brace is not closed, such as  'keyword ${*} brightgreen/16'  */
-                } else {
+		if (brace_match && depth > 0) {
+		    /* refuse to check for end of elastic wildcard if brace is not closed, such as  'keyword ${*} brightgreen/16'  */
+		} else {
 		    if (c == *p)
-		        break;
-                }
+			break;
+		}
 		if (c == '\n')
 		    return -1;
 		i++;
 	    }
 	    break;
-	case '\002':    /* '+' */
+	case '\002':		/* '+' */
 	    p++;
 	    j = 0;
 	    for (;;) {
@@ -130,7 +132,7 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 		i++;
 	    }
 	    break;
-	case '\003':    /* '['  ']' */
+	case '\003':		/* '['  ']' */
 	    p++;
 	    c = -1;
 	    for (;; i++) {
@@ -142,7 +144,7 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 		break;
 	      found_char2:
 		j = c;		/* dummy command */
-                (void) j;
+		(void) j;
 	    }
 	    i--;
 	    while (*p != '\003')
@@ -150,10 +152,10 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 	    if (p[1] == d)
 		i--;
 	    break;
-	case '\004':    /* '{' '}' */
+	case '\004':		/* '{' '}' */
 	    p++;
 	    c = edit_get_byte (edit, i);
-            COUNT_BRACE(c, depth);
+	    COUNT_BRACE (c, depth);
 	    for (; *p != '\004'; p++)
 		if (c == *p)
 		    goto found_char3;
@@ -163,29 +165,29 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 	    break;
 #if 0
 /* especially for LaTeX */
-	case '\005': {
-                int b = 0;
-	        p++;
-	        for (;;) {
+	case '\005':{
+		int b = 0;
+		p++;
+		for (;;) {
 		    c = edit_get_byte (edit, i);
-                    if (c == '\\') {
-                        i += 2;
-                        continue;
-                    }
-                    if (c == '{') {
-                    }
+		    if (c == '\\') {
+			i += 2;
+			continue;
+		    }
+		    if (c == '{') {
+		    }
 		    if (c == *p)
-		        break;
+			break;
 		    if (c == '\n')
-		        return -1;
+			return -1;
 		    i++;
-	        }
-	        break;
-            }
+		}
+		break;
+	    }
 #endif
 	default:
-            c = edit_get_byte (edit, i);
-            COUNT_BRACE(c, depth);
+	    c = edit_get_byte (edit, i);
+	    COUNT_BRACE (c, depth);
 	    if (*p != (unsigned char) c)
 		return -1;
 	}
@@ -212,85 +214,7 @@ static inline char *xx_strchr (const unsigned char *s, int c)
 }
 #endif
 
-#if 0
-/* this optimized function gives no better overall perfomance */
-static inline char *xx_strchr (const unsigned char *s, int c)
-{E_
-    int i;
-    unsigned long *p, cl, one = 1UL, cx = 0xF8;
-    p = (unsigned long *) (void *) s;
-
-    cl = c;
-
-    cl |= cl << 8;
-    cl |= cl << 16;
-    cl |= cl << 16;
-    cl |= cl << 16;
-
-    cx |= cx << 8;
-    cx |= cx << 16;
-    cx |= cx << 16;
-    cx |= cx << 16;
-
-    one |= one << 8;
-    one |= one << 16;
-    one |= one << 16;
-    one |= one << 16;
-
-    if (endian_little) {
-	for (;;) {
-	    unsigned long v, w1, w2;
-	    v = *p;
-	    w1 = v ^ cl;
-	    w2 = v & cx;
-	    if (((((w1 - one) & ~w1) & (one << 7)) | (((w2 - one) & ~w2) & (one << 7)))) {
-		for (i = 0; i < sizeof (long); i++) {
-		    unsigned int ss;
-		    ss = (v >> (8 * i)) & 0xFF;
-		    if (ss < 8 || ss == c)
-			return ((char *) (void *) p) + i;
-		}
-	    }
-	    p++;
-	}
-    } else {
-	for (;;) {
-	    unsigned long v, w1, w2;
-	    v = *p;
-	    w1 = v ^ cl;
-	    w2 = v & cx;
-	    if (((((w1 - one) & ~w1) & (one << 7)) | (((w2 - one) & ~w2) & (one << 7)))) {
-		for (i = sizeof (long) - 1; i >= 0; i--) {
-		    unsigned int ss;
-		    ss = (v >> (8 * i)) & 0xFF;
-		    if (ss < 8 || ss == c)
-			return ((char *) (void *) p) + i;
-		}
-	    }
-	    p++;
-	}
-    }
-}
-#endif
-
-
-
-#if 0
-void test_xx_strchr ()
-{E_
-    char *s = "0123456789abcdefghijklmnopq";
-    int i;
-
-    for (i = 0; i < 28; i++) {
-        printf("\n");
-	printf ("%c [%s]\n", (int) s[i], xx_strchr ((unsigned char *) s, s[i]));
-    }
-    exit(0);
-}
-#endif
-
-
-static inline struct syntax_rule apply_rules_going_right (WEdit * edit, long i, struct syntax_rule rule)
+static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_rule rule)
 {E_
     struct context_rule *r;
     int contextchanged = 0, c;
@@ -299,8 +223,8 @@ static inline struct syntax_rule apply_rules_going_right (WEdit * edit, long i, 
     long end = 0;
     struct syntax_rule _rule = rule;
     if (!(c = edit_get_byte (edit, i)))
-	return rule;
-    COUNT_BRACE (c, rule.brace_depth);
+	return;
+    COUNT_BRACE (c, edit->rule.brace_depth);
     is_end = (rule.end == (unsigned char) i);
 /* check to turn off a keyword */
     if (_rule.keyword) {
@@ -315,7 +239,8 @@ static inline struct syntax_rule apply_rules_going_right (WEdit * edit, long i, 
     if (_rule.context && !_rule.keyword) {
 	long e;
 	r = edit->rules[_rule.context];
-	if (r->first_right == c && !(rule.border & RULE_ON_RIGHT_BORDER) && (e = compare_word_to_right (edit, i, r->right, r->whole_word_chars_left, r->whole_word_chars_right, r->line_start_right, 0)) > 0) {
+	if (r->first_right == c && !(rule.border & RULE_ON_RIGHT_BORDER)
+	    && (e = compare_word_to_right (edit, i, r->right, r->whole_word_chars_left, r->whole_word_chars_right, r->line_start_right, 0)) > 0) {
 	    _rule.end = e;
 	    found_right = 1;
 	    _rule.border = RULE_ON_RIGHT_BORDER;
@@ -336,7 +261,8 @@ static inline struct syntax_rule apply_rules_going_right (WEdit * edit, long i, 
 /* check to turn on a keyword */
     if (!_rule.keyword) {
 	char *p;
-	p = (r = edit->rules[_rule.context])->keyword_first_chars;
+        r = edit->rules[_rule.context];
+	p = r->keyword_first_chars;
 	while (*(p = xx_strchr ((unsigned char *) p + 1, c))) {
 	    struct key_word *k;
 	    int count;
@@ -369,7 +295,10 @@ static inline struct syntax_rule apply_rules_going_right (WEdit * edit, long i, 
 		    _rule.context = _rule._context;
 		    contextchanged = 1;
 		    _rule.keyword = 0;
-		    if (r->first_right == c && (e = compare_word_to_right (edit, i, r->right, r->whole_word_chars_left, r->whole_word_chars_right, r->line_start_right, 0)) >= end) {
+		    if (r->first_right == c
+			&& (e =
+			    compare_word_to_right (edit, i, r->right, r->whole_word_chars_left, r->whole_word_chars_right, r->line_start_right,
+						   0)) >= end) {
 			_rule.end = e;
 			found_right = 1;
 			_rule.border = RULE_ON_RIGHT_BORDER;
@@ -380,7 +309,7 @@ static inline struct syntax_rule apply_rules_going_right (WEdit * edit, long i, 
 	}
 	if (!found_right) {
 	    int count;
-	    struct context_rule **rules = edit->rules;
+            struct context_rule **rules = edit->rules;
 	    for (count = 1; rules[count]; count++) {
 		r = rules[count];
 		if (r->first_left == c) {
@@ -389,7 +318,7 @@ static inline struct syntax_rule apply_rules_going_right (WEdit * edit, long i, 
 		    if (e >= end && (!_rule.keyword || keyword_foundright)) {
 			_rule.end = e;
 			found_right = 1;
-                        (void) found_right;
+			(void) found_right;
 			_rule.border = RULE_ON_LEFT_BORDER;
 			_rule._context = count;
 			if (!r->between_delimiters)
@@ -406,7 +335,8 @@ static inline struct syntax_rule apply_rules_going_right (WEdit * edit, long i, 
 /* check again to turn on a keyword if the context switched */
     if (contextchanged && !_rule.keyword) {
 	char *p;
-	p = (r = edit->rules[_rule.context])->keyword_first_chars;
+        r = edit->rules[_rule.context];
+	p = r->keyword_first_chars;
 	while (*(p = xx_strchr ((unsigned char *) p + 1, c))) {
 	    struct key_word *k;
 	    int count;
@@ -421,7 +351,7 @@ static inline struct syntax_rule apply_rules_going_right (WEdit * edit, long i, 
 	    }
 	}
     }
-    return _rule;
+    edit->rule = _rule;
 }
 
 static struct syntax_rule edit_get_rule (WEdit * edit, long byte_index)
@@ -445,7 +375,7 @@ static struct syntax_rule edit_get_rule (WEdit * edit, long byte_index)
     }
     if (byte_index > edit->last_get_rule) {
 	for (i = edit->last_get_rule + 1; i <= byte_index; i++) {
-	    edit->rule = apply_rules_going_right (edit, i, edit->rule);
+	    apply_rules_going_right (edit, i, edit->rule);
 	    if (i > (edit->syntax_marker ? edit->syntax_marker->offset + SYNTAX_MARKER_DENSITY : SYNTAX_MARKER_DENSITY)) {
 		struct _syntax_marker *s;
 		s = edit->syntax_marker;
@@ -461,13 +391,13 @@ static struct syntax_rule edit_get_rule (WEdit * edit, long byte_index)
 	    if (!edit->syntax_marker) {
 		memset (&edit->rule, 0, sizeof (edit->rule));
 		for (i = -1; i <= byte_index; i++)
-		    edit->rule = apply_rules_going_right (edit, i, edit->rule);
+		    apply_rules_going_right (edit, i, edit->rule);
 		break;
 	    }
 	    if (byte_index >= edit->syntax_marker->offset) {
 		edit->rule = edit->syntax_marker->rule;
 		for (i = edit->syntax_marker->offset + 1; i <= byte_index; i++)
-		    edit->rule = apply_rules_going_right (edit, i, edit->rule);
+		    apply_rules_going_right (edit, i, edit->rule);
 		break;
 	    }
 	    s = edit->syntax_marker->next;
@@ -514,7 +444,7 @@ static int read_one_line (char **line, FILE * f)
     for (;;) {
 	c = fgetc (f);
 	if (c <= 0) {
-	    if (!feof(f) && (c == -1 && errno == EINTR))
+	    if (!feof (f) && (c == -1 && errno == EINTR))
 		continue;
 	    r = 0;
 	    break;

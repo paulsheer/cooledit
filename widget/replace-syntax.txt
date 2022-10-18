@@ -1,0 +1,120 @@
+{E_
+{
+is_end = (rule.end == (unsigned char) i);
+is_end = (edit->rule.end == (unsigned char) i);
+struct syntax_rule _rule = rule;
+struct syntax_rule _rule = edit->rule;
+struct context_rule **rules = edit->rules;
+
+static inline char *xx_strchr (const unsigned char *s, int c)
+static inline char *xx_strchr (WEdit *edit, const unsigned char *s, int c)
+apply_rules_going_right (edit, i, edit->rules);
+apply_rules_going_right (edit, i);
+static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_rule rule)
+static inline void apply_rules_going_right (WEdit * edit, long i)
+#define whiteness(x) ((x) == '\t' || (x) == '\n' || (x) == ' ')
+/* #define whiteness */
+if (!*text)
+if (*text == '\0')
+strlen ((char *) p)
+strlen ((const char *) p)
+(unsigned long) p < (unsigned long) q
+p < q
+for (;;)
+while (TRUE)
+case '\001':		/* '*'  elastic wildcard */
+case SYNTAX_TOKEN_STAR:
+case '\002':		/* '+' */
+case SYNTAX_TOKEN_PLUS:
+'\002'
+SYNTAX_TOKEN_PLUS
+'\003'
+SYNTAX_TOKEN_BRACKET
+case '\003':		/* '['  ']' */
+case SYNTAX_TOKEN_BRACKET:
+case '\004':		/* '{' '}' */
+case SYNTAX_TOKEN_BRACE:
+'\001'
+SYNTAX_TOKEN_STAR
+edit_get_byte (edit, i)
+xx_tolower (edit, edit_buffer_get_byte (&edit->buffer, i))
+*p == *text
+p[0] == text[0]
+!p[1]
+p[1] == '\0'
+if (j && strchr ((char *)
+if (j != 0 && strchr ((const char *)
+c == '\n' || c == '\t' || c == ' '
+whiteness (c)
+!= '\003'
+!= SYNTAX_TOKEN_BRACKET
+'\004'
+SYNTAX_TOKEN_BRACE
+ != '\004'
+ != SYNTAX_TOKEN_BRACE
+static inline char *xx_strchr (const unsigned char *s, int c)
+static inline char *xx_strchr (WEdit * edit, const unsigned char *s, int c)
+xx_strchr ((unsigned char
+xx_strchr (edit, (unsigned char
+edit_get_byte (edit, i - 1)
+edit_buffer_get_byte (&edit->buffer, i - 1)
+keyword_foundleft = 1;
+keyword_foundleft = TRUE;
+long e;
+off_t e;
+found_right = 1;
+found_right = TRUE;
+found_left = 1;
+found_left = TRUE;
+if (!_rule.keyword) {
+if (_rule.keyword == 0) {
+r->keyword[count]
+SYNTAX_KEYWORD (g_ptr_array_index (r->keyword, count))
+edit->rules[_rule.context]
+CONTEXT_RULE (g_ptr_array_index (edit->rules, _rule.context))
+edit->rules[_rule._context]
+CONTEXT_RULE (g_ptr_array_index (edit->rules, _rule._context))
+(unsigned long) p - (unsigned long) r->keyword_first_chars
+p - r->keyword_first_chars
+if (_rule.context && !_rule.keyword) {
+if (_rule.context != 0 && !_rule.keyword) {
+if (_rule.keyword) {
+if (_rule.keyword != 0) {
+for (p = (unsigned char *) text
+for (p = (const unsigned char *) text
+if (j && strchr ((char *) p + 1, c))
+if (j && strchr ((char *) p + 1, c) != NULL)
+keyword_foundright = 1;
+keyword_foundright = TRUE;
+if (!_rule.context) {
+if (_rule.context == 0) {
+!(rule.border & RULE_ON_RIGHT_BORDER)
+(edit->rule.border & RULE_ON_RIGHT_BORDER) == 0
+!(edit->rule.border & RULE_ON_RIGHT_BORDER)
+(edit->rule.border & RULE_ON_RIGHT_BORDER) == 0
+&& rule.border & RULE_ON_RIGHT_BORDER
+&& ((edit->rule.border & RULE_ON_RIGHT_BORDER) != 0)
+(rule.border & RULE_ON_RIGHT_BORDER)
+((edit->rule.border & RULE_ON_RIGHT_BORDER) != 0)
+(edit->rule.border & RULE_ON_LEFT_BORDER)
+((edit->rule.border & RULE_ON_LEFT_BORDER) != 0)
+(rule.border & RULE_ON_LEFT_BORDER)
+((edit->rule.border & RULE_ON_LEFT_BORDER) != 0)
+&& rule.border & RULE_ON_LEFT_BORDER
+&& (edit->rule.border & RULE_ON_LEFT_BORDER) != 0
+contextchanged = 1;
+contextchanged = TRUE;
+found_right = 1;
+found_right = TRUE;
+int count;
+size_t count;
+rules[count]
+CONTEXT_RULE (g_ptr_array_index (edit->rules, count))
+!_rule.keyword
+_rule.keyword == 0
+&& rule.border & RULE_ON_RIGHT_BORDER
+&& (edit->rule.border & RULE_ON_RIGHT_BORDER) != 0
+&& rule.border & RULE_ON_LEFT_BORDER
+&& (edit->rule.border & RULE_ON_LEFT_BORDER) != 0
+if (!j)
+if (j == 0)

@@ -10,6 +10,7 @@ defs = """
 #define SYNTAX_KEYWORD(x)                       ((syntax_keyword_t *) (x))
 #define g_ptr_array_index(a,i)                  (a[i])
 typedef struct key_word syntax_keyword_t;
+typedef struct context_rule context_rule_t;
 
 #define TRUE            1
 #define FALSE           0
@@ -18,6 +19,8 @@ typedef struct key_word syntax_keyword_t;
 #define SYNTAX_TOKEN_PLUS       '\\002'
 #define SYNTAX_TOKEN_BRACKET    '\\003'
 #define SYNTAX_TOKEN_BRACE      '\\004'
+
+#define gboolean                int
 
 """
 
@@ -28,6 +31,7 @@ s = open('syntax-orig.c').read()
 for i in range(0, len(r), 2):
     p = r[i + 0].rstrip()
     q = r[i + 1].rstrip()
+    q = q.replace('$', '\n')
     if not p:
         continue
     s = s.replace(p, q)

@@ -68,23 +68,18 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
     if (!*text)
 	return -1;
     c = edit_get_byte (edit, i - 1);
-    if (line_start)
-	if (c != '\n')
-	    return -1;
-    if (whole_left)
-	if (strchr (whole_left, c))
-	    return -1;
+    if ((line_start && c != '\n') || (whole_left != NULL && strchr (whole_left, c) != NULL))
+	return -1;
     for (p = (unsigned char *) text, q = p + strlen ((char *) p); (unsigned long) p < (unsigned long) q; p++, i++) {
 	switch (*p) {
 	case '\001':		/* '*'  elastic wildcard */
-	    p++;
+	    if (++p > q)
+		return -1;
 	    for (;;) {
 		c = edit_get_byte (edit, i);
 		COUNT_BRACE (c, depth);
-		if (!*p)
-		    if (whole_right)
-			if (!strchr (whole_right, c))
-			    break;
+                if (*p == '\0' && whole_right != NULL && strchr (whole_right, c) == NULL)
+		    break;
 		if (brace_match && depth > 0) {
 		    /* refuse to check for end of elastic wildcard if brace is not closed, such as  'keyword ${*} brightgreen/16'  */
 		} else {
@@ -97,7 +92,8 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 	    }
 	    break;
 	case '\002':		/* '+' */
-	    p++;
+	    if (++p > q)
+		return -1;
 	    j = 0;
 	    for (;;) {
 		c = edit_get_byte (edit, i);
@@ -108,7 +104,7 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 		}
 		if (j && strchr ((char *) p + 1, c))	/* c exists further down, so it will get matched later */
 		    break;
-		if (c == '\n' || c == '\t' || c == ' ') {
+                if ((c == '\n' || c == '\t' || c == ' ') || (whole_right != NULL && strchr (whole_right, c) == NULL)) {
 		    if (!*p) {
 			i--;
 			break;
@@ -118,27 +114,17 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 		    i = j;
 		    break;
 		}
-		if (whole_right)
-		    if (!strchr (whole_right, c)) {
-			if (!*p) {
-			    i--;
-			    break;
-			}
-			if (!j)
-			    return -1;
-			i = j;
-			break;
-		    }
 		i++;
 	    }
 	    break;
 	case '\003':		/* '['  ']' */
-	    p++;
+	    if (++p > q)
+		return -1;
 	    c = -1;
 	    for (;; i++) {
 		d = c;
 		c = edit_get_byte (edit, i);
-		for (j = 0; p[j] != '\003'; j++)
+		for (j = 0; p[j] != '\003' && p[j] != '\0'; j++)
 		    if (c == p[j])
 			goto found_char2;
 		break;
@@ -153,15 +139,17 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 		i--;
 	    break;
 	case '\004':		/* '{' '}' */
-	    p++;
+	    if (++p > q)
+		return -1;
 	    c = edit_get_byte (edit, i);
 	    COUNT_BRACE (c, depth);
-	    for (; *p != '\004'; p++)
+	    for (; *p != '\004' && *p != '\0'; p++)
 		if (c == *p)
 		    goto found_char3;
 	    return -1;
 	  found_char3:
-	    for (; *p != '\004'; p++);
+	    while (*p != '\004' && p < q)
+ 		p++;
 	    break;
 #if 0
 /* especially for LaTeX */
@@ -192,10 +180,7 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 		return -1;
 	}
     }
-    if (whole_right)
-	if (strchr (whole_right, edit_get_byte (edit, i)))
-	    return -1;
-    return i;
+    return (whole_right != NULL && strchr (whole_right, edit_get_byte (edit, i)) != NULL) ? -1 : i;
 }
 
 #if 1
@@ -260,24 +245,25 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
     }
 /* check to turn on a keyword */
     if (!_rule.keyword) {
-	char *p;
+	const char *p;
         r = edit->rules[_rule.context];
 	p = r->keyword_first_chars;
-	while (*(p = xx_strchr ((unsigned char *) p + 1, c))) {
-	    struct key_word *k;
-	    int count;
-	    long e;
-	    count = (unsigned long) p - (unsigned long) r->keyword_first_chars;
-	    k = r->keyword[count];
-	    e = compare_word_to_right (edit, i, k->keyword, k->whole_word_chars_left, k->whole_word_chars_right, k->line_start, k->brace_match);
-	    if (e > 0) {
-		end = e;
-		_rule.end = e;
-		_rule.keyword = count;
-		keyword_foundright = 1;
-		break;
+	if (p != NULL)
+	    while (*(p = xx_strchr ((const unsigned char *) p + 1, c)) != '\0') {
+	        struct key_word *k;
+	        int count;
+	        long e;
+	        count = (unsigned long) p - (unsigned long) r->keyword_first_chars;
+	        k = r->keyword[count];
+	        e = compare_word_to_right (edit, i, k->keyword, k->whole_word_chars_left, k->whole_word_chars_right, k->line_start, k->brace_match);
+	        if (e > 0) {
+		    end = e;
+		    _rule.end = e;
+		    _rule.keyword = count;
+		    keyword_foundright = 1;
+		    break;
+	        }
 	    }
-	}
     }
 /* check to turn on a context */
     if (!_rule.context) {
@@ -291,18 +277,18 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
 		r = edit->rules[_rule._context];
 		_rule.border = 0;
 		if (r->between_delimiters) {
-		    long e;
 		    _rule.context = _rule._context;
 		    contextchanged = 1;
 		    _rule.keyword = 0;
-		    if (r->first_right == c
-			&& (e =
-			    compare_word_to_right (edit, i, r->right, r->whole_word_chars_left, r->whole_word_chars_right, r->line_start_right,
-						   0)) >= end) {
-			_rule.end = e;
-			found_right = 1;
-			_rule.border = RULE_ON_RIGHT_BORDER;
-			_rule.context = 0;
+		    if (r->first_right == c) {
+		        long e;
+                        e = compare_word_to_right (edit, i, r->right, r->whole_word_chars_left, r->whole_word_chars_right, r->line_start_right, 0);
+			if (e >= end) {
+			    _rule.end = e;
+			    found_right = 1;
+			    _rule.border = RULE_ON_RIGHT_BORDER;
+			    _rule.context = 0;
+                        }
 		    }
 		}
 	    }
@@ -321,11 +307,10 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
 			(void) found_right;
 			_rule.border = RULE_ON_LEFT_BORDER;
 			_rule._context = count;
-			if (!r->between_delimiters)
-			    if (!_rule.keyword) {
-				_rule.context = count;
-				contextchanged = 1;
-			    }
+			if (!r->between_delimiters && _rule.keyword == 0) {
+			    _rule.context = count;
+			    contextchanged = 1;
+			}
 			break;
 		    }
 		}
@@ -334,7 +319,7 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
     }
 /* check again to turn on a keyword if the context switched */
     if (contextchanged && !_rule.keyword) {
-	char *p;
+	const char *p;
         r = edit->rules[_rule.context];
 	p = r->keyword_first_chars;
 	while (*(p = xx_strchr ((unsigned char *) p + 1, c))) {

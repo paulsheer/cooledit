@@ -1,14 +1,24 @@
 {E_
 {
+if (!*p) {
+if (*p == '\0') {
+ && strchr ((const char *) p + 1, c)
+ && strchr ((const char *) p + 1, c) != NULL
+struct context_rule **rules = edit->rules;
+
+struct context_rule
+context_rule_t
+int contextchanged = 0, c;
+int c;$    gboolean contextchanged = FALSE;
+int found_right = 0, found_left = 0, keyword_foundleft = 0, keyword_foundright = 0;
+gboolean found_left = FALSE, found_right = FALSE;$    gboolean keyword_foundleft = FALSE, keyword_foundright = FALSE;
 is_end = (rule.end == (unsigned char) i);
 is_end = (edit->rule.end == (unsigned char) i);
 struct syntax_rule _rule = rule;
 struct syntax_rule _rule = edit->rule;
-struct context_rule **rules = edit->rules;
-
 static inline char *xx_strchr (const unsigned char *s, int c)
 static inline char *xx_strchr (WEdit *edit, const unsigned char *s, int c)
-apply_rules_going_right (edit, i, edit->rules);
+apply_rules_going_right (edit, i, edit->rule);
 apply_rules_going_right (edit, i);
 static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_rule rule)
 static inline void apply_rules_going_right (WEdit * edit, long i)
@@ -26,16 +36,16 @@ case '\001':		/* '*'  elastic wildcard */
 case SYNTAX_TOKEN_STAR:
 case '\002':		/* '+' */
 case SYNTAX_TOKEN_PLUS:
-'\002'
-SYNTAX_TOKEN_PLUS
-'\003'
-SYNTAX_TOKEN_BRACKET
 case '\003':		/* '['  ']' */
 case SYNTAX_TOKEN_BRACKET:
 case '\004':		/* '{' '}' */
 case SYNTAX_TOKEN_BRACE:
 '\001'
 SYNTAX_TOKEN_STAR
+'\002'
+SYNTAX_TOKEN_PLUS
+'\003'
+SYNTAX_TOKEN_BRACKET
 edit_get_byte (edit, i)
 xx_tolower (edit, edit_buffer_get_byte (&edit->buffer, i))
 *p == *text
@@ -44,6 +54,8 @@ p[0] == text[0]
 p[1] == '\0'
 if (j && strchr ((char *)
 if (j != 0 && strchr ((const char *)
+(c == '\n' || c == '\t' || c == ' ')
+whiteness (c)
 c == '\n' || c == '\t' || c == ' '
 whiteness (c)
 != '\003'
@@ -56,6 +68,8 @@ static inline char *xx_strchr (const unsigned char *s, int c)
 static inline char *xx_strchr (WEdit * edit, const unsigned char *s, int c)
 xx_strchr ((unsigned char
 xx_strchr (edit, (unsigned char
+xx_strchr ((const unsigned char
+xx_strchr (edit, (const unsigned char
 edit_get_byte (edit, i - 1)
 edit_buffer_get_byte (&edit->buffer, i - 1)
 keyword_foundleft = 1;
@@ -93,7 +107,7 @@ if (_rule.context == 0) {
 !(edit->rule.border & RULE_ON_RIGHT_BORDER)
 (edit->rule.border & RULE_ON_RIGHT_BORDER) == 0
 && rule.border & RULE_ON_RIGHT_BORDER
-&& ((edit->rule.border & RULE_ON_RIGHT_BORDER) != 0)
+&& (edit->rule.border & RULE_ON_RIGHT_BORDER) != 0
 (rule.border & RULE_ON_RIGHT_BORDER)
 ((edit->rule.border & RULE_ON_RIGHT_BORDER) != 0)
 (edit->rule.border & RULE_ON_LEFT_BORDER)
@@ -118,3 +132,9 @@ _rule.keyword == 0
 && (edit->rule.border & RULE_ON_LEFT_BORDER) != 0
 if (!j)
 if (j == 0)
+c = edit_buffer_get_byte (&edit->buffer, i - 1)
+c = xx_tolower (edit, edit_buffer_get_byte (&edit->buffer, i - 1))
+&& strchr ((const char *) p + 1, c)
+&& strchr ((const char *) p + 1, c) != NULL
+struct key_word
+syntax_keyword_t

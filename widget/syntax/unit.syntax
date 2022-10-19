@@ -1,6 +1,7 @@
 
 context default
     keyword whole for yellow/23
+    keyword whole A yellow/22
 
 context exclusive ` ` white/26 black/0
     keyword " green/5
@@ -9,7 +10,17 @@ context exclusive ` ` white/26 black/0
 
 context " " green/6
     keyword ` brightgreen/16
-#     keyword \\" brightgreen/16
-#     keyword \\` brightgreen/16
     keyword whole cat yellow/21
+
+context whole AA AA green/6
+    keyword whole A yellow/19
+    keyword # yellow/18
+
+context whole BB BB green/7
+    keyword B yellow/17
+    keyword # yellow/16
+
+context CC CC green/8
+    keyword CCCC yellow/17
+    keyword # yellow/16
 

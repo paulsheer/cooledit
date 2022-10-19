@@ -1,4 +1,6 @@
 
+.PHONY: test clean all
+
 CFLAGS = -Wall -O0 -g3  -I../.. -I.. -DUNIT_TEST
 
 SRC     = syntax.c stringtools.c regex.c
@@ -27,6 +29,6 @@ syntax-test: $(OBJ)
 clean:
 	rm -f *.o syntax-test
 
-test: syntax-test
+test: syntax-test unit.syntax uxit.syntax Makefile
 	./syntax-test
 

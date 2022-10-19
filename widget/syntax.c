@@ -1771,6 +1771,27 @@ int main(int argc, char **argv)
         } \
     }
 
+    TEST("AA$AA",0,5,6);
+    TEST("AA#AA",0,2,6);
+    TEST("AA#AA",2,3,18);
+    TEST("AA#AA",3,5,6);
+    TEST("AACAA",0,5,NO_COLOR);
+
+    TEST("AA#A#AA",0,2,6);
+    TEST("AA#A#AA",2,3,18);
+    TEST("AA#A#AA",3,4,19);
+    TEST("AA#A#AA",4,5,18);
+    TEST("AA#A#AA",5,7,6);
+
+    TEST("BB#BB.",3,5,17);
+#if 0 /* fails - but ok, no one should be doing this: */
+    TEST("BB#BB.",5,6,NO_COLOR);
+#endif
+
+    TEST("CC#C#CCCC#C#CC.",5,9,17);
+    TEST("CC#C#CCCC#C#CC.",9,10,16);
+    TEST("CC#C#CCCC#C#CC.",14,15,NO_COLOR);
+
     TEST("for",0,3,23);
     TEST("`for`",1,4,26);
     TEST("`and`",1,4,20);

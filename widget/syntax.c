@@ -3,6 +3,7 @@
    Copyright (C) 1996-2022 Paul Sheer
  */
 
+#ifndef UNIT_TEST
 
 #include "inspect.h"
 #include <config.h>
@@ -13,6 +14,194 @@
 #include "coolwidget.h"
 #include "stringtools.h"
 #endif
+
+#else
+
+#include <assert.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <time.h>
+#include <ctype.h>
+#include <sys/types.h>
+#include <signal.h>
+#include <unistd.h>
+
+#include "regex.h"
+#include "stringtools.h"
+
+
+#define E_ 
+
+struct syntax_rule {
+    unsigned short keyword;
+    unsigned char brace_depth;
+    unsigned char end;
+    unsigned char context;
+    unsigned char _context;
+#define RULE_ON_LEFT_BORDER 1
+#define RULE_ON_RIGHT_BORDER 2
+    unsigned char border;
+};
+
+#define MAX_WORDS_PER_CONTEXT	1024
+#define MAX_CONTEXTS		128
+#define MAX_PATH_LEN            1024
+#define EDIT_DIR                "./"
+#define LIBDIR                  "./"
+#define SYNTAX_FILE             "unittest.syntax-start"
+
+#define REDRAW_PAGE             1
+
+int triple_pipe_open(int *in, ...)
+{
+    return -1;
+}
+
+int CErrorDialog(int x, ...)
+{
+    printf ("CErrorDialog\n");
+    exit (1);
+    return -1;
+}
+
+int CMessageDialog(int x, ...)
+{
+    printf ("CMessageDialog\n");
+    exit (1);
+    return -1;
+}
+
+void edit_error_dialog(const char *a, const char *b)
+{
+    printf ("edit_error_dialog [%s] [%s]\n", a, b);
+    exit (1);
+}
+
+void CDisableAlarm(void)
+{
+}
+
+void CEnableAlarm(void)
+{
+}
+
+char *Cstrdup(const char *s);
+
+struct inspect_st__;
+struct inspect_st__ *inspect_data__ = NULL;
+
+void inspect___(const char *s,...)
+{
+}
+
+int PATH_search (const char *file)
+{
+    exit(1);
+}
+
+struct remotefs;
+struct remotefs *remotefs_lookup (const char *host_, char *last_directory)
+{
+    exit (1);
+}
+
+int prop_font_strcolmove (unsigned char *str, int i, int column)
+{
+    exit (1);
+}
+
+const char local_home_dir[] = "./";
+const char current_dir[] = "./";
+
+struct CWidget_ {
+};
+
+typedef struct CWidget_ CWidget;
+
+struct key_word {
+    char *keyword;
+    unsigned char first;
+    char *whole_word_chars_left;
+    char *whole_word_chars_right;
+    time_t time;
+#define NO_COLOR 0x7FFFFFFF
+#define SPELLING_ERROR 0x7EFEFEFE
+    char line_start;
+    char brace_match;
+    int bg;
+    int fg;
+};
+
+struct context_rule {
+    char *left;
+    unsigned char first_left;
+    char *right;
+    unsigned char first_right;
+    char line_start_left;
+    char line_start_right;
+    int single_char;
+    int between_delimiters;
+    char *whole_word_chars_left;
+    char *whole_word_chars_right;
+    char *keyword_first_chars;
+    int spelling;
+/* first word is word[1] */
+    struct key_word **keyword;
+};
+
+struct _syntax_marker {
+    long offset;
+    struct syntax_rule rule;
+    struct _syntax_marker *next;
+};
+
+struct WEdit_ {
+    CWidget *widget;
+
+    unsigned char *text;
+    long last_byte;
+    long curs1;
+
+    char *filename;
+
+    int force;
+
+    struct _syntax_marker *syntax_marker;
+    struct context_rule **rules;
+    long last_get_rule;
+    struct syntax_rule rule;
+    int syntax_invalidate;
+    char *syntax_type;		/* description of syntax highlighting type being used */
+    int explicit_syntax;	/* have we forced the syntax hi. type in spite of the filename? */
+};
+
+typedef struct WEdit_ WEdit;
+
+int edit_get_byte(WEdit *e, int i)
+{
+    if (i == -1)
+        return '\n';
+    if (i == e->last_byte)
+        return '\n';
+    assert (i >= 0);
+    assert (i < e->last_byte);
+    return e->text[i];
+}
+
+#define NO_COLOR 0x7FFFFFFF
+
+int allocate_color (char *color)
+{
+    if (!color)
+	return NO_COLOR;
+    return atoi (color);
+}
+
+#endif
+
+
 
 /* (@) */
 
@@ -201,7 +390,7 @@ static inline char *xx_strchr (const unsigned char *s, int c)
 
 static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_rule rule)
 {E_
-    struct context_rule *r;
+    struct context_rule *r = NULL;
     int contextchanged = 0, c;
     int found_right = 0, found_left = 0, keyword_foundleft = 0, keyword_foundright = 0;
     int is_end;
@@ -243,8 +432,9 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
 	    _rule.border = 0;
 	}
     }
+
 /* check to turn on a keyword */
-    if (!_rule.keyword) {
+    if (!_rule.keyword && !((_rule.border & RULE_ON_LEFT_BORDER) != 0 && _rule._context != _rule.context)) {
 	const char *p;
         r = edit->rules[_rule.context];
 	p = r->keyword_first_chars;
@@ -265,6 +455,7 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
 	        }
 	    }
     }
+
 /* check to turn on a context */
     if (!_rule.context) {
 	if (!found_left && is_end) {
@@ -293,7 +484,7 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
 		}
 	    }
 	}
-	if (!found_right) {
+	if (!found_right && !(contextchanged && (rule.border & RULE_ON_LEFT_BORDER) != 0)) {
 	    int count;
             struct context_rule **rules = edit->rules;
 	    for (count = 1; rules[count]; count++) {
@@ -317,6 +508,7 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
 	    }
 	}
     }
+
 /* check again to turn on a keyword if the context switched */
     if (contextchanged && !_rule.keyword) {
 	const char *p;
@@ -1257,6 +1449,8 @@ void edit_free_syntax_rules (WEdit * edit)
 
 #define CURRENT_SYNTAX_RULES_VERSION "73"
 
+#ifndef UNIT_TEST
+
 char *syntax_text[] = {
 "# syntax rules version " CURRENT_SYNTAX_RULES_VERSION,
 "# (after the slash is a Cooledit color, 0-26 or any of the X colors in rgb.txt)",
@@ -1465,6 +1659,22 @@ char *syntax_text[] = {
 "include unknown.syntax",
 "",
 0};
+
+#else
+
+char *syntax_text[] = {
+"# syntax rules version " CURRENT_SYNTAX_RULES_VERSION,
+"",
+"file ..\\*\\\\.unit$ Rubbish\\sScript ^nomatch",
+"include unit.syntax",
+"",
+"file ..\\*\\\\.uxit$ Rubbish\\sScript ^nomatch",
+"include uxit.syntax",
+"",
+0};
+
+
+#endif
 
 
 FILE *upgrade_syntax_file (char *syntax_file)
@@ -1704,6 +1914,106 @@ void edit_get_syntax_color (WEdit * edit, long byte_index, int *fg, int *bg)
 }
 
 #endif		/* !defined(MIDNIGHT) || defined(HAVE_SYNTAXH) */
+
+ 
+#ifdef UNIT_TEST
+
+int main(int argc, char **argv)
+{
+    WEdit *edit;
+    int fg, bg;
+    int i;
+
+    edit = (WEdit *) malloc (sizeof (WEdit));
+    memset (edit, '\0', sizeof (*edit));
+    edit->last_get_rule = -1;
+    edit->syntax_invalidate = 1;
+
+    edit->filename = "test.unit";
+    edit_load_syntax (edit, 0, 0);
+
+#define TEST(T,A,B,FG) \
+    edit->syntax_invalidate = 1; \
+    for (i = A; i < B; i++) { \
+        fg = -1; \
+        bg = -1; \
+        edit->text = (unsigned char *) strdup (T); \
+        edit->last_byte = strlen ((char *) edit->text); \
+        edit_get_syntax_color (edit, i, &fg, &bg); \
+        if (fg != FG) { \
+            printf ("error, color %d, line %d, i=%d\n", fg, __LINE__, i); \
+            exit (1); \
+        } \
+    }
+
+    TEST("for",0,3,23);
+    TEST("`for`",1,4,26);
+    TEST("`and`",1,4,20);
+    TEST("\"cat\"",1,4,21);
+    TEST("` \"and`",3,6,20);
+    TEST("`\"and`",2,5,20);
+    TEST("`\"and`",1,2,5);
+    TEST("`and`for`and`",1,4,20);
+    TEST("`and`for`and`",9,12,20);
+    TEST("`and`for`and`",5,8,23);
+    TEST("`and`for`and`",0,1,NO_COLOR);
+    TEST("`and`for`and`",4,5,NO_COLOR);
+    TEST("`and`for`and`",8,9,NO_COLOR);
+    TEST("`and`for`and`",12,13,NO_COLOR);
+    TEST("`and`\"cat\"`and`",0,1,NO_COLOR);
+    TEST("`and`\"cat\"`and`",1,4,20);
+    TEST("`and`\"cat\"`and`",4,5,NO_COLOR);
+    TEST("`and`\"cat\"`and`",5,6,6);
+    TEST("`and`\"cat\"`and`",6,9,21);
+    TEST("`and`\"cat\"`and`",9,10,6);
+    TEST("`and`\"cat\"`and`",10,11,NO_COLOR);
+    TEST("`and`\"cat\"`and`",11,14,20);
+    TEST("`and`\"cat\"`and`",14,15,NO_COLOR);
+
+    memset (edit, '\0', sizeof (*edit));
+    edit->last_get_rule = -1;
+    edit->syntax_invalidate = 1;
+
+    edit->filename = "test.uxit";
+    edit_load_syntax (edit, 0, 0);
+
+    TEST("#\nchar",2,6,24);
+    TEST("#\n",0,1,18);
+    TEST("#x\nwrong",3,10,NO_COLOR);
+    TEST("char\n#\nchar",0,4,24);
+    TEST("char\n#\nchar",5,6,18);
+    TEST("char\n#\nchar",7,11,24);
+    TEST("#/*\"x\"*/\nchar",0,1,18);
+    TEST("#/*\"x\"*/\nchar",1,8,22);
+    TEST("#/*\"x\"*/\nchar",9,13,24);
+    TEST("/**/\n#\n/**/",0,4,21);
+    TEST("/**/\n#\n/**/",5,6,18);
+    TEST("/**/\n#\n/**/",7,11,21);
+
+    TEST("/*a*/\n#\n/*a*/",0,2,21);
+    TEST("/*a*/\n#\n/*a*/",2,3,22);
+    TEST("/*a*/\n#\n/*a*/",3,5,21);
+    TEST("/*a*/\n#\n/*a*/",6,7,18);
+    TEST("/*a*/\n#\n/*a*/",8,10,21);
+    TEST("/*a*/\n#\n/*a*/",10,11,22);
+    TEST("/*a*/\n#\n/*a*/",11,13,21);
+
+    TEST("/**/'$'",0,4,21);
+    TEST("/**/'$'",4,5,NO_COLOR);
+    TEST("/**/'$'",5,6,9);
+    TEST("/**/'$'",6,7,NO_COLOR);
+
+    TEST("/**/$'$'$'",0,4,21);
+    TEST("/**/$'$'$'",4,7,8);
+    TEST("/**/$'$'$'",7,8,NO_COLOR);
+    TEST("/**/$'$'$'",8,9,9);
+    TEST("/**/$'$'$'",9,10,NO_COLOR);
+
+    printf ("Test success\n");
+}
+
+
+#endif
 
 
 

@@ -27,7 +27,7 @@ typedef struct syntax_rule edit_syntax_rule_t;
 
 
 r = open('replace-syntax.txt').readlines()
-s = open('syntax-orig.c').read()
+s = open('syntax.c').read()
 
 for i in range(0, len(r), 2):
     p = r[i + 0].rstrip()

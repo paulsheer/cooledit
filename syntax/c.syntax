@@ -100,6 +100,8 @@ context // \n brown/22
 context linestart # \n brightred/18
     keyword \\\n yellow/24
     keyword /\**\*/ brown/22
+# \e means invisible end-of-line character and is only to be used with *
+    keyword //*\e brown/22
     keyword "+" red/19
     keyword <+> red/19
 context " " green/6

@@ -44,6 +44,8 @@ case '\003':		/* '['  ']' */
 case SYNTAX_TOKEN_BRACKET:
 case '\004':		/* '{' '}' */
 case SYNTAX_TOKEN_BRACE:
+'\005'
+SYNTAX_TOKEN_EOL
 '\001'
 SYNTAX_TOKEN_STAR
 '\002'

@@ -271,7 +271,7 @@ struct _mb_marker {
 struct syntax_rule {
     unsigned short keyword;
     unsigned char brace_depth;
-    unsigned char end;
+    unsigned unsigned char end;
     unsigned char context;
     unsigned char _context;
 #define RULE_ON_LEFT_BORDER 1

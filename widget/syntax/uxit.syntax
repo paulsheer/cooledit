@@ -3,12 +3,20 @@ context default
     keyword whole char yellow/24
     keyword /\* brown/21
     keyword \*/ brown/21
+    keyword @ brown/17
 context exclusive ' '  brown/9
 context           $ $  brown/8
 context exclusive /\* \*/ brown/22
     spellcheck
 context linestart # \n brightred/18
-    keyword \\\n yellow/24
+    keyword \\\n yellow/23
+    keyword //*\e brown/21
+    keyword /\**\*/ brown/22
+    keyword "+" red/19
+    keyword <+> red/19
+
+context exclusive linestart @ \n brightred/18
+    keyword \\\n yellow/23
     keyword /\**\*/ brown/22
     keyword "+" red/19
     keyword <+> red/19

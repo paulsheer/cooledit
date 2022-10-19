@@ -71,6 +71,7 @@ static void *syntax_malloc (size_t x)
 
 static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole_left, char *whole_right, int line_start, int brace_match)
 {E_
+    int end_of_line_adjust = 0;
     int depth = 0;
     const unsigned char *p, *q;
     int c, d, j;
@@ -97,6 +98,10 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 		} else {
 		    if (c == *p)
 			break;
+		    if (c == '\n' && *p == '\005') {
+                        end_of_line_adjust = 1;
+			break;
+                    }
 		}
 		if (c == '\n')
 		    return -1;
@@ -168,7 +173,7 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 	    break;
 #if 0
 /* especially for LaTeX */
-	case '\005':{
+	case '\006':{
 		int b = 0;
 		p++;
 		for (;;) {
@@ -188,6 +193,14 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 		break;
 	    }
 #endif
+
+	case '\005':		/* invisible end-of-line character matches one short of '\n' */
+	    c = edit_get_byte (edit, i);
+	    if ('\n' != (unsigned char) c)
+		return -1;
+            end_of_line_adjust = 1;
+	    break;
+
 	default:
 	    c = edit_get_byte (edit, i);
 	    COUNT_BRACE (c, depth);
@@ -195,7 +208,7 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 		return -1;
 	}
     }
-    return (whole_right != NULL && strchr (whole_right, edit_get_byte (edit, i)) != NULL) ? -1 : i;
+    return (whole_right != NULL && strchr (whole_right, edit_get_byte (edit, i)) != NULL) ? -1 : (i - end_of_line_adjust);
 }
 
 #if 1
@@ -225,7 +238,7 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
     if (!(c = edit_get_byte (edit, i)))
 	return;
     COUNT_BRACE (c, edit->rule.brace_depth);
-    is_end = (rule.end == (unsigned char) i);
+    is_end = ((rule.end & 0xff) == (i & 0xff));
 /* check to turn off a keyword */
     if (_rule.keyword) {
 	if (edit_get_byte (edit, i - 1) == '\n')
@@ -273,6 +286,17 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
 	        k = r->keyword[count];
 	        e = compare_word_to_right (edit, i, k->keyword, k->whole_word_chars_left, k->whole_word_chars_right, k->line_start, k->brace_match);
 	        if (e > 0) {
+
+#if 0
+		    /* when both context and keyword terminate with a newline,
+		       the context overflows to the next line and colorizes it incorrectly */
+		    if (e > i + 1 && _rule._context != 0 && k->keyword[strlen (k->keyword) - 1] == '\n') {
+			r = edit->rules[_rule._context];
+			if (r->right != NULL && r->right[0] != '\0' && r->right[strlen (r->right) - 1] == '\n')
+			    e--;
+		    }
+#endif
+
 		    end = e;
 		    _rule.end = e;
 		    _rule.keyword = count;
@@ -483,6 +507,9 @@ static char *strdup_convert (char *s)
 	    case ' ':
 		*p = ' ';
 		s--;
+		break;
+	    case 'e':
+		*p = '\005';
 		break;
 	    case 'n':
 		*p = '\n';
@@ -1750,12 +1777,6 @@ int main(int argc, char **argv)
     int i;
 
     edit = (WEdit *) malloc (sizeof (WEdit));
-    memset (edit, '\0', sizeof (*edit));
-    edit->last_get_rule = -1;
-    edit->syntax_invalidate = 1;
-
-    edit->filename = "test.unit";
-    edit_load_syntax (edit, 0, 0);
 
 #define TEST(T,A,B,FG) \
     edit->syntax_invalidate = 1; \
@@ -1770,6 +1791,13 @@ int main(int argc, char **argv)
             exit (1); \
         } \
     }
+
+    memset (edit, '\0', sizeof (*edit));
+    edit->last_get_rule = -1;
+    edit->syntax_invalidate = 1;
+
+    edit->filename = "test.unit";
+    edit_load_syntax (edit, 0, 0);
 
     TEST("AA$AA",0,5,6);
     TEST("AA#AA",0,2,6);
@@ -1823,7 +1851,18 @@ int main(int argc, char **argv)
     edit->filename = "test.uxit";
     edit_load_syntax (edit, 0, 0);
 
+
     TEST("#\nchar",2,6,24);
+
+    TEST("#d\\\nchar\nchar",0,2,18);
+    TEST("#d\\\nchar\nchar",2,3,23);
+    TEST("#d\\\nchar\nchar",4,8,18);
+    TEST("#d\\\nchar\nchar",9,13,24);
+
+    TEST("#d\\\n//char\nchar",0,2,18);
+    TEST("#d\\\n//char\nchar",2,3,23);
+    TEST("#d\\\n//char\nchar",4,10,21);
+
     TEST("#\n",0,1,18);
     TEST("#x\nwrong",3,10,NO_COLOR);
     TEST("char\n#\nchar",0,4,24);
@@ -1835,6 +1874,18 @@ int main(int argc, char **argv)
     TEST("/**/\n#\n/**/",0,4,21);
     TEST("/**/\n#\n/**/",5,6,18);
     TEST("/**/\n#\n/**/",7,11,21);
+
+    TEST("@\n",0,1,17);
+    TEST("@x\nwrong",3,10,NO_COLOR);
+    TEST("char\n@\nchar",0,4,24);
+    TEST("char\n@\nchar",5,6,17);
+    TEST("char\n@\nchar",7,11,24);
+    TEST("@/*\"x\"*/\nchar",0,1,17);
+    TEST("@/*\"x\"*/\nchar",1,8,22);
+    TEST("@/*\"x\"*/\nchar",9,13,24);
+    TEST("/**/\n@\n/**/",0,4,21);
+    TEST("/**/\n@\n/**/",5,6,17);
+    TEST("/**/\n@\n/**/",7,11,21);
 
     TEST("/*a*/\n#\n/*a*/",0,2,21);
     TEST("/*a*/\n#\n/*a*/",2,3,22);

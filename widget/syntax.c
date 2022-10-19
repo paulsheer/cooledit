@@ -253,11 +253,14 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
     int depth = 0;
     const unsigned char *p, *q;
     int c, d, j;
+
     if (!*text)
 	return -1;
+
     c = edit_get_byte (edit, i - 1);
     if ((line_start && c != '\n') || (whole_left != NULL && strchr (whole_left, c) != NULL))
 	return -1;
+
     for (p = (unsigned char *) text, q = p + strlen ((char *) p); (unsigned long) p < (unsigned long) q; p++, i++) {
 	switch (*p) {
 	case '\001':		/* '*'  elastic wildcard */
@@ -324,6 +327,8 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 	    i--;
 	    while (*p != '\003' && p <= q)
 		p++;
+	    if (p > q)
+		return -1;
 	    if (p[1] == d)
 		i--;
 	    break;

@@ -1,5 +1,9 @@
 {E_
 {
+int is_end;
+gboolean is_end;
+long end = 0;
+off_t end = 0;
 if (!*p) {
 if (*p == '\0') {
  && strchr ((const char *) p + 1, c)
@@ -138,3 +142,5 @@ c = xx_tolower (edit, edit_buffer_get_byte (&edit->buffer, i - 1))
 && strchr ((const char *) p + 1, c) != NULL
 struct key_word
 syntax_keyword_t
+struct syntax_rule
+edit_syntax_rule_t

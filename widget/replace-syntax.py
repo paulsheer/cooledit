@@ -11,6 +11,7 @@ defs = """
 #define g_ptr_array_index(a,i)                  (a[i])
 typedef struct key_word syntax_keyword_t;
 typedef struct context_rule context_rule_t;
+typedef struct syntax_rule edit_syntax_rule_t;
 
 #define TRUE            1
 #define FALSE           0

@@ -141,7 +141,6 @@ struct context_rule {
     unsigned char first_right;
     char line_start_left;
     char line_start_right;
-    int single_char;
     int between_delimiters;
     char *whole_word_chars_left;
     char *whole_word_chars_right;
@@ -945,7 +944,6 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
 		c->right = (char *) strdup (*a++);
 		c->first_left = *c->left;
 		c->first_right = *c->right;
-		c->single_char = (strlen (c->right) == 1);
 	    }
 	    c->keyword = syntax_malloc (MAX_WORDS_PER_CONTEXT * sizeof (struct key_word *));
 #if 0

@@ -303,7 +303,6 @@ struct context_rule {
     unsigned char first_right;
     char line_start_left;
     char line_start_right;
-    int single_char;
     int between_delimiters;
     char *whole_word_chars_left;
     char *whole_word_chars_right;

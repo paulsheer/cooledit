@@ -309,7 +309,7 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 	    if (++p > q)
 		return -1;
 	    c = -1;
-	    for (;; i++) {
+	    for (;;) {
 		d = c;
 		c = edit_get_byte (edit, i);
 		for (j = 0; p[j] != '\003' && p[j] != '\0'; j++)
@@ -319,9 +319,10 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 	      found_char2:
 		j = c;		/* dummy command */
 		(void) j;
+                i++;
 	    }
 	    i--;
-	    while (*p != '\003')
+	    while (*p != '\003' && p <= q)
 		p++;
 	    if (p[1] == d)
 		i--;

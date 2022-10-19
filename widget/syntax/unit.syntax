@@ -1,0 +1,15 @@
+
+context default
+    keyword whole for yellow/23
+
+context exclusive ` ` white/26 black/0
+    keyword " green/5
+#     keyword \\` green/5
+    keyword whole and yellow/20
+
+context " " green/6
+    keyword ` brightgreen/16
+#     keyword \\" brightgreen/16
+#     keyword \\` brightgreen/16
+    keyword whole cat yellow/21
+

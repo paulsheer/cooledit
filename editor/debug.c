@@ -981,7 +981,7 @@ loop () at test.c:7
                 xdebug_append_command (d, d->get_backtrace, ACTION_BACKTRACE, 0, 0);
             p = from_start ((char *) pool_start (d->pool), "terminate called after throwing an instance of", 3);
             if (!p)
-                p = from_start_pattern ((char *) pool_start (d->pool), "Program received signal *", 20);
+                p = from_start_pattern ((char *) pool_start (d->pool), "Program received signal *", 200);
 	}
 	if (!p) {		/* in all other circumstances, we must get the file and line number */
 	    p = from_start ((char *) pool_start (d->pool), "The program is not being run", 0);

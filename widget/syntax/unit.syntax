@@ -1,6 +1,11 @@
 
+define this     that
+define mycolor  yellow/23
+define greenish green/6
+define more     some
+
 context default
-    keyword whole for yellow/23
+    keyword whole for mycolor
     keyword whole A yellow/22
 
 context exclusive ` ` white/26 black/0
@@ -8,11 +13,11 @@ context exclusive ` ` white/26 black/0
 #     keyword \\` green/5
     keyword whole and yellow/20
 
-context " " green/6
+context " " greenish
     keyword ` brightgreen/16
     keyword whole cat yellow/21
 
-context whole AA AA green/6
+context whole AA AA greenish
     keyword whole A yellow/19
     keyword # yellow/18
 

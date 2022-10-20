@@ -64,15 +64,22 @@
 
 static inline text_t char_to_text_t (rxvt_buf_char_t c)
 {
+#ifdef THREE_BYTE_CELLS
     text_t r;
     r.s[0] = c >> 16;
     r.s[1] = c >> 8;
     r.s[2] = c >> 0;
     return r;
+#else
+    text_t r;
+    r.c32bit = c;
+    return r;
+#endif
 }
 
 static inline rxvt_buf_char_t text_t_to_char (text_t c)
 {
+#ifdef THREE_BYTE_CELLS
     rxvt_buf_char_t r;
     r = c.s[0];
     r <<= 8;
@@ -80,6 +87,9 @@ static inline rxvt_buf_char_t text_t_to_char (text_t c)
     r <<= 8;
     r |= c.s[2];
     return r;
+#else
+    return c.c32bit;
+#endif
 }
 
 #else

@@ -71,11 +71,19 @@ typedef struct _row_col_t row_col_t;
 # error if you disable both selection styles, how can you select, silly?
 #endif
 #endif				/* _RXVT_H */
-#if defined(UTF8_FONT) && 1
+#if defined(UTF8_FONT)
+#ifdef THREE_BYTE_CELLS
 struct text_t_s_ {
-    unsigned char s[3]; /* large enough for any unicode character */
+    unsigned char s[3]; /* large enough for any unicode character, saves a bit of memory */
 };
 typedef struct text_t_s_ text_t;
+#else
+union text_t_s_ {
+    uint32_t c32bit;
+    unsigned char s[4]; /* large enough for any unicode character */
+};
+typedef union text_t_s_ text_t;
+#endif
 #else
 typedef unsigned char text_t;
 #endif

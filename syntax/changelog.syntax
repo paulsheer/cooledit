@@ -1,29 +1,34 @@
-
 context default
-    keyword \s+() brightmagenta/23
-    keyword \t+() brightmagenta/23
     spellcheck
 
-context linestart \t\* : brightcyan/17
-context linestart \s\s\s\s\s\s\s\s\* : brightcyan/17
+context linestart \t \n\n
+    keyword wholeright +() brightmagenta
+    keyword linestart \t\*\s*: brightcyan
+    keyword (*): cyan
+    keyword (*)\{\s\}[*]: cyan
 
-context linestart 19+-+\s \n            yellow/24
-    keyword <+@+> 			brightred/19
-context linestart 20+-+\s \n            yellow/24
-    keyword <+@+> 			brightred/19
-context linestart Mon\s+\s+\s+\s \n     yellow/24
-    keyword <+@+> 			brightred/19
-context linestart Tue\s+\s+\s+\s \n     yellow/24
-    keyword <+@+> 			brightred/19
-context linestart Wed\s+\s+\s+\s \n     yellow/24
-    keyword <+@+> 			brightred/19
-context linestart Thu\s+\s+\s+\s \n     yellow/24
-    keyword <+@+> 			brightred/19
-context linestart Fri\s+\s+\s+\s \n     yellow/24
-    keyword <+@+> 			brightred/19
-context linestart Sat\s+\s+\s+\s \n     yellow/24
-    keyword <+@+> 			brightred/19
-context linestart Sun\s+\s+\s+\s \n     yellow/24
-    keyword <+@+> 			brightred/19
+context linestart \s\s\s\s\s\s\s\s \n\n
+    keyword wholeright +() brightmagenta
+    keyword \*\s*: brightcyan
+    keyword (*): cyan
+    keyword (*)\{\s\}[*]: cyan
+    keyword whole \* brightcyan
 
-
+context linestart 19+-+\s \n yellow
+    keyword <+> brightred
+context linestart 20+-+\s \n yellow
+    keyword <+> brightred
+context linestart Mon\s \n yellow
+    keyword <+> brightred
+context linestart Tue\s \n yellow
+    keyword <+> brightred
+context linestart Wed\s \n yellow
+    keyword <+> brightred
+context linestart Thu\s \n yellow
+    keyword <+> brightred
+context linestart Fri\s \n yellow
+    keyword <+> brightred
+context linestart Sat\s \n yellow
+    keyword <+> brightred
+context linestart Sun\s \n yellow
+    keyword <+> brightred

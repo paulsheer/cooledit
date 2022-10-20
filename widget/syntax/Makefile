@@ -7,8 +7,10 @@ SRC     = syntax.c stringtools.c regex.c
 OBJ     = $(SRC:.c=.o)
 
 
-all: test
+all: ../syntax-top.c test
 
+../syntax-top.c:
+	python3 make-syntax.py > ../syntax-top.c
 syntax.c:
 	ln -sf ../syntax.c .
 stringtools.c:

@@ -203,5 +203,3 @@ context ` ` green
     keyword \\\{\\'"abtnvfr\} brightgreen
     keyword \\\{0123\}\{01234567\}\{01234567\} brightgreen
     keyword ${*} yellow
-
-

@@ -1,4 +1,7 @@
 
+# html highlighting with tags in caps always. if you want everything in lowercase
+# use tr
+
 # i got upto IMG in the netscape comprehensive tags reference. thereafter will get
 # done later - paul
 
@@ -45,18 +48,22 @@ context default
     keyword </HTML> brightcyan/17
     keyword </I> brightcyan/17
     keyword </IMG> brightcyan/17
-
+    keyword </PRE> brightcyan/17
     keyword </SMALL> brightcyan/17
     keyword </SCRIPT> brightcyan/17
     keyword </META> brightcyan/17
+    keyword </OL> brightcyan/17
     keyword </P> brightcyan/17
     keyword </TABLE> brightcyan/17
     keyword </TD> brightcyan/17
     keyword </TITLE> brightcyan/17
     keyword </TR> brightcyan/17
+    keyword </TT> brightcyan/17
+    keyword </U> brightcyan/17
+    keyword </UL> brightcyan/17
 
 
-context <A > brightcyan/17
+context <A >                    brightcyan/17
     keyword = brightred/18
 
     keyword "http:*" magenta/22
@@ -91,17 +98,17 @@ context <A > brightcyan/17
 
     keyword "*" cyan/5
 
-#    keyword whole charset yellow/24
-#    keyword whole type yellow/24
+#    keyword whole charset       yellow/24
+#    keyword whole type          yellow/24
     keyword whole name yellow/24
     keyword whole href yellow/24
-#    keyword whole hreflang yellow/24
-#    keyword whole rel yellow/24
-#    keyword whole rev yellow/24
+#    keyword whole hreflang      yellow/24
+#    keyword whole rel           yellow/24
+#    keyword whole rev           yellow/24
     keyword whole shape yellow/24
     keyword whole coords yellow/24
-#    keyword whole tabindex yellow/24
-#    keyword whole selected yellow/24
+#    keyword whole tabindex      yellow/24
+#    keyword whole selected      yellow/24
     keyword whole target yellow/24
     keyword whole onblur yellow/24
     keyword whole onclick yellow/24
@@ -117,7 +124,7 @@ context <A > brightcyan/17
     keyword whole onmouseup yellow/24
 
 
-context <ADDRESS > brightcyan/17
+context <ADDRESS >              brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -140,7 +147,7 @@ context <ADDRESS > brightcyan/17
     keyword whole onmouseup yellow/24
     keyword "*" cyan/5
 
-context <APPLET > brightcyan/17
+context <APPLET >               brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -172,17 +179,17 @@ context <APPLET > brightcyan/17
     keyword "*.class" magenta/22
     keyword "*" cyan/5
 
-context <AREA > brightcyan/17
+context <AREA >                 brightcyan/17
     keyword = brightred/18
 
-#    keyword whole accesskey yellow/24
-#    keyword whole alt yellow/24
+#    keyword whole accesskey     yellow/24
+#    keyword whole alt           yellow/24
     keyword whole coords yellow/24
     keyword whole href yellow/24
     keyword whole nohref yellow/24
     keyword whole shape yellow/24
-#    keyword whole onfocus yellow/24
-#    keyword whole onblur yellow/24
+#    keyword whole onfocus       yellow/24
+#    keyword whole onblur        yellow/24
     keyword whole target magenta/22
     keyword "_blank" magenta/22
     keyword "_self" magenta/22
@@ -203,7 +210,7 @@ context <AREA > brightcyan/17
     keyword "telnet:*" magenta/22
     keyword "*" cyan/5
 
-context <B > brightcyan/17
+context <B >                    brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -226,7 +233,7 @@ context <B > brightcyan/17
     keyword whole onmouseup yellow/24
     keyword "*" cyan/5
 
-context <BASE > brightcyan/17
+context <BASE >                 brightcyan/17
     keyword = brightred/18
 
     keyword whole href yellow/24
@@ -240,7 +247,7 @@ context <BASE > brightcyan/17
     keyword "ftp:*" magenta/22
     keyword "*" cyan/5
 
-context <BASEFONT > brightcyan/17
+context <BASEFONT >             brightcyan/17
     keyword = brightred/18
     keyword " magenta/22
 
@@ -250,7 +257,7 @@ context <BASEFONT > brightcyan/17
     keyword whole face yellow/24
     keyword "*" cyan/5
 
-context <BIG > brightcyan/17
+context <BIG >                  brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -274,7 +281,7 @@ context <BIG > brightcyan/17
     keyword "*" cyan/5
 
 
-context <BLOCKQUOTE > brightcyan/17
+context <BLOCKQUOTE >           brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -300,7 +307,7 @@ context <BLOCKQUOTE > brightcyan/17
     keyword "*" cyan/5
 
 
-context <BODY > brightcyan/17
+context <BODY >                 brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -338,7 +345,7 @@ context <BODY > brightcyan/17
     keyword whole text yellow/24
     keyword whole vlink yellow/24
 
-context <BR > brightcyan/17
+context <BR >                   brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -348,7 +355,7 @@ context <BR > brightcyan/17
     keyword "*" cyan/5
 
 
-context <BUTTON > brightcyan/17
+context <BUTTON >               brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -371,7 +378,7 @@ context <BUTTON > brightcyan/17
     keyword whole onmouseup yellow/24
     keyword "*" cyan/5
 
-context <CAPTION > brightcyan/17
+context <CAPTION >              brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -398,7 +405,7 @@ context <CAPTION > brightcyan/17
     keyword whole onmouseup yellow/24
     keyword "*" cyan/5
 
-context <CENTER > brightcyan/17
+context <CENTER >               brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -422,7 +429,7 @@ context <CENTER > brightcyan/17
     keyword "*" cyan/5
 
 
-context <CITE > brightcyan/17
+context <CITE >                 brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -446,7 +453,7 @@ context <CITE > brightcyan/17
     keyword "*" cyan/5
 
 
-context <CODE > brightcyan/17
+context <CODE >                 brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -469,7 +476,7 @@ context <CODE > brightcyan/17
     keyword whole onmouseup yellow/24
     keyword "*" cyan/5
 
-context <DD > brightcyan/17
+context <DD >                   brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -492,7 +499,7 @@ context <DD > brightcyan/17
     keyword whole onmouseup yellow/24
     keyword "*" cyan/5
 
-context <DIR > brightcyan/17
+context <DIR >                  brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -516,7 +523,7 @@ context <DIR > brightcyan/17
     keyword "*" cyan/5
 
 
-context <DIV > brightcyan/17
+context <DIV >                  brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -546,7 +553,7 @@ context <DIV > brightcyan/17
     keyword "*" cyan/5
 
 
-context <DL > brightcyan/17
+context <DL >                   brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -569,7 +576,7 @@ context <DL > brightcyan/17
     keyword whole onmouseup yellow/24
     keyword "*" cyan/5
 
-context <DT > brightcyan/17
+context <DT >                   brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -592,7 +599,7 @@ context <DT > brightcyan/17
     keyword whole onmouseup yellow/24
     keyword "*" cyan/5
 
-context <EM > brightcyan/17
+context <EM >                   brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -616,7 +623,7 @@ context <EM > brightcyan/17
     keyword "*" cyan/5
 
 
-context <DT > brightcyan/17
+context <DT >                   brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -639,7 +646,7 @@ context <DT > brightcyan/17
     keyword whole onmouseup yellow/24
     keyword "*" cyan/5
 
-context <FONT > brightcyan/17
+context <FONT >                 brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -666,7 +673,7 @@ context <FONT > brightcyan/17
     keyword whole face yellow/24
     keyword "*" cyan/5
 
-context <FORM > brightcyan/17
+context <FORM >                 brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -703,7 +710,7 @@ context <FORM > brightcyan/17
     keyword "*" cyan/5
 
 
-context <FRAME > brightcyan/17
+context <FRAME >                brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -724,7 +731,7 @@ context <FRAME > brightcyan/17
     keyword "*" cyan/5
 
 
-context <FRAMESET > brightcyan/17
+context <FRAMESET >             brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -740,7 +747,7 @@ context <FRAMESET > brightcyan/17
     keyword whole rows yellow/24
 
 
-context <H1 > brightcyan/17
+context <H1 >                   brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -769,7 +776,7 @@ context <H1 > brightcyan/17
     keyword "*" cyan/5
 
 
-context <H2 > brightcyan/17
+context <H2 >                   brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -798,7 +805,7 @@ context <H2 > brightcyan/17
     keyword "*" cyan/5
 
 
-context <H3 > brightcyan/17
+context <H3 >                   brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -827,7 +834,7 @@ context <H3 > brightcyan/17
     keyword "*" cyan/5
 
 
-context <H4 > brightcyan/17
+context <H4 >                   brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -856,7 +863,7 @@ context <H4 > brightcyan/17
     keyword "*" cyan/5
 
 
-context <H5 > brightcyan/17
+context <H5 >                   brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -885,7 +892,7 @@ context <H5 > brightcyan/17
     keyword "*" cyan/5
 
 
-context <H6 > brightcyan/17
+context <H6 >                   brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -914,7 +921,7 @@ context <H6 > brightcyan/17
     keyword "*" cyan/5
 
 
-context <HEAD > brightcyan/17
+context <HEAD >                 brightcyan/17
     keyword = brightred/18
 
     keyword whole dir yellow/24
@@ -922,7 +929,7 @@ context <HEAD > brightcyan/17
     keyword "*" cyan/5
 
 
-context <HR > brightcyan/17
+context <HR >                   brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -953,7 +960,7 @@ context <HR > brightcyan/17
     keyword "*" cyan/5
 
 
-context <HTML > brightcyan/17
+context <HTML >                 brightcyan/17
     keyword = brightred/18
 
     keyword whole dir yellow/24
@@ -961,7 +968,7 @@ context <HTML > brightcyan/17
     keyword "*" cyan/5
 
 
-context <IMG > brightcyan/17
+context <IMG >                  brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -998,7 +1005,7 @@ context <IMG > brightcyan/17
     keyword whole width yellow/24
     keyword "*" cyan/5
 
-context <I > brightcyan/17
+context <I >                    brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -1022,7 +1029,7 @@ context <I > brightcyan/17
     keyword "*" cyan/5
 
 
-context <LINK > brightcyan/17
+context <LINK >                 brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -1051,7 +1058,7 @@ context <LINK > brightcyan/17
     keyword "*" cyan/5
 
 
-context <META > brightcyan/17
+context <META >                 brightcyan/17
     keyword = brightred/18
 
     keyword whole content yellow/24
@@ -1059,17 +1066,16 @@ context <META > brightcyan/17
     keyword whole name yellow/24
     keyword "*" cyan/5
 
-context <P > brightcyan/17
+context <P >                    brightcyan/17
 
 
-
-context <TITLE > brightcyan/17
+context <TITLE >                brightcyan/17
     keyword = brightred/18
     keyword whole dir yellow/24
     keyword whole lang yellow/24
     keyword "*" cyan/5
 
-context <SCRIPT > brightcyan/17
+context <SCRIPT >               brightcyan/17
     keyword = brightred/18
 
     keyword whole language yellow/24
@@ -1080,7 +1086,7 @@ context <SCRIPT > brightcyan/17
     keyword "JavaScript1.1" magenta/22
     keyword "*" cyan/5
 
-context <TABLE > brightcyan/17
+context <TABLE >                brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -1113,7 +1119,7 @@ context <TABLE > brightcyan/17
     keyword "*" cyan/5
 
 
-context <SMALL > brightcyan/17
+context <SMALL >                brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -1136,7 +1142,7 @@ context <SMALL > brightcyan/17
     keyword whole onmouseup yellow/24
     keyword "*" cyan/5
 
-context <TD > brightcyan/17
+context <TD >                   brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -1158,6 +1164,8 @@ context <TD > brightcyan/17
     keyword whole onmouseover yellow/24
     keyword whole onmouseup yellow/24
 
+    keyword whole colspan yellow/24
+    keyword whole rowspan yellow/24
     keyword whole align yellow/24
     keyword "centre" magenta/22
     keyword "char" magenta/22
@@ -1179,7 +1187,7 @@ context <TD > brightcyan/17
     keyword "*" cyan/5
 
 
-context <TR > brightcyan/17
+context <TR >                   brightcyan/17
     keyword = brightred/18
 
     keyword whole class yellow/24
@@ -1217,11 +1225,43 @@ context <TR > brightcyan/17
 
     keyword "*" cyan/5
 
-context <!-- --> brown/22
+context <TT >                   brightcyan/17
+    keyword = brightred/18
+
+    keyword whole class yellow/24
+    keyword whole id yellow/24
+    keyword whole style yellow/24
+    keyword whole title yellow/24
+
+    keyword whole dir yellow/24
+    keyword whole lang yellow/24
+
+context <U >                    brightcyan/17
+    keyword = brightred/18
+
+    keyword whole class yellow/24
+    keyword whole id yellow/24
+    keyword whole style yellow/24
+    keyword whole title yellow/24
+
+    keyword whole dir yellow/24
+    keyword whole lang yellow/24
+
+context <PRE >                  brightcyan/17
+    keyword = brightred/18
+
+    keyword whole class yellow/24
+    keyword whole id yellow/24
+    keyword whole style yellow/24
+    keyword whole title yellow/24
+
+    keyword whole dir yellow/24
+    keyword whole lang yellow/24
+
+context <!-- -->                brown/22
     spellcheck
 
 context <! > brightred/orange
     spellcheck
 
-context < > cyan/15
-
+context < >                     cyan/15

@@ -1,52 +1,46 @@
+# XML syntax highlighting
+#
+# Author: Petr Kozelka <pkozelka@email.cz>
+# http://kozelka.hyperlink.cz
+
 context default
-    keyword &*; brightgreen/16
-    keyword %*; brightgreen/16
-    keyword <![CDATA[ white/26
-    keyword ]]> white/26
+    keyword &*; white cyan
+    spellcheck
 
-context exclusive <![CDATA[ ]]>
+context <!-- --> brightgreen
+    spellcheck
 
-context <?xml-stylesheet ?> white/26
-    keyword whole href yellow/24
-    keyword whole type yellow/24
-    keyword whole "*" yellow/24
-    keyword whole '*' yellow/24
+context <! > yellow
+    keyword '+' brightcyan
+    keyword "+" brightcyan
+    keyword whole DOCTYPE white red
+    keyword whole PUBLIC brightred
+    keyword whole SYSTEM brightred
+    keyword whole NDATA brightred
+    keyword whole CDATA white
+    keyword whole #PCDATA white
+    keyword whole EMPTY white
+    keyword whole #REQUIRED white
+    keyword whole #IMPLIED white
+    keyword whole ELEMENT white
+    keyword whole ENTITY brightred
+    keyword whole ATTLIST white
+    keyword whole %*; white cyan
+    keyword \( lightgray
+    keyword \) lightgray
+    keyword \* lightgray
+    keyword \? lightgray
+    keyword \+ lightgray
+    keyword \| lightgray
+    keyword \, lightgray
+    spellcheck
 
-context <?xml ?> white/26
-    keyword whole version yellow/24
-    keyword whole encoding yellow/24
-    keyword whole standalone yellow/24
-    keyword whole "*" yellow/24
-    keyword whole '*' yellow/24
-
-context <!-- --> brown/22
-
-context <!DOCTYPE > white/26
-    keyword whole "*" yellow/24
-    keyword whole '*' yellow/24
-
-context <!ENTITY > white/26
-    keyword whole "*" yellow/24
-    keyword whole '*' yellow/24
-
-context <!ELEMENT > white/26
-    keyword whole "*" yellow/24
-    keyword whole '*' yellow/24
-
-context <!ATTLIST > white/26
-    keyword whole "*" yellow/24
-    keyword whole '*' yellow/24
-
-context <!NOTATION > white/26
-    keyword whole "*" yellow/24
-    keyword whole '*' yellow/24
-
-context <!ELEMENT > white/26
-    keyword whole "*" yellow/24
-    keyword whole '*' yellow/24
-
-context < > cyan/16
-    keyword whole "*" brightcyan/14
-    keyword whole '*' brightcyan/14
-    keyword : brightcyan/14
-    keyword / brightcyan/14
+context <\?xml \?> white red
+context <\? \?> lightgray black
+context < > white
+    keyword \sxmlns\:*\="+" brightred
+    keyword \sxmlns\="+" brightred
+    keyword \s*= yellow
+    keyword '*' brightcyan
+    keyword "*" brightcyan
+    spellcheck

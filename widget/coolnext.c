@@ -757,7 +757,7 @@ static char *event_names[] =
     "MappingNotify"
 };
 
-static int num_event_names = sizeof (event_names) / sizeof (num_event_names);
+static int num_event_names = sizeof (event_names) / sizeof (event_names[0]);
 
 const char *get_event_name(int type)
 {E_

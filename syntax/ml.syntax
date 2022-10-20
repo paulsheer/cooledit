@@ -3,93 +3,93 @@
 ##################################################################################
 
 context default
-    keyword whole and yellow/24
-    keyword whole as yellow/24
-    keyword whole begin yellow/24
-    keyword whole do yellow/24
-    keyword whole done yellow/24
-    keyword whole downto yellow/24
-    keyword whole else yellow/24
-    keyword whole end yellow/24
-    keyword whole exception yellow/24
-    keyword whole for yellow/24
-    keyword whole fun yellow/24
-    keyword whole function yellow/24
-    keyword whole if yellow/24
-    keyword whole in yellow/24
-    keyword whole let yellow/24
-    keyword whole match yellow/24
-    keyword whole mutable yellow/24
-    keyword whole not yellow/24
-    keyword whole of yellow/24
-    keyword whole or yellow/24
-    keyword whole prefix yellow/24
-    keyword whole rec yellow/24
-    keyword whole then yellow/24
-    keyword whole to yellow/24
-    keyword whole try yellow/24
-    keyword whole type yellow/24
-    keyword whole value yellow/24
-    keyword whole where yellow/24
-    keyword whole while yellow/24
-    keyword whole mod yellow/24
-    keyword whole with yellow/24
-    keyword whole true yellow/24
-    keyword whole false yellow/24
+    keyword whole and yellow
+    keyword whole as yellow
+    keyword whole begin yellow
+    keyword whole do yellow
+    keyword whole done yellow
+    keyword whole downto yellow
+    keyword whole else yellow
+    keyword whole end yellow
+    keyword whole exception yellow
+    keyword whole for yellow
+    keyword whole fun yellow
+    keyword whole function yellow
+    keyword whole if yellow
+    keyword whole in yellow
+    keyword whole let yellow
+    keyword whole match yellow
+    keyword whole mutable yellow
+    keyword whole not yellow
+    keyword whole of yellow
+    keyword whole or yellow
+    keyword whole prefix yellow
+    keyword whole rec yellow
+    keyword whole then yellow
+    keyword whole to yellow
+    keyword whole try yellow
+    keyword whole type yellow
+    keyword whole value yellow
+    keyword whole where yellow
+    keyword whole while yellow
+    keyword whole mod yellow
+    keyword whole with yellow
+    keyword whole true yellow
+    keyword whole false yellow
 
-    keyword (\* brown/22
-    keyword \*) brown/22
+    keyword (\* brown
+    keyword \*) brown
 
-    keyword `\s` brightcyan/8
-    keyword `+` brightcyan/8
-    keyword > cyan/16
-    keyword <> cyan/16
-    keyword < cyan/16
-    keyword . cyan/16
-    keyword -> brightgreen/6
-    keyword <- cyan/16
-    keyword \+ cyan/16
-    keyword - cyan/16
-    keyword \* cyan/16
-    keyword / cyan/16
-    keyword % cyan/16
-    keyword = cyan/16
-    keyword | cyan/16
-    keyword # cyan/16
-    keyword @ cyan/16
-    keyword ^ cyan/16
-    keyword { cyan/16
-    keyword } cyan/16
-    keyword ( cyan/16
-    keyword ) cyan/16
-    keyword [ cyan/16
-    keyword ] cyan/16
-    keyword , cyan/16
-    keyword : cyan/16
-    keyword & cyan/16
-    
-    keyword wholeright ;; brightred/18
-    keyword wholeright ; brightred/18
-    
-    keyword ; cyan/16
+    keyword `\s` brightcyan
+    keyword `+` brightcyan
+    keyword > cyan
+    keyword <> cyan
+    keyword < cyan
+    keyword . cyan
+    keyword -> brightgreen
+    keyword <- cyan
+    keyword \+ cyan
+    keyword - cyan
+    keyword \* cyan
+    keyword / cyan
+    keyword % cyan
+    keyword = cyan
+    keyword | cyan
+    keyword # cyan
+    keyword @ cyan
+    keyword ^ cyan
+    keyword { cyan
+    keyword } cyan
+    keyword ( cyan
+    keyword ) cyan
+    keyword [ cyan
+    keyword ] cyan
+    keyword , cyan
+    keyword : cyan
+    keyword & cyan
 
-context exclusive (\* \*) brown/22
+    keyword wholeright ;; brightred
+    keyword wholeright ; brightred
 
-    keyword \\\n yellow/24
-    keyword "+" brown/22
-    keyword <+> brown/22
+    keyword ; cyan
 
-context " " brightcyan/8
-    keyword \\" brightmagenta/23
-    keyword \\n brightmagenta/23
-    keyword %% brightmagenta/23
-    keyword %\[#0\s-\+,\]\[0123456789\]\[.\]\[0123456789\]\[L\]\{eEfgGoxX\} brightmagenta/23
-    keyword %\[0\s-\+,\]\[0123456789\]\[.\]\[0123456789\]\[hl\]\{diu\} brightmagenta/23
-    keyword %\[hl\]n brightmagenta/23
-    keyword %\[.\]\[0123456789\]s brightmagenta/23
-    keyword %[*] brightmagenta/23
-    keyword %c brightmagenta/23
-    keyword \\\{0123\}\{01234567\}\{01234567\} brightmagenta/23
-    keyword \\\\ brightmagenta/23
-    keyword \\' brightmagenta/23
-    keyword \\\{abtnvfr\} brightmagenta/23
+context exclusive (\* \*) brown
+
+    keyword \\\n yellow
+    keyword "+" brown
+    keyword <+> brown
+
+context " " brightcyan
+    keyword \\" brightmagenta
+    keyword \\n brightmagenta
+    keyword %% brightmagenta
+    keyword %\[#0\s-\+,\]\[0123456789\]\[.\]\[0123456789\]\[L\]\{eEfgGoxX\} brightmagenta
+    keyword %\[0\s-\+,\]\[0123456789\]\[.\]\[0123456789\]\[hl\]\{diuxX\} brightmagenta
+    keyword %\[hl\]n brightmagenta
+    keyword %\[.\]\[0123456789\]s brightmagenta
+    keyword %[*] brightmagenta
+    keyword %c brightmagenta
+    keyword \\\{0123\}\{01234567\}\{01234567\} brightmagenta
+    keyword \\\\ brightmagenta
+    keyword \\' brightmagenta
+    keyword \\\{abtnvfr\} brightmagenta

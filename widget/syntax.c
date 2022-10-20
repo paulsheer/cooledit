@@ -36,6 +36,12 @@
             (d)--; \
     } while (0)
 
+struct defin {
+    struct defin *next;
+    char *key;
+    char *value1;
+    char *value2;
+};
 
 /*
    Mispelled words are flushed from the syntax highlighting rules
@@ -679,11 +685,22 @@ static FILE *open_include_file (char *filename)
     return fopen (p, "r");
 }
 
+static struct defin *lookup_defin (WEdit * edit, const char *key)
+{E_
+    struct defin *p;
+    if (!key)
+        return NULL;
+    for (p = edit->defin; p; p = p->next)
+        if (!strcmp (p->key, key))
+            return p;
+    return NULL;
+}
+
 /* returns line number on error */
 static int edit_read_syntax_rules (WEdit * edit, FILE * f)
 {E_
     FILE *g = 0;
-    char *fg, *bg;
+    char *fg, *bg, *attrs;
     char last_fg[32] = "", last_bg[32] = "";
     char whole_right[512];
     char whole_left[512];
@@ -693,6 +710,7 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
     int num_words = -1, num_contexts = -1;
     int argc, result = 0;
     int i, j;
+    struct defin *p;
 
     args[0] = 0;
 
@@ -805,12 +823,22 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
 #endif
 	    num_words = 1;
 	    c->keyword[0] = syntax_malloc (sizeof (struct key_word));
-	    fg = *a;
-	    if (*a)
+            if ((p = lookup_defin (edit, *a))) {
 		a++;
-	    bg = *a;
-	    if (*a)
-		a++;
+                fg = p->value1;
+                bg = p->value2;
+            } else {
+	        fg = *a;
+	        if (*a)
+		    a++;
+	        bg = *a;
+	        if (*a)
+		    a++;
+                attrs = *a;
+	        if (*a)
+		    a++;
+                (void) attrs; /* not used by cooledit */
+            }
 	    strcpy (last_fg, fg ? fg : "");
 	    strcpy (last_bg, bg ? bg : "");
 #ifdef MIDNIGHT
@@ -862,12 +890,22 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
 	    }
 	    k->keyword = (char *) strdup (*a++);
 	    k->first = *k->keyword;
-	    fg = *a;
-	    if (*a)
+            if ((p = lookup_defin (edit, *a))) {
 		a++;
-	    bg = *a;
-	    if (*a)
-		a++;
+                fg = p->value1;
+                bg = p->value2;
+            } else {
+	        fg = *a;
+	        if (*a)
+		    a++;
+	        bg = *a;
+	        if (*a)
+		    a++;
+                attrs = *a;
+	        if (*a)
+		    a++;
+                (void) attrs; /* not used by cooledit */
+            }
 	    if (!fg)
 		fg = last_fg;
 	    if (!bg)
@@ -884,6 +922,19 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
 	    /* do nothing for comment */
 	} else if (!strcmp (args[0], "file")) {
 	    break;
+	} else if (!strcmp (args[0], "define")) {
+            struct defin *defin;
+	    char *key = *a++;
+	    check_a;
+            defin = (struct defin *) malloc (sizeof (struct defin));
+            memset (defin, '\0', sizeof (struct defin));
+            defin->key = (char *) strdup (key);
+            defin->value1 = (char *) strdup (*a);
+            a++;
+            if (*a)
+                defin->value2 = (char *) strdup (*a);
+            defin->next = edit->defin;
+            edit->defin = defin;
 	} else {		/* anything else is an error */
 	    *a = 0;
 	    check_a;
@@ -1263,6 +1314,21 @@ void edit_free_syntax_rules (WEdit * edit)
     if (!edit->rules)
 	return;
     edit_get_rule (edit, -1);
+    if (edit->defin) {
+        struct defin *p, *next;
+        for (p = edit->defin; p; p = next) {
+            next = p->next;
+            assert (p->key);
+            free (p->key);
+            assert (p->value1);
+            free (p->value1);
+            if (p->value2) /* optional second value */
+                free (p->value2);
+            memset (p, '\0', sizeof (*p));
+            free (p);
+        }
+        edit->defin = NULL;
+    }
     syntax_free (edit->syntax_type);
     edit->syntax_type = 0;
     if (syntax_change_callback)

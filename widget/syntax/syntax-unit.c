@@ -138,6 +138,8 @@ struct _syntax_marker {
     struct _syntax_marker *next;
 };
 
+struct defin;
+
 struct WEdit_ {
     CWidget *widget;
 
@@ -150,6 +152,7 @@ struct WEdit_ {
     int force;
 
     struct _syntax_marker *syntax_marker;
+    struct defin *defin;
     struct context_rule **rules;
     long last_get_rule;
     struct syntax_rule rule;

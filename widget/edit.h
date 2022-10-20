@@ -271,7 +271,7 @@ struct _mb_marker {
 struct syntax_rule {
     unsigned short keyword;
     unsigned char brace_depth;
-    unsigned unsigned char end;
+    unsigned char end;
     unsigned char context;
     unsigned char _context;
 #define RULE_ON_LEFT_BORDER 1
@@ -339,6 +339,8 @@ struct undo_element {
     enum undo_command command;
     long param;
 };
+
+struct defin;
 
 #define BLANK_UNDERLINING_BOOKMARK(b)   (!(b)->text && (b)->height && (b)->c == BOOK_MARK_COLOR)
 #define TEXT_UNDERLINING_BOOKMARK(b)    ((b)->text && (b)->height)
@@ -442,6 +444,7 @@ struct editor_widget {
 /* syntax higlighting */
     struct _syntax_marker *syntax_marker;
     struct context_rule **rules;
+    struct defin *defin;
     long last_get_rule;
     struct syntax_rule rule;
     int syntax_invalidate;

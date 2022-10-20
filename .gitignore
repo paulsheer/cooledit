@@ -57,3 +57,12 @@ remotefs/.deps/
 remotefs/.libs/
 remotefs/Makefile
 remotefs/remotefs
+
+widget/syntax/regex.c
+widget/syntax/regex.o
+widget/syntax/stringtools.c
+widget/syntax/stringtools.o
+widget/syntax/syntax-test
+widget/syntax/syntax.c
+widget/syntax/syntax.o
+widget/syntax/unittest.syntax-start

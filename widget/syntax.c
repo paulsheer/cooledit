@@ -1393,7 +1393,7 @@ void edit_free_syntax_rules (WEdit * edit)
     syntax_free (edit->rules);
 }
 
-#define CURRENT_SYNTAX_RULES_VERSION "76"
+#define CURRENT_SYNTAX_RULES_VERSION "77"
 
 #ifndef UNIT_TEST
 
@@ -1700,7 +1700,7 @@ NULL,
 
 
     FILE *fp;
-    fp = popen ("ls -1 ../../syntax-mc/*.syntax", "r");
+    fp = popen ("ls -1 ../../syntax/*.syntax", "r");
     if (!fp) {
         perror ("popen");
         exit(1);

@@ -9,7 +9,7 @@ OBJ     = $(SRC:.c=.o)
 
 all: ../syntax-top.c test
 
-../syntax-top.c:
+../syntax-top.c: Syntax.in
 	python3 make-syntax.py > ../syntax-top.c
 syntax.c:
 	ln -sf ../syntax.c .

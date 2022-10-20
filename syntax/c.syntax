@@ -36,13 +36,39 @@ context default
     keyword whole inline yellow
     keyword whole wchar_t yellow
     keyword whole ... yellow
-    keyword linestart \{\s\t\}\[\s\t\]#*\n brightmagenta
-    keyword whole \[\s\t\]default yellow
-    keyword whole linestart \[\s\t\]\{ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz\}\[0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz\]: cyan
 
-    keyword /\* brown
-    keyword \*/ brown
-    keyword // brown
+    keyword whole bool yellow
+    keyword whole catch yellow
+    keyword whole class yellow
+    keyword whole const_cast yellow
+    keyword whole default yellow
+    keyword whole delete yellow
+    keyword whole dynamic_cast yellow
+    keyword whole explicit yellow
+    keyword whole false yellow
+    keyword whole friend yellow
+    keyword whole mutable yellow
+    keyword whole namespace yellow
+    keyword whole new yellow
+    keyword whole operator yellow
+    keyword whole private yellow
+    keyword whole protected yellow
+    keyword whole public yellow
+    keyword whole reinterpret_cast yellow
+    keyword whole static_cast yellow
+    keyword whole template yellow
+    keyword whole this yellow
+    keyword whole throw yellow
+    keyword whole true yellow
+    keyword whole try yellow
+    keyword whole typeid yellow
+    keyword whole typename yellow
+    keyword whole using yellow
+    keyword whole virtual yellow
+
+    keyword /\* brown/22
+    keyword \*/ brown/22
+    keyword // brown/22
 
     keyword '\\\{"abtnvfr\}' brightgreen
     keyword '\\\{0123\}\{01234567\}\{01234567\}' brightgreen
@@ -54,42 +80,42 @@ context default
 # punctuation characters, sorted by ASCII code
     keyword ! yellow
     keyword % yellow
-    keyword && yellow
+    keyword && yellow blue3
     keyword & brightmagenta
-    keyword ( brightcyan
-    keyword ) brightcyan
+    keyword ( brightcyan/15
+    keyword ) brightcyan/15
     keyword \* yellow
     keyword \+ yellow
-    keyword , brightcyan
+    keyword , brightcyan/14
     keyword - yellow
     keyword / yellow
-    keyword : brightcyan
-    keyword ; brightmagenta
+    keyword : brightcyan/14
+    keyword ; brightmagenta/19
     keyword < yellow
     keyword = yellow
     keyword > yellow
-    keyword ? brightcyan
-    keyword [ brightcyan
-    keyword ] brightcyan
+    keyword ? brightcyan/19
+    keyword [ brightcyan/14
+    keyword ] brightcyan/14
     keyword ^ brightmagenta
-    keyword { brightcyan
-    keyword || yellow
+    keyword { brightcyan/14
+    keyword || yellow blue3
     keyword | brightmagenta
-    keyword } brightcyan
+    keyword } brightcyan/14
     keyword ~ brightmagenta
 
-context exclusive /\* \*/ brown
+context exclusive /\* \*/ brown/22
     spellcheck
 
-context exclusive // \n brown
+context exclusive // \n brown/22
     spellcheck
 
-context linestart # \n brightred
+context linestart # \n brightred/18
     keyword \\\n yellow
-    keyword /\**\*/ brown
-    keyword //*\e brown
-    keyword "+" red
-    keyword <+> red
+    keyword /\**\*/ brown/22
+    keyword //*\e brown/22
+    keyword "+" red/19
+    keyword <+> red/19
 
 context " " green
     spellcheck

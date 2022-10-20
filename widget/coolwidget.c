@@ -55,17 +55,36 @@ void *CDebugMalloc (size_t x, int line, const char *file)
 #endif
 
 
-int allocate_color (char *color)
+int allocate_color (char *color_)
 {E_
-    if (!color)
+    char color[64], *p;
+    if (!color_)
 	return NO_COLOR;
+    if (!color_[0])
+	return NO_COLOR;
+    Cstrlcpy (color, color_, sizeof (color));
+    if ((p = strchr (color, '/')))
+        *p = '\0';
     if (*color >= '0' && *color <= '9') {
 	return atoi (color);
     } else {
 	int i;
 	XColor c;
-	if (!color)
-	    return NO_COLOR;
+
+        /* not in rgb.txt */
+        if (!strcasecmp (color, "base"))
+            strcpy (color, "gray16");
+        if (!strcasecmp (color, "brightblue"))
+            strcpy (color, "SteelBlue2");
+        if (!strcasecmp (color, "brightcyan"))
+            strcpy (color, "LightCyan1");
+        if (!strcasecmp (color, "brightgreen"))
+            strcpy (color, "PaleGreen1");
+        if (!strcasecmp (color, "brightmagenta"))
+            strcpy (color, "plum1");
+        if (!strcasecmp (color, "brightred"))
+            strcpy (color, "IndianRed1");
+
 	if (!XParseColor (CDisplay, CColormap, color, &c))
 	    return NO_COLOR;
 	if (!XAllocColor (CDisplay, CColormap, &c))

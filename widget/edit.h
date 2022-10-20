@@ -279,7 +279,7 @@ struct syntax_rule {
     unsigned char border;
 };
 
-#define MAX_WORDS_PER_CONTEXT	1024
+#define MAX_WORDS_PER_CONTEXT	4096
 #define MAX_CONTEXTS		128
 
 struct key_word {
@@ -445,6 +445,7 @@ struct editor_widget {
     struct _syntax_marker *syntax_marker;
     struct context_rule **rules;
     struct defin *defin;
+    int is_case_insensitive;
     long last_get_rule;
     struct syntax_rule rule;
     int syntax_invalidate;
@@ -657,7 +658,7 @@ int edit_split_filename (WEdit * edit, const char *host, const char *name);
 #define CWidget GtkEdit
 #endif
 void edit_set_syntax_change_callback (void (*callback) (CWidget *));
-void edit_load_syntax (WEdit * edit, char **names, char *type);
+int edit_load_syntax (WEdit * edit, char **names, char *type);
 void edit_free_syntax_rules (WEdit * edit);
 void edit_get_syntax_color (WEdit * edit, long byte_index, int *fg, int *bg);
 int edit_check_spelling (WEdit * edit);

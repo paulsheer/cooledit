@@ -52,7 +52,7 @@ SYNTAX_TOKEN_STAR
 SYNTAX_TOKEN_PLUS
 '\003'
 SYNTAX_TOKEN_BRACKET
-edit_get_byte (edit, i)
+edit_get_lowercase_byte (edit, i)
 xx_tolower (edit, edit_buffer_get_byte (&edit->buffer, i))
 *p == *text
 p[0] == text[0]
@@ -76,6 +76,8 @@ xx_strchr ((unsigned char
 xx_strchr (edit, (unsigned char
 xx_strchr ((const unsigned char
 xx_strchr (edit, (const unsigned char
+edit_get_lowercase_byte (edit, i - 1)
+xx_tolower (edit, edit_buffer_get_byte (&edit->buffer, i - 1))
 edit_get_byte (edit, i - 1)
 edit_buffer_get_byte (&edit->buffer, i - 1)
 keyword_foundleft = 1;

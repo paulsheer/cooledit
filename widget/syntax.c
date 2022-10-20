@@ -61,7 +61,7 @@ int option_syntax_highlighting = 1;
 int option_auto_spellcheck = 1;
 
 /* these three functions are called from the outside */
-void edit_load_syntax (WEdit * edit, char **names, char *type);
+int edit_load_syntax (WEdit * edit, char **names, char *type);
 void edit_free_syntax_rules (WEdit * edit);
 void edit_get_syntax_color (WEdit * edit, long byte_index, int *fg, int *bg);
 
@@ -71,6 +71,15 @@ static void *syntax_malloc (size_t x)
     p = malloc (x);
     memset (p, 0, x);
     return p;
+}
+
+#define LOWER_CASE(edit,c)   (((edit)->is_case_insensitive && (c) >= 'A' && (c) <= 'Z') ? (c + ('a' - 'A')) : (c))
+
+static int edit_get_lowercase_byte (WEdit * edit, int i)
+{
+    int c;
+    c = edit_get_byte (edit, i);
+    return LOWER_CASE (edit, c);
 }
 
 #define syntax_free(x) {if(x){free(x);(x)=0;}}
@@ -85,7 +94,7 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
     if (!*text)
 	return -1;
 
-    c = edit_get_byte (edit, i - 1);
+    c = edit_get_lowercase_byte (edit, i - 1);
     if ((line_start && c != '\n') || (whole_left != NULL && strchr (whole_left, c) != NULL))
 	return -1;
 
@@ -95,7 +104,7 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 	    if (++p > q)
 		return -1;
 	    for (;;) {
-		c = edit_get_byte (edit, i);
+		c = edit_get_lowercase_byte (edit, i);
 		COUNT_BRACE (c, depth);
                 if (*p == '\0' && whole_right != NULL && strchr (whole_right, c) == NULL)
 		    break;
@@ -119,7 +128,7 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 		return -1;
 	    j = 0;
 	    for (;;) {
-		c = edit_get_byte (edit, i);
+		c = edit_get_lowercase_byte (edit, i);
 		if (c == *p) {
 		    j = i;
 		    if (*p == *text && !p[1])	/* handle eg '+' and @+@ keywords properly */
@@ -146,7 +155,7 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 	    c = -1;
 	    for (;;) {
 		d = c;
-		c = edit_get_byte (edit, i);
+		c = edit_get_lowercase_byte (edit, i);
 		for (j = 0; p[j] != '\003' && p[j] != '\0'; j++)
 		    if (c == p[j])
 			goto found_char2;
@@ -167,7 +176,7 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 	case '\004':		/* '{' '}' */
 	    if (++p > q)
 		return -1;
-	    c = edit_get_byte (edit, i);
+	    c = edit_get_lowercase_byte (edit, i);
 	    COUNT_BRACE (c, depth);
 	    for (; *p != '\004' && *p != '\0'; p++)
 		if (c == *p)
@@ -183,7 +192,7 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 		int b = 0;
 		p++;
 		for (;;) {
-		    c = edit_get_byte (edit, i);
+		    c = edit_get_lowercase_byte (edit, i);
 		    if (c == '\\') {
 			i += 2;
 			continue;
@@ -201,37 +210,29 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 #endif
 
 	case '\005':		/* invisible end-of-line character matches one short of '\n' */
-	    c = edit_get_byte (edit, i);
+	    c = edit_get_lowercase_byte (edit, i);
 	    if ('\n' != (unsigned char) c)
 		return -1;
             end_of_line_adjust = 1;
 	    break;
 
 	default:
-	    c = edit_get_byte (edit, i);
+	    c = edit_get_lowercase_byte (edit, i);
 	    COUNT_BRACE (c, depth);
 	    if (*p != (unsigned char) c)
 		return -1;
 	}
     }
-    return (whole_right != NULL && strchr (whole_right, edit_get_byte (edit, i)) != NULL) ? -1 : (i - end_of_line_adjust);
+    return (whole_right != NULL && strchr (whole_right, edit_get_lowercase_byte (edit, i)) != NULL) ? -1 : (i - end_of_line_adjust);
 }
 
-#if 1
-#define XXX							\
-	    if (*s < '\005' || *s == (unsigned char) c)		\
-		goto done;					\
-	    s++;
-static inline char *xx_strchr (const unsigned char *s, int c)
-{E_
-  repeat:
-    XXX XXX XXX XXX XXX XXX XXX XXX;
-    XXX XXX XXX XXX XXX XXX XXX XXX;
-    goto repeat;
-  done:
-    return (char *) s;
+static const char *xx_strchr (const WEdit * edit, const unsigned char *s, int char_byte)
+{
+    while (*s >= '\005' && LOWER_CASE (edit, *s) != char_byte)
+	s++;
+
+    return (const char *) s;
 }
-#endif
 
 static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_rule rule)
 {E_
@@ -241,7 +242,7 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
     int is_end;
     long end = 0;
     struct syntax_rule _rule = rule;
-    if (!(c = edit_get_byte (edit, i)))
+    if (!(c = edit_get_lowercase_byte (edit, i)))
 	return;
     COUNT_BRACE (c, edit->rule.brace_depth);
     is_end = ((rule.end & 0xff) == (i & 0xff));
@@ -284,7 +285,7 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
         r = edit->rules[_rule.context];
 	p = r->keyword_first_chars;
 	if (p != NULL)
-	    while (*(p = xx_strchr ((const unsigned char *) p + 1, c)) != '\0') {
+	    while (*(p = xx_strchr (edit, (const unsigned char *) p + 1, c)) != '\0') {
 	        struct key_word *k;
 	        int count;
 	        long e;
@@ -370,7 +371,7 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
 	const char *p;
         r = edit->rules[_rule.context];
 	p = r->keyword_first_chars;
-	while (*(p = xx_strchr ((unsigned char *) p + 1, c))) {
+	while (*(p = xx_strchr (edit, (unsigned char *) p + 1, c))) {
 	    struct key_word *k;
 	    int count;
 	    long e;
@@ -510,6 +511,9 @@ static char *strdup_convert (char *s)
 	case '\\':
 	    s++;
 	    switch (*s) {
+	    case '\0':
+                *p++ = '\\';
+		goto out;
 	    case ' ':
 		*p = ' ';
 		s--;
@@ -561,6 +565,7 @@ static char *strdup_convert (char *s)
 	s++;
 	p++;
     }
+  out:
     *p = '\0';
     return r;
 }
@@ -647,15 +652,16 @@ int this_allocate_color (WEdit *edit, char *fg)
 int this_allocate_color (WEdit *edit, char *fg)
 {E_
     char *p;
+    int c;
     if (fg)
 	if (!*fg)
 	    fg = 0;
     if (!fg)
 	return allocate_color (0);
     p = strchr (fg, '/');
-    if (!p)
-	return allocate_color (fg);
-    return allocate_color (p + 1);
+    if (p && p[1] && (c = allocate_color (p + 1)) != NO_COLOR)
+	return c;
+    return allocate_color (fg);
 }
 #endif
 #endif
@@ -694,6 +700,16 @@ static struct defin *lookup_defin (WEdit * edit, const char *key)
         if (!strcmp (p->key, key))
             return p;
     return NULL;
+}
+
+static void xx_lowerize_line (WEdit * edit, char *line)
+{
+    if (edit->is_case_insensitive) {
+	size_t i;
+
+	for (i = 0; line[i]; ++i)
+	    line[i] = LOWER_CASE (edit, line[i]);
+    }
 }
 
 /* returns line number on error */
@@ -738,6 +754,9 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
 		break;
 	    }
 	}
+
+        xx_lowerize_line (edit, l);
+
 	get_args (l, args, &argc);
 	a = args + 1;
 	if (!args[0]) {
@@ -756,6 +775,8 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
 	    }
 	    save_line = line;
 	    line = 0;
+	} else if (!strcmp (args[0], "caseinsensitive")) {
+	    edit->is_case_insensitive = 1;
 	} else if (!strcmp (args[0], "wholechars")) {
 	    check_a;
 	    if (!strcmp (*a, "left")) {
@@ -841,6 +862,9 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
             }
 	    strcpy (last_fg, fg ? fg : "");
 	    strcpy (last_bg, bg ? bg : "");
+#ifdef PRINT_COLORS
+	    printf ("%s %s\n", fg ? fg : "NULL", bg ? bg : "NULL");
+#endif
 #ifdef MIDNIGHT
 	    c->keyword[0]->fg = this_try_alloc_color_pair (fg, bg);
 #else
@@ -910,6 +934,9 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
 		fg = last_fg;
 	    if (!bg)
 		bg = last_bg;
+#ifdef PRINT_COLORS
+	    printf ("%s %s\n", fg ? fg : "NULL", bg ? bg : "NULL");
+#endif
 #ifdef MIDNIGHT
 	    k->fg = this_try_alloc_color_pair (fg, bg);
 #else
@@ -1330,6 +1357,7 @@ void edit_free_syntax_rules (WEdit * edit)
         edit->defin = NULL;
     }
     syntax_free (edit->syntax_type);
+    edit->is_case_insensitive = 0;
     edit->syntax_type = 0;
     if (syntax_change_callback)
 #ifdef MIDNIGHT
@@ -1580,17 +1608,7 @@ char *syntax_text[] = {
 
 #else
 
-char *syntax_text[] = {
-"# syntax rules version " CURRENT_SYNTAX_RULES_VERSION,
-"",
-"file ..\\*\\\\.unit$ Rubbish\\sScript ^nomatch",
-"include unit.syntax",
-"",
-"file ..\\*\\\\.uxit$ Rubbish\\sScript ^nomatch",
-"include uxit.syntax",
-"",
-0};
-
+char **syntax_text = NULL;
 
 #endif
 
@@ -1775,7 +1793,7 @@ static char *get_first_editor_line (WEdit * edit)
 /* loads rules into edit struct. one of edit or names must be zero. if
    edit is zero, a list of types will be stored into name. type may be zero
    in which case the type will be selected according to the filename. */
-void edit_load_syntax (WEdit * edit, char **names, char *type)
+int edit_load_syntax (WEdit * edit, char **names, char *type)
 {E_
     int r;
     char *f;
@@ -1789,9 +1807,9 @@ void edit_load_syntax (WEdit * edit, char **names, char *type)
 
     if (edit) {
 	if (!edit->filename)
-	    return;
+	    return 2;
 	if (!*edit->filename && !type)
-	    return;
+	    return 2;
     }
     f = catstrs (local_home_dir, SYNTAX_FILE, NULL);
     CDisableAlarm();
@@ -1800,7 +1818,7 @@ void edit_load_syntax (WEdit * edit, char **names, char *type)
     if (r == -1) {
 	edit_free_syntax_rules (edit);
 	edit_error_dialog (_ (" Load syntax file "), _ (" File access error "));
-	return;
+	return r;
     }
     if (r) {
 	char s[80];
@@ -1808,8 +1826,9 @@ void edit_load_syntax (WEdit * edit, char **names, char *type)
 	sprintf (s, _ (" Error in file %s on line %d "), error_file_name ? error_file_name : f, r);
 	edit_error_dialog (_ (" Load syntax file "), s);
 	syntax_free (error_file_name);
-	return;
+	return r;
     }
+    return r;
 }
 
 #else
@@ -1841,6 +1860,60 @@ int main(int argc, char **argv)
     WEdit *edit;
     int fg, bg;
     int i;
+    char fname[256];
+
+char *s1[] = {
+"# syntax rules version " CURRENT_SYNTAX_RULES_VERSION,
+"",
+"file ..\\*\\\\.unit$ Rubbish\\sScript ^nomatch",
+"include unit.syntax",
+"",
+"file ..\\*\\\\.uxit$ Rubbish\\sScript ^nomatch",
+"include uxit.syntax",
+"",
+0};
+
+char *s2[] = {
+"# syntax rules version " CURRENT_SYNTAX_RULES_VERSION,
+"",
+"file ..\\*\\\\.unit$ Rubbish\\sScript ^nomatch",
+NULL,
+"",
+0};
+
+
+    FILE *fp;
+    fp = popen ("ls -1 ../../syntax-mc/*.syntax", "r");
+    if (!fp) {
+        perror ("popen");
+        exit(1);
+    }
+
+    while (fgets (fname, sizeof (fname), fp)) {
+        string_chomp (fname);
+
+        unlink ("unittest.syntax-start");
+        s2[3] = (char *) malloc (1024);
+    
+        snprintf (s2[3], 1024, "include %s", fname);
+        syntax_text = s2;
+
+        edit = (WEdit *) malloc (sizeof (WEdit));
+
+        memset (edit, '\0', sizeof (*edit));
+        edit->last_get_rule = -1;
+        edit->syntax_invalidate = 1;
+
+        edit->filename = "test.unit";
+
+        if (edit_load_syntax (edit, 0, 0))
+            exit (1);
+    }
+
+/********************************************/
+
+    unlink ("unittest.syntax-start");
+    syntax_text = s1;
 
     edit = (WEdit *) malloc (sizeof (WEdit));
 
@@ -1863,7 +1936,8 @@ int main(int argc, char **argv)
     edit->syntax_invalidate = 1;
 
     edit->filename = "test.unit";
-    edit_load_syntax (edit, 0, 0);
+    if (edit_load_syntax (edit, 0, 0))
+        exit (1);
 
     TEST("AA$AA",0,5,6);
     TEST("AA#AA",0,2,6);

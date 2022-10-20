@@ -27,7 +27,7 @@ struct syntax_rule {
     unsigned char border;
 };
 
-#define MAX_WORDS_PER_CONTEXT	1024
+#define MAX_WORDS_PER_CONTEXT	4096
 #define MAX_CONTEXTS		128
 #define MAX_PATH_LEN            1024
 #define EDIT_DIR                "./"
@@ -154,6 +154,7 @@ struct WEdit_ {
     struct _syntax_marker *syntax_marker;
     struct defin *defin;
     struct context_rule **rules;
+    int is_case_insensitive;
     long last_get_rule;
     struct syntax_rule rule;
     int syntax_invalidate;
@@ -173,6 +174,8 @@ int edit_get_byte(WEdit *e, int i)
     assert (i < e->last_byte);
     return e->text[i];
 }
+
+
 
 #define NO_COLOR 0x7FFFFFFF
 

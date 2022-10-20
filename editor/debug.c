@@ -1050,6 +1050,28 @@ static void debug_write_callback (int fd, fd_set * reading, fd_set * writing, fd
     CRemoveWatch (d->in, debug_write_callback, WATCH_WRITING);
 }
 
+static const char *thing (unsigned long m)
+{
+    switch (m & S_IFMT) {
+    case S_IFBLK:
+        return "block device";
+    case S_IFCHR:
+        return "character device";
+    case S_IFDIR:
+        return "directory";
+    case S_IFIFO:
+        return "FIFO/pipe";
+    case S_IFLNK:
+        return "symlink";
+    case S_IFREG:
+        return "regular file";
+    case S_IFSOCK:
+        return "socket";
+    default:
+        return "(unknown type?)";
+    }
+}
+
 
 static int xdebug_run_program (Debug * d)
 {E_
@@ -1063,11 +1085,16 @@ static int xdebug_run_program (Debug * d)
 		      ("Error trying to stat executable: check that the filename and \n current directory are correct"),
 		      strerror (errno));
 	return 1;
-	if (!(s.st_mode & S_IXUSR)) {
-	    debug_error2 (d, _("Your program does not seem to have execute permissions"),
-			  d->progname);
-	    return 1;
-	}
+    }
+    if ((s.st_mode & S_IFMT) != S_IFREG) {
+        char msg[128];
+        snprintf (msg, sizeof (msg), "Your program appears to be a %s \n and not a regular file", thing (s.st_mode));
+        debug_error2 (d, msg, d->progname);
+        return 1;
+    }
+    if (access (d->progname, R_OK | X_OK)) {
+        debug_error2 (d, _("Your program does not seem to have \n execute permissions"), d->progname);
+        return 1;
     }
     arg[i++] = d->debugger;
     if (d->show_output) {

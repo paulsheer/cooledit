@@ -82,7 +82,7 @@ and determine encoding correctness.
 > 
 > 𓅀𓅁𓅂𓅃𓅄𓅅𓅆𓅇𓅈𓅉𓅊𓅚𓅪𓅺𓆊𓆚𓆪𓆺
 
-![Clipboard history](screenshot2.gif)
+![Unicode examples](screenshot3.gif)
 
 
 ### History

@@ -1,4 +1,4 @@
-# shallow-backup
+# Cooledit
 
 `cooledit` is a modern programmers text editor and integrated development environment and graphical debugger.
 

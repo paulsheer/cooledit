@@ -77,7 +77,9 @@ glyph imaginable, as well as the capability to enter raw characters
 and determine encoding correctness.
 
 > 道可道，非常道。名可名，非常名。無名天地之始；有名萬物之母。故常無欲，以觀其妙；常有欲，以觀其徼。此兩者，同出而異名，同謂之玄。玄之又玄，衆妙之門。
+> 
 > 😎🛟🚚🔧⍼💕💖💗💘💙💚💛💜💝💞💟💌🐀🐁🐂🐃🐄🐅🐆🐇🐈🐉🐊🐋🐌🐍🐎🐏
+> 
 > 𓅀𓅁𓅂𓅃𓅄𓅅𓅆𓅇𓅈𓅉𓅊𓅚𓅪𓅺𓆊𓆚𓆪𓆺
 
 
@@ -91,7 +93,7 @@ project in 1998 and was presented by me at the 1999 Atlanta Linux Showcase.
 ### Source Map
 ---
 
-```shell
+```
 cooledit/
 ├── widget [widget library]
 │   └── syntax [unit tests for syntax highlighting]

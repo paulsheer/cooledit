@@ -150,7 +150,7 @@ static void set_signals (void)
     signal (SIGTERM, SIG_DFL);
 #endif
 #ifdef SIGTSTP
-    signal(SIGTSTP, SIG_IGN);
+/*    signal(SIGTSTP, SIG_IGN); */
     signal(SIGTTIN, SIG_IGN);
     signal(SIGTTOU, SIG_IGN);
 #endif				/* SIGTSTP */

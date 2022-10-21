@@ -796,6 +796,8 @@ void CLowerWindows (void);
  */
 void CNextEvent (XEvent * xevent, CEvent * cwevent);
 
+int CExposePending (Window w, XEvent * ev);
+
 /* Any events left? */
 int CPending (void);
 

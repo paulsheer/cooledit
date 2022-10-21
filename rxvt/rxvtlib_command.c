@@ -1948,9 +1948,8 @@ void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
 	} else {
 	    XEvent unused_xevent;
 
-	    while (XCheckTypedWindowEvent (o->Xdisplay, ev->xany.window, Expose, &unused_xevent));
-	    while (XCheckTypedWindowEvent (o->Xdisplay, ev->xany.window,
-					   GraphicsExpose, &unused_xevent));
+            CExposePending (ev->xany.window, &unused_xevent);
+
 	    if (isScrollbarWindow (ev->xany.window)) {
 		scrollbar_setNone ();
 		rxvtlib_scrollbar_show (o, 0);
@@ -2242,6 +2241,28 @@ void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
 			       &unused_root, &unused_child,
 			       &unused_root_x, &unused_root_y,
 			       &(ev->xbutton.x), &(ev->xbutton.y), &unused_mask);
+
+            /* extend selection on dragging of the mouse outside the screen.
+               implement geometrically aggressive movement to make it easy to
+               drag over a large chunk of scroll-back text */
+
+#define POWER(rows)     do {    if (rows >= 2) \
+                                    rows--; \
+                                if (rows >= 3) \
+                                    rows = (rows - 1) * ((rows >> 2) + 1); } while (0)
+
+            if (Pixel2Row (ev->xbutton.y) < 0) {
+                int rows;
+                rows = -Pixel2Row (ev->xbutton.y);
+                POWER (rows);
+                rxvtlib_scr_page (o, UP, rows);
+            } else if (Pixel2Row (ev->xbutton.y) > o->TermWin.nrow) {
+                int rows;
+                rows = Pixel2Row (ev->xbutton.y) - o->TermWin.nrow;
+                POWER (rows);
+                rxvtlib_scr_page (o, DN, rows);
+            }
+
 #ifdef MOUSE_THRESHOLD
 		/* deal with a `jumpy' mouse */
 		if ((ev->xmotion.time - o->MEvent.time) > MOUSE_THRESHOLD)

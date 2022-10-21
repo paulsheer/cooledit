@@ -76,7 +76,7 @@ static void *syntax_malloc (size_t x)
 #define LOWER_CASE(edit,c)   (((edit)->is_case_insensitive && (c) >= 'A' && (c) <= 'Z') ? (c + ('a' - 'A')) : (c))
 
 static int edit_get_lowercase_byte (WEdit * edit, int i)
-{
+{E_
     int c;
     c = edit_get_byte (edit, i);
     return LOWER_CASE (edit, c);
@@ -227,7 +227,7 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
 }
 
 static const char *xx_strchr (const WEdit * edit, const unsigned char *s, int char_byte)
-{
+{E_
     while (*s >= '\006' && LOWER_CASE (edit, *s) != char_byte)
 	s++;
 
@@ -703,7 +703,7 @@ static struct defin *lookup_defin (WEdit * edit, const char *key)
 }
 
 static void xx_lowerize_line (WEdit * edit, char *line)
-{
+{E_
     if (edit->is_case_insensitive) {
 	size_t i;
 

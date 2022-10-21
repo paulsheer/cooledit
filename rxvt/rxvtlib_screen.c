@@ -819,6 +819,12 @@ void            rxvtlib_scr_add_lines (rxvtlib *o, const unsigned char *str, int
 	    && (o->screen.bscroll == (o->TermWin.nrow - 1))) {
 	    /* _at least_ this many lines need to be scrolled */
 	    rxvtlib_scroll_text (o, o->screen.tscroll, o->screen.bscroll, nlines, 0);
+
+            /* if the user has scrolled up, then don't move the text. rather let it accumulate
+            since it is very annoying to scroll up with the scroll-bar to 'see something' and
+            then have the text move on you. */
+            if (o->TermWin.view_start)
+                rxvtlib_scr_page (o, UP, nlines);
 	    for (i = nlines, j = o->screen.bscroll + o->TermWin.saveLines; i--; j--) {
 		rxvtlib_blank_screen_mem (o, o->screen.text, o->screen.rend, j, o->rstyle);
 		o->screen.tlen[j] = 0;

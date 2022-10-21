@@ -3,7 +3,10 @@
 #ifndef _RXVT_EXPORT_H
 #define _RXVT_EXPORT_H
 
+#ifndef rxvtlib_DEFINED
+#define rxvtlib_DEFINED
 typedef struct _rxvtlib rxvtlib;
+#endif
 
 void rxvtlib_shut (rxvtlib * o);
 void rxvtlib_init (rxvtlib *o, int charset_8bit);

@@ -937,9 +937,12 @@ void            rxvtlib_lookup_key (rxvtlib *o, XEvent * ev)
             }
         }
 	kbuf[len] = '\0';       /* defensive? */
-    } else
+    } else {
+        keysym = 0xFFFFFF;
 	len = XLookupString (&ev->xkey, (char *)kbuf, sizeof (kbuf), &keysym,
 			     &compose);
+        valid_keysym = (keysym != 0xFFFFFF);
+    }
 
 #else				/* USE_XIM */
     len = XLookupString (&ev->xkey, (char *)kbuf, sizeof (kbuf), &keysym,
@@ -3846,10 +3849,10 @@ The default is ^?
 This can be switched back as follows:
 
 # set to ^H   ==>
-printf '\033[?67h'
+printf '\e[?67h'
 
 # set to ^?   ==>
-printf '\033[?67l'
+printf '\e[?67l'
 
 */
 

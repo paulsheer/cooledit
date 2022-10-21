@@ -1550,6 +1550,7 @@ int edit_scripts_dialog (Window parent, int x, int y, struct shell_cmd *s)
     CBackupState (&state);
     CDisable ("*");
 
+#undef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
     CPushFont("widget");

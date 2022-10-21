@@ -65,6 +65,10 @@
 #include <sys/stat.h>
 #endif
 
+#if defined(__sun) || defined(__sun__)
+#include <sys/filio.h>
+#endif
+
 #include "remotefs.h"
 #include "dirtools.h"
 #include "aes.h"
@@ -1466,6 +1470,8 @@ const char *error_code_descr[RFSERR_LAST_INTERNAL_ERROR + 1] = {
 };
 
 
+#undef MIN
+#undef MAX
 #define MIN(a,b)        ((a) < (b) ? (a) : (b))
 #define MAX(a,b)        ((a) > (b) ? (a) : (b))
 

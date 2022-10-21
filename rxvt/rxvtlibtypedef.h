@@ -46,7 +46,10 @@
 /* This code has only the vaguest resemblance to rxvt-2.6.1 - Paul Sheer */
 /*************************************************************************/
 
+#ifndef rxvtlib_DEFINED
+#define rxvtlib_DEFINED
 typedef struct _rxvtlib rxvtlib;
+#endif
 
 #define UTF8_FONT
 // #undef UTF8_FONT

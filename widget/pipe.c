@@ -437,6 +437,7 @@ pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *con
 
 int CChildExitted (pid_t p, int *status);
 
+#define ERROR_EINTR()           (errno == EINTR)
 #define ERROR_EAGAIN()          (errno == EWOULDBLOCK || errno == EAGAIN || errno == EINPROGRESS)
 
 /*
@@ -460,6 +461,11 @@ char *read_pipe (int fd, int *len, pid_t *child_pid)
 	    pool_advance (p, l + 1);
 	for (;;) {
 	    c = read (fd, pool_current (p), l);
+            if (c < 0 && ERROR_EINTR()) {
+                if (child_pid && CChildExitted (*child_pid, 0))
+                    break;
+                continue;
+            }
             if (c < 0 && ERROR_EAGAIN()) {
                 fd_set rd;
                 if (child_pid && CChildExitted (*child_pid, 0))

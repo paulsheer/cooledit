@@ -416,7 +416,7 @@ clean-binPROGRAMS:
 
 remotefs$(EXEEXT): $(remotefs_OBJECTS) $(remotefs_DEPENDENCIES) $(EXTRA_remotefs_DEPENDENCIES) 
 	@rm -f remotefs$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(remotefs_OBJECTS) $(remotefs_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(remotefs_OBJECTS) $(remotefs_LDADD) $(LIBS) @X_EXTRA_LIBS@
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)

@@ -56,8 +56,8 @@ if egrep -q '(FreeBSD General Commands Manual|Copyright.*Free.Software.Foundatio
         MAN_CMD="$THE_MAN_CMD" ;
         echo "yes" ;
 else
-        MAN_CMD='man %m' ;
-        echo "no, defaulting to just 'man %m'" ;
+        MAN_CMD='man -a %m' ;
+        echo "no, defaulting to just 'man -a %m'" ;
 fi
 rm -f conftestman
 AC_DEFINE_UNQUOTED(MAN_CMD, "${MAN_CMD}","man")

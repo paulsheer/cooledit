@@ -203,6 +203,7 @@ struct saver_data {
     int step;
 };
 
+#undef MIN
 #define MIN(a,b)        ((a) < (b) ? (a) : (b))
 
 static int edit_sock_writer (struct action_callbacks *o, unsigned char *chunk, int *chunklen_, char *errmsg)

@@ -20,6 +20,7 @@
 
 
 #define PASSWORD_FILE           "/.cedit/.password"
+#undef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 extern char *local_home_dir;

@@ -93,7 +93,11 @@ static void xim_print_error (char *s,...)
     va_end (ap);
 }
 
+#if defined(__sun) || defined(__sun__) /* Solaris core dumps XRegisterIMInstantiateCallback */
+int option_use_xim = 0;
+#else
 int option_use_xim = 1;
+#endif
 static int x_server_xim_reported_enabled = 0;
 static XPoint hold_spot;
 

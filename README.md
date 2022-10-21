@@ -1,6 +1,6 @@
 # Cooledit
 
-`cooledit` is a modern programmer's text editor and integrated development environment and graphical debugger.
+`cooledit` is a modern programmer's text editor and integrated development environment with graphical debugger.
 
 ![Cooledit Desktop](screenshot.gif)
 

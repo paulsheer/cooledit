@@ -8087,7 +8087,7 @@ if test "${enable_shared+set}" = set; then :
       ;;
     esac
 else
-  enable_shared=yes
+  enable_shared=no
 fi
 
 

@@ -23,8 +23,8 @@ Contents
 `cooledit` requires the [`FreeType`](http://freetype.org/) library for fonts.
 Many features do not work without the support of additional packages.
 You will need the files `pkg-config`, `gdb`, `aspell`, `grotty`, `libfreetype.so.6`, and `libX11.so` to be installed on your system.
-See [INSTALL.freebsd](https://github.com/paulsheer/cooledit/INSTALL.freebsd) for required FreeBSD packages, or check for an available port.
-See [INSTALL](https://github.com/paulsheer/cooledit/INSTALL) for building the latest `FreeType` from source code and building into `/opt/cooledit`.
+See [INSTALL.freebsd](https://github.com/paulsheer/cooledit/blob/master/INSTALL.freebsd) for required FreeBSD packages, or check for an available port.
+See [INSTALL](https://github.com/paulsheer/cooledit/blob/master/INSTALL) for building the latest `FreeType` from source code and building into `/opt/cooledit`.
 For Ubuntu install `libx11-dev`, `libfreetype-dev`, `gdb`, `aspell`, `aspell-en`, and `groff-base`.
 
 

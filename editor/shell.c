@@ -277,8 +277,8 @@ struct shell_cmd default_scripts[] =
 	"sort %a %b 2>%e\n"
     },
     {
-	" Ispell ",
-	gettext_noop ("'ispell' Spell Check\tCtrl-p"),
+	" Ispell/Aspell ",
+	gettext_noop ("'ispell/aspell' Spell Check\tCtrl-p"),
 	'~',
 	XK_p,
         0,
@@ -288,7 +288,12 @@ struct shell_cmd default_scripts[] =
 	SHELL_OPTION_INSERT_BLOCK_FILE,
 	0,
 	"#!/bin/sh\n" \
-	XTERM_CMD " -e ispell %b\n"
+        "which ispell >/dev/null 2>&1 && {\n"
+	"   exec " XTERM_CMD " -e ispell %b\n"
+        "}\n"
+        "which aspell >/dev/null 2>&1 && {\n"
+	"   exec " XTERM_CMD " -e aspell -c %b\n"
+        "}\n"
     },
     {
 	" Make ",
@@ -307,81 +312,6 @@ struct shell_cmd default_scripts[] =
 	"echo Done\n"
     },
     {
-	" Latex ",
-	"Latex\tCtrl-Alt-l",
-	'~',
-	XK_l,
-        1,
-	ControlMask,
-	"",
-	SHELL_OPTION_DISPLAY_STDOUT_CONTINUOUS |
-	SHELL_OPTION_DISPLAY_STDERR_CONTINUOUS,
-	0,
-	"#!/bin/sh\n" \
-	"cd %p\n" \
-	"latex %f\n" \
-	"echo Done\n"
-    },
-    {
-	" Latex to PS ",
-	"Latex to PS\tCtrl-Alt-p",
-	'~',
-	XK_p,
-        1,
-	ControlMask,
-	"",
-	SHELL_OPTION_DISPLAY_STDOUT_CONTINUOUS |
-	SHELL_OPTION_DISPLAY_STDERR_CONTINUOUS,
-	0,
-	"#!/bin/sh\n" \
-	"cd %p\n" \
-	"latex %f\n" \
-	"dvips %n.dvi\n" \
-	"echo Done\n"
-    },
-    {
-	" Xdvi ",
-	"Xdvi\tCtrl-Alt-d",
-	'~',
-	XK_d,
-        1,
-	ControlMask,
-	"",
-	SHELL_OPTION_RUN_IN_BACKGROUND,
-	0,
-	"#!/bin/sh\n" \
-	"cd %p\n" \
-	"xdvi %n.dvi 2>%e\n"
-    },
-    {
-	" GhostView ",
-	"GhostView\tCtrl-Alt-g",
-	'~',
-	XK_g,
-        1,
-	ControlMask,
-	"",
-	SHELL_OPTION_RUN_IN_BACKGROUND,
-	0,
-	"#!/bin/sh\n" \
-	"cd %p\n" \
-	"ghostview %n.ps 2>%e\n"
-    },
-    {
-	gettext_noop (" Run Application "),
-	gettext_noop ("Run Application...\tCtrl-Alt-a"),
-	'~',
-	XK_a,
-        1,
-	ControlMask,
-	gettext_noop (" Enter command : "),
-	SHELL_OPTION_REQUEST_ARGUMENTS |
-	SHELL_OPTION_RUN_IN_BACKGROUND,
-	0,
-	"#!/bin/sh\n" \
-	"%a 2>%e\n"
-    },
-    {
 	gettext_noop (" Terminal Application "),
 	gettext_noop ("Run Terminal App...\tCtrl-Alt-e"),
 	'~',
@@ -394,50 +324,6 @@ struct shell_cmd default_scripts[] =
 	0,
 	"#!/bin/sh\n" \
 	XTERM_CMD " -e %a\n"
-    },
-    {
-	" Translate ",
-	"Translate...\tCtrl-Alt-t",
-	'~',
-	XK_t,
-	1,
-        ControlMask,
-	gettext_noop (" Enter args for tr (See `man tr' for help): "),
-	SHELL_OPTION_SAVE_BLOCK | SHELL_OPTION_REQUEST_ARGUMENTS |
-	SHELL_OPTION_DELETE_BLOCK | SHELL_OPTION_INSERT_STDOUT |
-	SHELL_OPTION_DISPLAY_ERROR_FILE | SHELL_OPTION_CHECK_ERROR_FILE,
-	0,
-	"#!/bin/sh\n" \
-	"cat %b | tr %a 2>%e\n"
-    },
-    {
-	gettext_noop (" C Run "),
-	gettext_noop ("Run this file\tCtrl-Alt-r"),
-	'~',
-	XK_r,
-	1,
-        ControlMask,
-	"",
-	SHELL_OPTION_RUN_IN_BACKGROUND,
-	0,
-	"#!/bin/sh\n" \
-	XTERM_CMD " -e %p/%n\n"
-    },
-    {
-	gettext_noop (" C Compile "),
-	"Cc\tCtrl-Alt-c",
-	'~',
-	XK_c,
-	1,
-        ControlMask,
-	"",
-	SHELL_OPTION_DISPLAY_STDOUT_CONTINUOUS |
-	SHELL_OPTION_DISPLAY_STDERR_CONTINUOUS,
-	0,
-	"#!/bin/sh\n" \
-	"cd %p\n" \
-	"cc -g -Wall -o %n %f\n" \
-	"echo Done\n"
     }
 };
 
@@ -1324,7 +1210,7 @@ void load_scripts ()
     if (!s || !*s)
 	goto load_default_scripts;
 
-#define BUILTING_SCRIPTS_VERSION        21
+#define BUILTING_SCRIPTS_VERSION        31
 
     if (!strncmp (s, "BUILTIN SHELL SCRIPTS VERSION ", 30)) {
         old_version = atoi (s + 30);

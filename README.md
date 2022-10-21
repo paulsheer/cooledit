@@ -1,6 +1,6 @@
 # Cooledit
 
-`cooledit` is a modern programmers text editor and integrated development environment and graphical debugger.
+`cooledit` is a modern programmer's text editor and integrated development environment and graphical debugger.
 
 ![Cooledit Desktop](screenshot.gif)
 
@@ -9,6 +9,7 @@ Contents
 
  * [Installation](#installation)
  * [Usage](#usage)
+ * [Features](#features)
  * [History](#history)
  * [Source Map](#source-map)
 
@@ -47,6 +48,37 @@ cooledit -h
 coolman gcc
 coolman cooledit
 ```
+
+
+
+### Features
+---
+
+#### Syntax highlighting
+
+`cooledit` supports over 100 languages, scripts, and file formats.
+
+
+#### In-place shell support and text processing
+
+`Esc` and a shell command pipes the current highlighted block through the shell command. A very powerful feature.
+
+
+#### Clipboard history
+
+`cooledit` remembers everything you have cut, copied, or pasted.
+![Clipboard history](screenshot2.gif)
+
+
+#### Unicode Support
+
+`cooledit` has support for most of Unicode 15 and will render almost any
+glyph imaginable, as well as the capability to enter raw characters
+and determine encoding correctness.
+
+> 道可道，非常道。名可名，非常名。無名天地之始；有名萬物之母。故常無欲，以觀其妙；常有欲，以觀其徼。此兩者，同出而異名，同謂之玄。玄之又玄，衆妙之門。
+> 😎🛟🚚🔧⍼💕💖💗💘💙💚💛💜💝💞💟💌🐀🐁🐂🐃🐄🐅🐆🐇🐈🐉🐊🐋🐌🐍🐎🐏
+> 𓅀𓅁𓅂𓅃𓅄𓅅𓅆𓅇𓅈𓅉𓅊𓅚𓅪𓅺𓆊𓆚𓆪𓆺
 
 
 ### History

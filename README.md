@@ -89,7 +89,7 @@ and determine encoding correctness.
 ### History
 ---
 
-`cooledit` began as the text edit `mcedit` for the Midnight Commander
+`cooledit` began as the text editor `mcedit` for the Midnight Commander
 project in 1998 and was presented by me at the 1999 Atlanta Linux Showcase.
 
 

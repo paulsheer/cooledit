@@ -71,6 +71,12 @@ coolman cooledit
 ![Clipboard history](screenshot2.gif)
 
 
+#### Remote access tool
+
+Run `remotefs` on a remote machine to access files using `cooledit`. On MS Windows run `REMOTEFS.EXE` on a command prompt.
+`remotefs` is a near-instantaneous way to browse directories and edit files from a remote machine.
+
+
 #### Unicode Support
 
 `cooledit` has support for most of Unicode 15 and will render almost any

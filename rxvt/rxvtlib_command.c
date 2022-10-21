@@ -2236,7 +2236,8 @@ void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
 
 	if (ev->xany.window == o->TermWin.vt) {
 	    if ((ev->xbutton.state & (Button1Mask | Button3Mask))) {
-		while (XCheckTypedWindowEvent (o->Xdisplay, o->TermWin.vt, MotionNotify, ev));
+                if (CCheckSimilarEventsPending (o->TermWin.vt, MotionNotify, 0))
+                    break;
 		XQueryPointer (o->Xdisplay, o->TermWin.vt,
 			       &unused_root, &unused_child,
 			       &unused_root_x, &unused_root_y,
@@ -2272,10 +2273,14 @@ void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
 	    }
 	} else if (isScrollbarWindow (ev->xany.window)
 		   && scrollbar_isMotion ()) {
-	    while (XCheckTypedWindowEvent (o->Xdisplay, o->scrollBar.win, MotionNotify, ev));
+            unsigned int button_motion_mask = 0;
+            if (CCheckSimilarEventsPending (o->scrollBar.win, MotionNotify, 0))
+                break;
 	    XQueryPointer (o->Xdisplay, o->scrollBar.win, &unused_root,
 			   &unused_child, &unused_root_x, &unused_root_y,
-			   &(ev->xbutton.x), &(ev->xbutton.y), &unused_mask);
+			   &(ev->xbutton.x), &(ev->xbutton.y), &button_motion_mask);
+            if (!button_motion_mask)
+                break;
 	    rxvtlib_scr_move_to (o, scrollbar_position (ev->xbutton.y) - csrO, scrollbar_size ());
 	    rxvtlib_scr_refresh (o, o->refresh_type);
 	    o->refresh_count = o->refresh_limit = 0;

@@ -669,6 +669,19 @@ void            rxvtlib_scr_rendition (rxvtlib *o, int set, int style)
     }
 }
 
+
+/* if the user has scrolled up, then don't move the text. rather let it accumulate
+since it is very annoying to scroll up with the scroll-bar to 'see something' and
+then have the text move on you. */
+static int rxvtlib_scroll_text__but_not_if_we_are_up_there (rxvtlib *o, int row1, int row2, int count, int spec)
+{E_
+    int r;
+    r = rxvtlib_scroll_text (o, row1, row2, count, spec);
+    if (o->TermWin.view_start)
+        rxvtlib_scr_page (o, UP, r);
+    return r;
+}
+
 /* ------------------------------------------------------------------------- */
 /*
  * Scroll text between <row1> and <row2> inclusive, by <count> lines
@@ -818,13 +831,7 @@ void            rxvtlib_scr_add_lines (rxvtlib *o, const unsigned char *str, int
 	    && (o->screen.tscroll == 0)
 	    && (o->screen.bscroll == (o->TermWin.nrow - 1))) {
 	    /* _at least_ this many lines need to be scrolled */
-	    rxvtlib_scroll_text (o, o->screen.tscroll, o->screen.bscroll, nlines, 0);
-
-            /* if the user has scrolled up, then don't move the text. rather let it accumulate
-            since it is very annoying to scroll up with the scroll-bar to 'see something' and
-            then have the text move on you. */
-            if (o->TermWin.view_start)
-                rxvtlib_scr_page (o, UP, nlines);
+	    rxvtlib_scroll_text__but_not_if_we_are_up_there (o, o->screen.tscroll, o->screen.bscroll, nlines, 0);
 	    for (i = nlines, j = o->screen.bscroll + o->TermWin.saveLines; i--; j--) {
 		rxvtlib_blank_screen_mem (o, o->screen.text, o->screen.rend, j, o->rstyle);
 		o->screen.tlen[j] = 0;
@@ -891,7 +898,7 @@ void            rxvtlib_scr_add_lines (rxvtlib *o, const unsigned char *str, int
                     if (o->screen.flags & Screen_WrapNext) {
                         o->screen.tlen[row] = -1;
                         if (o->screen.cur.row == o->screen.bscroll) {
-                            rxvtlib_scroll_text (o, o->screen.tscroll, o->screen.bscroll, 1, 0);
+                            rxvtlib_scroll_text__but_not_if_we_are_up_there (o, o->screen.tscroll, o->screen.bscroll, 1, 0);
                             j = o->screen.bscroll + o->TermWin.saveLines;
                             rxvtlib_blank_screen_mem (o, o->screen.text, o->screen.rend, j, o->rstyle);
                             o->screen.tlen[j] = 0;
@@ -921,7 +928,7 @@ void            rxvtlib_scr_add_lines (rxvtlib *o, const unsigned char *str, int
 		MAX_IT (o->screen.tlen[row], o->screen.cur.col);
 	    o->screen.flags &= ~Screen_WrapNext;
 	    if (o->screen.cur.row == o->screen.bscroll) {
-		rxvtlib_scroll_text (o, o->screen.tscroll, o->screen.bscroll, 1, 0);
+		rxvtlib_scroll_text__but_not_if_we_are_up_there (o, o->screen.tscroll, o->screen.bscroll, 1, 0);
 		j = o->screen.bscroll + o->TermWin.saveLines;
 		rxvtlib_blank_screen_mem (o, o->screen.text, o->screen.rend, j, o->rstyle);
 		o->screen.tlen[j] = 0;
@@ -968,7 +975,7 @@ void            rxvtlib_scr_add_lines (rxvtlib *o, const unsigned char *str, int
 	if (o->screen.flags & Screen_WrapNext) {
 	    o->screen.tlen[row] = -1;
 	    if (o->screen.cur.row == o->screen.bscroll) {
-		rxvtlib_scroll_text (o, o->screen.tscroll, o->screen.bscroll, 1, 0);
+		rxvtlib_scroll_text__but_not_if_we_are_up_there (o, o->screen.tscroll, o->screen.bscroll, 1, 0);
 		j = o->screen.bscroll + o->TermWin.saveLines;
 		rxvtlib_blank_screen_mem (o, o->screen.text, o->screen.rend, j, o->rstyle);
 		o->screen.tlen[j] = 0;

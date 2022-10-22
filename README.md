@@ -8,6 +8,7 @@ Contents
 ========
 
  * [Installation](#installation)
+ * [Why?](#why)
  * [Usage](#usage)
  * [Features](#features)
  * [History](#history)
@@ -35,6 +36,16 @@ $ ./configure
 $ make
 $ make install
 ```
+
+
+### Why?
+---
+
+`cooledit` provides the most crisp and honed user experience of any editor. It is designed
+to be used both entirely with and without a mouse. It is for people that spend most of their
+work time in an editor. Written with its own widget library, it boasts the fasted GUI response
+times of any graphical application.
+
 
 ### Usage
 ---

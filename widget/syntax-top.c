@@ -64,7 +64,7 @@
 "file ..\\*\\\\.(man|[0-9n]|[0-9](x|ncurses|ssl|p|pm|menu|form|vga|t|td))$ NROFF\\sSource",
 "include nroff.syntax",
 "",
-"file ..\\*\\\\.(?i:html?)$ HTML\\sFile DOCTYPE\\sHTML",
+"file ..\\*\\\\.(?i:html?)$ HTML\\sFile DOCTYPE\\s(HTML|html)",
 "include html.syntax",
 "",
 "file ..\\*\\\\.((?i:xml|xsd|xslt?|dtd)|qpg|qpg\\\\.in)$ XML\\sdocument (\\\\?xml\\sversion|!DOCTYPE\\s)",

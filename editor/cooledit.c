@@ -1275,7 +1275,9 @@ void exit_app (unsigned long save)
     postscript_clean ();
     get_cmdline_options_free_list (&cmdline_fl);
     inspect_clean_exit ();
+#ifndef NO_TTF
     XAaCacheClean ();
+#endif
     exit (0);
 }
 

@@ -7,7 +7,7 @@ FREETYPE_LIBS =
 LIBS = 
 LDFLAGS = -static 
 # CFLAGS = -O0 -Wall -g3 -s
-CFLAGS = -O2 -s -DNO_INSPECT
+CFLAGS = -O2 -s
 
 remotefs.c:
 	ln -sf ../widget/remotefs.c .
@@ -36,7 +36,7 @@ symauth.c:
 
 remotefs_LDADD = 
 
-DEFS = -DSTANDALONE
+DEFS = -DSTANDALONE -DNO_INSPECT
 
 
 

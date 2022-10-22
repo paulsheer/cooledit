@@ -3,6 +3,7 @@
    Copyright (C) 1996-2022 Paul Sheer
  */
 
+#ifndef NO_TTF
 
 struct aa_font;
 
@@ -18,6 +19,8 @@ int XAaTextWidth16 (const struct aa_font *f, XChar2b * s, C_wchar_t * swc, int l
 int XAaDrawImageString (Display * display, Drawable d, GC gc, const struct aa_font *, int x, int y, char *s, int length, int scale);
 
 int XAaDrawImageString16 (Display * display, Drawable d, GC gc, const struct aa_font *, int x, int y, XChar2b * wc, C_wchar_t * swc, int length, int scale);
+
+#endif
 
 #define RedFirst 0
 #define BlueFirst 1

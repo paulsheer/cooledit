@@ -21,11 +21,15 @@ struct freetype_cache {
 };
 
 struct freetype_face {
+#ifndef NO_TTF
     struct freetype_cache faces[1024];
+#endif
     int n_fonts;
+#ifndef NO_TTF
     int desired_height;
     int measured_height;
     int measured_ascent;
+#endif
 };
 
 enum force_fixed_width_enum {
@@ -35,7 +39,9 @@ enum force_fixed_width_enum {
 };
 
 struct aa_font {
+#ifndef NO_TTF
     int load_id;
+#endif
     int mean_font_width;
     enum force_fixed_width_enum force_fixed_width;
     XFontSet font_set;
@@ -59,7 +65,9 @@ struct font_object {
     GC gc;
     int mean_font_width;
     int fixed_font;
+#ifndef NO_TTF
     int anti_aliasing;
+#endif
     int font_height;
     int font_ascent;
     int font_descent;
@@ -78,7 +86,9 @@ struct font_object {
 #define FONT_USE_FONT_SET		(!current_font->f.font_struct && !current_font->f.font_freetype.n_fonts && current_font->f.font_set)
 #define FONT_LAST_UNICHAR		0x10FFFFUL
 #define ZERO_WIDTH_EMPTY_CHAR           (FONT_LAST_UNICHAR + 1)
+#ifndef NO_TTF
 #define FONT_ANTIALIASING		current_font->anti_aliasing
+#endif
 #define FONT_PER_CHAR_DESCENT(x)	font_per_char_descent(x)
 #define FONT_OVERHEAD			option_text_line_spacing
 #define FONT_PIX_PER_LINE		(FONT_OVERHEAD + FONT_HEIGHT)

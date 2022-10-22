@@ -7,6 +7,15 @@ make install
 
 
 
+# Simple build without .ttf or unicode support:
+export FREETYPE_LIBS='-DNO_TTF'
+export FREETYPE_CFLAGS='-DNO_TTF'
+./configure --disable-shared
+make
+make install
+
+
+
 # Difficult build first building freetype:
 
 # install libbz2-dev zlib1g-dev libpng-dev

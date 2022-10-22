@@ -20,6 +20,13 @@
 #include "font.h"
 #include "aafont.h"
 
+/* #ifndef NO_TTF command-line options are dummy in this case */
+int option_rgb_order = RedFirst;
+int option_interchar_spacing = 0;
+/* #endif */
+
+#ifndef NO_TTF
+
 
 #define HAVE_FREETYPE
 
@@ -56,9 +63,6 @@ Visual *aa_visual;
 static unsigned char *aa_log_nessage = NULL;
 #endif
 
-
-int option_rgb_order = RedFirst;
-int option_interchar_spacing = 0;
 
 void XAaInit (Display * display, Visual * visual, int depth, Window root)
 {E_
@@ -1267,4 +1271,7 @@ void XAaFree (int load_id)
 {E_
     aa_remove (load_id);
 }
+
+#endif
+
 

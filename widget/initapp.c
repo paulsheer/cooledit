@@ -213,6 +213,7 @@ enum font_encoding get_editor_encoding (void)
     return editor_encoding;
 }
 
+#ifndef NO_TTF
 #define ALL_TTF_RESIZABLE_FONTS \
         "NotoSans-Regular.ttf," \
         "NotoSansSymbols-Regular.ttf," \
@@ -376,30 +377,51 @@ enum font_encoding get_editor_encoding (void)
         "NotoSansKR-Regular.otf," \
         "NotoSansTC-Regular.otf," \
         "NotoSansSC-Regular.otf"
+#endif
 
 const char *get_default_editor_font (void)
 {E_
+#ifndef NO_TTF
     return "8x13B.pcf.gz," ALL_TTF_RESIZABLE_FONTS;
+#else
+    return "-*-fixed-bold-r-*--13-120-*-*-*-80-*";
+#endif
 }
 
 const char *get_default_editor_font_large (void)
 {E_
+#ifndef NO_TTF
     return "9x15B.pcf.gz," ALL_TTF_RESIZABLE_FONTS;
+#else
+    return "-*-fixed-bold-r-*--15-140-*-*-*-*-*";
+#endif
 }
 
 const char *get_default_widget_font (void)
 {E_
+#ifndef NO_TTF
     return ALL_TTF_RESIZABLE_FONTS ":14";
+#else
+    return "-*-helvetica-bold-r-*--14-*-*-*-*-*-*";
+#endif
 }
 
 const char *get_default_8bit_term_font (void)
 {E_
+#ifndef NO_TTF
     return "8x13B-ISO8859-1.pcf.gz";
+#else
+    return "-*-fixed-bold-r-*--13-120-*-*-*-80-*";
+#endif
 }
 
 const char *get_default_bookmark_font (void)
 {E_
+#ifndef NO_TTF
     return ALL_TTF_RESIZABLE_FONTS ":13";
+#else
+    return "-*-helvetica-bold-r-*--13-*-*-*-*-*-*";
+#endif
 }
 
 static void init_load_font (void)
@@ -1705,7 +1727,9 @@ void CInitialise (CInitData * config_start)
 /* Now setup that color map discribed above */
     setup_colormap (ClassOfVisual (CVisual));
 
+#ifndef NO_TTF
     XAaInit (CDisplay, CVisual, CDepth, CRoot);
+#endif
 
 /* Set up font */
     init_load_font ();

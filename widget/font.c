@@ -13,7 +13,11 @@
 
 
 
+#ifndef NO_TTF
 #define HAVE_FREETYPE
+#else
+#undef HAVE_FREETYPE
+#endif
 
 
 const char *font_error_string = "Use <x-font-name>/3 or <x-font-name>/1 or <font-file>:NN. For example 12x24/3 or Helvetica.ttf:12 -- for 12 pixels height\n";
@@ -551,8 +555,10 @@ int CImageTextWidthWC (XChar2b * s, C_wchar_t * swc, int l)
 {E_
     if (FONT_USE_FONT_SET)
 	return XwcTextEscapement (current_font->f.font_set, Cwchar_to_wchar (swc, l), l);
+#ifndef NO_TTF
     if (FONT_ANTIALIASING)
         return XAaTextWidth16 (&current_font->f, s, swc, l, 0, FONT_ANTIALIASING);
+#endif
     if (!s)
 	return XTextWidth16 (current_font->f.font_struct, wchar_t_to_XChar2b (swc, l), l);
     return XTextWidth16 (current_font->f.font_struct, s, l);
@@ -579,8 +585,10 @@ int CImageTextWC (Window w, int x, int y, XChar2b * s, C_wchar_t * swc, int l)
 	XwcDrawImageString (CDisplay, w, current_font->f.font_set, CGC, x, y, sw, l);
 	return XwcTextEscapement (current_font->f.font_set, sw, l);
     }
+#ifndef NO_TTF
     if (FONT_ANTIALIASING)
 	return XAaDrawImageString16 (CDisplay, w, CGC, &current_font->f, x, y, s, swc, l, FONT_ANTIALIASING);
+#endif
     if (!s)
 	return XDrawImageString16 (CDisplay, w, CGC, x, y, wchar_t_to_XChar2b (swc, l), l);
     return XDrawImageString16 (CDisplay, w, CGC, x, y, s, l);
@@ -645,6 +653,7 @@ static int get_wchar_dimension (C_wchar_t ch, int *height, int *ascent, int *ink
 	    *ascent = (-logical.y);
 	if (ink_descent)
 	    *ink_descent = ink.height + ink.y;
+#ifndef NO_TTF
     } else if (FONT_ANTIALIASING) {
         if (ascent) {
             if (current_font->f.font_struct)
@@ -660,6 +669,7 @@ static int get_wchar_dimension (C_wchar_t ch, int *height, int *ascent, int *ink
         }
         width = XAaTextWidth16 (&current_font->f, 0, &ch, 1, ink_descent, FONT_ANTIALIASING);
         return width;
+#endif
     } else {
 	XCharStruct c;
 	XChar2b s;
@@ -719,6 +729,7 @@ static int get_string_dimensions (const char *s, int n, int *height, int *ascent
 	    *ascent = (-logical.y);
 	if (ink_descent)
 	    *ink_descent = ink.height + ink.y;
+#ifndef NO_TTF
     } else if (FONT_ANTIALIASING) {
         if (ascent) {
             if (current_font->f.font_struct)
@@ -734,6 +745,7 @@ static int get_string_dimensions (const char *s, int n, int *height, int *ascent
         }
         width = XAaTextWidth (&current_font->f, s, n, ink_descent, FONT_ANTIALIASING);
         return width;
+#endif
     } else {
 	XCharStruct c;
 	int ascent_, descent;
@@ -924,6 +936,7 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
 
     n->encoding_interpretation = e;
 
+#ifndef NO_TTF
     if (!load_font_from_file(xname, &n->f, desired_height)) {
         if (aa > 1) {
             fprintf(stderr, "Loaded fonts cannot be scaled with /3\n");
@@ -931,7 +944,9 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
 	    return 0;
         }
         aa = 1;
-    } else if (option_font_set && !aa) {
+    } else
+#endif
+    if (option_font_set && !aa) {
 	n->f.font_set = get_font_set (xname);
 	if (!n->f.font_set)
 	    fprintf (stderr,
@@ -952,7 +967,9 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
 	return 0;
     }
 
+#ifndef NO_TTF
     n->f.load_id = last_font_load_id++;
+#endif
 
     n->next = all_fonts;
     current_font = all_fonts = n;
@@ -978,8 +995,10 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
 	if (single_font)
 	    current_font->f.font_struct = XLoadQueryFont(CDisplay, xname);
     }
+#ifndef NO_TTF
     if (current_font->f.font_struct || current_font->f.font_freetype.n_fonts)
 	FONT_ANTIALIASING = aa;
+#endif
     w = get_dummy_gc ();
     if (current_font->f.font_freetype.n_fonts)
         ;
@@ -1104,14 +1123,19 @@ void CPopFont (void)
 	abort ();
     }
     if (!--font_stack->f->ref) {
+#ifndef NO_TTF
 	int i;
+#endif
 	if (font_stack->f->gc)
 	    XFreeGC (CDisplay, font_stack->f->gc);
 	if (font_stack->f->f.font_set)
 	    XFreeFontSet (CDisplay, font_stack->f->f.font_set);
+#ifndef NO_TTF
 	XAaFree (font_stack->f->f.load_id);
+#endif
 	if (font_stack->f->f.font_struct)
 	    XFreeFont (CDisplay, font_stack->f->f.font_struct);
+#ifndef NO_TTF
 	for (i = 0; i < font_stack->f->f.font_freetype.n_fonts; i++) {
 	    struct freetype_cache *cache;
 	    cache = &font_stack->f->f.font_freetype.faces[i];
@@ -1120,6 +1144,7 @@ void CPopFont (void)
 	    if (cache->face)
 		FT_Done_Face(cache->face);
 	}
+#endif
 	if (font_stack->f->per_char)
 	    free (font_stack->f->per_char);
 	free (font_stack->f->name);
@@ -1143,7 +1168,9 @@ void CFreeAllFonts (void)
 	CPopFont ();
 	i++;
     }
+#ifndef NO_TTF
     load_one_freetype_font(0, 0, 0, 0);
+#endif
 }
 
 int CIsFixedFont (void)

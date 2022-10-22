@@ -22,6 +22,8 @@
 #endif
 
 
+#define SYNTAX_ERR_MSG_LEN              256
+
 
 /* (@) */
 
@@ -667,6 +669,8 @@ int this_allocate_color (WEdit *edit, char *fg)
 #endif
 
 static char *error_file_name = 0;
+static char syntax_error_access[SYNTAX_ERR_MSG_LEN] = "";
+
 
 static FILE *open_include_file (char *filename)
 {E_
@@ -769,6 +773,7 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
 	    g = f;
 	    f = open_include_file (args[1]);
 	    if (!f) {
+                snprintf (syntax_error_access, sizeof (syntax_error_access), "%s: [%s]", args[1], strerror (errno));
 		syntax_free (error_file_name);
 		result = line;
 		break;
@@ -1628,6 +1633,7 @@ int edit_load_syntax (WEdit * edit, char **names, char *type)
 	if (!*edit->filename && !type)
 	    return 2;
     }
+    syntax_error_access[0] = '\0';
     f = catstrs (local_home_dir, SYNTAX_FILE, NULL);
     CDisableAlarm();
     r = edit_read_syntax_file (edit, names, f, edit ? edit->filename : 0, get_first_editor_line (edit), type);
@@ -1638,9 +1644,9 @@ int edit_load_syntax (WEdit * edit, char **names, char *type)
 	return r;
     }
     if (r) {
-	char s[80];
+	char s[SYNTAX_ERR_MSG_LEN * 2];
 	edit_free_syntax_rules (edit);
-	sprintf (s, _ (" Error in file %s on line %d "), error_file_name ? error_file_name : f, r);
+	sprintf (s, _ (" Error in file %s on line %d \n %s"), error_file_name ? error_file_name : f, r, syntax_error_access);
 	edit_error_dialog (_ (" Load syntax file "), s);
 	syntax_free (error_file_name);
 	return r;

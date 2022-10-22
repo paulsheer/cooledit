@@ -203,13 +203,13 @@ void CDrawCooleditMenuButtons (Window parent, int x, int y)
 #endif
     CAddMenuItem ("menu.commandmenu", "", ' ', (callfn) NULL, 0);
     CAddMenuItem ("menu.commandmenu", _("Shell command\tEscape"), '~', menu_insert_shell_output, 0);
-    CAddMenuItem ("menu.commandmenu", _("Terminal\tShift-F1"), '~', CEditMenuCommand, CK_Terminal);
+    CAddMenuItem ("menu.commandmenu", _("Terminal\tF11/Shift-F1"), '~', CEditMenuCommand, CK_Terminal);
     CAddMenuItem ("menu.commandmenu", _("8-Bit Terminal"), 0, CEditMenuCommand, CK_8BitTerminal);
     CAddMenuItem ("menu.commandmenu", _("Show manual page...\tCtrl-F1"), '~', menu_man_cmd, 0);
     CAddMenuItem ("menu.commandmenu", _("Change current directory..."), '~', menu_change_directory_cmd, 0);
     CAddMenuItem ("menu.commandmenu", _("Complete\tCtrl-Tab"), '~', CEditMenuCommand, CK_Complete);
     CAddMenuItem ("menu.commandmenu", _("Insert unicode...\tAlt-i"), '~', CEditMenuCommand, CK_Insert_Unicode);
-    CAddMenuItem ("menu.commandmenu", _("paragraph indent mode\tShift-F6/F16"), '~', CEditMenuCommand, CK_Paragraph_Indent_Mode);
+    CAddMenuItem ("menu.commandmenu", _("paragraph indent mode\tShift-F6"), '~', CEditMenuCommand, CK_Paragraph_Indent_Mode);
 
     CInsertMenuItemAfter ("menu.filemenu", _("New"), _("Jump to file\tCtrl-j"), '~', menu_jump_to_file, CK_Jump_To_File);
     CAddMenuItem ("menu.filemenu", "", ' ', (callfn) NULL, 0);

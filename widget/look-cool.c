@@ -493,7 +493,7 @@ static Window draw_file_browser (const char *identifier, Window parent, int x, i
     CSetMovement (catstrs (identifier, ".dbox.vsc", NULL), POSITION_HEIGHT | POSITION_RIGHT);
     CSetMovement (catstrs (identifier, ".dbox.hsc", NULL), POSITION_RIGHT | POSITION_BOTTOM);
     CGetHintPos (&x2, &y2);
-    (CDrawText (catstrs (identifier, ".msg", NULL), win, x, y2, _("Ctrl-Tab to complete, Alt-Ins for clip history, Shift-Up for history")))->position |= POSITION_FILL | POSITION_BOTTOM;
+    (CDrawText (catstrs (identifier, ".msg", NULL), win, x, y2, _("Alt-Ins for clip history, Shift-Up for history")))->position |= POSITION_FILL | POSITION_BOTTOM;
     CGetHintPos (0, &y2);
     (w = CDrawTextInputP (catstrs (identifier, ".finp", NULL), win, x, y2,
 		    WIDGET_SPACING * 2 - 2, AUTO_HEIGHT, 256, file))->position |= POSITION_FILL | POSITION_BOTTOM;
@@ -644,7 +644,7 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
     CSetDndDirectory (directory->text.data);
 
     if (cwevent->type == ButtonPress || cwevent->type == KeyPress)
-	CRedrawText (catstrs (identifier, ".msg", NULL), _("Ctrl-Tab to complete, Alt-Ins for clip history, Shift-Up for history"));
+	CRedrawText (catstrs (identifier, ".msg", NULL), _("Alt-Ins for clip history, Shift-Up for history"));
 
     if (!*init) {
         *init = 1;

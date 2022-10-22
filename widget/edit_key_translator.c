@@ -84,6 +84,17 @@ int edit_translate_key_exit_keycompose (void)
     return r;
 }
 
+static int dig2hex (int c)
+{
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    return -1;
+}
+
 int edit_translate_key (unsigned int x_keycode, long x_key, int x_state, int *cmd, char *xlat, int *xlat_len)
 {E_
     int command = -1;
@@ -155,18 +166,19 @@ int edit_translate_key (unsigned int x_keycode, long x_key, int x_state, int *cm
 
     if (raw) {
 	*xlat_len = 0;
-	if (!x_state) {
+	if (!x_state || (dig2hex (x_key) >= 0 || x_key == 'h' || x_key == 'H')) {
             if (raw == 1 && x_key == 'u')
                 raw_unicode = 1;
             if (raw_unicode) {
-		char u[2] =
-		{0, 0};
                 if (raw == 1) {
 		    raw++;
 		    goto fin;
                 }
-		u[0] = x_key;
-                hex += (strcspn ("0123456789abcdef", u) << (4 * (7 - raw)));
+                if (dig2hex (x_key) < 0) {
+		    raw_unicode = raw = 0;
+		    goto fin;
+                }
+                hex += (dig2hex (x_key) << (4 * (7 - raw)));
 		if (raw == 7) {
 		    char_for_insertion = hex;
 		    raw_unicode = raw = 0;
@@ -175,11 +187,9 @@ int edit_translate_key (unsigned int x_keycode, long x_key, int x_state, int *cm
 		raw++;
                 goto fin;
             }
-	    if (strchr ("0123456789abcdefh", x_key)) {
-		char u[2] =
-		{0, 0};
+	    if (dig2hex (x_key) >= 0 || x_key == 'h' || x_key == 'H') {
 		if (raw == 3) {
-		    if (x_key == 'h') {
+		    if (x_key == 'h' || x_key == 'H') {
 			char_for_insertion = hex;
 			raw_unicode = raw = 0;
                         if (option_utf_interpretation2)
@@ -193,8 +203,7 @@ int edit_translate_key (unsigned int x_keycode, long x_key, int x_state, int *cm
 		    }
 		}
 		decimal += (x_key - '0') * ((int) ("d\n\001")[raw - 1]);
-		u[0] = x_key;
-		hex += (strcspn ("0123456789abcdef", u) << (4 * (2 - raw)));
+		hex += (dig2hex (x_key) << (4 * (2 - raw)));
 		if (raw == 3) {
 		    char_for_insertion = decimal;
 		    raw_unicode = raw = 0;

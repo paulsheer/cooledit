@@ -193,6 +193,10 @@ int edit_get_line_height (WEdit * edit, int row);
 static int edit_ypixel_to_row (WEdit * edit, int y_search)
 {E_
     int row, y;
+
+    if (y_search < 0)
+        return y_search / FONT_PIX_PER_LINE;    /* allow scrolling up on select with mouse drag */
+
     for (y = 0, row = 0;; row++) {
         int h;
         h = edit_get_line_height (edit, edit->start_line + row);

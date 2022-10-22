@@ -6,6 +6,7 @@ Version 4.1.0
     * New key Alt-F10 to close the edit window at the BOTTOM of the stack.
     * New compose key Alt-\ for Latín1/2, mäth, and typõgraphic characters.
     * Text input for Chinese now works on Ubuntu.
+    * Rxvt terminal added Unicode support and many behavioral fixes.
 
 Version 4.0.0
 

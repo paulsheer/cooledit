@@ -99,17 +99,8 @@ struct style_struct {
     unsigned int ch;
 };
 
-#if 0
-typedef struct style_struct cache_type;
-#endif
-
 typedef union {
-    struct {
-	unsigned char fg;
-	unsigned char bg;
-	unsigned short style;
-	unsigned int ch;
-    } c;
+    struct style_struct c;
     unsigned int _style;
 } cache_type;
 

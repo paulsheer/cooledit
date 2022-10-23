@@ -17,6 +17,13 @@
 #define max(x,y)     (((x) > (y)) ? (x) : (y))
 #define min(x,y)     (((x) < (y)) ? (x) : (y))
 
+#define MAX_X11_COLOR_NAME_LEN          24
+#define MAX_STORED_COLORS               1024
+struct alloced_colors {
+    unsigned long raw; 	/* for pixel */
+    char name[MAX_X11_COLOR_NAME_LEN];
+};
+
 #ifdef DEF_APP_GLOB		/* Defined in the initapp.c file */
 
 Display *CDisplay = NULL;	/* Connection to X display     */
@@ -30,8 +37,8 @@ struct font_object *all_fonts = 0;
 struct font_object *current_font = 0;
 DndClass _CDndClass;
 DndClass *CDndClass = &_CDndClass;
-unsigned long color_pixels[512];	/*for pixel */
-int color_last_pixel = 27;
+struct alloced_colors color_pixels[MAX_STORED_COLORS];
+int color_last_pixel;
 unsigned long color_planes[256];	/*and plane values from alloccolor. */
 char *CAppName;			/* Application's name    */
 Window CFirstWindow = 0;	/* first window created i.e. the main window */
@@ -71,7 +78,7 @@ extern unsigned int alt_modifier_mask;
 extern struct font_object *all_fonts;
 extern struct font_object *current_font;
 extern DndClass *CDndClass;
-extern unsigned long color_pixels[512];	/*for pixel */
+extern struct alloced_colors color_pixels[MAX_STORED_COLORS];
 extern int color_last_pixel;
 extern unsigned long color_planes[256];	/*and plane values from alloccolor. */
 extern char *CAppName;

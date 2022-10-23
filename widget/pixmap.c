@@ -39,7 +39,7 @@ XImage *CCreateImage (const char *data[], int width, int height, char start_char
 	    if (data[y][x] == ' ')
 		XPutPixel (image, x, y, COLOR_FLAT);
 	    else
-		XPutPixel (image, x, y, color_pixels[data[y][x] - start_char]);
+		XPutPixel (image, x, y, color_pixels[data[y][x] - start_char].raw);
 	}
     return image;
 }

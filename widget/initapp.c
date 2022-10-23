@@ -762,7 +762,7 @@ void alloc_grey_scale (Colormap cmap)
 	for (i = 0; i < 64; i++) {
 	    get_grey_colors (&color, i);
 	    CAllocColor (cmap, &color);
-	    color_pixels[i + 43] = color.pixel;
+	    color_pixels[i + N_WIDGET_COLORS + N_FAUX_COLORS].raw = color.pixel;
 	}
     }
 }
@@ -819,7 +819,7 @@ static void setup_staticcolor (void)
 	    color.blue = grey * 65535 / 15;
 	    if (!XAllocColor (CDisplay, CColormap, &color))
 		alloccolorerror ();
-	    color_pixels[grey] = color.pixel;
+	    color_pixels[grey].raw = color.pixel;
 	}
 	alloc_grey_scale (CColormap);
     } else {
@@ -833,23 +833,23 @@ static void setup_staticcolor (void)
 
 	    for (; j < (grey + 1) * 16 / num_greys; j++) {
 		CAllocColor (CColormap, &color);
-		color_pixels[j] = color.pixel;
+		color_pixels[j].raw = color.pixel;
 	    }
 /* grey scale */
 	    if (option_using_grey_scale) {
 		for (; k < (grey + 1) * 64 / num_greys; k++) {
 		    CAllocColor (CColormap, &color);
-		    color_pixels[k + 43] = color.pixel;
+		    color_pixels[k + N_WIDGET_COLORS + N_FAUX_COLORS].raw = color.pixel;
 		}
 	    }
 	}
     }
 
-    for (i = 0; i < 27; i++) {
+    for (i = 0; i < N_FAUX_COLORS; i++) {
 	get_general_colors (&color, i);
 	m = CGetCloseColor (c, size, color, 0);
 	CAllocColor (CColormap, &(c[m]));
-	color_pixels[16 + i] = c[m].pixel;
+	color_pixels[N_WIDGET_COLORS + i].raw = c[m].pixel;
     }
 
     free (grey_levels);
@@ -877,20 +877,20 @@ static void setup_alloc_colors (int force_grey)
 
     color.flags = DoRed | DoGreen | DoBlue;
 
-    for (i = 0; i < 16; i++) {
+    for (i = 0; i < N_WIDGET_COLORS; i++) {
 	get_button_color (&color, i);
 	if (force_grey)
 	    make_grey (&color);
 	CAllocColor (CColormap, &color);
-	color_pixels[i] = color.pixel;
+	color_pixels[i].raw = color.pixel;
     }
 
-    for (i = 0; i < 27; i++) {
+    for (i = 0; i < N_FAUX_COLORS; i++) {
 	get_general_colors (&color, i);
 	if (force_grey)
 	    make_grey (&color);
 	CAllocColor (CColormap, &color);
-	color_pixels[16 + i] = color.pixel;
+	color_pixels[N_WIDGET_COLORS + i].raw = color.pixel;
     }
 
     alloc_grey_scale (CColormap);
@@ -903,11 +903,11 @@ void store_grey_scale (Colormap cmap)
     if (verbose_operation)
 /* "Grey scale" is a list of increasingly bright grey levels of color */
 	printf (_ ("Storing grey scale.\n"));
-    if (!XAllocColorCells (CDisplay, cmap, 1, color_planes, 6, color_pixels + 43, 1))
+    if (!XAllocColorCells (CDisplay, cmap, 1, color_planes, 6, &color_pixels[N_WIDGET_COLORS + N_FAUX_COLORS].raw, 1))
 	alloccolorerror ();
     for (i = 0; i < 64; i++) {
-	color_pixels[43 + i] = color_pixels[43] + i;
-	color.pixel = color_pixels[43 + i];
+	color_pixels[N_WIDGET_COLORS + N_FAUX_COLORS + i].raw = color_pixels[N_WIDGET_COLORS + N_FAUX_COLORS].raw + i;
+	color.pixel = color_pixels[N_WIDGET_COLORS + N_FAUX_COLORS + i].raw;
 	get_grey_colors (&color, i);
 	XStoreColor (CDisplay, cmap, &color);
     }
@@ -923,8 +923,8 @@ void try_color (Colormap cmap, XColor * c, int size, XColor color, int i)
     closest = c[x];
 
     if (error) {
-	if (XAllocColorCells (CDisplay, cmap, 0, color_planes, 0, color_pixels + i, 1)) {
-	    color.pixel = color_pixels[i];
+	if (XAllocColorCells (CDisplay, cmap, 0, color_planes, 0, &color_pixels[i].raw, 1)) {
+	    color.pixel = color_pixels[i].raw;
 	    XStoreColor (CDisplay, cmap, &color);
 	    if (verbose_operation)
 /* "Assign color" */
@@ -936,7 +936,7 @@ void try_color (Colormap cmap, XColor * c, int size, XColor color, int i)
 	if (verbose_operation)
 /* "Ignoring" means that the program will continue regardless of this error */
 	    printf (_ ("\nerror allocating this color - ignoring;"));	/* this should never happen since closest comes from the colormap */
-    color_pixels[i] = closest.pixel;
+    color_pixels[i].raw = closest.pixel;
     if (verbose_operation)
 	printf ("%ld,", ((error == 0) ? 0 : 1) + ((error / (8 + 10 + 5)) >> (16 - BitsPerRGBofVisual (CVisual))));
 }
@@ -980,14 +980,14 @@ static void setup_store_colors (void)
 /* This isn't very important, run cooledit -verbose to see how this works */
 	printf (_ ("Trying colors...\n( 'Store'=store my own color, Number=integer error with existing color )\n"));
 
-    for (i = 0; i < 16; i++) {
+    for (i = 0; i < N_WIDGET_COLORS; i++) {
 	get_button_color (&color, i);
 	try_color (CColormap, c, size, color, i);
     }
 
-    for (i = 0; i < 27; i++) {
+    for (i = 0; i < N_FAUX_COLORS; i++) {
 	get_general_colors (&color, i);
-	try_color (CColormap, c, size, color, i + 16);
+	try_color (CColormap, c, size, color, i + N_WIDGET_COLORS);
     }
     if (verbose_operation)
 	printf ("\n");
@@ -997,6 +997,9 @@ static void setup_store_colors (void)
 
 static void setup_colormap (int class)
 {E_
+    memset (color_pixels, '\0', sizeof (color_pixels));
+    color_last_pixel = N_FAUX_COLORS;
+
     switch (class) {
     case StaticColor:
     case StaticGray:

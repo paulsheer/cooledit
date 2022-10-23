@@ -57,7 +57,7 @@ void *CDebugMalloc (size_t x, int line, const char *file)
 
 int allocate_color (char *color_)
 {E_
-    char color[64], *p;
+    char color[MAX_X11_COLOR_NAME_LEN], *p;
     if (!color_)
 	return NO_COLOR;
     if (!color_[0])
@@ -85,14 +85,24 @@ int allocate_color (char *color_)
         if (!strcasecmp (color, "brightred"))
             strcpy (color, "IndianRed1");
 
+        /* without this pre-check a lot of network time gets consumed looking up the same colors repeatedly */
+	for (i = 0; i < color_last_pixel; i++)
+            if (!strcasecmp (color, color_palette_name (i)))
+		return i;
+        if (color_last_pixel >= MAX_STORED_COLORS - N_WIDGET_COLORS)
+	    return NO_COLOR;
 	if (!XParseColor (CDisplay, CColormap, color, &c))
 	    return NO_COLOR;
 	if (!XAllocColor (CDisplay, CColormap, &c))
 	    return NO_COLOR;
-	for (i = 0; i < color_last_pixel; i++)
-	    if (color_palette (i) == c.pixel)
+	for (i = 0; i < color_last_pixel; i++) {
+	    if (color_palette (i) == c.pixel) {
+                strcpy (color_palette_name (i), color);
 		return i;
+            }
+        }
 	color_palette (color_last_pixel) = c.pixel;
+        strcpy (color_palette_name (color_last_pixel), color);
 	return color_last_pixel++;
     }
 }
@@ -1309,7 +1319,7 @@ void render_status (CWidget * wdt, int expose)
 	    CRectangle (win, l, 0, min (w - l, last_width - l), h);
         }
     }
-    CSetColor (color_palette (color % 27));
+    CSetColor (color_palette (color % N_FAUX_COLORS));
     CSetBackgroundColor (COLOR_FLAT);
     for (p = q;; p++) {
 	if (*p < ' ') {
@@ -1332,7 +1342,7 @@ void render_status (CWidget * wdt, int expose)
 		}
 		x1 = x;
 	    } else
-		CSetColor (color_palette (*p % 27));
+		CSetColor (color_palette (*p % N_FAUX_COLORS));
 	    if (!*p)
 		break;
 	    q = p + 1;

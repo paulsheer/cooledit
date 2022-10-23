@@ -120,11 +120,14 @@ enum { \
 #define MAX_NUMBER_OF_WIDGETS	1024
 
 /* one of the (long int) "CoolBlue" colors (0-15) that make up the windows, buttons etc */
-#define color_widget(i)		color_pixels[i]
+#define color_widget(i)		color_pixels[i].raw
 /* one of a 3x3x3 (RxGxB) color palette. eg R=2, G=1, B=0 is color_palette(19). */
-#define color_palette(i)	color_pixels[(i) + 16]
+#define N_WIDGET_COLORS         16
+#define N_FAUX_COLORS            27
+#define color_palette(i)	color_pixels[(i) + N_WIDGET_COLORS].raw
+#define color_palette_name(i)	color_pixels[(i) + N_WIDGET_COLORS].name
 /* 0-64 grey levels (not supprted unless specified in config.h) */
-#define color_grey(i)		color_pixels[(i) + 43]
+#define color_grey(i)		color_pixels[(i) + N_WIDGET_COLORS + N_FAUX_COLORS].raw
 
 int allocate_color (char *color);
 

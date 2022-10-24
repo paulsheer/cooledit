@@ -82,6 +82,7 @@ int option_locale_encoding = 0;
 static int get_help = 0;
 static int get_version = 0;
 
+extern int option_syntax_highlighting;
 extern int option_auto_spellcheck;
 
 /* other things on the command line */
@@ -99,6 +100,7 @@ void usage (void)
 	"-wordwrap, --word-wrap <length>          default: 72\n" \
 	"-typew, --type-writer                    type-writer word wrap\n" \
 	"-spell, --spell-checking                 spell-checking enabled\n" \
+        "-syntax, --syntax-highlighting           enable syntax highlighting\n" \
 	"-autop, --auto-paragraph                 word processor paragraphing\n" \
 	"-i, --international-characters           not longer an option. always display.\n" \
 	"-dnd-old                                 use dnd version 0 instead of version 1\n" \
@@ -125,6 +127,7 @@ struct prog_options cooledit_options[] =
     {0, "-typew", "--type-writer", ARG_SET, 0, 0, &option_typewriter_wrap},
     {0, "-autop", "--auto-paragraph", ARG_SET, 0, 0, &option_auto_para_formatting},
     {0, "-spell", "--spell-checking", ARG_SET, 0, 0, &option_auto_spellcheck},
+    {0, "-syntax", "--syntax-highlighting", ARG_SET, 0, 0, &option_syntax_highlighting},
     {'t', "-tab", "--tab-spacing", ARG_INT, 0, 0, &option_tab_spacing},
     {'h', "-?", "--help", ARG_SET, 0, 0, &get_help},
     {'H', "-help", "--help", ARG_SET, 0, 0, &get_help},
@@ -140,6 +143,7 @@ static void process_command_line (int argc, char **argv)
 {E_
     int error;
     option_auto_spellcheck = 0;
+    option_syntax_highlighting = 0;
     error = get_cmdline_options (argc, argv, cooledit_options, &cmdline_fl);
 
     if (error) {

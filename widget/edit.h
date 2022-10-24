@@ -284,6 +284,7 @@ struct syntax_rule {
 
 struct key_word {
     char *keyword;
+    char *keyword_e;    /* points to '\0' char and end of keyword */
     unsigned char first;
     char *whole_word_chars_left;
     char *whole_word_chars_right;
@@ -298,8 +299,10 @@ struct key_word {
 
 struct context_rule {
     char *left;
+    char *left_e;    /* points to '\0' char and end of left */
     unsigned char first_left;
     char *right;
+    char *right_e;    /* points to '\0' char and end of right */
     unsigned char first_right;
     char line_start_left;
     char line_start_right;

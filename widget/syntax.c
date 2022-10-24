@@ -77,7 +77,7 @@ static void *syntax_malloc (size_t x)
 
 #define LOWER_CASE(edit,c)   (((edit)->is_case_insensitive && (c) >= 'A' && (c) <= 'Z') ? (c + ('a' - 'A')) : (c))
 
-static int edit_get_lowercase_byte (WEdit * edit, int i)
+static inline int edit_get_lowercase_byte (WEdit * edit, int i)
 {E_
     int c;
     c = edit_get_byte (edit, i);
@@ -86,7 +86,8 @@ static int edit_get_lowercase_byte (WEdit * edit, int i)
 
 #define syntax_free(x) {if(x){free(x);(x)=0;}}
 
-static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole_left, char *whole_right, int line_start, int brace_match)
+#define compare_word_to_right(edit,i,text,l,r,s,b)      compare_word_to_right_(edit,i,text,text##_e,l,r,s,b)
+static long compare_word_to_right_ (WEdit * edit, long i, const char *text, const char *text_e, char *whole_left, char *whole_right, int line_start, int brace_match)
 {E_
     int end_of_line_adjust = 0;
     int depth = 0;
@@ -100,7 +101,7 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
     if ((line_start && c != '\n') || (whole_left != NULL && strchr (whole_left, c) != NULL))
 	return -1;
 
-    for (p = (unsigned char *) text, q = p + strlen ((char *) p); (unsigned long) p < (unsigned long) q; p++, i++) {
+    for (p = (const unsigned char *) text, q = (const unsigned char *) text_e; p < q; p++, i++) {
 	switch (*p) {
 	case '\001':		/* '*'  elastic wildcard */
 	    if (++p > q)
@@ -806,8 +807,13 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
 		}
 		a++;
 		c = r[0] = syntax_malloc (sizeof (struct context_rule));
+
+#define SET_E(s)  s##_e = s + strlen(s)
+
 		c->left = (char *) strdup (" ");
+		SET_E (c->left);
 		c->right = (char *) strdup (" ");
+		SET_E (c->right);
 		num_contexts = 0;
 	    } else {
 		c = r[num_contexts] = syntax_malloc (sizeof (struct context_rule));
@@ -834,6 +840,7 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
 		}
 		check_a;
 		c->left = (char *) strdup (*a++);
+		SET_E (c->left);
 		check_a;
 		if (!strcmp (*a, "linestart")) {
 		    a++;
@@ -841,6 +848,7 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
 		}
 		check_a;
 		c->right = (char *) strdup (*a++);
+		SET_E (c->right);
 		c->first_left = *c->left;
 		c->first_right = *c->right;
 	    }
@@ -878,6 +886,7 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
 	    c->keyword[0]->bg = this_allocate_color (edit, bg);
 #endif
 	    c->keyword[0]->keyword = (char *) strdup (" ");
+	    SET_E(c->keyword[0]->keyword);
 	    check_not_a;
 	    num_contexts++;
 	} else if (!strcmp (args[0], "spellcheck")) {
@@ -919,6 +928,7 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
 		check_a;
 	    }
 	    k->keyword = (char *) strdup (*a++);
+	    SET_E (k->keyword);
 	    k->first = *k->keyword;
             if ((p = lookup_defin (edit, *a))) {
 		a++;
@@ -1100,6 +1110,7 @@ static int edit_syntax_add_keyword (WEdit * edit, char *keyword, int context, ti
     c->keyword[j]->bg = SPELLING_ERROR;
 #endif
     c->keyword[j]->keyword = (char *) strdup (keyword);
+    SET_E (c->keyword[j]->keyword);
     c->keyword[j]->first = *c->keyword[j]->keyword;
     c->keyword[j]->whole_word_chars_left = default_wholechars ();
     c->keyword[j]->whole_word_chars_right = default_wholechars ();
@@ -1765,6 +1776,17 @@ NULL,
 
     edit->filename = "test.uyit";
     edit_load_syntax (edit, 0, 0);
+
+    TEST("${{}}",0,5,15);
+    TEST("${{{}}}",0,7,15);
+    TEST("${{xx}}",0,7,15);
+    TEST("${{{xx}}}",0,9,15);
+    TEST("${{}xx}",0,7,15);
+    TEST("${{{}xx}}",0,9,15);
+    TEST("${}",0,3,15);
+    TEST("${X}",0,4,15);
+    TEST("${XX}",0,5,15);
+    TEST("${{}}",0,4,15);
 
     TEST(" axe",0,4,17);
     TEST("v axeq",0,6,NO_COLOR);

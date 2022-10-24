@@ -104,6 +104,7 @@ typedef struct CWidget_ CWidget;
 
 struct key_word {
     char *keyword;
+    char *keyword_e;
     unsigned char first;
     char *whole_word_chars_left;
     char *whole_word_chars_right;
@@ -118,8 +119,10 @@ struct key_word {
 
 struct context_rule {
     char *left;
+    char *left_e;
     unsigned char first_left;
     char *right;
+    char *right_e;
     unsigned char first_right;
     char line_start_left;
     char line_start_right;

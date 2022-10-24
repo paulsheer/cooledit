@@ -2,6 +2,7 @@
 caseinsensitive
 
 context default
+    keyword bracematch ${*} yellow/15
     keyword whole \[\s\]axe cyan/17
     keyword whole \sflu cyan/16
     keyword whole char yellow/24

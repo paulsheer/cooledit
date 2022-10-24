@@ -1,0 +1,14 @@
+
+caseinsensitive
+
+context default
+    keyword whole \[\s\]axe cyan/17
+    keyword whole \sflu cyan/16
+    keyword whole char yellow/24
+    keyword whole BLUE blue/2
+    keyword whole whole\[\] yellow/23
+    keyword whole \[xyz\]dog yellow/22
+    keyword whole dog yellow/20
+    keyword whole cat yellow/21
+    keyword whole \[xyz\]cat yellow/19
+

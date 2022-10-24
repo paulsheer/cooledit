@@ -77,11 +77,11 @@ int allocate_color (char *color_)
         if (!strcasecmp (color, "brightblue"))
             strcpy (color, "SteelBlue2");
         if (!strcasecmp (color, "brightcyan"))
-            strcpy (color, "LightCyan1");
+            strcpy (color, "LightCyan3");
         if (!strcasecmp (color, "brightgreen"))
             strcpy (color, "PaleGreen1");
         if (!strcasecmp (color, "brightmagenta"))
-            strcpy (color, "plum1");
+            strcpy (color, "plum3");
         if (!strcasecmp (color, "brightred"))
             strcpy (color, "IndianRed1");
 

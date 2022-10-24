@@ -228,9 +228,10 @@ static long compare_word_to_right (WEdit * edit, long i, char *text, char *whole
     return (whole_right != NULL && strchr (whole_right, edit_get_lowercase_byte (edit, i)) != NULL) ? -1 : (i - end_of_line_adjust);
 }
 
-static const char *xx_strchr (const WEdit * edit, const unsigned char *s, int char_byte)
+static inline const char *xx_strchr (const WEdit * edit, const unsigned char *s, int char_byte)
 {E_
-    while (*s >= '\006' && LOWER_CASE (edit, *s) != char_byte)
+    (void) edit;
+    while (*s >= '\006' && *s != char_byte)
 	s++;
 
     return (const char *) s;
@@ -1694,6 +1695,9 @@ char *s1[] = {
 "file ..\\*\\\\.uxit$ Rubbish\\sScript ^nomatch",
 "include uxit.syntax",
 "",
+"file ..\\*\\\\.uyit$ Rubbish\\sScript ^nomatch",
+"include uyit.syntax",
+"",
 0};
 
 char *s2[] = {
@@ -1749,10 +1753,42 @@ NULL,
         edit->last_byte = strlen ((char *) edit->text); \
         edit_get_syntax_color (edit, i, &fg, &bg); \
         if (fg != FG) { \
-            printf ("error, color %d, line %d, i=%d\n", fg, __LINE__, i); \
+            printf ("error, got color %d (expected %d), line %d, i=%d\n", fg, FG, __LINE__, i); \
             exit (1); \
         } \
     }
+
+
+    memset (edit, '\0', sizeof (*edit));
+    edit->last_get_rule = -1;
+    edit->syntax_invalidate = 1;
+
+    edit->filename = "test.uyit";
+    edit_load_syntax (edit, 0, 0);
+
+    TEST(" axe",0,4,17);
+    TEST("v axeq",0,6,NO_COLOR);
+    TEST(" flu",0,4,16);
+    TEST("v fluq",0,6,NO_COLOR);
+    TEST("whole",0,5,23);
+    TEST("char",0,4,24);
+    TEST("CHAR",0,4,24);
+    TEST("cHaR",0,4,24);
+    TEST("ChAr",0,4,24);
+    TEST("blue",0,4,2);
+    TEST("BLUE",0,4,2);
+    TEST("bLuE",0,4,2);
+    TEST("BlUe",0,4,2);
+    TEST("xdog",0,4,22);
+    TEST("ydog",0,4,22);
+    TEST("xdog",0,4,22);
+    TEST("xcat",0,4,19);
+    TEST("ycat",0,4,19);
+    TEST("xcat",0,4,19);
+    TEST("cat",0,3,21);
+#if 0   /* fail */
+    TEST("dog",0,3,20);
+#endif
 
     memset (edit, '\0', sizeof (*edit));
     edit->last_get_rule = -1;

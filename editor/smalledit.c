@@ -220,14 +220,7 @@ int about_callback (CWidget *w, XEvent *xe, CEvent *ce)
       "\n" \
       "Copyright (C) 1996-2022 Paul Sheer\n" \
       "\n" \
-      " Smalledit comes with ABSOLUTELY NO WARRANTY; for details \n" \
-      " click on 'no Warranty' in the File menu. \n" \
-      " This is free software, and you are welcome to redistribute it under \n" \
-      " certain conditions; click on 'Copying' for details. \n" \
-      " Smalledit is meant to demonstrate the Coolwidget X Window Library. \n" \
-      " Coolwidget is a high level API that contains all basic \n" \
-      " widgets and dialogs needed for writing X applications. \n" \
-      " This editor was written in only 400 lines. \n") , VERSION);
+      ) , VERSION);
     CFocus (edit);
     return 1;
 }
@@ -343,7 +336,7 @@ int main (int argc, char **argv)
     }
     if (!edit)
 	edit = CDrawEditor ("editor", main_window, x, y, columns * FONT_MEAN_WIDTH,
-	 lines * FONT_PIX_PER_LINE, "", 0, get_full_filename (""), 0, 0, 0);
+	 lines * FONT_PIX_PER_LINE, "", 0, 0, get_full_filename (""), 0, 0);
     CPopFont ();
 
 /* move to line */

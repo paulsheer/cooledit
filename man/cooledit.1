@@ -1203,7 +1203,8 @@ Note the "next input method" and "trigger" options in the setup GUI: you may nee
 export XMODIFIERS=@im=ibus
 export LANG=en_US.UTF-8
 ibus-setup
-ibus-daemon --xim
+ibus-daemon --xim &
+cooledit
 .fi
 
 The following shell commands will enable English UTF8 key composing and Asian language key composing
@@ -1215,7 +1216,8 @@ Note the "next input method" and "trigger" options in the setup GUI: you may nee
 export XMODIFIERS=@im=SCIM
 export LANG=en_US.UTF-8
 scim-setup
-scim -e pinyin -f x11
+scim -e pinyin -f x11 &
+cooledit
 .fi
 
 .PP

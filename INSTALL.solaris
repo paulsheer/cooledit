@@ -1,0 +1,90 @@
+
+
+😭😭😭😭😭😭😭😭
+
+
+# png:
+
+git clone https://github.com/glennrp/libpng.git
+git checkout v1.6.38
+./configure --prefix=/opt/cooledit/ --disable-shared
+make
+make install
+
+
+# zlib:
+
+git clone https://github.com/madler/zlib.git
+cd zlib/
+git checkout v1.2.13
+./configure --prefix=/opt/cooledit
+make install
+
+
+# bzip2:
+
+git clone https://github.com/madler/zlib.git
+git checkout bzip2-1.0.8
+git config --global core.autocrlf false
+cat .gitattributes | sed -e '/text=auto/D' > .gitattributes2 && mv .gitattributes2 .gitattributes
+# then reverse the changes
+make -f Makefile.solaris
+make -f Makefile.solaris install
+
+# Use this makefile....
+begin 644 Makefile.solaris.gz
+M'XL(")/U56,  TUA:V5F:6QE+G-O;&%R:7, =91?;],P%,6?>S_%?4 :0XK-
+M*B%-ED!C;(PAU$Y,P,;+E#@NC9K$D9V"5/'A=Y/9L=.T?7'BG/NK_YQS@=U]
+M62X>!:9EB45M6QH!EI=?[_$]9J66&ZM-RS1FNZ*9^]$HJ?\JT[^614:CU%5C
+ME+7=HY%MFI6*'G,5S:^WJU65UO14;>;OSF@T:9U[J6W4OQL:M_5.FM2NF8:K
+MZ[M^%;LG^B];Z)JM 3Y]_O;QIIM.EG-,?G7+3JXN?S_]6-P^ -"K0%I1MINS
+M%,!MJ-\=S*I-7AA,&N2Z:;G4NE1YT7*2\Z,?BUJ6VUQQ L),-@/[((.^OV'K
+MXP0.$&]&C+;&BIH(:;L_B?_1JAP3A2>67]!.?UY_O[]=+B[X&7O+SOD)?M@[
+MHNC:1'2'$E^][H[T%&9_I,1$C^XWD7O2EX,^!7?QPCG@ ,4YHR,,DE'U8!<Q
+MML\15G"71\8%@=P[3S@+'F*]6+.'>(FO#KX4P;M31F1?PHR$ VFPNPC6/T *
+MJ>A(L="3XK2(.#M3VBA8Q-L3>^(0.3&D;\H*N210+/,4%U?A<CLE^#Q3?9#X
+MZBCD(DK\E!)W R*-I9[FVH1P_6)*\7V$"$'BJT-S$:'13!E!UF%&0D\"WP@$
+?37;MDJI-A<DJ=)]9:NB>MZ%E>"']G@'R[_3;=P4  *'1
+ 
+end
+
+
+libfreetype:
+
+export LIBPNG_CFLAGS=-I/opt/cooledit/include
+export LIBPNG_LIBS=/opt/cooledit/lib/libpng16.a
+export ZLIB_CFLAGS=-I/opt/cooledit/include
+export ZLIB_LIBS=/opt/cooledit/lib/libz.a
+export BZIP2_CFLAGS=-I/opt/cooledit/include/bz2
+export BZIP2_LIBS=/opt/cooledit/lib/libbz2.a
+export CFLAGS='-O2'
+./configure --prefix=/opt/cooledit/
+
+
+cooledit:
+
+export FREETYPE_LIBS='/opt/cooledit/lib/libfreetype.a /opt/cooledit/lib/libpng16.a /opt/cooledit/lib/libbz2.a /opt/cooledit/lib/libz.a -lm'
+export FREETYPE_CFLAGS='-I/opt/cooledit/include/freetype2 -I/opt/cooledit/include/bz2 -I/opt/cooledit/include'
+./configure --disable-shared --prefix=/opt/cooledit/
+
+
+# make the package:
+
+mkdir -p install/opt
+cp -r /opt/cooledit install/opt/
+rm -rf install/opt/cooledit/include/
+rm -rf install/opt/cooledit/lib
+rm -rf install/opt/cooledit/share/aclocal
+rm -f  install/opt/cooledit/share/man/man3/*
+rm -f  install/opt/cooledit/share/man/man5/*
+rm -f  install/opt/cooledit/bin/*png*
+( cd install ;
+  tar -cf cooledit-4.1.1-solaris-bin.tar opt ;
+  gzip -9 cooledit-4.1.1-solaris-bin.tar ; )
+ls -la install/cooledit-4.1.1-solaris-bin.tar.gz
+
+
+
+
+
+

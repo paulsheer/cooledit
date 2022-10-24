@@ -1056,6 +1056,7 @@ static void edit_syntax_clear_keyword (WEdit * edit, int context, int j)
 
 FILE *spelling_pipe_in = 0;
 FILE *spelling_pipe_out = 0;
+FILE *spelling_pipe_err = 0;
 pid_t ispell_pid = 0;
 
 static char *default_wholechars (void)
@@ -1123,8 +1124,33 @@ static int edit_syntax_add_keyword (WEdit * edit, char *keyword, int context, ti
     return 0;
 }
 
+static int check_error (int wait_a_bit, char *errmsg)
+{
+    int fd, r;
+    struct timeval tv;
+    fd_set rd;
+    fd = fileno (spelling_pipe_err);
+    if (fd < 0)
+        return 0;
+    FD_ZERO (&rd);
+    FD_SET (fd, &rd);
+    tv.tv_sec = 0;
+    tv.tv_usec = wait_a_bit ? 100000 : 0;
+    r = select (fd + 1, &rd, NULL, NULL, &tv);
+    if (r > 0 && FD_ISSET (fd, &rd)) {
+        char *p;
+        *errmsg = '\0';
+        p = fgets (errmsg, 160, spelling_pipe_err);
+        string_chomp (errmsg);
+        if (p && *errmsg) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 /* checks spelling of the word at offset */
-static int edit_check_spelling_at (WEdit * edit, long byte_index)
+static int edit_check_spelling_at (WEdit * edit, long byte_index, char *errmsg)
 {E_
     int context;
     long p1, p2;
@@ -1133,6 +1159,10 @@ static int edit_check_spelling_at (WEdit * edit, long byte_index)
     int ch;
     time_t t;
     struct context_rule *c;
+
+    if (check_error (0, errmsg))
+        return 1;
+
 /* sanity check */
     if (!edit->rules || byte_index > edit->last_byte)
 	return 0;
@@ -1238,6 +1268,7 @@ FILE *fdopen(int fd, const char *mode);
 
 int edit_check_spelling (WEdit * edit)
 {E_
+    char errmsg[160];
     if (!option_auto_spellcheck)
 	return 0;
 /* magic arg to close up shop */
@@ -1254,7 +1285,7 @@ int edit_check_spelling (WEdit * edit)
     }
 /* is ispell running? */
     if (!spelling_pipe_in) {
-	int in, out, a = 0;
+	int in = -1, out = -1, err = -1, a = 0;
 	char *arg[20];
 	if (PATH_search ("aspell")) {
 	    arg[a++] = "aspell";
@@ -1276,7 +1307,7 @@ int edit_check_spelling (WEdit * edit)
 	    arg[a++] = 0;
 	}
 /* start ispell process */
-	ispell_pid = triple_pipe_open (&in, &out, 0, 1, arg[0], arg);
+	ispell_pid = triple_pipe_open (&in, &out, &err, 0, arg[0], arg);
 	if (ispell_pid < 1 && errno == ENOENT) {	/* ispell not present in the path */
 	    static int tries = 0;
 	    option_auto_spellcheck = 0;
@@ -1296,7 +1327,9 @@ int edit_check_spelling (WEdit * edit)
 /* prepare pipes */
 	spelling_pipe_in = (FILE *) fdopen (out, "r");
 	spelling_pipe_out = (FILE *) fdopen (in, "w");
-	if (!spelling_pipe_in || !spelling_pipe_out) {
+	spelling_pipe_err = (FILE *) fdopen (err, "r");
+
+	if (!spelling_pipe_in || !spelling_pipe_out || !spelling_pipe_err) {
 	    option_auto_spellcheck = 0;
 	    CErrorDialog (0, 0, 0, _(" Spelling Message "), "%s",
 			  _
@@ -1307,6 +1340,14 @@ int edit_check_spelling (WEdit * edit)
         CDisableAlarm ();
 	for (;;) {
 	    int c1;
+            if (check_error (1, errmsg)) {
+		option_auto_spellcheck = 0;
+		CErrorDialog (0, 0, 0, _(" Spelling Message "), "%s \n [%s] ",
+			      _
+			      (" Fail trying to read ispell (or aspell) pipes. \n Check that it is in your path and works with the -a option. \n Alternatively, disable spell checking from the Options menu. "), errmsg);
+                CEnableAlarm ();
+		return 1;
+            }
 	    if ((c1 = fgetc (spelling_pipe_in)) == -1) {
 		option_auto_spellcheck = 0;
 		CErrorDialog (0, 0, 0, _(" Spelling Message "), "%s",
@@ -1321,14 +1362,16 @@ int edit_check_spelling (WEdit * edit)
         CEnableAlarm ();
     }
 /* spellcheck the word under the cursor */
-    if (edit_check_spelling_at (edit, edit->curs1)) {
-	CMessageDialog (0, 0, 0, 0, _(" Spelling Message "), "%s",
-			_(" Error reading from ispell (or aspell). \n Ispell is being restarted. "));
+    if (edit_check_spelling_at (edit, edit->curs1, errmsg)) {
+	CMessageDialog (0, 0, 0, 0, _(" Spelling Message "), "%s \n [%s]",
+			_(" Error reading from ispell (or aspell). \n Ispell is being restarted. "), errmsg);
       close_spelling:
 	fclose (spelling_pipe_in);
 	spelling_pipe_in = 0;
 	fclose (spelling_pipe_out);
 	spelling_pipe_out = 0;
+	fclose (spelling_pipe_err);
+	spelling_pipe_err = 0;
 	kill (ispell_pid, SIGKILL);
     }
     return 0;

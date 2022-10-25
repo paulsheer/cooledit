@@ -64,6 +64,7 @@ int             getdtablesize (void)
 /* EXTPROTO */
 void            privileges (int mode)
 {E_
+#ifdef STANDALONE
 #if ! defined(__CYGWIN32__)
 # ifdef HAVE_SETEUID
     static uid_t    euid;
@@ -99,6 +100,7 @@ void            privileges (int mode)
 	break;
     }
 # endif
+#endif
 #endif
 }
 /*}}} */

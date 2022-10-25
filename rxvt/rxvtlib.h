@@ -51,6 +51,7 @@
 #include "_rxvtlib.h"
 #include "rxvtlibtypedef.h"
 #include "rxvtexport.h"
+#include "cterminal.h"
 
 /* #if (XtSpecificationRelease >= 6) */
 /* #undef USE_XIM */
@@ -79,13 +80,7 @@ enum {
 
 
 struct _rxvtlib {
- char    *ttydev ;
- short    changettyowner ;
  unsigned int num_fds ;
-
-#define RXVTLIB_MAX_ENVVAR      32
- char *envvar[RXVTLIB_MAX_ENVVAR];
- int n_envvar;
 
 #ifdef UTF8_FONT
  const char *fontname;
@@ -93,6 +88,9 @@ struct _rxvtlib {
  char utf8buf[6];
 #endif
  int utf8buflen;
+ int env_fg;
+ int env_bg;
+
 
 /*
  * File:	feature.h
@@ -393,12 +391,12 @@ struct _rxvtlib {
 /*
  * Calls to the local X server are handled quickly
  */
-#define INEXPENSIVE_LOCAL_X_CALLS
+/* #define INEXPENSIVE_LOCAL_X_CALLS */
 
 /*
  * Force local connection to be socket (or other local) communication
  */
-#define LOCAL_X_IS_UNIX
+/* #define LOCAL_X_IS_UNIX */
 
 /*
  * Have DISPLAY environment variable & "\E[7n" transmit display with IP number
@@ -810,7 +808,6 @@ struct _row_col_t {
 # define NSCREENS		1
 #endif
 
-#define IGNORE			0
 #define SAVE			's'
 #define RESTORE			'r'
 
@@ -1404,74 +1401,6 @@ EXTSCR screen_t swap;
 EXTSCR int selection_style;
 
 #endif				/* repeat inclusion protection */
-/* ways to deal with getting/setting termios structure */
-#ifdef HAVE_TERMIOS_H
-/* termios interface */
-
-# ifdef TCSANOW			/* POSIX */
-#  define GET_TERMIOS(fd,tios)	tcgetattr (fd, tios)
-#  define SET_TERMIOS(fd,tios)		\
-	cfsetospeed (tios, BAUDRATE),	\
-	cfsetispeed (tios, BAUDRATE),	\
-	tcsetattr (fd, TCSANOW, tios)
-# else
-#  ifdef TIOCSETA
-#   define GET_TERMIOS(fd,tios)	ioctl (fd, TIOCGETA, tios)
-#   define SET_TERMIOS(fd,tios)		\
-	tios->c_cflag |= BAUDRATE,	\
-	ioctl (fd, TIOCSETA, tios)
-#  else
-#   define GET_TERMIOS(fd,tios)	ioctl (fd, TCGETS, tios)
-#   define SET_TERMIOS(fd,tios)		\
-	tios->c_cflag |= BAUDRATE,	\
-	ioctl (fd, TCSETS, tios)
-#  endif
-# endif
-# define SET_TTYMODE(fd,tios)		SET_TERMIOS (fd, tios)
-#else
-/* sgtty interface */
-
-struct _ttymode_t {
-    struct sgttyb   sg;
-    struct tchars   tc;
-    struct ltchars  lc;
-    int             line;
-    int             local;
-};
-
-# define SET_TTYMODE(fd,tt)				\
-	tt->sg.sg_ispeed = tt->sg.sg_ospeed = BAUDRATE,	\
-	ioctl (fd, TIOCSETP, &(tt->sg)),		\
-	ioctl (fd, TIOCSETC, &(tt->tc)),		\
-	ioctl (fd, TIOCSLTC, &(tt->lc)),		\
-	ioctl (fd, TIOCSETD, &(tt->line)),		\
-	ioctl (fd, TIOCLSET, &(tt->local))
-#endif				/* HAVE_TERMIOS_H */
-
-#ifdef PTYS_ARE_PTMX
-# define _NEW_TTY_CTRL		/* to get proper defines in <termios.h> */
-#endif
-
-/* #define DEBUG_TTYMODE */
-/* #define DEBUG_CMD */
-
-/* use the fastest baud-rate */
-#ifdef B38400
-# define BAUDRATE	B38400
-#else
-# ifdef B19200
-#  define BAUDRATE	B19200
-# else
-#  define BAUDRATE	B9600
-# endif
-#endif
-
-/* Disable special character functions */
-#ifdef _POSIX_VDISABLE
-# define VDISABLE	_POSIX_VDISABLE
-#else
-# define VDISABLE	255
-#endif
 
 /*----------------------------------------------------------------------*
  * system default characters if defined and reasonable
@@ -1802,10 +1731,9 @@ struct bar_t {
 
 /* these next two are probably only on Sun (not Solaris) */
 
+ struct cterminal cterminal;
  int      cmd_fd ;
- pid_t    cmd_pid ;
  int      Xfd ;
- struct stat ttyfd_stat;
 
 #ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
  int      scroll_arrow_delay;
@@ -1829,23 +1757,6 @@ struct bar_t {
  char    *v_bufstr ;
  char    *v_bufptr;
  char    *v_bufend;
-
-#define PTYCHAR1	"pqrstuvwxyz"
-#define PTYCHAR2	"0123456789abcdef"
-
-#ifdef DEBUG_TTYMODE
-
-#ifdef HAVE_TERMIOS_H
-# define FOO(flag,name)		\
-    if ((ttymode->c_iflag) & flag)	\
-	fprintf (stderr, "%s ", name)
-# undef FOO
-# define FOO(entry, name) \
-    fprintf (stderr, "%s = %#3o\n", name, ttymode->c_cc [entry])
-# undef FOO
-#endif				/* HAVE_TERMIOS_H */
-
-#endif				/* DEBUG_TTYMODE */
 
 #define FKEY(n, fkey)							\
     len = 5;								\

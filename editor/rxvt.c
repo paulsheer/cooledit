@@ -29,7 +29,7 @@ int rxvt_event (XEvent * xevent)
 	return 0;
     win = xevent->xany.window;
     for (l = rxvt_list->next, prev = rxvt_list; l; l = l->next) {
-	l->killed |= CChildExitted (l->rxvt->cmd_pid, 0);
+	l->killed |= CChildExitted (l->rxvt->cterminal.cmd_pid, 0);
 	if (l->killed || l->rxvt->killed) {
 	    struct rxvts *next;
 	    next = l->next;
@@ -92,7 +92,7 @@ int rxvt_have_pid (pid_t pid)
     if (!rxvt_list)
 	return 0;
     for (l = rxvt_list->next; l; l = l->next)
-	if (l->rxvt->cmd_pid == pid)
+	if (l->rxvt->cterminal.cmd_pid == pid)
 	    return 1;
     return 0;
 }
@@ -155,7 +155,7 @@ int rxvt_alive (pid_t p)
     if (!rxvt_list)
 	return 0;
     for (l = rxvt_list->next; l; l = l->next)
-	if (l->rxvt->cmd_pid == p && !l->killed && !l->rxvt->killed)
+	if (l->rxvt->cterminal.cmd_pid == p && !l->killed && !l->rxvt->killed)
 	    return 1;
     return 0;
 }
@@ -270,12 +270,12 @@ rxvtlib *rxvt_start (Window win, char **argv, int do_sleep, int charset_8bit)
 
 void rxvt_get_tty_name (rxvtlib * rxvt, char *p)
 {E_
-    strcpy (p, rxvt->ttydev);
+    strcpy (p, rxvt->cterminal.ttydev);
 }
 
 pid_t rxvt_get_pid (rxvtlib * rxvt)
 {E_
-    return rxvt->cmd_pid;
+    return rxvt->cterminal.cmd_pid;
 }
 
 #if 0

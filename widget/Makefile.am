@@ -20,7 +20,7 @@ libCw_la_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
 	look-cool.c look-gtk.c look-next.c redblack.c redblack.h \
 	regtools.c remotefs.c remotefs.h ipv6scan.c aes.c aes.h \
 	sha256.c sha256.h remotefspassword.c remotefspassword.h \
-	symauth.c symauth.h inspect.c
+	symauth.c symauth.h inspect.c cterminal.c
 
 libCw_la_LDFLAGS = -version-info 1:0:0
 

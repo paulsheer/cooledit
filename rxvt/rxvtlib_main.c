@@ -89,49 +89,34 @@ void            rxvtlib_color_aliases (rxvtlib *o, int idx)
     }
 }
 
+static void rxvtlib_set_colorenv (rxvtlib *o)
+{
+    unsigned int    i;
+
+    o->env_fg = -1;
+    o->env_bg = -1;
+
+    for (i = Color_Black; i <= Color_White; i++) {
+	if (o->PixColors[Color_fg] == o->PixColors[i]) {
+	    o->env_fg = (i - Color_Black);
+	    break;
+	}
+    }
+    for (i = Color_Black; i <= Color_White; i++) {
+	if (o->PixColors[Color_bg] == o->PixColors[i]) {
+	    o->env_bg = (i - Color_Black);
+	    break;
+	}
+    }
+}
+
 /*
  * find if fg/bg matches any of the normal (low-intensity) colors
  */
 /* INTPROTO */
 void            rxvtlib_set_colorfgbg (rxvtlib *o)
 {E_
-    unsigned int    i;
-    char           *p;
-    int             fg = -1, bg = -1;
-    static char     env_colorfgbg[] = "COLORFGBG=default;default;bg";
-
-    for (i = Color_Black; i <= Color_White; i++) {
-	if (o->PixColors[Color_fg] == o->PixColors[i]) {
-	    fg = (i - Color_Black);
-	    break;
-	}
-    }
-    for (i = Color_Black; i <= Color_White; i++) {
-	if (o->PixColors[Color_bg] == o->PixColors[i]) {
-	    bg = (i - Color_Black);
-	    break;
-	}
-    }
-
-    p = strchr (env_colorfgbg, '=');
-    p++;
-    if (fg >= 0)
-	sprintf (p, "%d;", fg);
-    else
-	STRCPY (p, "default;");
-    p = strchr (p, '\0');
-    if (bg >= 0)
-	sprintf (p,
-#ifdef XPM_BACKGROUND
-		 "default;"
-#endif
-		 "%d", bg);
-    else
-	STRCPY (p, "default");
-
-#define PUTENV(e)       do { if (o->n_envvar < RXVTLIB_MAX_ENVVAR) \
-                                 o->envvar[o->n_envvar++] = (char *) strdup (e); } while (0)
-    PUTENV (env_colorfgbg);
+    int i;
 
 #ifndef NO_BRIGHTCOLOR
     o->colorfgbg = DEFAULT_RSTYLE;
@@ -308,6 +293,7 @@ void            rxvtlib_Create_Windows (rxvtlib *o, int argc, const char *const 
     rxvtlib_change_font (o, 1, NULL);
     if (o->killed)
 	return;
+    rxvtlib_set_colorenv (o);
     rxvtlib_szhints_set (o);
 
 /* parent window - reverse video so we can see placement errors
@@ -1150,11 +1136,15 @@ char    **rxvtlib_init_resources (rxvtlib *o, int argc, const char *const *argv)
 /*
  * Open display, get options/resources and create the window
  */
+#ifdef STANDALONE
     if ((o->rs[Rs_display_name] = getenv ("DISPLAY")) == NULL)
 	o->rs[Rs_display_name] = ":0";
 #ifdef LOCAL_X_IS_UNIX
     if (strncmp (o->rs[Rs_display_name], ":0", 2) == 0)
 	o->rs[Rs_display_name] = "unix:0";
+#endif
+#else
+    o->rs[Rs_display_name] = getenv ("DISPLAY");
 #endif
 
     rxvtlib_get_options (o, r_argc, r_argv);
@@ -1173,6 +1163,7 @@ char    **rxvtlib_init_resources (rxvtlib *o, int argc, const char *const *argv)
     o->Xdisplay = CDisplay;		/* FIXME: not generic */
 #endif
 #ifdef INEXPENSIVE_LOCAL_X_CALLS
+#error
     /* it's hard to determine further if we're on a local display or not */
     o->display_is_local = o->rs[Rs_display_name][0] == ':' ? 1 : 0;
 #endif
@@ -1299,12 +1290,9 @@ char    **rxvtlib_init_resources (rxvtlib *o, int argc, const char *const *argv)
 
 /* ------------------------------------------------------------------------- */
 /* INTPROTO */
-void            rxvtlib_init_env (rxvtlib *o)
+static void            rxvtlib_init_display (rxvtlib *o)
 {E_
     char           *val;
-
-/* these don't need to be static but do so to placate some mem checkers */
-    static char    env_display[100], env_windowid[100], env_term[100];
 
 #ifdef DISPLAY_IS_IP
 /* Fixup display_name for export over pty to any interested terminal
@@ -1324,35 +1312,6 @@ void            rxvtlib_init_env (rxvtlib *o)
 	val = XDisplayString (o->Xdisplay);
     if (o->rs[Rs_display_name] == NULL)
 	o->rs[Rs_display_name] = val;	/* use broken `:0' value */
-
-    sprintf (env_display, "DISPLAY=%.90s", val);
-    sprintf (env_windowid, "WINDOWID=%u", (unsigned int)o->TermWin.parent[0]);
-
-/* add entries to the environment:
- * @ DISPLAY:   in case we started with -display
- * @ WINDOWID:  X window id number of the window
- * @ COLORTERM: terminal sub-name and also indicates its color
- * @ TERM:      terminal name
- * @ TERMINFO:	path to terminfo directory
- */
-    PUTENV (env_display);
-    PUTENV (env_windowid);
-#ifdef RXVT_TERMINFO
-    PUTENV ("TERMINFO=" RXVT_TERMINFO);
-#endif
-    if (o->Xdepth <= 2)
-	PUTENV ("COLORTERM=" COLORTERMENV "-mono");
-    else
-	PUTENV ("COLORTERM=" COLORTERMENVFULL);
-    PUTENV ("CLICOLOR=1");      /* Enable colorize ls output on FreeBSD. See the FreeBSD man page for ls */
-    if (o->rs[Rs_term_name] != NULL) {
-	sprintf (env_term, "TERM=%.40s", o->rs[Rs_term_name]);
-	PUTENV (env_term);
-    } else {
-	PUTENV ("TERM=" TERMENV);
-    }
-    if (o->charset_8bit)
-        PUTENV ("LANG");
 }
 
 void rxvt_set_input_context (rxvtlib *o, XIMStyle input_style);
@@ -1365,16 +1324,6 @@ XIMStyle get_input_style (void);
 int rxvtlib_main (rxvtlib * o, int argc, const char *const *argv, int do_sleep)
 {E_
     char **cmd_argv;
-
-/*
- * Save and then give up any super-user privileges
- * If we need privileges in any area then we must specifically request it.
- * We should only need to be root in these cases:
- *  1.  write utmp entries on some systems
- *  2.  chown tty on some systems
- */
-    privileges (SAVE);
-    privileges (IGNORE);
 
     rxvtlib_init_vars (o);
     cmd_argv = rxvtlib_init_resources (o, argc, (const char *const *) argv);
@@ -1425,7 +1374,7 @@ int rxvtlib_main (rxvtlib * o, int argc, const char *const *argv, int do_sleep)
 
     rxvt_set_input_context (o, get_input_style ());
 
-    rxvtlib_init_env (o);
+    rxvtlib_init_display (o);
     rxvtlib_init_command (o, cmd_argv, do_sleep);
     if (o->killed)
 	return EXIT_FAILURE;

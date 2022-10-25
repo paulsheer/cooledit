@@ -50,10 +50,7 @@
 #include "inspect.h"
 #include "rxvtlib.h"
 
-static  int      cmd_fd = -1;
-static  pid_t    cmd_pid = -1;
 static  int      Xfd = -1;
-static  short    changettyowner = 1;
 static  unsigned long PrivateModes = PrivMode_Default;
 static  unsigned long SavedModes = PrivMode_Default;
 static  int      refresh_count = 0, refresh_limit = 1, refresh_type = SLOW_REFRESH;
@@ -251,10 +248,7 @@ void rxvtlib_init (rxvtlib *o, int charset_8bit)
         o->fontname = "rxvt8bit";
     else
         o->fontname = "rxvt";
-    o->cmd_fd = cmd_fd;
-    o->cmd_pid = cmd_pid;
     o->Xfd = Xfd;
-    o->changettyowner = changettyowner;
     o->PrivateModes = PrivateModes;
     o->SavedModes = SavedModes;
     o->refresh_count = refresh_count;
@@ -330,9 +324,6 @@ void rxvtlib_shut (rxvtlib * o)
 {E_
     int i;
 
-    for (i = 0; i < o->n_envvar; i++)
-        myfree (o->envvar[i]);
-
     for (i = 0; i < o->TermWin.nrow; i++) {
 	if (o->swap.text)
 	    myfree (o->swap.text[i]);
@@ -399,10 +390,10 @@ void rxvtlib_shut (rxvtlib * o)
 #endif
 #endif
 
-    myfree (o->ttydev);
-
     for (i = 0; i < TOTAL_RS; i++)
 	myfree (o->rs_free[i]);
+
+    cterminal_cleanup (&o->cterminal);
 
     memset (o, 0, sizeof (*o));
 }

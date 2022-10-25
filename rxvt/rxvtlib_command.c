@@ -3924,7 +3924,8 @@ printf '\e[?67l'
     }
     if (o->cmd_pid == 0) {		/* child */
 
-#define UNSETENV(e)       do { o->envvar[o->n_envvar++] = (char *) strdup (e); } while (0)
+#define UNSETENV(e)       do { if (o->n_envvar < RXVTLIB_MAX_ENVVAR) \
+                                   o->envvar[o->n_envvar++] = (char *) strdup (e); } while (0)
 
 	/* signal (SIGHUP, Exit_signal); */
 	/* signal (SIGINT, Exit_signal); */

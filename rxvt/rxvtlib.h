@@ -83,7 +83,8 @@ struct _rxvtlib {
  short    changettyowner ;
  unsigned int num_fds ;
 
- char *envvar[32];
+#define RXVTLIB_MAX_ENVVAR      32
+ char *envvar[RXVTLIB_MAX_ENVVAR];
  int n_envvar;
 
 #ifdef UTF8_FONT

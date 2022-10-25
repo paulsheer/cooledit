@@ -129,7 +129,8 @@ void            rxvtlib_set_colorfgbg (rxvtlib *o)
     else
 	STRCPY (p, "default");
 
-#define PUTENV(e)       do { o->envvar[o->n_envvar++] = (char *) strdup (e); } while (0)
+#define PUTENV(e)       do { if (o->n_envvar < RXVTLIB_MAX_ENVVAR) \
+                                 o->envvar[o->n_envvar++] = (char *) strdup (e); } while (0)
     PUTENV (env_colorfgbg);
 
 #ifndef NO_BRIGHTCOLOR

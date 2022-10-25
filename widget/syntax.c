@@ -1338,16 +1338,16 @@ int edit_check_spelling (WEdit * edit)
 	}
 /* read the banner message */
         CDisableAlarm ();
+        if (check_error (1, errmsg)) {
+            option_auto_spellcheck = 0;
+            CErrorDialog (0, 0, 0, _(" Spelling Message "), "%s \n [%s] ",
+                            _
+                            (" Fail trying to read ispell (or aspell) pipes. \n Check that it is in your path and works with the -a option. \n Alternatively, disable spell checking from the Options menu. "), errmsg);
+            CEnableAlarm ();
+            return 1;
+        }
 	for (;;) {
 	    int c1;
-            if (check_error (1, errmsg)) {
-		option_auto_spellcheck = 0;
-		CErrorDialog (0, 0, 0, _(" Spelling Message "), "%s \n [%s] ",
-			      _
-			      (" Fail trying to read ispell (or aspell) pipes. \n Check that it is in your path and works with the -a option. \n Alternatively, disable spell checking from the Options menu. "), errmsg);
-                CEnableAlarm ();
-		return 1;
-            }
 	    if ((c1 = fgetc (spelling_pipe_in)) == -1) {
 		option_auto_spellcheck = 0;
 		CErrorDialog (0, 0, 0, _(" Spelling Message "), "%s",

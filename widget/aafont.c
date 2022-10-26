@@ -123,15 +123,17 @@ static void aa_insert (void)
 static void aa_free (struct aa_font_cache *f)
 {E_
     int i, j;
-    if (f->f->font_struct)
-        XFreeFontInfo (0, f->f->font_struct, 0);
     for (i = 0; i < NUM_GLYPH_BLOCKS; i++) {
 	if (f->glyph[i]) {
-	    for (j = 0; j < 256; j++)
-		if (f->glyph[i][j].pixmap)
+	    for (j = 0; j < 256; j++) {
+		if (f->glyph[i][j].pixmap) {
 		    XFreePixmap (aa_display, f->glyph[i][j].pixmap);
+                    f->glyph[i][j].pixmap = 0;
+                }
+            }
 	    memset (f->glyph[i], 0, 256 * sizeof (struct aa_glyph_cache));
 	    free (f->glyph[i]);
+            f->glyph[i] = NULL;
 	}
     }
     memset (f, 0, sizeof (*f));

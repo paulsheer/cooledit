@@ -288,8 +288,10 @@ static int wchar_tmp_buf_len = 0;
 
 void utf_tmp_buf_free(void)
 {E_
-    if (wchar_tmp_buf)
+    if (wchar_tmp_buf) {
         free(wchar_tmp_buf);
+        wchar_tmp_buf = 0;
+    }
 }
 
 static void utf8_to_wchar_t (const unsigned char *s, int l, C_wchar_t ** r_ret, int *l_ret, enum font_encoding e)
@@ -498,8 +500,10 @@ static int XChar2b_tmp_buf_len = 0;
 
 void XChar2b_tmp_buf_free(void)
 {E_
-    if (XChar2b_tmp_buf)
+    if (XChar2b_tmp_buf) {
         free(XChar2b_tmp_buf);
+        XChar2b_tmp_buf = 0;
+    }
 }
 
 static XChar2b *wchar_t_to_XChar2b (const C_wchar_t * s, int l)
@@ -528,8 +532,10 @@ static int wchar_t_tmp_buf_len = 0;
 
 void wchar_t_tmp_buf_free(void)
 {E_
-    if (wchar_t_tmp_buf)
+    if (wchar_t_tmp_buf) {
         free(wchar_t_tmp_buf);
+        wchar_t_tmp_buf = NULL;
+    }
 }
 
 static wchar_t *Cwchar_to_wchar (const C_wchar_t * s, int l)

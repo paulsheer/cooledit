@@ -1732,8 +1732,9 @@ struct bar_t {
 /* these next two are probably only on Sun (not Solaris) */
 
  struct remotefs *remotefs;
- pid_t    cmd_parentpid ;
- pid_t    cmd_pid ;
+ char     host[256] ;   /* host of cmd_pid */
+ char     ttydev[64] ;  /* tty on host */
+ pid_t    cmd_pid ;     /* pid on host */
  int      cmd_fd ;
  int      Xfd ;
 

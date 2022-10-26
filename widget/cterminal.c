@@ -1,4 +1,7 @@
 /* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
+
+#ifndef MSWIN
+
 #include "inspect.h"
 #include <config.h>
 #if defined(__sun) && defined(__SVR4)
@@ -174,6 +177,9 @@ struct _ttymode_t {
 	ioctl (fd, TIOCLSET, &(tt->local))
 #endif                          /* HAVE_TERMIOS_H */
 
+#ifdef STANDALONE
+#undef strdup
+#endif
 
 
 #ifdef PTYS_ARE_PTMX
@@ -209,6 +215,74 @@ struct _ttymode_t {
 
 #undef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+
+
+extern char **environ;
+
+char **set_env_var (char *new_var[], int nn)
+{E_
+    int exists, n, i, j, k, *l;
+    char **r;
+    l = (int *) alloca (nn * sizeof (int));
+    for (n = 0; environ[n]; n++);
+    for (k = 0; k < nn; k++) {
+        assert (new_var[k]);
+        assert (new_var[k][0]);
+        l[k] = strcspn (new_var[k], "=");
+    }
+    r = (char **) malloc (sizeof (const char *) * (n + nn + 2));
+    for (i = j = 0; j < n; j++) {
+        assert (environ[j]);
+        for (exists = k = 0; k < nn && !exists; k++)
+            exists = !strncmp (environ[j], new_var[k], l[k]);
+        if (!exists)
+            r[i++] = environ[j];
+    }
+    for (k = 0; k < nn; k++)
+        if (new_var[k][l[k]] == '=')       /* a missing equals sign means to delete environment variable */
+            r[i++] = new_var[k];
+    r[i] = NULL;
+    return r;
+}
+
+
+int execve_path_search (const char *file, char *const argv[], char *const envp[])
+{
+    char *path, *p, *q;
+    int done = 0;
+
+    path = getenv ("PATH");
+    if (!path || !*path || *file == '/')
+        return execve (file, argv, envp);
+
+    p = q = path;
+
+    while (!done) {
+        int fd;
+        char *v;
+        while (*q && *q != ':')
+            q++;
+        if (!*q)
+            done = 1;
+        if (!strlen (p))
+            continue;
+        v = (char *) malloc ((q - p) + strlen (file) + 2);
+        strncpy (v, p, q - p);
+        strcpy (v + (q - p), "/");
+        strcat (v, file);
+        if ((fd = open (v, O_RDONLY)) >= 0) {
+            close (fd);
+            return execve (v, argv, envp);
+        }
+        free (v);
+        p = q + 1;
+        q = p;
+    }
+
+    errno = ENOENT;
+    return -1;
+}
 
 
 
@@ -301,7 +375,7 @@ static int cterminal_get_tty (struct cterminal *o, char *errmsg)
     pid = setsid ();
 #endif
     if (pid < 0)
-#ifdef STANDALONE
+#ifdef OLD_RXVT_STANDALONE_CODE
         perror (o->rs[Rs_name]);
 #else
         perror ("cterminal_get_tty");
@@ -451,7 +525,6 @@ pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *con
     tios.c_cc[VWERASE] = 255;
 #endif
 #endif                          /* HAVE_TCGETATTR */
-    o->cmd_parentpid = getpid ();
     o->cmd_pid = fork ();
     if (o->cmd_pid < 0) {
         snprintf (errmsg, CTERMINAL_ERR_MSG_LEN, "can't fork: [%s]", strerror (errno));
@@ -848,7 +921,7 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
     get_ttymode (&tio, &o->erase_char);
     config->erase_char = o->erase_char;
 
-#ifdef STANDALONE
+#ifdef OLD_RXVT_STANDALONE_CODE
 #ifdef UTMP_SUPPORT
 /* spin off the command interpreter */
     signal (SIGHUP, Exit_signal);
@@ -865,7 +938,6 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
 /* need to trap SIGURG for SVR4 (Unixware) rlogin */
 /* signal (SIGURG, SIG_DFL); */
 
-    o->cmd_parentpid = getpid ();
     o->cmd_pid = fork ();
     if (o->cmd_pid < 0) {
         snprintf (errmsg, CTERMINAL_ERR_MSG_LEN, "can't fork: [%s]", strerror (errno));
@@ -900,9 +972,14 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
         PUTENVF ("TERM=%s", config->term_name);
         PUTENVF ("COLORTERM=%s", config->colorterm_name);
         strcpy (envstr, "COLORFGBG=");
-        strcat (envstr, config->env_fg >= 0 ? Citoa (config->env_fg) : "default");
-        strcat (envstr, ";");
-        strcat (envstr, config->env_bg >= 0 ? Citoa (config->env_bg) : "default");
+        if (config->env_fg >= 0)
+            snprintf (envstr + strlen (envstr), 32, "%d;", config->env_fg);
+        else
+            snprintf (envstr + strlen (envstr), 32, "default;");
+        if (config->env_bg >= 0)
+            snprintf (envstr + strlen (envstr), 32, "%d", config->env_bg);
+        else
+            snprintf (envstr + strlen (envstr), 32, "default");
         PUTENV (envstr);
         PUTENV ("CLICOLOR=1");  /* Enable colorize ls output on FreeBSD. See the FreeBSD man page for ls */
         if (config->charset_8bit)
@@ -985,7 +1062,7 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
         return -1;
     }
 
-#ifdef STANDALONE
+#ifdef OLD_RXVT_STANDALONE_CODE
     match_object_to_pid (o, o->cmd_pid);
 #endif
 
@@ -1001,5 +1078,7 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
 }
 
 /*}}} */
+
+#endif
 
 

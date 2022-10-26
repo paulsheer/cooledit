@@ -3725,14 +3725,14 @@ static void remotefs_shellcmd_ (struct cterminal_config *config, char *const arg
 
     r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
     r->len += encode_uint (NULL, ct->cterminal.cmd_pid);
-    r->len += encode_uint (NULL, ct->cterminal.cmd_parentpid);
+    r->len += encode_str (NULL, ct->cterminal.ttydev, strlen (ct->cterminal.ttydev));
     r->len += encode_uint (NULL, ct->cmd_fd);
     r->len += encode_uint (NULL, config->erase_char);
     r->data = (char *) malloc (r->len);
     p = (unsigned char *) r->data;
     encode_uint (&p, REMOTEFS_SUCCESS);
     encode_uint (&p, ct->cterminal.cmd_pid);
-    encode_uint (&p, ct->cterminal.cmd_parentpid);
+    encode_str (&p, ct->cterminal.ttydev, strlen (ct->cterminal.ttydev));
     encode_uint (&p, ct->cmd_fd);
     encode_uint (&p, config->erase_char);
 #else
@@ -3948,23 +3948,23 @@ static int local_enablecrypto (struct remotefs *rfs, const unsigned char *challe
 static int local_shellcmd (struct remotefs *rfs, int *cmd_fd, struct cterminal_config *config, char *const argv[], char *errmsg)
 {E_
     CStr s;
-    unsigned long long cmd_pid_, cmd_parentpid_, cmd_fd_, erase_char_;
+    unsigned long long cmd_pid_, cmd_fd_, erase_char_;
     *errmsg = '\0';
     remotefs_shellcmd_ (config, argv, &s);
 
     MARSHAL_START_LOCAL;
     if (decode_uint (&p, end, &cmd_pid_))
         return -1;
-    if (decode_uint (&p, end, &cmd_parentpid_))
+    if (decode_str (&p, end, config->ttydev, sizeof (config->ttydev)))
         return -1;
     if (decode_uint (&p, end, &cmd_fd_))
         return -1;
     if (decode_uint (&p, end, &erase_char_))
         return -1;
     config->cmd_pid = (unsigned long) cmd_pid_;
-    config->cmd_parentpid = (unsigned long) cmd_parentpid_;
     *cmd_fd = (int) cmd_fd_;
     config->erase_char = (int) erase_char_;
+    strcpy (config->host, "localhost");
     MARSHAL_END_LOCAL(NULL);
 }
 
@@ -4388,7 +4388,7 @@ static int remote_enablecrypto (struct remotefs *rfs, const unsigned char *chall
 static int remote_shellcmd (struct remotefs *rfs, int *cmd_fd, struct cterminal_config *config, char *const argv[], char *errmsg)
 {E_
     CStr s, msg;
-    unsigned long long cmd_pid_, cmd_parentpid_, cmd_fd_, erase_char_;
+    unsigned long long cmd_pid_, cmd_fd_, erase_char_;
     unsigned char *q;
     int no_such_action = 0;
     *errmsg = '\0';
@@ -4405,16 +4405,17 @@ static int remote_shellcmd (struct remotefs *rfs, int *cmd_fd, struct cterminal_
     MARSHAL_START_REMOTE;
     if (decode_uint (&p, end, &cmd_pid_))
         return -1;
-    if (decode_uint (&p, end, &cmd_parentpid_))
+    if (decode_str (&p, end, config->ttydev, sizeof (config->ttydev)))
         return -1;
     if (decode_uint (&p, end, &cmd_fd_))
         return -1;
     if (decode_uint (&p, end, &erase_char_))
         return -1;
     config->cmd_pid = (unsigned long) cmd_pid_;
-    config->cmd_parentpid = 0L;         /* do not return the real parent pid, since we can do nothing meaningful with it remotely */
     *cmd_fd = (int) cmd_fd_;
     config->erase_char = (int) erase_char_;
+    strcpy (config->host, rfs->remotefs_private->remote);
+
     MARSHAL_END_REMOTE(NULL);
 }
 

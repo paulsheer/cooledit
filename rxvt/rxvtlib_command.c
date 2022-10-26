@@ -3440,7 +3440,8 @@ int            rxvtlib_run_command (rxvtlib *o, char *const argv[], int do_sleep
     if ((*o->remotefs->remotefs_shellcmd) (o->remotefs, &o->cmd_fd, &c, argv, errmsg))
         return -1;
     o->cmd_pid = c.cmd_pid;
-    o->cmd_parentpid = c.cmd_parentpid;
+    Cstrlcpy (o->host, c.host, sizeof (o->host));
+    Cstrlcpy (o->ttydev, c.ttydev, sizeof (o->ttydev));
 
 /* 
  * Reduce num_fds to what we use, so select() is more efficient 

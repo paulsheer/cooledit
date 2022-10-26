@@ -89,6 +89,11 @@ static void debug_write_callback (int fd, fd_set * reading, fd_set * writing, fd
 #define MAX_QUEUED_COMMANDS	100
 #define MAX_VARIABLES		60
 
+struct xterm_pid_host {
+    pid_t xterm_pid;
+    char xterm_host[256];
+};
+
 typedef struct struct_debug {
     int x, y, r;
     Window w;
@@ -128,7 +133,7 @@ typedef struct struct_debug {
     char *condition;
     int show_output, stop_at_main, show_on_stdout;
 /*    int ignore_SIGTTOU; */
-    pid_t xterm_pid;
+    struct xterm_pid_host xterm_pid_host;
     int break_point_line;
     char *break_point_editor;
 } Debug;
@@ -586,11 +591,13 @@ static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_
     char buf[1025];
     int c, action, n, i;
     d = &debug_session;
-#finish we need a better way to identify the remote processes, such as making it unique among many machines
-    if (CChildExitted (d->pid, 0) || (!rxvt_have_pid (d->xterm_pid) && d->show_output)) {
+#warning finish: need to handle remote process death
+if (!strcmp (d->xterm_pid_host.xterm_host, "localhost")) {
+    if (CChildExitted (d->pid, 0) || (!rxvt_have_pid (d->xterm_pid_host.xterm_pid) && d->show_output)) {
 	debug_finish (0);
 	return;
     }
+}
     do {
 	c = read (d->out, buf, 1024);
     } while (c < 0 && (errno == EINTR || errno == EAGAIN));
@@ -1019,10 +1026,13 @@ static void debug_write_callback (int fd, fd_set * reading, fd_set * writing, fd
 {E_
     Debug *d;
     d = &debug_session;
-    if (CChildExitted (d->pid, 0) || (!rxvt_have_pid (d->xterm_pid) && d->show_output)) {
+#warning finish: need to handle remote process death
+if (!strcmp (d->xterm_pid_host.xterm_host, "localhost")) {
+    if (CChildExitted (d->pid, 0) || (!rxvt_have_pid (d->xterm_pid_host.xterm_pid) && d->show_output)) {
 	debug_finish (0);
 	return;
     }
+}
     if (d->show_on_stdout) {
 	printf ("%s", d->command[0].command);
 	fflush (stdout);
@@ -1107,7 +1117,8 @@ static int xdebug_run_program (Debug * d)
         gargv[0] = d->progname;
 	rxvt = rxvt_start (CRoot, gargv, 1, 0);
 	if (!rxvt) {
-	    d->xterm_pid = 0;
+	    d->xterm_pid_host.xterm_pid = 0;
+	    d->xterm_pid_host.xterm_host[0] = '\0';
 	    d->pid = 0;
 	    debug_error1 (d, _("Could not open an rxvt"));
 	    xdebug_flush_commands (d);
@@ -1115,7 +1126,7 @@ static int xdebug_run_program (Debug * d)
 	}
 	p = (char *) strdup ("-tty=                    ");
 	rxvt_get_tty_name (rxvt, p + 5);
-	d->xterm_pid = (pid_t) rxvt_get_pid (rxvt);
+        rxvt_get_pid_host (rxvt, &d->xterm_pid_host.xterm_pid, d->xterm_pid_host.xterm_host, sizeof (d->xterm_pid_host.xterm_host));
 	arg[i++] = p;
 	arg[i++] = d->progname;
 	arg[i] = 0;
@@ -1133,9 +1144,13 @@ static int xdebug_run_program (Debug * d)
     }
     if (d->pid <= 0) {
 	d->pid = 0;
-	if (d->xterm_pid)
-	    kill (d->xterm_pid, SIGTERM);
-	d->xterm_pid = 0;
+#warning finish: need to handle remote process death
+if (!strcmp (d->xterm_pid_host.xterm_host, "localhost")) {
+	if (d->xterm_pid_host.xterm_pid)
+	    kill (d->xterm_pid_host.xterm_pid, SIGTERM);
+}
+	d->xterm_pid_host.xterm_pid = 0;
+	d->xterm_pid_host.xterm_host[0] = '\0';
 	d->pid = 0;
 	debug_error1 (d, _("Could not open gdb"));
 	xdebug_flush_commands (d);
@@ -1400,9 +1415,12 @@ static void debug_finish (unsigned long x)
 	CRemoveWatch (debug_session.out, debug_read_callback, WATCH_READING);
 	close (debug_session.in);
 	close (debug_session.out);
-	if (debug_session.xterm_pid) {
-	    kill (debug_session.xterm_pid, SIGTERM);
-	    debug_session.xterm_pid = 0;
+	if (debug_session.xterm_pid_host.xterm_pid) {
+if (!strcmp (debug_session.xterm_pid_host.xterm_host, "localhost")) {
+	    kill (debug_session.xterm_pid_host.xterm_pid, SIGTERM);
+}
+	    debug_session.xterm_pid_host.xterm_pid = 0;
+	    debug_session.xterm_pid_host.xterm_host[0] = '\0';
 	}
 	if (debug_session.child) {
 	    kill (debug_session.child, SIGKILL);

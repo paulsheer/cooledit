@@ -2,7 +2,7 @@ bin_PROGRAMS = remotefs
 
 AM_CPPFLAGS = -I$(top_srcdir)/widget -I$(top_srcdir) 
 
-remotefs_SOURCES = remotefs.c regex.c regtools.c pathdup.c ipv6scan.c aes.c sha256.c symauth.c
+remotefs_SOURCES = remotefs.c regex.c regtools.c pathdup.c ipv6scan.c aes.c sha256.c symauth.c cterminal.c
 FREETYPE_LIBS = 
 LIBS = 
 LDFLAGS = -static 
@@ -32,6 +32,9 @@ sha256.c:
 
 symauth.c:
 	ln -sf ../widget/symauth.c .
+
+cterminal.c:
+	ln -sf ../widget/cterminal.c .
 
 
 remotefs_LDADD = 

@@ -1132,29 +1132,47 @@ void CPopFont (void)
 #ifndef NO_TTF
 	int i;
 #endif
-	if (font_stack->f->gc)
+	if (font_stack->f->gc) {
 	    XFreeGC (CDisplay, font_stack->f->gc);
-	if (font_stack->f->f.font_set)
+            font_stack->f->gc = 0;
+        }
+	if (font_stack->f->f.font_set) {
 	    XFreeFontSet (CDisplay, font_stack->f->f.font_set);
+            font_stack->f->f.font_set = 0;
+        }
+        if (font_stack->f->f.font_struct) {
+            XFreeFontInfo (0, font_stack->f->f.font_struct, 0);
+            font_stack->f->f.font_struct = NULL;
+        }
 #ifndef NO_TTF
 	XAaFree (font_stack->f->f.load_id);
 #endif
-	if (font_stack->f->f.font_struct)
+	if (font_stack->f->f.font_struct) {
 	    XFreeFont (CDisplay, font_stack->f->f.font_struct);
+            font_stack->f->f.font_struct = NULL;
+        }
 #ifndef NO_TTF
 	for (i = 0; i < font_stack->f->f.font_freetype.n_fonts; i++) {
 	    struct freetype_cache *cache;
 	    cache = &font_stack->f->f.font_freetype.faces[i];
-	    if (cache->freetype_fname)
+	    if (cache->freetype_fname) {
 		free (cache->freetype_fname);
-	    if (cache->face)
+                cache->freetype_fname = NULL;
+            }
+	    if (cache->face) {
 		FT_Done_Face(cache->face);
+                cache->face = NULL;
+            }
 	}
 #endif
-	if (font_stack->f->per_char)
+	if (font_stack->f->per_char) {
 	    free (font_stack->f->per_char);
+            font_stack->f->per_char = NULL;
+        }
 	free (font_stack->f->name);
+        font_stack->f->name = NULL;
 	free (font_stack->f);
+        font_stack->f = NULL;
     }
     p = font_stack->next;
     if (p) {

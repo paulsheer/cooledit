@@ -23,13 +23,18 @@ extern void rxvt_fd_read_watch (int fd, fd_set * reading, fd_set * writing, fd_s
 
 int rxvt_event (XEvent * xevent)
 {E_
+    pid_t mine = 0;
     Window win;
     struct rxvts *l, *prev = 0;
     if (!rxvt_list)
 	return 0;
+    if (!mine)
+        mine = getpid ();
     win = xevent->xany.window;
     for (l = rxvt_list->next, prev = rxvt_list; l; l = l->next) {
-	l->killed |= CChildExitted (l->rxvt->cterminal.cmd_pid, 0);
+#warning finish socket death must be the same as CChildExitted()
+        if (mine == l->rxvt->cmd_parentpid)
+ 	    l->killed |= CChildExitted (l->rxvt->cmd_pid, 0);
 	if (l->killed || l->rxvt->killed) {
 	    struct rxvts *next;
 	    next = l->next;
@@ -88,13 +93,14 @@ int rxvt_event (XEvent * xevent)
 
 int rxvt_have_pid (pid_t pid)
 {E_
-    struct rxvts *l;
-    if (!rxvt_list)
-	return 0;
-    for (l = rxvt_list->next; l; l = l->next)
-	if (l->rxvt->cterminal.cmd_pid == pid)
-	    return 1;
-    return 0;
+#warning finish - the pid is remote
+//     struct rxvts *l;
+//     if (!rxvt_list)
+// 	return 0;
+//     for (l = rxvt_list->next; l; l = l->next)
+// 	if (l->rxvt->cmd_pid == pid)
+// 	    return 1;
+//     return 0;
 }
 
 /* rxvt's need to interoperate */
@@ -155,7 +161,7 @@ int rxvt_alive (pid_t p)
     if (!rxvt_list)
 	return 0;
     for (l = rxvt_list->next; l; l = l->next)
-	if (l->rxvt->cterminal.cmd_pid == p && !l->killed && !l->rxvt->killed)
+	if (l->rxvt->cmd_pid == p && !l->killed && !l->rxvt->killed)
 	    return 1;
     return 0;
 }
@@ -270,12 +276,14 @@ rxvtlib *rxvt_start (Window win, char **argv, int do_sleep, int charset_8bit)
 
 void rxvt_get_tty_name (rxvtlib * rxvt, char *p)
 {E_
-    strcpy (p, rxvt->cterminal.ttydev);
+#warning finish - the terminal is remote
+//     strcpy (p, rxvt->cterminal.ttydev);
 }
 
 pid_t rxvt_get_pid (rxvtlib * rxvt)
 {E_
-    return rxvt->cterminal.cmd_pid;
+#warning finish - the pid is remote
+//     return rxvt->cmd_pid;
 }
 
 #if 0

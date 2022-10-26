@@ -527,7 +527,7 @@ void            rxvtlib_resize_window (rxvtlib *o, unsigned int width, unsigned 
 	o->TermWin.nrow = new_nrow;
 
 	rxvtlib_resize_subwindows (o, width, height);
-	rxvtlib_scr_reset (o);
+	rxvtlib_scr_reset (o, 1);
 
 	if (curr_screen >= 0)	/* this is not the first time thru */
 	    rxvtlib_scr_change_screen (o, curr_screen);
@@ -1343,7 +1343,7 @@ int rxvtlib_main (rxvtlib * o, int argc, const char *const *argv, int do_sleep)
     rxvtlib_init_xlocale (o);
 #endif
 
-    rxvtlib_scr_reset (o);		/* initialize screen */
+    rxvtlib_scr_reset (o, 0);		/* initialize screen */
     rxvtlib_Gr_reset (o);		/* reset graphics */
 
 #ifdef STANDALONE

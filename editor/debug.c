@@ -46,6 +46,7 @@
 #include "widget/pool.h"
 #include "find.h"
 #include "rxvt/rxvtexport.h"
+#include "cterminal.h"
 #include "debug.h"
 
 extern struct look *look;
@@ -585,6 +586,7 @@ static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_
     char buf[1025];
     int c, action, n, i;
     d = &debug_session;
+#finish we need a better way to identify the remote processes, such as making it unique among many machines
     if (CChildExitted (d->pid, 0) || (!rxvt_have_pid (d->xterm_pid) && d->show_output)) {
 	debug_finish (0);
 	return;
@@ -1072,6 +1074,8 @@ static const char *thing (unsigned long m)
     }
 }
 
+pid_t xx_open_under_pty (int *in, int *out, char *line, const char *file, char *const argv[]);
+
 
 static int xdebug_run_program (Debug * d)
 {E_
@@ -1119,11 +1123,12 @@ static int xdebug_run_program (Debug * d)
 	free (p);
     } else {
 	char *p;
+        char errmsg[CTERMINAL_ERR_MSG_LEN];
 	p = (char *) strdup ("-tty=                    ");
 	arg[i++] = p;
 	arg[i++] = d->progname;
 	arg[i] = 0;
-	d->pid = open_under_pty (&d->in, &d->out, p + 5, d->debugger, arg);
+	d->pid = open_under_pty (&d->in, &d->out, p + 5, d->debugger, arg, errmsg);
 	free (p);
     }
     if (d->pid <= 0) {

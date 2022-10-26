@@ -1820,7 +1820,7 @@ static CWidget *CDrawMiniSwitch (const char *identifier, Window parent, int x, i
     return w;
 }
 
-pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *const argv[]);
+pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *const argv[], char *errmsg);
 
 int option_shell_command_line_sticky = 0;
 int option_shell_command_line_pty = 0;
@@ -1933,12 +1933,13 @@ void edit_insert_shell_output (WEdit * edit)
 		    pid_t pid;
 		    char *arg[5];
 		    char line[80];
+                    char errmsg[REMOTEFS_ERR_MSG_LEN];
 		    arg[0] = "/bin/sh";
 		    arg[1] = "-c";
 		    arg[2] = i->text.data;
 		    arg[3] = 0;
 		    if (option_shell_command_line_pty) {
-			pid = open_under_pty (&in, &out, line, "/bin/sh", arg);
+			pid = open_under_pty (&in, &out, line, "/bin/sh", arg, errmsg);
 		    } else {
 			pid = triple_pipe_open (&in, &out, 0, 1, "/bin/sh", arg);
 		    }

@@ -56,11 +56,11 @@ RETSIGTYPE      Child_signal (int unused);
 RETSIGTYPE      Exit_signal (int sig);
 void            clean_exit (void);
 void            debug_ttymode (const ttymode_t * ttymode);
-void            rxvtlib_run_command (rxvtlib *o, char *const argv[], int do_sleep);
+int             rxvtlib_run_command (rxvtlib *o, char *const argv[], int do_sleep);
 void            rxvtlib_get_ourmods (rxvtlib *o);
 void            rxvtlib_init_command (rxvtlib *o, char *const argv[], int do_sleep);
 void            rxvtlib_init_xlocale (rxvtlib *o);
-void            rxvtlib_tt_resize (rxvtlib *o);
+int             rxvtlib_tt_resize (rxvtlib *o);
 void            rxvtlib_lookup_key (rxvtlib *o, XEvent * ev);
 unsigned int    rxvtlib_cmd_write (rxvtlib *o, const unsigned char *str, unsigned int count);
 unsigned char   rxvtlib_cmd_getc (rxvtlib *o);
@@ -181,7 +181,7 @@ void            rxvtlib_Resize_menuBar (rxvtlib *o, int x, int y, unsigned int w
 /* void            blank_line (text_t * et, rend_t * er, int width, rend_t efs); */
 /* void            rxvtlib_blank_screen_mem (rxvtlib *o, text_t ** tp, rend_t ** rp, int row,
 				  rend_t efs); */
-void            rxvtlib_scr_reset (rxvtlib *o);
+void            rxvtlib_scr_reset (rxvtlib *o, int tt_resize);
 void            rxvtlib_scr_reset_realloc (rxvtlib *o);
 void            rxvtlib_scr_release (rxvtlib *o);
 void            rxvtlib_scr_poweron (rxvtlib *o);

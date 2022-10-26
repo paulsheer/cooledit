@@ -393,7 +393,8 @@ void rxvtlib_shut (rxvtlib * o)
     for (i = 0; i < TOTAL_RS; i++)
 	myfree (o->rs_free[i]);
 
-    cterminal_cleanup (&o->cterminal);
+#warning finish tell remotefs to cleanup, or do we just close??
+//     cterminal_cleanup (&o->cterminal);
 
     memset (o, 0, sizeof (*o));
 }

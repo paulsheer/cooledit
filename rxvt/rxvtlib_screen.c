@@ -137,7 +137,7 @@ void            rxvtlib_blank_screen_mem (rxvtlib *o, text_t ** tp, rend_t ** rp
  * ------------------------------------------------------------------------- */
 
 /* EXTPROTO */
-void            rxvtlib_scr_reset (rxvtlib *o)
+void            rxvtlib_scr_reset (rxvtlib *o, int tt_resize)
 {E_
     int             i, j, k, total_rows, prev_total_rows;
     rend_t          setrstyle;
@@ -343,7 +343,8 @@ void            rxvtlib_scr_reset (rxvtlib *o)
     o->prev_nrow = o->TermWin.nrow;
     o->prev_ncol = o->TermWin.ncol;
 
-    rxvtlib_tt_resize (o);
+    if (tt_resize)
+        rxvtlib_tt_resize (o);
 }
 
 /* INTPROTO */
@@ -432,7 +433,7 @@ void            rxvtlib_scr_poweron (rxvtlib *o)
     rxvtlib_scr_release (o);
     o->prev_nrow = -1;
     o->prev_ncol = -1;
-    rxvtlib_scr_reset (o);
+    rxvtlib_scr_reset (o, 1);
 
     rxvtlib_scr_clear (o);
     rxvtlib_scr_refresh (o, SLOW_REFRESH);

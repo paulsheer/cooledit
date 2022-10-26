@@ -1731,7 +1731,9 @@ struct bar_t {
 
 /* these next two are probably only on Sun (not Solaris) */
 
- struct cterminal cterminal;
+ struct remotefs *remotefs;
+ pid_t    cmd_parentpid ;
+ pid_t    cmd_pid ;
  int      cmd_fd ;
  int      Xfd ;
 

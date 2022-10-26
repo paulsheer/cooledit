@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 
+#ifndef NO_INSPECT
 #define NO_INSPECT
+#endif
 
 #if defined(NO_INSPECT) || !defined(__GNUC__) || !defined(__x86_64__)
 

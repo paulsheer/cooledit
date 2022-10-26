@@ -941,7 +941,7 @@ void set_signal_handlers_to_default (void);
 char *read_pipe (int fd, int *len, const pid_t *child_pid);
 pid_t triple_pipe_open (int *in, int *out, int *err, int mix, const char *file, char *const argv[]);
 pid_t triple_pipe_open_env (int *in, int *out, int *err, int mix, const char *file, char *const argv[], char *const envp[]);
-pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *const argv[]);
+pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *const argv[], char *errmsg);
 
 /* see coolnext.c for details */
 int CCheckWindowEvent (Window w, long event_mask, int do_sync);

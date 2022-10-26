@@ -1,4 +1,24 @@
 
+
+struct cterminal_config {
+    char display_env_var[128];
+    char term_name[32];
+    char colorterm_name[32];
+    unsigned long term_win_id;
+    int col;
+    int row;
+    int login_shell;
+    int do_sleep;
+    int charset_8bit;
+    int env_fg;
+    int env_bg;
+    int erase_char; /* return value */
+    unsigned long cmd_pid; /* return value */
+    unsigned long cmd_parentpid; /* return value */
+};
+
+#ifndef MSWIN
+
 #ifdef HAVE_TERMIOS_H
 typedef struct termios ttymode_t;
 #else
@@ -10,30 +30,18 @@ struct cterminal {
     short changettyowner;
     struct stat ttyfd_stat;
     pid_t cmd_pid;
+    pid_t cmd_parentpid;
     int erase_char;
 #define RXVTLIB_MAX_ENVVAR      32
     char *envvar[RXVTLIB_MAX_ENVVAR];
     int n_envvar;
 };
 
-struct cterminal_config {
-    const char *color_env;
-    const char *display_env_var;
-    unsigned long term_win_id;
-    const char *term_name;
-    const char *colorterm_name;
-    int col;
-    int row;
-    int login_shell;
-    int do_sleep;
-    int charset_8bit;
-    int env_fg;
-    int env_bg;
-};
-
 #define CTERMINAL_IGNORE                0
 #define CTERMINAL_SAVE	                's'
 #define CTERMINAL_RESTORE               'r'
+
+#define CTERMINAL_ERR_MSG_LEN                    384
 
 #define DO_EXIT                         ((int) 1 << 30)
 #ifndef EXIT_SUCCESS		        /* missing from <stdlib.h> */
@@ -43,6 +51,8 @@ struct cterminal_config {
 
 void cterminal_tt_winsize (struct cterminal *o, int fd, int col, int row);
 void cterminal_cleanup (struct cterminal *o);
-int cterminal_get_pty (struct cterminal *o);
-int cterminal_run_command (struct cterminal *o, struct cterminal_config *config, char *const argv[]);
+int cterminal_get_pty (struct cterminal *o, char *errmsg);
+int cterminal_run_command (struct cterminal *o, struct cterminal_config *config, char *const argv[], char *errmsg);
+
+#endif
 

@@ -240,7 +240,7 @@ void cterminal_cleanup (struct cterminal *o)
 /* EXTPROTO */
 static void cterminal_privileges (int mode)
 {E_
-#ifdef STANDALONE
+#warning comment out
 #ifdef HAVE_SETEUID
     static uid_t euid;
     static gid_t egid;
@@ -275,7 +275,6 @@ static void cterminal_privileges (int mode)
         break;
     }
 #endif
-#endif
 }
 
 /*}}} */
@@ -287,7 +286,7 @@ static void cterminal_privileges (int mode)
  * need to re-open the slave tty.
  */
 /* INTPROTO */
-static int cterminal_get_tty (struct cterminal *o)
+static int cterminal_get_tty (struct cterminal *o, char *errmsg)
 {E_
     int fd, i;
     pid_t pid;
@@ -308,8 +307,9 @@ static int cterminal_get_tty (struct cterminal *o)
         perror ("cterminal_get_tty");
 #endif
 
-    if ((fd = open (o->ttydev, O_RDWR)) < 0 && (fd = open ("/dev/tty", O_RDWR)) < 0) {
-        fprintf (stderr, "can't open slave tty %s [%s]\n", o->ttydev, strerror (errno));
+    if ((fd = open (o->ttydev, O_RDWR)) < 0
+        && (fd = open ("/dev/tty", O_RDWR)) < 0) {
+        snprintf (errmsg, CTERMINAL_ERR_MSG_LEN, "can't open slave tty %s [%s]", o->ttydev, strerror (errno));
         return -1;
     }
 #if defined(PTYS_ARE_PTMX) && !defined(__FreeBSD__) && !defined(__DragonFly__)
@@ -390,7 +390,7 @@ static int cterminal_get_tty (struct cterminal *o)
 
 
 
-pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *const argv[])
+pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *const argv[], char *errmsg)
 {E_
     int cmd_fd = -1;
     struct cterminal tty_values;
@@ -399,9 +399,9 @@ pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *con
     struct winsize ws;
 #endif
     ttymode_t tios;
+    memset (&tios, 0, sizeof (tios));
     memset (o, 0, sizeof (struct cterminal));
-    cmd_fd = cterminal_get_pty (o);
-/*     o->num_fds = 3; */
+    cmd_fd = cterminal_get_pty (o, errmsg);
     if (cmd_fd < 0)
         return -1;
     strcpy (line, o->ttydev);
@@ -451,29 +451,31 @@ pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *con
     tios.c_cc[VWERASE] = 255;
 #endif
 #endif                          /* HAVE_TCGETATTR */
+    o->cmd_parentpid = getpid ();
     o->cmd_pid = fork ();
     if (o->cmd_pid < 0) {
-        fprintf (stderr, "can't fork: %s\n", strerror (errno));
-        cmd_fd = -1;
+        snprintf (errmsg, CTERMINAL_ERR_MSG_LEN, "can't fork: [%s]", strerror (errno));
         return -1;
     }
     if (o->cmd_pid == 0) {      /* child */
         char *envvar[32];
         int n_envvar = 0;
 
+        memset (envvar, '\0', sizeof (envvar));
+
         envvar[n_envvar++] = "LINES";
         envvar[n_envvar++] = "COLUMNS";
         envvar[n_envvar++] = "TERMCAP";
         envvar[n_envvar++] = "TERM=dumb";
 
-        if (cterminal_get_tty (o) < 0)
+        if (cterminal_get_tty (o, errmsg) < 0)
             exit (1);
-        SET_TTYMODE (cmd_fd, &tios);
+        SET_TTYMODE (0, &tios);
 #if 0
         ws.ws_col = (unsigned short) 80;
         ws.ws_row = (unsigned short) 25;
         ws.ws_xpixel = ws.ws_ypixel = 0;
-        ioctl (cmd_fd, TIOCSWINSZ, &ws);
+        ioctl (0, TIOCSWINSZ, &ws);
         signal (SIGINT, SIG_DFL);       /* FIXME: what should we do about these signals? */
         signal (SIGQUIT, SIG_DFL);
         signal (SIGCHLD, SIG_DFL);
@@ -623,7 +625,7 @@ static void get_ttymode (ttymode_t * tio, int *erase_char)
  * master and slave parts
  */
 /* INTPROTO */
-int cterminal_get_pty (struct cterminal *o)
+int cterminal_get_pty (struct cterminal *o, char *errmsg)
 {E_
     int fd;
     char *ptydev;
@@ -749,7 +751,7 @@ int cterminal_get_pty (struct cterminal *o)
     }
 #endif
 
-    fprintf (stderr, "can't open pseudo-tty\n");
+    snprintf (errmsg, CTERMINAL_ERR_MSG_LEN, "can't open pseudo-tty");
     return -1;
 
   Found:
@@ -786,7 +788,7 @@ void cterminal_tt_winsize (struct cterminal *o, int fd, int col, int row)
  * the slave.
  */
 /* INTPROTO */
-int cterminal_run_command (struct cterminal *o, struct cterminal_config *config, char *const argv[])
+int cterminal_run_command (struct cterminal *o, struct cterminal_config *config, char *const argv[], char *errmsg)
 {E_
     int cmd_fd = -1;
     ttymode_t tio;
@@ -815,7 +817,7 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
     printf ("charset_8bit = %d\n", config->charset_8bit);
 #endif
 
-    if ((cmd_fd = cterminal_get_pty (o)) < 0)
+    if ((cmd_fd = cterminal_get_pty (o, errmsg)) < 0)
         return -1;
 
 /* store original tty status for restoration clean_exit() -- rgg 04/12/95 */
@@ -844,6 +846,7 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
  * and make a reasonable guess at the value for BackSpace
  */
     get_ttymode (&tio, &o->erase_char);
+    config->erase_char = o->erase_char;
 
 #ifdef STANDALONE
 #ifdef UTMP_SUPPORT
@@ -862,9 +865,10 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
 /* need to trap SIGURG for SVR4 (Unixware) rlogin */
 /* signal (SIGURG, SIG_DFL); */
 
+    o->cmd_parentpid = getpid ();
     o->cmd_pid = fork ();
     if (o->cmd_pid < 0) {
-        fprintf (stderr, "can't fork: [%s]\n", strerror (errno));
+        snprintf (errmsg, CTERMINAL_ERR_MSG_LEN, "can't fork: [%s]", strerror (errno));
         return -1;
     }
     if (o->cmd_pid == 0) {      /* child */
@@ -909,7 +913,7 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
 #endif
 
         /* establish a controlling teletype for the new session */
-        if (cterminal_get_tty (o) < 0)
+        if (cterminal_get_tty (o, errmsg) < 0)
             return -1;
 
         /* initialize terminal attributes */

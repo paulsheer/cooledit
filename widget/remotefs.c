@@ -69,11 +69,19 @@
 #include <sys/filio.h>
 #endif
 
+#define SHELL_SUPPORT
+
+#ifdef MSWIN
+#undef SHELL_SUPPORT
+#endif
+
+
 #include "remotefs.h"
 #include "dirtools.h"
 #include "aes.h"
 #include "sha256.h"
 #include "symauth.h"
+#include "cterminal.h"
 
 
 #ifdef MSWIN
@@ -1439,6 +1447,8 @@ void SHUTSOCK (struct sock_data *p)
 #define REMOTEFS_ACTION_REALPATHIZE             7
 #define REMOTEFS_ACTION_GETHOMEDIR              8
 #define REMOTEFS_ACTION_ENABLECRYPTO            9
+#define REMOTEFS_ACTION_SHELLCMD                10
+#define REMOTEFS_ACTION_SHELLRESIZE             11
 
 const char *action_descr[] = {
     "NOTIMPLEMENTED",
@@ -1451,6 +1461,8 @@ const char *action_descr[] = {
     "REALPATHIZE",
     "GETHOMEDIR",
     "ENABLECRYPTO",
+    "SHELLCMD",
+    "SHELLRESIZE",
 };
 
 
@@ -3672,6 +3684,74 @@ static int remotefs_enablecrypto_ (CStr * r, struct crypto_data *crypto_data, co
     return -1;
 }
 
+struct cterminal_item {
+    struct cterminal_item *next;
+    struct cterminal cterminal;
+    int cmd_fd;
+};
+
+struct cterminal_item *cterminal_list = NULL;
+
+static struct cterminal_item *lookup_cterminal (unsigned long pid)
+{E_
+    struct cterminal_item *i;
+    for (i = cterminal_list; i; i = i->next)
+	if (i->cterminal.cmd_pid == pid)
+	    return i;
+    return NULL;
+}
+
+static void remotefs_shellcmd_ (struct cterminal_config *config, char *const argv[], CStr * r)
+{E_
+    char errmsg[REMOTEFS_ERR_MSG_LEN];
+    unsigned char *p;
+    struct cterminal_item *ct;
+
+    ct = (struct cterminal_item *) malloc (sizeof (struct cterminal_item));
+    memset (ct, '\0', sizeof (struct cterminal_item));
+    ct->cmd_fd = -1;
+
+    assert (CTERMINAL_ERR_MSG_LEN == REMOTEFS_ERR_MSG_LEN);
+
+#ifdef SHELL_SUPPORT
+    if ((ct->cmd_fd = cterminal_run_command (&ct->cterminal, config, argv, errmsg)) < 0) {
+        free (ct);
+        alloc_encode_error (r, RFSERR_SUCCESS, errmsg, 0);
+        return;
+    }
+    assert (ct->cterminal.cmd_pid > 1);
+    ct->next = cterminal_list;
+    cterminal_list = ct;
+
+    r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
+    r->len += encode_uint (NULL, ct->cterminal.cmd_pid);
+    r->len += encode_uint (NULL, ct->cterminal.cmd_parentpid);
+    r->len += encode_uint (NULL, ct->cmd_fd);
+    r->len += encode_uint (NULL, config->erase_char);
+    r->data = (char *) malloc (r->len);
+    p = (unsigned char *) r->data;
+    encode_uint (&p, REMOTEFS_SUCCESS);
+    encode_uint (&p, ct->cterminal.cmd_pid);
+    encode_uint (&p, ct->cterminal.cmd_parentpid);
+    encode_uint (&p, ct->cmd_fd);
+    encode_uint (&p, config->erase_char);
+#else
+    alloc_encode_error (r, RFSERR_SUCCESS, "not supported on Windows", 0);
+    return
+#endif
+}
+
+static void remotefs_shellresize_ (unsigned long pid, int columns, int rows, CStr * r)
+{E_
+    struct cterminal_item *c;
+    c = lookup_cterminal (pid);
+    if (!c)
+        return;
+    cterminal_tt_winsize (&c->cterminal, c->cmd_fd, columns, rows);
+    alloc_encode_success (r);
+}
+
+
 
 #define MARSHAL_START_LOCAL \
     { \
@@ -3863,6 +3943,40 @@ static int local_enablecrypto (struct remotefs *rfs, const unsigned char *challe
 {E_
     *errmsg = '\0';
     return 0;
+}
+
+static int local_shellcmd (struct remotefs *rfs, int *cmd_fd, struct cterminal_config *config, char *const argv[], char *errmsg)
+{E_
+    CStr s;
+    unsigned long long cmd_pid_, cmd_parentpid_, cmd_fd_, erase_char_;
+    *errmsg = '\0';
+    remotefs_shellcmd_ (config, argv, &s);
+
+    MARSHAL_START_LOCAL;
+    if (decode_uint (&p, end, &cmd_pid_))
+        return -1;
+    if (decode_uint (&p, end, &cmd_parentpid_))
+        return -1;
+    if (decode_uint (&p, end, &cmd_fd_))
+        return -1;
+    if (decode_uint (&p, end, &erase_char_))
+        return -1;
+    config->cmd_pid = (unsigned long) cmd_pid_;
+    config->cmd_parentpid = (unsigned long) cmd_parentpid_;
+    *cmd_fd = (int) cmd_fd_;
+    config->erase_char = (int) erase_char_;
+    MARSHAL_END_LOCAL(NULL);
+}
+
+static int local_shellresize (struct remotefs *rfs, unsigned long pid, int columns, int rows, char *errmsg)
+{
+    CStr s;
+    *errmsg = '\0';
+    remotefs_shellresize_ (pid, columns, rows, &s);
+
+    MARSHAL_START_LOCAL;
+    /* nothing to decode */
+    MARSHAL_END_LOCAL(NULL);
 }
 
 static int encode_listdir_params (unsigned char **p_, const char *directory, unsigned long options, char *filter)
@@ -4270,6 +4384,59 @@ static int remote_enablecrypto (struct remotefs *rfs, const unsigned char *chall
     }
     MARSHAL_END_REMOTE(NULL);
 }
+
+static int remote_shellcmd (struct remotefs *rfs, int *cmd_fd, struct cterminal_config *config, char *const argv[], char *errmsg)
+{E_
+    CStr s, msg;
+    unsigned long long cmd_pid_, cmd_parentpid_, cmd_fd_, erase_char_;
+    unsigned char *q;
+    int no_such_action = 0;
+    *errmsg = '\0';
+
+#warning finish encoding config params
+    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_SHELLCMD, errmsg, &no_such_action)) {
+        if (no_such_action)
+            strcpy (errmsg, "shell commands not supported by remote");
+        free (msg.data);
+        return -1;
+    }
+    free (msg.data);
+
+    MARSHAL_START_REMOTE;
+    if (decode_uint (&p, end, &cmd_pid_))
+        return -1;
+    if (decode_uint (&p, end, &cmd_parentpid_))
+        return -1;
+    if (decode_uint (&p, end, &cmd_fd_))
+        return -1;
+    if (decode_uint (&p, end, &erase_char_))
+        return -1;
+    config->cmd_pid = (unsigned long) cmd_pid_;
+    config->cmd_parentpid = 0L;         /* do not return the real parent pid, since we can do nothing meaningful with it remotely */
+    *cmd_fd = (int) cmd_fd_;
+    config->erase_char = (int) erase_char_;
+    MARSHAL_END_REMOTE(NULL);
+}
+
+static int remote_shellresize (struct remotefs *rfs, unsigned long pid, int columns, int rows, char *errmsg)
+{
+    CStr s, msg;
+    unsigned char *q;
+    int no_such_action = 0;
+    *errmsg = '\0';
+
+#warning finish encoding config params
+    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_SHELLRESIZE, errmsg, &no_such_action)) {
+        free (msg.data);
+        return -1;
+    }
+    free (msg.data);
+
+    MARSHAL_START_REMOTE;
+    /* nothing to decode */
+    MARSHAL_END_REMOTE(NULL);
+}
+
 
 struct iprange_list;
 int iprange_match (struct iprange_list *l, const void *a, int addrlen);
@@ -4884,6 +5051,16 @@ static int dummyerr_enablecrypto (struct remotefs *rfs, const unsigned char *cha
     return remotefs_error_return (errmsg);
 }
 
+static int dummyerr_shellcmd (struct remotefs *rfs, int *cmd_fd, struct cterminal_config *config, char *const argv[], char *errmsg)
+{E_
+    return remotefs_error_return (errmsg);
+}
+
+static int dummyerr_shellresize (struct remotefs *rfs, unsigned long pid, int columns, int rows, char *errmsg)
+{E_
+    return remotefs_error_return (errmsg);
+}
+
 
 
 struct remotefs remotefs_dummyerr = {
@@ -4897,6 +5074,8 @@ struct remotefs remotefs_dummyerr = {
     dummyerr_realpathize,
     dummyerr_gethomedir,
     dummyerr_enablecrypto,
+    dummyerr_shellcmd,
+    dummyerr_shellresize,
     NULL,
 };
 
@@ -4911,6 +5090,8 @@ struct remotefs remotefs_local = {
     local_realpathize,
     local_gethomedir,
     local_enablecrypto,
+    local_shellcmd,
+    local_shellresize,
     NULL
 };
 
@@ -4925,6 +5106,8 @@ struct remotefs remotefs_socket = {
     remote_realpathize,
     remote_gethomedir,
     remote_enablecrypto,
+    remote_shellcmd,
+    remote_shellresize,
     NULL
 };
 
@@ -5276,6 +5459,96 @@ static int remote_action_fn_v2_enablecrypto (struct server_data *sd, CStr *s, co
     return 0;
 }
 
+static void free_args (char **s)
+{
+    int i;
+    for (i = 0; s[i]; i++)
+	free (s[i]);
+    free (s);
+}
+
+
+static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
+{E_
+    const unsigned char *p, *end;
+    unsigned long long v;
+    unsigned long long n_args;
+    char **args = NULL;
+    struct cterminal_config c;
+    int i;
+
+    memset (&c, '\0', sizeof (c));
+
+    p = in;
+    end = in + inlen;
+
+    if (decode_str (&p, end, c.display_env_var, sizeof (c.display_env_var)))
+        return -1;
+    if (decode_str (&p, end, c.term_name, sizeof (c.term_name)))
+        return -1;
+    if (decode_str (&p, end, c.colorterm_name, sizeof (c.colorterm_name)))
+        return -1;
+
+#undef D
+#define D(f) \
+    if (decode_uint (&p, end, &v)) \
+        return -1; \
+    c.f = v;
+
+    D(term_win_id);
+    D(col);
+    D(row);
+    D(login_shell);
+    D(do_sleep);
+    D(charset_8bit);
+    D(env_fg);
+    D(env_bg);
+
+#undef D
+
+    if (decode_uint (&p, end, &n_args))
+        return -1;
+
+    args = (char **) malloc (sizeof (char *) * (n_args + 1));
+    memset (args, '\0', sizeof (char *) * (n_args + 1));
+    for (i = 0; i < n_args; i++) {
+        CStr c;
+        if (decode_cstr (&p, end, &c)) {
+            free_args (args);
+            return -1;
+        }
+        args[i] = c.data;
+    }
+
+    remotefs_shellcmd_ (&c, args, s);
+
+    free_args (args);
+
+    return 0;
+}
+
+static int remote_action_fn_v3_shellresize (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
+{E_
+    const unsigned char *p, *end;
+    unsigned long long pid;
+    unsigned long long columns;
+    unsigned long long rows;
+
+    p = in;
+    end = in + inlen;
+
+    if (decode_uint (&p, end, &pid))
+        return -1;
+    if (decode_uint (&p, end, &columns))
+        return -1;
+    if (decode_uint (&p, end, &rows))
+        return -1;
+
+    remotefs_shellresize_ (pid, columns, rows, s);
+
+    return 0;
+}
+
 struct action_item {
     int (*action_fn) (struct server_data *sd, CStr *r, const unsigned char *in, int inlen);
 };
@@ -5291,6 +5564,8 @@ struct action_item action_list[] = {
     { remote_action_fn_v1_realpathize, },
     { remote_action_fn_v1_gethomedir, },
     { remote_action_fn_v2_enablecrypto, },
+    { remote_action_fn_v3_shellcmd, },
+    { remote_action_fn_v3_shellresize, },
 };
 
 static unsigned int client_count = 0L;

@@ -4,6 +4,7 @@
 #include <coolwidget.h>
 #include <xim.h>
 #include <stringtools.h>
+#include <remotefs.h>
 
 /*--------------------------------*-C-*---------------------------------*
  * File:	command.c
@@ -429,8 +430,7 @@ void            rxvtlib_init_command (rxvtlib *o, char *const argv[], int do_sle
     o->Xfd = XConnectionNumber (o->Xdisplay);
     o->cmdbuf_ptr = o->cmdbuf_endp = o->cmdbuf_base;
 
-    rxvtlib_run_command (o, argv, do_sleep);
-    if (o->cmd_fd < 0) {
+    if (rxvtlib_run_command (o, argv, do_sleep)) {
 	print_error ("aborting");
 	o->killed = EXIT_FAILURE | DO_EXIT;
     }
@@ -476,9 +476,13 @@ void rxvtlib_init_xlocale (rxvtlib * o)
 #endif
 
 /* EXTPROTO */
-void            rxvtlib_tt_resize (rxvtlib *o)
+int            rxvtlib_tt_resize (rxvtlib *o)
 {E_
-    cterminal_tt_winsize (&o->cterminal, o->cmd_fd, o->TermWin.ncol, o->TermWin.nrow);
+    char errmsg[REMOTEFS_ERR_MSG_LEN];
+#warning caller must deal with -1 return
+    if ((*o->remotefs->remotefs_shellresize) (o->remotefs, o->cmd_pid, o->TermWin.ncol, o->TermWin.nrow, errmsg))
+        return -1;
+    return 0;
 }
 
 /*}}} */
@@ -1231,8 +1235,9 @@ void rxvt_process_x_event (rxvtlib * o)
     if (o->x_events_pending)
 	rxvtlib_XProcessEvent (o, o->Xdisplay);
     if (o->killed) {
+#warning finish
+// 	kill (o->cterminal.cmd_pid, SIGTERM);
 	close (o->cmd_fd);
-	kill (o->cterminal.cmd_pid, SIGTERM);
     }
 #ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
     if (scrollbar_isUp ()) {
@@ -3405,16 +3410,18 @@ void            rxvtlib_XProcessEvent (rxvtlib *o, Display * display)
 }
 
 
-void            rxvtlib_run_command (rxvtlib *o, char *const argv[], int do_sleep)
+int            rxvtlib_run_command (rxvtlib *o, char *const argv[], int do_sleep)
 {E_
     struct cterminal_config c;
+    char errmsg[CTERMINAL_ERR_MSG_LEN];
  
     memset (&c, '\0', sizeof (c));
  
-    c.display_env_var = o->rs[Rs_display_name] ? o->rs[Rs_display_name] : XDisplayString (o->Xdisplay);
+    Cstrlcpy (c.display_env_var, o->rs[Rs_display_name] ? o->rs[Rs_display_name] : XDisplayString (o->Xdisplay), sizeof (c.display_env_var));
+    Cstrlcpy (c.term_name, o->rs[Rs_term_name] ? o->rs[Rs_term_name] : TERMENV, sizeof (c.term_name));
+    Cstrlcpy (c.colorterm_name, o->Xdepth <= 2 ? COLORTERMENV "-mono" : COLORTERMENVFULL, sizeof (c.colorterm_name));
+
     c.term_win_id = (unsigned long) o->TermWin.parent[0];
-    c.term_name = o->rs[Rs_term_name] ? o->rs[Rs_term_name] : TERMENV;
-    c.colorterm_name = o->Xdepth <= 2 ? COLORTERMENV "-mono" : COLORTERMENVFULL;
     c.col = o->TermWin.ncol;
     c.row = o->TermWin.nrow;
     c.login_shell = !!(o->Options & Opt_loginShell);
@@ -3422,9 +3429,19 @@ void            rxvtlib_run_command (rxvtlib *o, char *const argv[], int do_slee
     c.charset_8bit = o->charset_8bit;
     c.env_fg = o->env_fg;
     c.env_bg = o->env_bg;
- 
-    o->cmd_fd = cterminal_run_command (&o->cterminal, &c, argv); 
- 
+    c.erase_char = -1;
+
+    if (!o->remotefs)
+        o->remotefs = remotefs_lookup ("localhost", NULL);
+#warning handle error
+    if (!o->remotefs)
+        return -1;
+#warning handle error
+    if ((*o->remotefs->remotefs_shellcmd) (o->remotefs, &o->cmd_fd, &c, argv, errmsg))
+        return -1;
+    o->cmd_pid = c.cmd_pid;
+    o->cmd_parentpid = c.cmd_parentpid;
+
 /* 
  * Reduce num_fds to what we use, so select() is more efficient 
  */ 
@@ -3468,7 +3485,7 @@ printf '\e[?67l'
 
 */
 
-    if (o->cterminal.erase_char == 8 /* ^H */) {
+    if (c.erase_char == 8 /* ^H */) {
 	o->PrivateModes |= PrivMode_BackSpace;
     }
 
@@ -3482,6 +3499,7 @@ printf '\e[?67l'
 	o->SavedModes |= PrivMode_menuBar;
     }
 
+    return 0;
 }
 
 /*}}} */

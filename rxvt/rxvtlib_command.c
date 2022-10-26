@@ -4134,7 +4134,7 @@ pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *con
         envvar[n_envvar++] = "COLUMNS";
         envvar[n_envvar++] = "TERMCAP";
         envvar[n_envvar++] = "TERM=dumb";
-
+        memset (envvar, '\0', sizeof (envvar));
 	rxvtlib_get_tty ((rxvtlib *) o);
 	SET_TTYMODE (o->cmd_fd, &tios);
 #if 0

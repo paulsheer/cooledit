@@ -169,7 +169,7 @@ int rxvt_alive (pid_t p)
 
 extern void (*user_selection_clear) (void);
 
-rxvtlib *rxvt_allocate (Window win, int c, char **a, int do_sleep, int charset_8bit)
+static rxvtlib *rxvt_allocate (const char *host, Window win, int c, char **a, int do_sleep, int charset_8bit)
 {E_
     rxvtlib *rxvt;
     struct rxvts *l;
@@ -177,7 +177,7 @@ rxvtlib *rxvt_allocate (Window win, int c, char **a, int do_sleep, int charset_8
     rxvtlib_init (rxvt, charset_8bit);
     user_selection_clear = (void (*)(void)) rxvt_selection_clear;
     rxvt->parent_window = win;
-    rxvtlib_main (rxvt, c, (const char *const *) a, do_sleep);
+    rxvtlib_main (rxvt, host, c, (const char *const *) a, do_sleep);
     if (rxvt->killed) {
 	free (rxvt);
 	return 0;
@@ -257,7 +257,7 @@ void rxvtlib_shutall (void)
     }
 }
 
-rxvtlib *rxvt_start (Window win, char **argv, int do_sleep, int charset_8bit)
+rxvtlib *rxvt_start (const char *host, Window win, char **argv, int do_sleep, int charset_8bit)
 {E_
     int a = 0;
     rxvtlib *rxvt;
@@ -265,7 +265,7 @@ rxvtlib *rxvt_start (Window win, char **argv, int do_sleep, int charset_8bit)
     b = rxvt_args (argv);
     while (b[a])
 	a++;
-    rxvt = rxvt_allocate (win, a, b, do_sleep, charset_8bit);
+    rxvt = rxvt_allocate (host, win, a, b, do_sleep, charset_8bit);
     if (rxvt) {
 	rxvtlib_main_loop (rxvt);
 	rxvtlib_update_screen (rxvt);
@@ -279,9 +279,9 @@ void rxvt_get_tty_name (rxvtlib * rxvt, char *p)
     strcpy (p, rxvt->ttydev);
 }
 
-void rxvt_get_pid_host (rxvtlib * rxvt, pid_t pid, char *host, int host_len)
+void rxvt_get_pid_host (rxvtlib * rxvt, pid_t *pid, char *host, int host_len)
 {E_
-    pid = rxvt->cmd_pid;
+    *pid = rxvt->cmd_pid;
     Cstrlcpy (host, rxvt->host, host_len);
 }
 

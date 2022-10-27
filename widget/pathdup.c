@@ -13,6 +13,7 @@
 #include "pipe-headers.h"
 #include <my_string.h>
 
+#include "stringtools.h"
 #include "remotefs.h"
 
 

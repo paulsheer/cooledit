@@ -392,7 +392,7 @@ void            rxvtlib_get_ourmods (rxvtlib *o)
 
 /*{{{ init_command() */
 /* EXTPROTO */
-void            rxvtlib_init_command (rxvtlib *o, char *const argv[], int do_sleep)
+void            rxvtlib_init_command (rxvtlib *o, const char *host, char *const argv[], int do_sleep)
 {E_
 /*
  * Initialize the command connection.
@@ -428,9 +428,13 @@ void            rxvtlib_init_command (rxvtlib *o, char *const argv[], int do_sle
 #endif
 
     o->Xfd = XConnectionNumber (o->Xdisplay);
-    o->cmdbuf_ptr = o->cmdbuf_endp = o->cmdbuf_base;
+    /* this grows automatically, start off small for testing */
+    o->cmdbuf_base = (unsigned char *) malloc (8);
+    o->cmdbuf_current = 0;
+    o->cmdbuf_len = 0;
+    o->cmdbuf_alloced = 8;
 
-    if (rxvtlib_run_command (o, argv, do_sleep)) {
+    if (rxvtlib_run_command (o, host, argv, do_sleep)) {
 	print_error ("aborting");
 	o->killed = EXIT_FAILURE | DO_EXIT;
     }
@@ -1205,16 +1209,34 @@ void rxvtlib_update_screen (rxvtlib * o)
 
 static int rxvt_fd_read (rxvtlib * o)
 {E_
-    int n, count = 0;
-    if (o->cmdbuf_ptr >= o->cmdbuf_endp)
-	o->cmdbuf_ptr = o->cmdbuf_endp = o->cmdbuf_base;
-    for (;;) {
-	n = read (o->cmd_fd, o->cmdbuf_endp, BUFSIZ - (o->cmdbuf_endp - o->cmdbuf_base));
-	if (n <= 0)
-	    break;
-	count += n;
-	o->cmdbuf_endp += n;
+    char errmsg[REMOTEFS_ERR_MSG_LEN];
+    CStr chunk;
+    int count = 0;
+
+    assert (o->cmdbuf_current <= o->cmdbuf_len);
+
+    if (o->cmdbuf_current == o->cmdbuf_len)
+        o->cmdbuf_current = o->cmdbuf_len = 0;
+
+    memset (&chunk, '\0', sizeof (chunk));
+#warning finish handle errors
+    if ((*o->remotefs->remotefs_shellread) (o->remotefs, o->cmd_fd, &chunk, errmsg)) {
+printf ("remotefs_shellread returned error. errmsg = %s\n", errmsg);
+        return 0;
     }
+
+printf("shellread [%d]\n", chunk.len);
+
+    if (o->cmdbuf_current + chunk.len > o->cmdbuf_alloced) {
+        o->cmdbuf_base = (unsigned char *) realloc (o->cmdbuf_base, (o->cmdbuf_current + chunk.len) * 2);
+        o->cmdbuf_alloced = (o->cmdbuf_current + chunk.len) * 2;
+    }
+    memcpy (o->cmdbuf_base + o->cmdbuf_current, chunk.data, chunk.len);
+    o->cmdbuf_len += chunk.len;
+    count = chunk.len;
+    assert (o->cmdbuf_len <= o->cmdbuf_alloced);
+    free (chunk.data);
+
     return count;
 }
 
@@ -1266,13 +1288,17 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
     if (o->v_bufstr < o->v_bufptr)	/* output any pending chars */
 	rxvtlib_tt_write (o, NULL, 0);
     while (ch == -1) {
-	if (o->cmdbuf_ptr < o->cmdbuf_endp)
-	    ch = (unsigned char) (*o->cmdbuf_ptr++);
-	else
+	if (o->cmdbuf_current < o->cmdbuf_len) {
+	    ch = o->cmdbuf_base[o->cmdbuf_current++];
+	} else {
+#warning fixme theoretically this could hang up if waiting for an escape sequence to complete
 	    rxvt_fd_read (o);
+        }
     }
-    if (o->cmdbuf_endp == o->cmdbuf_base + BUFSIZ && o->cmdbuf_ptr < o->cmdbuf_endp) {
-/* can't read past the end of the buffer */
+    if (o->cmdbuf_current == o->cmdbuf_len)
+        o->cmdbuf_current = o->cmdbuf_len = 0;
+    if (o->cmdbuf_len > o->cmdbuf_alloced / 2) {
+/* back off */
 	CRemoveWatch (o->cmd_fd, rxvt_fd_read_watch, 1);
     } else {
 	CAddWatch (o->cmd_fd, rxvt_fd_read_watch, 1, (void *) o);
@@ -2835,8 +2861,7 @@ int             rxvtlib_RemoveFromCNQueue (rxvtlib *o, int width, int height)
 /* EXTPROTO */
 void rxvtlib_main_loop (rxvtlib * o)
 {E_
-    int nlines;
-    unsigned char ch, *str;
+    unsigned char ch;
 
     while (!o->killed) {
 #ifdef STANDALONE
@@ -2844,32 +2869,49 @@ void rxvtlib_main_loop (rxvtlib * o)
 	if (o->killed)
 	    return;
 #else
-	if (o->cmdbuf_ptr >= o->cmdbuf_endp) {
+        assert (o->cmdbuf_current <= o->cmdbuf_len);
+	if (o->cmdbuf_current == o->cmdbuf_len) {
 	    CAddWatch (o->cmd_fd, rxvt_fd_read_watch, 1, (void *) o);
 	    return;
 	}
 	ch = rxvtlib_cmd_getc (o);
 #endif
 
-	if (ch >= ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
+#define PRINTABLE(c)    ((c) >= ' ' || (c) == '\t' || (c) == '\n' || (c) == '\r')
+
+	if (PRINTABLE (ch)) {
 	    /* Read a text string from the input buffer */
 	    /*
 	     * point `str' to the start of the string,
 	     * decrement first since it was post incremented in cmd_getc()
 	     */
-	    for (str = --o->cmdbuf_ptr, nlines = 0; o->cmdbuf_ptr < o->cmdbuf_endp;) {
-		ch = *o->cmdbuf_ptr++;
-		if (ch == '\n') {
+            if (o->cmdbuf_current < 1) {
+                int nlines = 0;
+	        if (ch == '\n') {
 		    nlines++;
-		    if (++o->refresh_count >= (o->refresh_limit * (o->TermWin.nrow - 1)))
-			break;
-		} else if (ch < ' ' && ch != '\t' && ch != '\r') {
-		    /* unprintable */
-		    o->cmdbuf_ptr--;
-		    break;
-		}
-	    }
-	    rxvtlib_scr_add_lines (o, str, nlines, (o->cmdbuf_ptr - str));
+		    o->refresh_count++;
+                }
+	        rxvtlib_scr_add_lines (o, &ch, nlines, 1);
+            } else {
+                int line_start, nlines = 0;
+                line_start = o->cmdbuf_current - 1;
+                for (;;) {
+		    if (ch == '\n') {
+		        nlines++;
+                        o->refresh_count++;
+		        if (o->refresh_count >= (o->refresh_limit * (o->TermWin.nrow - 1)))
+			    break;
+		    } else if (!PRINTABLE (ch)) {
+		        /* unprintable. also note: impossible on first iteration of this loop */
+		        o->cmdbuf_current--;
+		        break;
+		    }
+                    if (o->cmdbuf_current == o->cmdbuf_len)
+                        break;
+		    ch = o->cmdbuf_base[o->cmdbuf_current++];
+                }
+	        rxvtlib_scr_add_lines (o, o->cmdbuf_base + line_start, nlines, o->cmdbuf_current - line_start);
+            }
 	} else
 	    switch (ch) {
 	    case 005:		/* terminal Status */
@@ -3410,7 +3452,7 @@ void            rxvtlib_XProcessEvent (rxvtlib *o, Display * display)
 }
 
 
-int            rxvtlib_run_command (rxvtlib *o, char *const argv[], int do_sleep)
+int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const argv[], int do_sleep)
 {E_
     struct cterminal_config c;
     char errmsg[CTERMINAL_ERR_MSG_LEN];
@@ -3431,8 +3473,11 @@ int            rxvtlib_run_command (rxvtlib *o, char *const argv[], int do_sleep
     c.env_bg = o->env_bg;
     c.erase_char = -1;
 
+    if (!host)
+        host = "localhost";
+
     if (!o->remotefs)
-        o->remotefs = remotefs_lookup ("localhost", NULL);
+        o->remotefs = remotefs_lookup (host, NULL);
 #warning handle error
     if (!o->remotefs)
         return -1;
@@ -3440,7 +3485,7 @@ int            rxvtlib_run_command (rxvtlib *o, char *const argv[], int do_sleep
     if ((*o->remotefs->remotefs_shellcmd) (o->remotefs, &o->cmd_fd, &c, argv, errmsg))
         return -1;
     o->cmd_pid = c.cmd_pid;
-    Cstrlcpy (o->host, c.host, sizeof (o->host));
+    Cstrlcpy (o->host, host, sizeof (o->host));
     Cstrlcpy (o->ttydev, c.ttydev, sizeof (o->ttydev));
 
 /* 

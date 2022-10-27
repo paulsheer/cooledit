@@ -1115,7 +1115,8 @@ static int xdebug_run_program (Debug * d)
 	char *p, *gargv[2] = {0, 0};
 	struct _rxvtlib *rxvt;
         gargv[0] = d->progname;
-	rxvt = rxvt_start (CRoot, gargv, 1, 0);
+#warning finish
+	rxvt = rxvt_start ("localhost", CRoot, gargv, 1, 0);
 	if (!rxvt) {
 	    d->xterm_pid_host.xterm_pid = 0;
 	    d->xterm_pid_host.xterm_host[0] = '\0';

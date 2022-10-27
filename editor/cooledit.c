@@ -1951,10 +1951,10 @@ static void main_loop (void)
 		    }
 		    break;
 		case CK_Terminal:
-		    rxvt_start (CRoot, 0, 0, 0);
+		    rxvt_start (edit[current_edit]->editor->host, CRoot, 0, 0, 0);
 		    break;
 		case CK_8BitTerminal:
-		    rxvt_start (CRoot, 0, 0, 1);
+		    rxvt_start (edit[current_edit]->editor->host, CRoot, 0, 0, 1);
 		    break;
 		case CK_Complete:
 		    complete_command (edit[current_edit]);

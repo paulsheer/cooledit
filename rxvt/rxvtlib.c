@@ -393,6 +393,8 @@ void rxvtlib_shut (rxvtlib * o)
     for (i = 0; i < TOTAL_RS; i++)
 	myfree (o->rs_free[i]);
 
+    myfree (o->cmdbuf_base);
+
 #warning finish tell remotefs to cleanup, or do we just close??
 //     cterminal_cleanup (&o->cterminal);
 

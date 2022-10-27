@@ -1576,10 +1576,11 @@ struct XCNQueue_t {
 (PrivMode_Autowrap|PrivMode_aplKP|PrivMode_ShiftKeys|PrivMode_VisibleCursor)
 
 /* command input buffering */
-#ifndef BUFSIZ
-# define BUFSIZ		4096
-#endif
- unsigned char cmdbuf_base[BUFSIZ], *cmdbuf_ptr, *cmdbuf_endp;
+#undef BUFSIZ
+ unsigned char *cmdbuf_base;
+ int cmdbuf_current;
+ int cmdbuf_len;
+ int cmdbuf_alloced;
 
 #ifdef UTMP_SUPPORT
 # if ! defined(HAVE_STRUCT_UTMPX) && ! defined(HAVE_STRUCT_UTMP)

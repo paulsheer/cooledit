@@ -1321,7 +1321,7 @@ XIMStyle get_input_style (void);
 /* ------------------------------------------------------------------------- */
 /* main() */
 /* INTPROTO */
-int rxvtlib_main (rxvtlib * o, int argc, const char *const *argv, int do_sleep)
+int rxvtlib_main (rxvtlib * o, const char *host, int argc, const char *const *argv, int do_sleep)
 {E_
     char **cmd_argv;
 
@@ -1375,7 +1375,7 @@ int rxvtlib_main (rxvtlib * o, int argc, const char *const *argv, int do_sleep)
     rxvt_set_input_context (o, get_input_style ());
 
     rxvtlib_init_display (o);
-    rxvtlib_init_command (o, cmd_argv, do_sleep);
+    rxvtlib_init_command (o, host, cmd_argv, do_sleep);
     if (o->killed)
 	return EXIT_FAILURE;
 

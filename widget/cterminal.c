@@ -876,7 +876,7 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
     cterminal_privileges (CTERMINAL_SAVE);
     cterminal_privileges (CTERMINAL_IGNORE);
 
-#if 0
+#if 1
     printf ("display_env_var = %s\n", config->display_env_var);
     printf ("term_win_id = %lu\n", config->term_win_id);
     printf ("term_name = %s\n", config->term_name);
@@ -1034,7 +1034,7 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
 #endif
 
         /* command interpreter path */
-        if (argv != NULL) {
+        if (argv != NULL && argv[0] != NULL) {
             if (config->do_sleep)
                 while (1)
                     sleep (60);

@@ -14,7 +14,6 @@ struct cterminal_config {
     int env_bg;
     int erase_char; /* return value */
     unsigned long cmd_pid; /* return value */
-    char host[256]; /* return value */
     char ttydev[64]; /* return value */
 };
 

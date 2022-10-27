@@ -941,6 +941,22 @@ static struct file_des_watch *watch_table[FD_SETSIZE];
 
 static int watch_table_last = 0;
 
+int CCheckWatch (int fd, void (*callback) (int, fd_set *, fd_set *, fd_set *, void *), int how)
+{
+    int i;
+    if (!callback || fd < 0 || !how) {
+	fprintf (stderr, "bad args to CAddWatch??");
+	return 0;
+    }
+    for (i = 0; i < watch_table_last; i++) {
+	if (!watch_table[i])
+	    continue;
+	if (watch_table[i]->callback == callback && watch_table[i]->fd == fd)
+            return (watch_table[i]->how & how);
+    }
+    return 0;
+}
+
 /* returns non-zero if table is full */
 int _CAddWatch (char *file, int line, int fd, void (*callback) (int, fd_set *, fd_set *, fd_set *, void *),
 		int how, void *data)

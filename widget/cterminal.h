@@ -26,6 +26,7 @@ typedef struct _ttymode_t ttymode_t;
 #endif				/* HAVE_TERMIOS_H */
 
 struct cterminal {
+    int cmd_fd;
     char *ttydev;
     short changettyowner;
     struct stat ttyfd_stat;

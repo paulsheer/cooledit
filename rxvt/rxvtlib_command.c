@@ -1022,6 +1022,7 @@ void            rxvtlib_lookup_key (rxvtlib *o, XEvent * ev)
 /*}}} */
 
 #if (MENUBAR_MAX)
+#error
 /*{{{ cmd_write(), cmd_getc() */
 /* attempt to `write' COUNT to the input buffer */
 /* EXTPROTO */
@@ -1225,7 +1226,7 @@ printf ("remotefs_shellread returned error. errmsg = %s\n", errmsg);
         return 0;
     }
 
-printf("shellread [%d]\n", chunk.len);
+printf("shellread [%d] current=%d alloced=%d\n", chunk.len, o->cmdbuf_current, o->cmdbuf_alloced);
 
     if (o->cmdbuf_current + chunk.len > o->cmdbuf_alloced) {
         o->cmdbuf_base = (unsigned char *) realloc (o->cmdbuf_base, (o->cmdbuf_current + chunk.len) * 2);
@@ -1292,6 +1293,7 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
 	    ch = o->cmdbuf_base[o->cmdbuf_current++];
 	} else {
 #warning fixme theoretically this could hang up if waiting for an escape sequence to complete
+printf("not, data: rxvt_fd_read\n");
 	    rxvt_fd_read (o);
         }
     }
@@ -1299,8 +1301,14 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
         o->cmdbuf_current = o->cmdbuf_len = 0;
     if (o->cmdbuf_len > o->cmdbuf_alloced / 2) {
 /* back off */
+if (CCheckWatch (o->cmd_fd, rxvt_fd_read_watch, 1))
+printf("%s:%d: CRemoveWatch read\n", __FUNCTION__, __LINE__);
 	CRemoveWatch (o->cmd_fd, rxvt_fd_read_watch, 1);
     } else {
+
+if (!CCheckWatch (o->cmd_fd, rxvt_fd_read_watch, 1))
+printf("%s:%d: CAddWatch read\n", __FUNCTION__, __LINE__);
+
 	CAddWatch (o->cmd_fd, rxvt_fd_read_watch, 1, (void *) o);
     }
     return ch;
@@ -2870,10 +2878,21 @@ void rxvtlib_main_loop (rxvtlib * o)
 	    return;
 #else
         assert (o->cmdbuf_current <= o->cmdbuf_len);
-	if (o->cmdbuf_current == o->cmdbuf_len) {
+        if (o->cmdbuf_len > o->cmdbuf_alloced / 2) {
+/* back off */
+if (CCheckWatch (o->cmd_fd, rxvt_fd_read_watch, 1))
+printf("%s:%d: CRemoveWatch read\n", __FUNCTION__, __LINE__);
+	    CRemoveWatch (o->cmd_fd, rxvt_fd_read_watch, 1);
+        } else {
+
+if (!CCheckWatch (o->cmd_fd, rxvt_fd_read_watch, 1))
+printf("%s:%d: CAddWatch read\n", __FUNCTION__, __LINE__);
+
 	    CAddWatch (o->cmd_fd, rxvt_fd_read_watch, 1, (void *) o);
-	    return;
-	}
+        }
+        if (o->cmdbuf_current == o->cmdbuf_len)
+            return;
+
 	ch = rxvtlib_cmd_getc (o);
 #endif
 
@@ -2948,12 +2967,25 @@ void rxvt_fd_write_watch (int fd, fd_set * reading,
     int riten, p;
     rxvtlib *o = (rxvtlib *) data;
     p = o->v_bufptr - o->v_bufstr;
+#if 0
     riten = write (o->cmd_fd, o->v_bufstr, p < MAX_PTY_WRITE ? p : MAX_PTY_WRITE);
     if (riten < 0)
 	riten = 0;
+#else
+    char errmsg[CTERMINAL_ERR_MSG_LEN];
+    CStr chunk;
+    memset (&chunk, '\0', sizeof (chunk));
+    chunk.data = o->v_bufstr;
+    riten = chunk.len = (p < MAX_PTY_WRITE ? p : MAX_PTY_WRITE);
+    if ((*o->remotefs->remotefs_shellwrite) (o->remotefs, o->cmd_fd, &chunk, errmsg)) {
+printf ("remotefs_shellwrite returned error. errmsg = %s\n", errmsg);
+	riten = 0;
+    }
+#endif
     o->v_bufstr += riten;
     if (o->v_bufstr >= o->v_bufptr) {	/* we wrote it all */
 	o->v_bufstr = o->v_bufptr = o->v_buffer;
+printf("%s:%d: CRemoveWatch write\n", __FUNCTION__, __LINE__);
 	CRemoveWatch (o->cmd_fd, rxvt_fd_write_watch, 2);
     }
     rxvtlib_main_loop (o);
@@ -3043,11 +3075,13 @@ void            rxvtlib_tt_write (rxvtlib *o, const unsigned char *d, int len)
 	if (o->v_bufstr >= o->v_bufptr)	/* we wrote it all */
 	    o->v_bufstr = o->v_bufptr = o->v_buffer;
 #else
+printf("%s:%d: CAddWatch write\n", __FUNCTION__, __LINE__);
 	CAddWatch (o->cmd_fd, rxvt_fd_write_watch, 2, (void *) o);
 #endif
     }
 #ifndef STANDALONE
     else {
+printf("%s:%d: CRemoveWatch write\n", __FUNCTION__, __LINE__);
 	CRemoveWatch (o->cmd_fd, rxvt_fd_write_watch, 2);
     }
 #endif

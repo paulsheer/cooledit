@@ -38,7 +38,9 @@ int rxvt_event (XEvent * xevent)
 	if (l->killed || l->rxvt->killed) {
 	    struct rxvts *next;
 	    next = l->next;
+printf("%s:%d: CRemoveWatch read\n", __FILE__, __LINE__);
 	    CRemoveWatch (l->rxvt->cmd_fd, rxvt_fd_read_watch, 1);
+printf("%s:%d: CRemoveWatch write\n", __FILE__, __LINE__);
 	    CRemoveWatch (l->rxvt->cmd_fd, rxvt_fd_write_watch, 2);
 	    close (l->rxvt->cmd_fd);
 	    if (l->killed) {
@@ -70,6 +72,7 @@ int rxvt_event (XEvent * xevent)
 	    }
 	    rxvt_process_x_event (l->rxvt);
 	    if (l->rxvt->killed) {
+printf("%s:%d: CRemoveWatch both\n", __FILE__, __LINE__);
 		CRemoveWatch (l->rxvt->cmd_fd, 0, 3);
 		CRemoveWatch (l->rxvt->cmd_fd, 0, 3);
 		return 1;
@@ -242,6 +245,7 @@ void rxvtlib_shutall (void)
     while (l) {
 	struct rxvts *next;
 	next = l->next;
+printf("%s:%d: CRemoveWatch both\n", __FILE__, __LINE__);
 	CRemoveWatch (l->rxvt->cmd_fd, 0, 3);
 	CRemoveWatch (l->rxvt->cmd_fd, 0, 3);
 	if (!l->killed)

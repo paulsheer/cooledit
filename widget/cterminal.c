@@ -866,6 +866,7 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
     int cmd_fd = -1;
     ttymode_t tio;
 
+    o->cmd_fd = -1;
 /*
  * Save and then give up any super-user privileges
  * If we need privileges in any area then we must specifically request it.
@@ -940,6 +941,7 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
 
     o->cmd_pid = fork ();
     if (o->cmd_pid < 0) {
+        close (cmd_fd);
         snprintf (errmsg, CTERMINAL_ERR_MSG_LEN, "can't fork: [%s]", strerror (errno));
         return -1;
     }
@@ -1074,7 +1076,8 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
     }
 #endif
 
-    return cmd_fd;
+    o->cmd_fd = cmd_fd;
+    return 0;
 }
 
 /*}}} */

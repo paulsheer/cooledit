@@ -389,6 +389,7 @@ struct remotefs {
     int (*remotefs_shellcmd) (struct remotefs *rfs, int *cmd_fd, struct cterminal_config *config, char *const argv[], char *errmsg);
     int (*remotefs_shellresize) (struct remotefs *rfs, unsigned long pid, int columns, int rows, char *errmsg);
     int (*remotefs_shellread) (struct remotefs *rfs, int cmd_fd, CStr *chunk, char *errmsg);
+    int (*remotefs_shellwrite) (struct remotefs *rfs, int cmd_fd, const CStr *chunk, char *errmsg);
     struct remotefs_private *remotefs_private;
 };
 

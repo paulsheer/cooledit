@@ -543,6 +543,7 @@ void CError (const char *fmt,...);
 #define CAddWatch(fd, cb, how, data) _CAddWatch(__FILE__, __LINE__, fd, cb, how, data)
 int _CAddWatch (char *file, int line, int fd, void (*callback) (int, fd_set *, fd_set *, fd_set *, void *), int how, void *data);
 void CRemoveWatch (int fd, void (*callback) (int, fd_set *, fd_set *, fd_set *, void *), int how);
+int CCheckWatch (int fd, void (*callback) (int, fd_set *, fd_set *, fd_set *, void *), int how);
 #define WATCH_READING	(1<<0)
 #define WATCH_WRITING	(1<<1)
 #define WATCH_ERROR	(1<<2)

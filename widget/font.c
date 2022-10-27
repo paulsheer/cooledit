@@ -1141,7 +1141,7 @@ void CPopFont (void)
             font_stack->f->f.font_set = 0;
         }
         if (font_stack->f->f.font_struct) {
-            XFreeFontInfo (0, font_stack->f->f.font_struct, 0);
+            XFreeFont (CDisplay, font_stack->f->f.font_struct);
             font_stack->f->f.font_struct = NULL;
         }
 #ifndef NO_TTF

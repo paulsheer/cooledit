@@ -1210,56 +1210,73 @@ void rxvtlib_update_screen (rxvtlib * o)
     }
 }
 
-static int rxvt_fd_read (rxvtlib * o)
+static int rxvt_fd_read (rxvtlib * o, const int no_io)
 {E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     CStr chunk;
-    int no_io = 0;
     int count = 0;
     int timeout = 0;
 
-    for (;;) {
-        assert (o->cmdbuf_current <= o->cmdbuf_len);
-        if (o->cmdbuf_current == o->cmdbuf_len)
-            o->cmdbuf_current = o->cmdbuf_len = 0;
-        memset (&chunk, '\0', sizeof (chunk));
-        timeout = 0;
-        if ((*o->remotefs->remotefs_shellread) (o->remotefs, o->cterminal_io, &chunk, errmsg, &timeout, no_io)) {
-            if (timeout) {
-                break;
-            } else {
+    assert (o->cmdbuf_current <= o->cmdbuf_len);
+    if (o->cmdbuf_current == o->cmdbuf_len)
+        o->cmdbuf_current = o->cmdbuf_len = 0;
+    memset (&chunk, '\0', sizeof (chunk));
+    timeout = 0;
+    if ((*o->remotefs->remotefs_shellread) (o->remotefs, o->cterminal_io, &chunk, errmsg, &timeout, no_io)) {
+        if (timeout) {
+            return 0;
+        } else {
 #warning finish handle errors
 printf("remotefs_shellread error => %s\n", errmsg);
-                break;
-            }
+            return 0;
         }
-
-        no_io = 1;
-        assert (chunk.data != NULL);
-
-        if (o->cmdbuf_len + chunk.len > o->cmdbuf_alloced) {
-            o->cmdbuf_base = (unsigned char *) realloc (o->cmdbuf_base, (o->cmdbuf_len + chunk.len) * 2);
-            o->cmdbuf_alloced = (o->cmdbuf_len + chunk.len) * 2;
-printf("REALLOC ====> %d\n", o->cmdbuf_alloced);
-        }
-        memcpy (o->cmdbuf_base + o->cmdbuf_len, chunk.data, chunk.len);
-        o->cmdbuf_len += chunk.len;
-        count += chunk.len;
-        assert (o->cmdbuf_len <= o->cmdbuf_alloced);
-        free (chunk.data);
     }
 
+    assert (chunk.data != NULL);
+
+    if (o->cmdbuf_len + chunk.len > o->cmdbuf_alloced) {
+        o->cmdbuf_base = (unsigned char *) realloc (o->cmdbuf_base, (o->cmdbuf_len + chunk.len) * 2);
+        o->cmdbuf_alloced = (o->cmdbuf_len + chunk.len) * 2;
+printf("REALLOC ====> %d\n", o->cmdbuf_alloced);
+    }
+    memcpy (o->cmdbuf_base + o->cmdbuf_len, chunk.data, chunk.len);
+    o->cmdbuf_len += chunk.len;
+    count += chunk.len;
+    assert (o->cmdbuf_len <= o->cmdbuf_alloced);
+    free (chunk.data);
+
     return count;
+}
+
+static int io_avail (int fd)
+{
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+    fd_set rd;
+    FD_ZERO (&rd);
+    FD_SET (fd, &rd);
+    return select (fd + 1, &rd, NULL, NULL, &tv) == 1;
 }
 
 void rxvt_fd_read_watch (int fd, fd_set * reading, fd_set * writing,
 				fd_set * error, void *data)
 {E_
+    static long total = 0;
+    long tot = 0;
+    int c;
     rxvtlib *o = (rxvtlib *) data;
-    if (!rxvt_fd_read (o))
+    if (!(c = rxvt_fd_read (o, 0)))
 	return;
-    rxvtlib_main_loop (o);
-    rxvtlib_update_screen (o);
+    do {    
+        tot = tot + c;
+        rxvtlib_main_loop (o);
+        rxvtlib_update_screen (o);
+        if (io_avail (o->cmd_fd))       /* the watcher will hit this again */
+            break;
+    } while ((c = rxvt_fd_read (o, 1)));
+total += tot;
+printf("tot = %ld, total = %ld\n", tot, total);
 }
 
 void rxvt_process_x_event (rxvtlib * o)
@@ -1306,7 +1323,7 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
 #warning fixme theoretically this could hang up if waiting for an escape sequence to complete, also handle error
 printf("no data: rxvt_fd_read\n");
 	    while (o->cmdbuf_current == o->cmdbuf_len)
-                rxvt_fd_read (o);
+                rxvt_fd_read (o, 0);
         }
     }
     if (o->cmdbuf_current == o->cmdbuf_len)

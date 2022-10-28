@@ -5546,6 +5546,7 @@ struct ttyreader_data {
     struct cterminal cterminal;
     struct ttyreader_ rd;
     struct timeval lastwrite;
+    int didread;
     struct ttyreader_ wr;
 };
 
@@ -5863,8 +5864,8 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
 
     t = (struct ttyreader_data *) malloc (sizeof (struct ttyreader_data));
     memset (t, '\0', sizeof (struct ttyreader_data));
-    t->rd.buf = (unsigned char *) malloc (4096);
-    t->rd.alloced = 4096;
+    t->rd.buf = (unsigned char *) malloc (1312 * 2);
+    t->rd.alloced = 1312 * 2;
     t->wr.buf = (unsigned char *) malloc (128);
     t->wr.alloced = 128;
 
@@ -6323,6 +6324,16 @@ static void run_service (struct service *serv)
             tt = i->sd.ttyreader_data;
             if (FD_ISSET (tt->cterminal.cmd_fd, &rd)) {
                 c = read (tt->cterminal.cmd_fd, tt->rd.buf + tt->rd.avail, tt->rd.alloced - tt->rd.avail);
+
+int nr = 0;
+ioctl(tt->cterminal.cmd_fd, FIONREAD, &nr);
+if(nr)
+printf("nr=%d\n", nr);
+
+// static long total = 0;
+// total += c;
+// printf("total = %ld\n", total);
+
                 if (c > 0) {
 // printf ("read: avail: %d -> %d\n", tt->rd.avail, tt->rd.avail + c);
                     tt->rd.avail += c;
@@ -6333,6 +6344,10 @@ static void run_service (struct service *serv)
                 }
             }
             if (FD_ISSET (tt->cterminal.cmd_fd, &wr)) {
+                tt->didread = 1;
+
+printf("write %d\n", (int) (tt->wr.avail - tt->wr.written));
+
                 c = write (tt->cterminal.cmd_fd, tt->wr.buf + tt->wr.written, tt->wr.avail - tt->wr.written);
                 if (c > 0) {
                     tt->wr.written += c;
@@ -6353,9 +6368,10 @@ static void run_service (struct service *serv)
 
 /* the tv_delta mechanism tries to chunk data together, otherwise we get too many tiny send()s */
 
-                if (avail > 1312 || (avail >= 1 && (delta = tv_delta (&now, &tt->lastwrite)) > 20000)) {
+                if (avail > 1312 || tt->didread || (avail >= 1 && (delta = tv_delta (&now, &tt->lastwrite)) > 20000)) {
                     int l;
                     tt->lastwrite = now;
+                    tt->didread = 0;
                     l = tt->rd.avail - tt->rd.written; /* which might be something else in the future */
                     if (send_blind_message (&i->sock_data, REMOTEFS_ACTION_SHELLREAD, (char *) (tt->rd.buf + tt->rd.written), l)) {
                         printf ("error writing to terminal socket\n");

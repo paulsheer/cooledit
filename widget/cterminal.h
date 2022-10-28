@@ -1,5 +1,4 @@
 
-
 struct cterminal_config {
     char display_env_var[128];
     char term_name[32];

@@ -1427,9 +1427,6 @@ void SHUTSOCK (struct sock_data *p)
         p->crypto_data.read_buf.avail = 0;
         p->crypto_data.read_buf.written = 0;
 
-printf("shutdown\n");
-for (;;) sleep(10);
-
         shutdown (p->sock, 2);
         closesocket (p->sock);
         p->sock = INVALID_SOCKET;
@@ -2915,16 +2912,27 @@ static int writer (struct sock_data *sock_data, const void *p, long l)
     return writervec (sock_data, &v, 1);
 }
 
+#define WAITFORREAD_DONTWAIT          (-1L)
+#define WAITFORREAD_FOREVER           (0L)
 static int wait_for_read (SOCKET sock, long msecond)
 {E_
-    struct timeval tv;
+    struct timeval tv, *tv_;
     int sr;
-    tv.tv_sec = msecond / 1000;
-    tv.tv_usec = (msecond % 1000) * 1000;
+    if (msecond == WAITFORREAD_DONTWAIT) {
+        tv.tv_sec = 0;
+        tv.tv_usec = 0;
+        tv_ = &tv;
+    } else if (msecond == WAITFORREAD_FOREVER) {
+        tv_ = NULL;
+    } else {
+        tv.tv_sec = msecond / 1000;
+        tv.tv_usec = (msecond % 1000) * 1000;
+        tv_ = &tv;
+    }
     fd_set rd;
     FD_ZERO (&rd);
     FD_SET (sock, &rd);
-    sr = select (sock + 1, &rd, NULL, NULL, msecond > 0 ? &tv : NULL);
+    sr = select (sock + 1, &rd, NULL, NULL, tv_);
     if (sr == SOCKET_ERROR && !(ERROR_EINTR() || ERROR_EAGAIN())) {
         perrorsocket ("select");
         exit (0);
@@ -3009,6 +3017,20 @@ static int recv_crypto_ (struct sock_data *sock_data, struct crypto_buf *d, unsi
     return plaintextlen - pad_bytes;
 }
 
+#if 0
+static int read_stuck_data (struct reader_data *d)
+{
+    if (d->written < d->avail)
+        return d->avail - d->written;
+    if (d->sock_data->crypto) {
+        struct crypto_buf *c;
+        c = &d->sock_data->crypto_data.read_buf;
+        return c->avail - c->written;
+    }
+    return 0;
+}
+#endif
+
 static int recv_crypto (struct sock_data *sock_data, unsigned char *out, int outsz, int *waiting, enum reader_error *reader_error)
 {E_
     int c;
@@ -3074,7 +3096,10 @@ static int reader_timeout (struct reader_data *d, void *buf_, int buflen, long m
                 return -1;
             } else if (waiting || (c == SOCKET_ERROR && ERROR_EAGAIN())) {
                 long elapsed;
-                wait_for_read (d->sock_data->sock, milliseconds);
+                if (!wait_for_read (d->sock_data->sock, milliseconds) && milliseconds == WAITFORREAD_DONTWAIT) {
+                    *reader_error = READER_ERROR_TIMEOUT;
+                    return -1;
+                }
                 gettimeofday (&t2, NULL);
                 elapsed = TV_DELTA (t1, t2);
                 if (milliseconds > 0 && elapsed > milliseconds) {
@@ -3095,7 +3120,7 @@ static int reader_timeout (struct reader_data *d, void *buf_, int buflen, long m
 
 static int reader (struct reader_data *d, void *buf, int buflen, enum reader_error *reader_error)
 {E_
-    return reader_timeout (d, buf, buflen, 0, reader_error);
+    return reader_timeout (d, buf, buflen, WAITFORREAD_FOREVER, reader_error);
 }
 
 
@@ -3724,14 +3749,14 @@ static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_con
     r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
     r->len += encode_uint (NULL, cterminal->cmd_pid);
     r->len += encode_str (NULL, cterminal->ttydev, strlen (cterminal->ttydev));
-    r->len += encode_uint (NULL, cterminal->cmd_pid);
+    r->len += encode_uint (NULL, cterminal->cmd_fd);
     r->len += encode_uint (NULL, config->erase_char);
     r->data = (char *) malloc (r->len);
     p = (unsigned char *) r->data;
     encode_uint (&p, REMOTEFS_SUCCESS);
     encode_uint (&p, cterminal->cmd_pid);
     encode_str (&p, cterminal->ttydev, strlen (cterminal->ttydev));
-    encode_uint (&p, cterminal->cmd_pid);
+    encode_uint (&p, cterminal->cmd_fd);
     encode_uint (&p, config->erase_char);
     return 0;
 #else
@@ -3944,7 +3969,7 @@ static int local_enablecrypto (struct remotefs *rfs, const unsigned char *challe
     return 0;
 }
 
-static int local_shellcmd (struct remotefs *rfs, int *cmd_fd, struct cterminal_config *config, char *const argv[], char *errmsg)
+static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, char *const argv[], char *errmsg)
 {E_
     CStr s;
     unsigned long long cmd_pid_, cmd_fd_, erase_char_;
@@ -3974,8 +3999,9 @@ static int local_shellcmd (struct remotefs *rfs, int *cmd_fd, struct cterminal_c
     if (decode_uint (&p, end, &erase_char_))
         return -1;
     config->cmd_pid = (unsigned long) cmd_pid_;
-    *cmd_fd = (int) cmd_fd_;
     config->erase_char = (int) erase_char_;
+    io->cmd_fd = (int) cmd_fd_;
+    io->reader_data = NULL;
     MARSHAL_END_LOCAL(NULL);
 }
 
@@ -3993,13 +4019,21 @@ static int local_shellresize (struct remotefs *rfs, unsigned long pid, int colum
     MARSHAL_END_LOCAL(NULL);
 }
 
-static int local_shellread (struct remotefs *rfs, int cmd_fd, CStr *chunk, char *errmsg)
+static int local_shellread (struct remotefs *rfs, struct remotefs_terminalio *io, CStr *chunk, char *errmsg, int *time_out)
 {
     int r;
+
     *errmsg = '\0';
+
+    io->retry ^= 1;
+    if (!io->retry) {
+        *time_out = 1;
+        return -1;
+    }
+
     chunk->data = malloc (2048);
     chunk->len = 0;
-    r = read (cmd_fd, chunk->data, 2048);
+    r = read (io->cmd_fd, chunk->data, 2048);
     if (r > 0) {
         chunk->len = r;
     } else if (r < 0 && (ERROR_EINTR() || ERROR_EAGAIN())) {
@@ -4019,7 +4053,7 @@ static int local_shellread (struct remotefs *rfs, int cmd_fd, CStr *chunk, char 
     return 0;
 }
 
-static int local_shellwrite (struct remotefs *rfs, int cmd_fd, const CStr *chunk, char *errmsg)
+static int local_shellwrite (struct remotefs *rfs, struct remotefs_terminalio *io, const CStr *chunk, char *errmsg)
 {
     const char *data;
     int len;
@@ -4030,7 +4064,7 @@ static int local_shellwrite (struct remotefs *rfs, int cmd_fd, const CStr *chunk
 
     while (len > 0) {
         int r;
-        r = write (cmd_fd, data, len);
+        r = write (io->cmd_fd, data, len);
         if (r > 0) {
             data += r;
             len -= r;
@@ -4039,8 +4073,8 @@ static int local_shellwrite (struct remotefs *rfs, int cmd_fd, const CStr *chunk
         } else if (r < 0 && ERROR_EAGAIN ()) {
             fd_set wr;
             FD_ZERO (&wr);
-            FD_SET (cmd_fd, &wr);
-            if (select (cmd_fd + 1, NULL, &wr, NULL, NULL) < 0) {
+            FD_SET (io->cmd_fd, &wr);
+            if (select (io->cmd_fd + 1, NULL, &wr, NULL, NULL) < 0) {
                 strncpy (errmsg, strerror (errno), REMOTEFS_ERR_MSG_LEN);
                 errmsg[REMOTEFS_ERR_MSG_LEN - 1] = '\0';
                 return -1;
@@ -4071,6 +4105,7 @@ static int encode_listdir_params (unsigned char **p_, const char *directory, uns
 static int send_recv_mesg (struct remotefs *rfs, CStr *msg, CStr *response, int action, char *errmsg, int *no_such_action);
 static int send_mesg (struct remotefs *rfs, struct reader_data *d, CStr * msg, int action, char *errmsg);
 static int recv_mesg (struct remotefs *rfs, struct reader_data *d, CStr * response, int action, char *errmsg, int *no_such_action);
+static int recv_mesg_ (struct remotefs *rfs, struct reader_data *d, CStr * response, int action, long milliseconds, char *errmsg, int *no_such_action, enum reader_error *reader_error);
 static int reader (struct reader_data *d, void *buf_, int buflen, enum reader_error *reader_error);
 
 
@@ -4471,7 +4506,7 @@ static int len_args (char *const *s)
     return i;
 }
 
-static int remote_shellcmd (struct remotefs *rfs, int *cmd_fd, struct cterminal_config *config, char *const args[], char *errmsg)
+static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, char *const args[], char *errmsg)
 {E_
     CStr s, msg;
     unsigned long long cmd_pid_, cmd_fd_, erase_char_;
@@ -4541,62 +4576,88 @@ static int remote_shellcmd (struct remotefs *rfs, int *cmd_fd, struct cterminal_
         return -1;
     }
     config->cmd_pid = (unsigned long) cmd_pid_;
-    *cmd_fd = rfs->remotefs_private->sock_data->sock;
     config->erase_char = (int) erase_char_;
+
+#warning must free this
+    io->reader_data = (struct reader_data *) malloc (sizeof (*io->reader_data));
+    memset (io->reader_data, '\0', sizeof (*io->reader_data));
+    io->reader_data->sock_data = rfs->remotefs_private->sock_data;
+    io->cmd_fd = rfs->remotefs_private->sock_data->sock;
+
     MARSHAL_END_REMOTE(NULL);
 }
 
 static int remote_shellresize (struct remotefs *rfs, unsigned long pid, int columns, int rows, char *errmsg)
 {
-    CStr s, msg;
-    unsigned char *q;
+    struct cooledit_remote_msg_header m;
+    CStr v[2], s, msg;
+    int l;
+    unsigned char t1data[64];
+    unsigned char *q, *p;
     int no_such_action = 0;
+
     *errmsg = '\0';
 
-    msg.len = encode_uint (NULL, columns);
+    msg.len = encode_uint (NULL, pid);
+    msg.len += encode_uint (NULL, columns);
     msg.len += encode_uint (NULL, rows);
 
     msg.data = (char *) malloc (msg.len);
     q = (unsigned char *) msg.data;
 
+    encode_uint (&q, pid);
     encode_uint (&q, columns);
     encode_uint (&q, rows);
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_SHELLRESIZE, errmsg, &no_such_action)) {
+    l = msg.len;
+
+    v[0].data = (char *) &m;
+    v[0].len = sizeof (m);
+
+    v[1].data = msg.data;
+    v[1].len = l;
+
+    encode_msg_header (&m, v[1].len, MSG_VERSION, REMOTEFS_ACTION_SHELLRESIZE, FILE_PROTO_MAGIC);
+
+    if (writervec (rfs->remotefs_private->sock_data, v, 2)) {
+#warning finish
+        printf ("error writing to terminal socket\n");
         free (msg.data);
-        return -1;
+        return 1;
     }
+
     free (msg.data);
 
-    MARSHAL_START_REMOTE;
-    /* nothing to decode */
-    MARSHAL_END_REMOTE(NULL);
+    return 0;
 }
 
-static int remote_shellread (struct remotefs *rfs, int cmd_fd, CStr *chunk, char *errmsg)
+static int remote_shellread (struct remotefs *rfs, struct remotefs_terminalio *io, CStr *chunk, char *errmsg, int *time_out)
 {
     CStr s;
-    struct reader_data d;
     int no_such_action = 0;
+    enum reader_error reader_error = READER_ERROR_NOERROR;
 
     *errmsg = '\0';
 
     memset (&s, '\0', sizeof (s));
-    memset (&d, '\0', sizeof (d));
-    d.sock_data = rfs->remotefs_private->sock_data;
 
-    if (recv_mesg (rfs, &d, &s, REMOTEFS_ACTION_SHELLREAD, errmsg, &no_such_action))
+    if (recv_mesg_ (rfs, io->reader_data, &s, REMOTEFS_ACTION_SHELLREAD, WAITFORREAD_DONTWAIT, errmsg, &no_such_action, &reader_error)) {
+#warning extract timeout
+        if (reader_error == READER_ERROR_TIMEOUT)
+            *time_out = 1;
         return -1;
+    }
 
     MARSHAL_START_REMOTE;
     if (decode_cstr (&p, end, chunk)) {
         free (s.data);
         return -1;
     }
+
     MARSHAL_END_REMOTE(NULL);
 }
 
-static int remote_shellwrite (struct remotefs *rfs, int cmd_fd, const CStr *chunk, char *errmsg)
+static int remote_shellwrite (struct remotefs *rfs, struct remotefs_terminalio *io, const CStr *chunk, char *errmsg)
 {
     CStr msg;
     struct reader_data d;
@@ -4612,13 +4673,37 @@ static int remote_shellwrite (struct remotefs *rfs, int cmd_fd, const CStr *chun
     memset (&d, '\0', sizeof (d));
     d.sock_data = rfs->remotefs_private->sock_data;
 
-    if (send_mesg (rfs, &d, &msg, REMOTEFS_ACTION_SHELLWRITE, errmsg)) {
-        free (msg.data);
-        return -1;
-    }
+    int l;
+    CStr v[4];
+    unsigned char t1data[64];
+    unsigned char t2data[64];
+    unsigned char *p;
+    struct cooledit_remote_msg_header m;
 
-    free (msg.data);
-    msg.data = NULL;
+    l = chunk->len;
+
+    v[0].data = (char *) &m;
+    v[0].len = sizeof (m);
+
+    p = t1data;
+    v[1].data = (char *) p;
+    v[1].len = encode_uint (&p, REMOTEFS_SUCCESS);
+
+    /* see encode_str() */
+    p = t2data;
+    v[2].data = (char *) p;
+    v[2].len = encode_uint (&p, l);
+
+    v[3].data = chunk->data;
+    v[3].len = l;
+
+    encode_msg_header (&m, v[1].len + v[2].len + v[3].len, MSG_VERSION, REMOTEFS_ACTION_SHELLWRITE, FILE_PROTO_MAGIC);
+
+    if (writervec (rfs->remotefs_private->sock_data, v, 4)) {
+#warning finish
+        printf ("error writing to terminal socket\n");
+        return 1;
+    }
 
     return 0;
 }
@@ -5091,7 +5176,6 @@ static int send_mesg (struct remotefs *rfs, struct reader_data *d, CStr * msg, i
         goto retry;
     }
     if (error_code) {
-printf("error_code=%ld\n", (long) error_code);
         if (error_code > 0 && error_code < RFSERR_LAST_INTERNAL_ERROR)
             strcpy (errmsg, error_code_descr[error_code]);
         else
@@ -5109,15 +5193,18 @@ printf("error_code=%ld\n", (long) error_code);
     return 0;
 }
 
-static int recv_mesg (struct remotefs *rfs, struct reader_data *d, CStr * response, int action, char *errmsg, int *no_such_action)
+static int recv_mesg_ (struct remotefs *rfs, struct reader_data *d, CStr * response, int action, long milliseconds, char *errmsg, int *no_such_action, enum reader_error *reader_error)
 {E_
     unsigned long long msglen;
     unsigned long version, msgtype_response, magic;
     struct cooledit_remote_msg_header m;
-    enum reader_error reader_error = READER_ERROR_NOERROR;
 
-    if (reader (d, &m, sizeof (m), &reader_error)) {
-        set_sockerrmsg_to_errno (errmsg, errno, reader_error);
+    *reader_error = READER_ERROR_NOERROR;
+
+    if (reader_timeout (d, &m, sizeof (m), milliseconds, reader_error)) {
+        set_sockerrmsg_to_errno (errmsg, errno, *reader_error);
+        if (*reader_error == READER_ERROR_TIMEOUT && milliseconds == WAITFORREAD_DONTWAIT)
+            return -1;
         SHUTSOCK (rfs->remotefs_private->sock_data);
         return -1;
     }
@@ -5136,8 +5223,8 @@ static int recv_mesg (struct remotefs *rfs, struct reader_data *d, CStr * respon
         /* read the whole message because we may want to continue with the connection: */
         response->len = msglen;
         response->data = (char *) malloc (response->len);
-        if (reader (d, response->data, response->len, &reader_error)) {
-            set_sockerrmsg_to_errno (errmsg, errno, reader_error);
+        if (reader (d, response->data, response->len, reader_error)) {
+            set_sockerrmsg_to_errno (errmsg, errno, *reader_error);
             free (response->data);
             return -1;
         }
@@ -5159,13 +5246,20 @@ static int recv_mesg (struct remotefs *rfs, struct reader_data *d, CStr * respon
 
     response->len = msglen;
     response->data = (char *) malloc (response->len);
-    if (reader (d, response->data, response->len, &reader_error)) {
-        set_sockerrmsg_to_errno (errmsg, errno, reader_error);
+#warning this could lock up
+    if (reader (d, response->data, response->len, reader_error)) {
+        set_sockerrmsg_to_errno (errmsg, errno, *reader_error);
         free (response->data);
         return -1;
     }
 
     return 0;
+}
+
+static int recv_mesg (struct remotefs *rfs, struct reader_data *d, CStr * response, int action, char *errmsg, int *no_such_action)
+{E_
+    enum reader_error reader_error = READER_ERROR_NOERROR;
+    return recv_mesg_ (rfs, d, response, action, WAITFORREAD_FOREVER, errmsg, no_such_action, &reader_error);
 }
 
 static int send_recv_mesg (struct remotefs *rfs, CStr * msg, CStr * response, int action, char *errmsg, int *no_such_action)
@@ -5238,7 +5332,7 @@ static int dummyerr_enablecrypto (struct remotefs *rfs, const unsigned char *cha
     return remotefs_error_return (errmsg);
 }
 
-static int dummyerr_shellcmd (struct remotefs *rfs, int *cmd_fd, struct cterminal_config *config, char *const argv[], char *errmsg)
+static int dummyerr_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, char *const argv[], char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
 }
@@ -5248,12 +5342,12 @@ static int dummyerr_shellresize (struct remotefs *rfs, unsigned long pid, int co
     return remotefs_error_return (errmsg);
 }
 
-static int dummyerr_shellread (struct remotefs *rfs, int cmd_fd, CStr *chunk, char *errmsg)
+static int dummyerr_shellread (struct remotefs *rfs, struct remotefs_terminalio *io, CStr *chunk, char *errmsg, int *timeout)
 {
     return remotefs_error_return (errmsg);
 }
 
-static int dummyerr_shellwrite (struct remotefs *rfs, int cmd_fd, const CStr *chunk, char *errmsg)
+static int dummyerr_shellwrite (struct remotefs *rfs, struct remotefs_terminalio *io, const CStr *chunk, char *errmsg)
 {
     return remotefs_error_return (errmsg);
 }
@@ -5764,6 +5858,8 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
     return 0;
 }
 
+#define ACTION_SILENT            (-536870912)
+
 static int remote_action_fn_v3_shellresize (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
 {E_
     const unsigned char *p, *end;
@@ -5783,7 +5879,7 @@ static int remote_action_fn_v3_shellresize (struct server_data *sd, CStr *s, con
 
     remotefs_shellresize_ (sd->ttyreader_data ? &sd->ttyreader_data->cterminal : NULL, columns, rows, s);
 
-    return 0;
+    return ACTION_SILENT;
 }
 
 static int remote_action_fn_v3_dummyaction (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
@@ -5792,12 +5888,10 @@ static int remote_action_fn_v3_dummyaction (struct server_data *sd, CStr *s, con
     return -1;
 }
 
-#define ACTION_SILENT            (-536870912)
-
 #warning failure means to close the terminal
 static int remote_action_fn_v3_shellwrite (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
 {E_
-    unsigned long long chunklen;
+    unsigned long long chunklen, error_code = 0;
     const unsigned char *p, *end;
     struct ttyreader_data *tt;
     tt = sd->ttyreader_data;
@@ -5807,6 +5901,11 @@ static int remote_action_fn_v3_shellwrite (struct server_data *sd, CStr *s, cons
 
     /* see decode_cstr() */
     chunklen = 0ULL;
+    if (decode_uint (&p, end, &error_code))
+        return -1;
+#warning handle error:
+    if (error_code != REMOTEFS_SUCCESS)
+        return -1;
     if (decode_uint (&p, end, &chunklen))
         return -1;
     if (p + chunklen > end)
@@ -5820,7 +5919,9 @@ static int remote_action_fn_v3_shellwrite (struct server_data *sd, CStr *s, cons
     if (tt->wr.avail + chunklen > tt->wr.alloced) {
         tt->wr.buf = (unsigned char *) realloc (tt->wr.buf, tt->wr.avail + chunklen);
         tt->wr.alloced = tt->wr.avail + chunklen;
+printf("REALLOC ====> %d\n", tt->wr.alloced);
     }
+
     memcpy (tt->wr.buf + tt->wr.avail, p, chunklen);
     tt->wr.avail += chunklen;
 
@@ -6027,6 +6128,9 @@ static void process_client (struct client_item *i)
     memset (&ack, '\0', sizeof (ack));
     encode_msg_ack (&ack, 0, MSG_VERSION);
 
+    if (action == REMOTEFS_ACTION_SHELLWRITE || action == REMOTEFS_ACTION_SHELLRESIZE) {
+        printf ("REMOTEFS_ACTION_SHELLWRITE or REMOTEFS_ACTION_SHELLRESIZE skipping ack\n");
+    } else
     if (writer (&i->sock_data, &ack, sizeof (ack)))
         ERR ("writing ack", i->action);
 
@@ -6179,6 +6283,7 @@ printf("fdset rd[%d,%d] wr[%d,%d]\n", tt->rd.written, tt->rd.avail, tt->wr.writt
             if (FD_ISSET (tt->cterminal.cmd_fd, &rd)) {
                 c = read (tt->cterminal.cmd_fd, tt->rd.buf + tt->rd.avail, tt->rd.alloced - tt->rd.avail);
                 if (c > 0) {
+printf ("read: avail: %d -> %d\n", tt->rd.avail, tt->rd.avail + c);
                     tt->rd.avail += c;
                 } else if (c < 0 && (ERROR_EINTR() || ERROR_EAGAIN())) {
                     /* ok */
@@ -6224,9 +6329,6 @@ printf("fdset rd[%d,%d] wr[%d,%d]\n", tt->rd.written, tt->rd.avail, tt->wr.writt
 
                     v[3].data = (char *) tt->rd.buf + tt->rd.written;
                     v[3].len = l;
-
-// printf("fdisset write => l=%d [%.*s]\n", l, l, v[3].data);
-printf("fdisset write => l=%d\n", l);
 
                     tt->rd.written += l;
 

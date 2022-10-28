@@ -851,7 +851,8 @@ void cterminal_tt_winsize (struct cterminal *o, int fd, int col, int row)
     ws.ws_col = (unsigned short) col;
     ws.ws_row = (unsigned short) row;
     ws.ws_xpixel = ws.ws_ypixel = 0;
-    ioctl (fd, TIOCSWINSZ, &ws);
+    if (ioctl (fd, TIOCSWINSZ, &ws))
+        perror ("TIOCSWINSZ");
 }
 
 /*{{{ run_command() */

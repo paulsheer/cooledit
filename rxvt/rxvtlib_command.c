@@ -484,8 +484,10 @@ int            rxvtlib_tt_resize (rxvtlib *o)
 {E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
 #warning caller must deal with -1 return
-    if ((*o->remotefs->remotefs_shellresize) (o->remotefs, o->cmd_pid, o->TermWin.ncol, o->TermWin.nrow, errmsg))
+    if ((*o->remotefs->remotefs_shellresize) (o->remotefs, o->cmd_pid, o->TermWin.ncol, o->TermWin.nrow, errmsg)) {
+        printf ("error, resize terminal, [%s]\n", errmsg);
         return -1;
+    }
     return 0;
 }
 
@@ -1212,31 +1214,49 @@ static int rxvt_fd_read (rxvtlib * o)
 {E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     CStr chunk;
+    int iter = 0;
     int count = 0;
+    int timeout = 0;
 
-    assert (o->cmdbuf_current <= o->cmdbuf_len);
-
-    if (o->cmdbuf_current == o->cmdbuf_len)
-        o->cmdbuf_current = o->cmdbuf_len = 0;
-
-    memset (&chunk, '\0', sizeof (chunk));
+    for (;;) {
+        assert (o->cmdbuf_current <= o->cmdbuf_len);
+        if (o->cmdbuf_current == o->cmdbuf_len)
+            o->cmdbuf_current = o->cmdbuf_len = 0;
+        memset (&chunk, '\0', sizeof (chunk));
+        timeout = 0;
+        iter++;
+        if ((*o->remotefs->remotefs_shellread) (o->remotefs, o->cterminal_io, &chunk, errmsg, &timeout)) {
+            if (timeout) {
+                break;
+            } else {
 #warning finish handle errors
-    if ((*o->remotefs->remotefs_shellread) (o->remotefs, o->cmd_fd, &chunk, errmsg)) {
-printf ("remotefs_shellread returned error. errmsg = %s\n", errmsg);
-        return 0;
-    }
+                break;
+            }
+        }
+        assert (chunk.data != NULL);
 
-printf("shellread [%d] current=%d alloced=%d\n", chunk.len, o->cmdbuf_current, o->cmdbuf_alloced);
+        if (o->cmdbuf_len + chunk.len > o->cmdbuf_alloced) {
+            o->cmdbuf_base = (unsigned char *) realloc (o->cmdbuf_base, (o->cmdbuf_len + chunk.len) * 2);
+            o->cmdbuf_alloced = (o->cmdbuf_len + chunk.len) * 2;
+printf("%d REALLOC ====> %d\n", iter, o->cmdbuf_alloced);
+        }
+        memcpy (o->cmdbuf_base + o->cmdbuf_len, chunk.data, chunk.len);
+        o->cmdbuf_len += chunk.len;
+        count += chunk.len;
+        assert (o->cmdbuf_len <= o->cmdbuf_alloced);
+        free (chunk.data);
 
-    if (o->cmdbuf_current + chunk.len > o->cmdbuf_alloced) {
-        o->cmdbuf_base = (unsigned char *) realloc (o->cmdbuf_base, (o->cmdbuf_current + chunk.len) * 2);
-        o->cmdbuf_alloced = (o->cmdbuf_current + chunk.len) * 2;
+        if (iter == 2) {
+            struct timeval tv;
+            fd_set rd;
+            FD_ZERO (&rd);
+            FD_SET (o->cmd_fd, &rd);
+            tv.tv_sec = 0;
+            tv.tv_usec = 0;
+            if (select (o->cmd_fd + 1, &rd, NULL, NULL, &tv) > 0)
+                break;
+        }
     }
-    memcpy (o->cmdbuf_base + o->cmdbuf_current, chunk.data, chunk.len);
-    o->cmdbuf_len += chunk.len;
-    count = chunk.len;
-    assert (o->cmdbuf_len <= o->cmdbuf_alloced);
-    free (chunk.data);
 
     return count;
 }
@@ -1295,21 +1315,16 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
 #warning fixme theoretically this could hang up if waiting for an escape sequence to complete
 printf("not, data: rxvt_fd_read\n");
 	    rxvt_fd_read (o);
+            assert (o->cmdbuf_current < o->cmdbuf_len);
         }
     }
     if (o->cmdbuf_current == o->cmdbuf_len)
         o->cmdbuf_current = o->cmdbuf_len = 0;
-    if (o->cmdbuf_len > o->cmdbuf_alloced / 2) {
-/* back off */
-if (CCheckWatch (o->cmd_fd, rxvt_fd_read_watch, 1))
-printf("%s:%d: CRemoveWatch read\n", __FUNCTION__, __LINE__);
-	CRemoveWatch (o->cmd_fd, rxvt_fd_read_watch, 1);
-    } else {
-
-if (!CCheckWatch (o->cmd_fd, rxvt_fd_read_watch, 1))
-printf("%s:%d: CAddWatch read\n", __FUNCTION__, __LINE__);
-
+    if (o->cmdbuf_len < o->cmdbuf_alloced / 2) {
 	CAddWatch (o->cmd_fd, rxvt_fd_read_watch, 1, (void *) o);
+    } else {
+/* back off */
+	CRemoveWatch (o->cmd_fd, rxvt_fd_read_watch, 1);
     }
     return ch;
 }
@@ -2865,6 +2880,8 @@ int             rxvtlib_RemoveFromCNQueue (rxvtlib *o, int width, int height)
 }
 /* ------------------------------------------------------------------------- */
 
+extern int xwatch_fd;
+
 /*{{{ Read and process output from the application */
 /* EXTPROTO */
 void rxvtlib_main_loop (rxvtlib * o)
@@ -2878,17 +2895,13 @@ void rxvtlib_main_loop (rxvtlib * o)
 	    return;
 #else
         assert (o->cmdbuf_current <= o->cmdbuf_len);
-        if (o->cmdbuf_len > o->cmdbuf_alloced / 2) {
-/* back off */
-if (CCheckWatch (o->cmd_fd, rxvt_fd_read_watch, 1))
-printf("%s:%d: CRemoveWatch read\n", __FUNCTION__, __LINE__);
-	    CRemoveWatch (o->cmd_fd, rxvt_fd_read_watch, 1);
-        } else {
-
-if (!CCheckWatch (o->cmd_fd, rxvt_fd_read_watch, 1))
-printf("%s:%d: CAddWatch read\n", __FUNCTION__, __LINE__);
-
+        if (o->cmdbuf_current == o->cmdbuf_len)
+            o->cmdbuf_current = o->cmdbuf_len = 0;
+        if (o->cmdbuf_len < o->cmdbuf_alloced / 2) {
 	    CAddWatch (o->cmd_fd, rxvt_fd_read_watch, 1, (void *) o);
+        } else {
+/* back off */
+	    CRemoveWatch (o->cmd_fd, rxvt_fd_read_watch, 1);
         }
         if (o->cmdbuf_current == o->cmdbuf_len)
             return;
@@ -2907,7 +2920,7 @@ printf("%s:%d: CAddWatch read\n", __FUNCTION__, __LINE__);
             if (o->cmdbuf_current < 1) {
                 int nlines = 0;
 	        if (ch == '\n') {
-		    nlines++;
+		    nlines = 1;
 		    o->refresh_count++;
                 }
 	        rxvtlib_scr_add_lines (o, &ch, nlines, 1);
@@ -2977,7 +2990,7 @@ void rxvt_fd_write_watch (int fd, fd_set * reading,
     memset (&chunk, '\0', sizeof (chunk));
     chunk.data = o->v_bufstr;
     riten = chunk.len = (p < MAX_PTY_WRITE ? p : MAX_PTY_WRITE);
-    if ((*o->remotefs->remotefs_shellwrite) (o->remotefs, o->cmd_fd, &chunk, errmsg)) {
+    if ((*o->remotefs->remotefs_shellwrite) (o->remotefs, o->cterminal_io, &chunk, errmsg)) {
 printf ("remotefs_shellwrite returned error. errmsg = %s\n", errmsg);
 	riten = 0;
     }
@@ -3075,7 +3088,6 @@ void            rxvtlib_tt_write (rxvtlib *o, const unsigned char *d, int len)
 	if (o->v_bufstr >= o->v_bufptr)	/* we wrote it all */
 	    o->v_bufstr = o->v_bufptr = o->v_buffer;
 #else
-printf("%s:%d: CAddWatch write\n", __FUNCTION__, __LINE__);
 	CAddWatch (o->cmd_fd, rxvt_fd_write_watch, 2, (void *) o);
 #endif
     }
@@ -3516,8 +3528,11 @@ int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const ar
     if (!o->remotefs)
         return -1;
 #warning handle error
-    if ((*o->remotefs->remotefs_shellcmd) (o->remotefs, &o->cmd_fd, &c, argv, errmsg))
+    o->cterminal_io = (struct remotefs_terminalio *) malloc (sizeof (struct remotefs_terminalio));
+    memset (o->cterminal_io, '\0', sizeof (struct remotefs_terminalio));
+    if ((*o->remotefs->remotefs_shellcmd) (o->remotefs, o->cterminal_io, &c, argv, errmsg))
         return -1;
+    o->cmd_fd = o->cterminal_io->cmd_fd;
     o->cmd_pid = c.cmd_pid;
     Cstrlcpy (o->host, host, sizeof (o->host));
     Cstrlcpy (o->ttydev, c.ttydev, sizeof (o->ttydev));

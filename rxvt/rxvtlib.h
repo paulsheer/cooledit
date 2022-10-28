@@ -78,6 +78,7 @@ enum {
     SECONDARY
 };
 
+struct remotefs_terminalio;
 
 struct _rxvtlib {
  unsigned int num_fds ;
@@ -1733,6 +1734,7 @@ struct bar_t {
 /* these next two are probably only on Sun (not Solaris) */
 
  struct remotefs *remotefs;
+ struct remotefs_terminalio *cterminal_io;
  char     host[256] ;   /* host of cmd_pid */
  char     ttydev[64] ;  /* tty on host */
  pid_t    cmd_pid ;     /* pid on host */

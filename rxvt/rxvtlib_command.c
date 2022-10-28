@@ -1214,7 +1214,7 @@ static int rxvt_fd_read (rxvtlib * o)
 {E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     CStr chunk;
-    int iter = 0;
+    int no_io = 0;
     int count = 0;
     int timeout = 0;
 
@@ -1224,38 +1224,29 @@ static int rxvt_fd_read (rxvtlib * o)
             o->cmdbuf_current = o->cmdbuf_len = 0;
         memset (&chunk, '\0', sizeof (chunk));
         timeout = 0;
-        iter++;
-        if ((*o->remotefs->remotefs_shellread) (o->remotefs, o->cterminal_io, &chunk, errmsg, &timeout)) {
+        if ((*o->remotefs->remotefs_shellread) (o->remotefs, o->cterminal_io, &chunk, errmsg, &timeout, no_io)) {
             if (timeout) {
                 break;
             } else {
 #warning finish handle errors
+printf("remotefs_shellread error => %s\n", errmsg);
                 break;
             }
         }
+
+        no_io = 1;
         assert (chunk.data != NULL);
 
         if (o->cmdbuf_len + chunk.len > o->cmdbuf_alloced) {
             o->cmdbuf_base = (unsigned char *) realloc (o->cmdbuf_base, (o->cmdbuf_len + chunk.len) * 2);
             o->cmdbuf_alloced = (o->cmdbuf_len + chunk.len) * 2;
-printf("%d REALLOC ====> %d\n", iter, o->cmdbuf_alloced);
+printf("REALLOC ====> %d\n", o->cmdbuf_alloced);
         }
         memcpy (o->cmdbuf_base + o->cmdbuf_len, chunk.data, chunk.len);
         o->cmdbuf_len += chunk.len;
         count += chunk.len;
         assert (o->cmdbuf_len <= o->cmdbuf_alloced);
         free (chunk.data);
-
-        if (iter == 2) {
-            struct timeval tv;
-            fd_set rd;
-            FD_ZERO (&rd);
-            FD_SET (o->cmd_fd, &rd);
-            tv.tv_sec = 0;
-            tv.tv_usec = 0;
-            if (select (o->cmd_fd + 1, &rd, NULL, NULL, &tv) > 0)
-                break;
-        }
     }
 
     return count;
@@ -1312,10 +1303,10 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
 	if (o->cmdbuf_current < o->cmdbuf_len) {
 	    ch = o->cmdbuf_base[o->cmdbuf_current++];
 	} else {
-#warning fixme theoretically this could hang up if waiting for an escape sequence to complete
-printf("not, data: rxvt_fd_read\n");
-	    rxvt_fd_read (o);
-            assert (o->cmdbuf_current < o->cmdbuf_len);
+#warning fixme theoretically this could hang up if waiting for an escape sequence to complete, also handle error
+printf("no data: rxvt_fd_read\n");
+	    while (o->cmdbuf_current == o->cmdbuf_len)
+                rxvt_fd_read (o);
         }
     }
     if (o->cmdbuf_current == o->cmdbuf_len)
@@ -2998,7 +2989,6 @@ printf ("remotefs_shellwrite returned error. errmsg = %s\n", errmsg);
     o->v_bufstr += riten;
     if (o->v_bufstr >= o->v_bufptr) {	/* we wrote it all */
 	o->v_bufstr = o->v_bufptr = o->v_buffer;
-printf("%s:%d: CRemoveWatch write\n", __FUNCTION__, __LINE__);
 	CRemoveWatch (o->cmd_fd, rxvt_fd_write_watch, 2);
     }
     rxvtlib_main_loop (o);
@@ -3093,7 +3083,6 @@ void            rxvtlib_tt_write (rxvtlib *o, const unsigned char *d, int len)
     }
 #ifndef STANDALONE
     else {
-printf("%s:%d: CRemoveWatch write\n", __FUNCTION__, __LINE__);
 	CRemoveWatch (o->cmd_fd, rxvt_fd_write_watch, 2);
     }
 #endif

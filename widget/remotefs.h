@@ -373,7 +373,6 @@ struct portable_stat;
 struct cterminal_config;
 struct remotefs_terminalio {
     int cmd_fd;
-    int retry;
     struct reader_data *reader_data;
 };
 
@@ -393,7 +392,7 @@ struct remotefs {
     int (*remotefs_enablecrypto) (struct remotefs *rfs, const unsigned char *challenge_local, unsigned char *challenge_remote, char *errmsg);
     int (*remotefs_shellcmd) (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, char *const argv[], char *errmsg);
     int (*remotefs_shellresize) (struct remotefs *rfs, unsigned long pid, int columns, int rows, char *errmsg);
-    int (*remotefs_shellread) (struct remotefs *rfs, struct remotefs_terminalio *io, CStr *chunk, char *errmsg, int *time_out);
+    int (*remotefs_shellread) (struct remotefs *rfs, struct remotefs_terminalio *io, CStr *chunk, char *errmsg, int *time_out, int no_io);
     int (*remotefs_shellwrite) (struct remotefs *rfs, struct remotefs_terminalio *io, const CStr *chunk, char *errmsg);
     struct remotefs_private *remotefs_private;
 };

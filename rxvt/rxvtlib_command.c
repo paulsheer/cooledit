@@ -403,12 +403,13 @@ void            rxvtlib_init_command (rxvtlib *o, const char *host, char *const 
     o->wmDeleteWindow = XInternAtom (o->Xdisplay, "WM_DELETE_WINDOW", False);
     XSetWMProtocols (o->Xdisplay, o->TermWin.parent[0], &o->wmDeleteWindow, 1);
 
-#warning remove num_fds
+#ifdef STANDALONE
 /* get number of available file descriptors */
 #if defined(_POSIX_VERSION) || ! defined(__svr4__)
     o->num_fds = sysconf (_SC_OPEN_MAX);
 #else
     o->num_fds = getdtablesize ();
+#endif
 #endif
 
 #ifdef META8_OPTION
@@ -3626,6 +3627,7 @@ int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const ar
     Cstrlcpy (o->host, host, sizeof (o->host));
     Cstrlcpy (o->ttydev, c.ttydev, sizeof (o->ttydev));
 
+#ifdef STANDALONE
 /* 
  * Reduce num_fds to what we use, so select() is more efficient 
  */ 
@@ -3633,6 +3635,7 @@ int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const ar
     MAX_IT (o->num_fds, o->cmd_fd);
     MAX_IT (o->num_fds, o->Xfd);
     o->num_fds++;			 /* counts from 0 */
+#endif
 
 /*
 

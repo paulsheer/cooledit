@@ -81,7 +81,7 @@ enum {
 struct remotefs_terminalio;
 
 struct _rxvtlib {
- unsigned int num_fds ;
+//  unsigned int num_fds ;
 
 #ifdef UTF8_FONT
  const char *fontname;

@@ -1467,10 +1467,10 @@ EXTSCR int selection_style;
 #define ESC_ARGS	32	/* max # of args for esc sequences */
 
 /* a large REFRESH_PERIOD causes problems with `cat' */
-#define REFRESH_PERIOD		1
+#define REFRESH_PERIOD		300
 
 #ifndef MULTICLICK_TIME
-# define MULTICLICK_TIME	500
+# define MULTICLICK_TIME	333
 #endif
 #ifndef SCROLLBAR_INITIAL_DELAY
 # ifdef NEXT_SCROLLER

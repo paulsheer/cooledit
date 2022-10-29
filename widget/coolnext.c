@@ -175,6 +175,13 @@ int push_event (XEvent * ev)
 
 extern int block_push_event;	/* see initapp.c */
 
+int CPeekEventType (void)
+{
+    if (event_read_last == event_send_last)
+        return 0;
+    return event_sent[event_read_last].type;
+}
+
 /* pops the oldest event, returns 0 if empty */
 int pop_event (XEvent * ev)
 {E_

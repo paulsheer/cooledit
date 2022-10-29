@@ -65,7 +65,6 @@ void            rxvtlib_lookup_key (rxvtlib *o, XEvent * ev);
 unsigned int    rxvtlib_cmd_write (rxvtlib *o, const unsigned char *str, unsigned int count);
 unsigned char   rxvtlib_cmd_getc (rxvtlib *o);
 void            rxvtlib_mouse_report (rxvtlib *o, const XButtonEvent * ev);
-void            rxvtlib_process_x_event (rxvtlib *o, XEvent * ev);
 int             rxvtlib_check_our_parents (rxvtlib *o);
 void            rxvtlib_tt_printf (rxvtlib *o, const char *fmt, ...);
 FILE           *rxvtlib_popen_printer (rxvtlib *o);

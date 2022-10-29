@@ -6324,18 +6324,7 @@ static void run_service (struct service *serv)
             tt = i->sd.ttyreader_data;
             if (FD_ISSET (tt->cterminal.cmd_fd, &rd)) {
                 c = read (tt->cterminal.cmd_fd, tt->rd.buf + tt->rd.avail, tt->rd.alloced - tt->rd.avail);
-
-int nr = 0;
-ioctl(tt->cterminal.cmd_fd, FIONREAD, &nr);
-if(nr)
-printf("nr=%d\n", nr);
-
-// static long total = 0;
-// total += c;
-// printf("total = %ld\n", total);
-
                 if (c > 0) {
-// printf ("read: avail: %d -> %d\n", tt->rd.avail, tt->rd.avail + c);
                     tt->rd.avail += c;
                 } else if (c < 0 && (ERROR_EINTR() || ERROR_EAGAIN())) {
                     /* ok */
@@ -6345,9 +6334,6 @@ printf("nr=%d\n", nr);
             }
             if (FD_ISSET (tt->cterminal.cmd_fd, &wr)) {
                 tt->didread = 1;
-
-printf("write %d\n", (int) (tt->wr.avail - tt->wr.written));
-
                 c = write (tt->cterminal.cmd_fd, tt->wr.buf + tt->wr.written, tt->wr.avail - tt->wr.written);
                 if (c > 0) {
                     tt->wr.written += c;

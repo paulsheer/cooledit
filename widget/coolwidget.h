@@ -805,6 +805,9 @@ int CExposePending (Window w, XEvent * ev);
 /* Any events left? */
 int CPending (void);
 
+/* whats next. check the local queue only, returns 0 on nothing pending */
+int CPeekEventType (void);
+
 /* key presses waiting ? */
 int CKeyPending (void);
 

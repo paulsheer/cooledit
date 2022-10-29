@@ -1174,14 +1174,28 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
 
 #else
 
-void rxvtlib_update_screen (rxvtlib * o)
-{E_
+static void rxvtlib_line_fresh_algorithm (rxvtlib * o)
+{
+/* If there have been a lot of new lines, then update the screen
+ * What the heck I'll cheat and only refresh less than every page-full.
+ * the number of pages between refreshes is refresh_limit, which
+ * is incremented here because we must be doing flat-out scrolling.
+ *
+ * refreshing should be correct for small scrolls, because of the
+ * time-out */
     if (o->refresh_count >= (o->refresh_limit * (o->TermWin.nrow - 1))) {
 	if (o->refresh_limit < REFRESH_PERIOD)
-	    o->refresh_limit++;
+	    o->refresh_limit = ((o->refresh_limit + 1) * 5) / 4;
 	o->refresh_count = 0;
 	rxvtlib_scr_refresh (o, o->refresh_type);
     }
+}
+
+
+void rxvtlib_update_screen (rxvtlib * o)
+{E_
+    rxvtlib_line_fresh_algorithm (o);
+
 #ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
     if (scrollbar_isUp ()) {
 	if (!o->scroll_arrow_delay-- && rxvtlib_scr_page (o, UP, 1)) {
@@ -1195,10 +1209,6 @@ void rxvtlib_update_screen (rxvtlib * o)
 	}
     }
 #endif				/* NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING */
-    if (CIsIdle ()) {
-	o->refresh_count = 0;
-	o->refresh_limit = 1;
-    }
     if (o->want_refresh) {
 	rxvtlib_scr_refresh (o, o->refresh_type);
 	rxvtlib_scrollbar_show (o, 1);
@@ -1210,7 +1220,7 @@ void rxvtlib_update_screen (rxvtlib * o)
     }
 }
 
-static int rxvt_fd_read (rxvtlib * o, const int no_io)
+static int rxvt_fd_read_ (rxvtlib * o, const int no_io)
 {E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     CStr chunk;
@@ -1259,32 +1269,63 @@ static int io_avail (int fd)
     return select (fd + 1, &rd, NULL, NULL, &tv) == 1;
 }
 
+static void rxvt_fd_read (rxvtlib *o)
+{
+    int c;
+    if (!(c = rxvt_fd_read_ (o, 0)))
+	return;
+    do {
+/* if x events are pending this could mean a ^C to stop scrolling: */
+        if (io_avail (ConnectionNumber (CDisplay))) {
+/* if nothing pending on the socket, then the Watch won't invoke this function again. this would be bad, so do not break */
+            if (io_avail (o->cmd_fd))
+                break;
+        }
+    } while ((c = rxvt_fd_read_ (o, 1)));
+}
+
 void rxvt_fd_read_watch (int fd, fd_set * reading, fd_set * writing,
 				fd_set * error, void *data)
 {E_
-    static long total = 0;
-    long tot = 0;
-    int c;
     rxvtlib *o = (rxvtlib *) data;
-    if (!(c = rxvt_fd_read (o, 0)))
-	return;
-    do {    
-        tot = tot + c;
-        rxvtlib_main_loop (o);
-        rxvtlib_update_screen (o);
-        if (io_avail (o->cmd_fd))       /* the watcher will hit this again */
-            break;
-    } while ((c = rxvt_fd_read (o, 1)));
-total += tot;
-printf("tot = %ld, total = %ld\n", tot, total);
+    rxvt_fd_read (o);
+    rxvtlib_main_loop (o);
+    rxvtlib_update_screen (o);
 }
 
 void rxvt_process_x_event (rxvtlib * o)
 {E_
-    o->refresh_count = 0;
-    o->refresh_limit = 1;
-    if (o->x_events_pending)
+    if (o->x_events_pending) {
+        switch (o->xevent.type) {
+        case KeyPress:
+        case ClientMessage:
+        case MappingNotify:
+        case VisibilityNotify:
+        case VisibilityUnobscured:
+        case VisibilityPartiallyObscured:
+        case FocusIn:
+        case FocusOut:
+        case ConfigureNotify:
+        case SelectionClear:
+        case SelectionNotify:
+        case SelectionRequest:
+        case UnmapNotify:
+        case MapNotify:
+        case PropertyNotify:
+        case ReparentNotify:
+        case GraphicsExpose:
+        case Expose:
+        case ButtonPress:
+        case ButtonRelease:
+        case MotionNotify:
+            o->refresh_count = 0;
+            o->refresh_limit = 1;
+            break;
+        default:
+            break;
+        }
 	rxvtlib_XProcessEvent (o, o->Xdisplay);
+    }
     if (o->killed) {
 #warning finish
 // 	kill (o->cterminal.cmd_pid, SIGTERM);
@@ -1293,11 +1334,15 @@ void rxvt_process_x_event (rxvtlib * o)
 #ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
     if (scrollbar_isUp ()) {
 	if (!o->scroll_arrow_delay-- && rxvtlib_scr_page (o, UP, 1)) {
+            o->refresh_count = 0;
+            o->refresh_limit = 1;
 	    o->scroll_arrow_delay = SCROLLBAR_CONTINUOUS_DELAY;
 	    o->refresh_type |= SMOOTH_REFRESH;
 	}
     } else if (scrollbar_isDn ()) {
 	if (!o->scroll_arrow_delay-- && rxvtlib_scr_page (o, DN, 1)) {
+            o->refresh_count = 0;
+            o->refresh_limit = 1;
 	    o->scroll_arrow_delay = SCROLLBAR_CONTINUOUS_DELAY;
 	    o->refresh_type |= SMOOTH_REFRESH;
 	}
@@ -1314,6 +1359,9 @@ void rxvt_process_x_event (rxvtlib * o)
 unsigned char rxvtlib_cmd_getc (rxvtlib * o)
 {E_
     int ch = -1;
+
+    rxvtlib_line_fresh_algorithm (o);
+
     if (o->v_bufstr < o->v_bufptr)	/* output any pending chars */
 	rxvtlib_tt_write (o, NULL, 0);
     while (ch == -1) {
@@ -1323,7 +1371,7 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
 #warning fixme theoretically this could hang up if waiting for an escape sequence to complete, also handle error
 printf("no data: rxvt_fd_read\n");
 	    while (o->cmdbuf_current == o->cmdbuf_len)
-                rxvt_fd_read (o, 0);
+                rxvt_fd_read (o);
         }
     }
     if (o->cmdbuf_current == o->cmdbuf_len)
@@ -1416,7 +1464,7 @@ static int rxvtlib_connection_data_present (rxvtlib * o)
 
 /*{{{ process an X event */
 /* INTPROTO */
-void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
+static void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
 {E_
     int reportmode;
     Window unused_root, unused_child;
@@ -2887,8 +2935,6 @@ int             rxvtlib_RemoveFromCNQueue (rxvtlib *o, int width, int height)
     return 0;
 }
 /* ------------------------------------------------------------------------- */
-
-extern int xwatch_fd;
 
 /*{{{ Read and process output from the application */
 /* EXTPROTO */

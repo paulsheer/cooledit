@@ -3756,6 +3756,25 @@ static struct cterminal_item *lookup_cterminal (unsigned long pid)
     return NULL;
 }
 
+static void delete_cterminal (unsigned long pid)
+{E_
+    struct cterminal_item *i, **next;
+    next = &cterminal_list;
+    for (i = cterminal_list; i; i = i->next) {
+        if (i->cterminal.cmd_pid == pid) {
+            *next = i->next;
+            if (i->cterminal.cmd_fd >= 0) {
+                close (i->cterminal.cmd_fd);
+                i->cterminal.cmd_fd = -1;
+            }
+            cterminal_cleanup (&i->cterminal);
+            free (i);
+            return;
+        }
+        next = &i->next;
+    }
+}
+
 static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_config *config, char *const argv[], CStr * r)
 {E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
@@ -4118,10 +4137,11 @@ static int local_shellwrite (struct remotefs *rfs, struct remotefs_terminalio *i
 }
 
 static int local_shellkill (struct remotefs *rfs, unsigned long pid)
-{
-    if (lookup_cterminal (pid))
+{E_
+    if (lookup_cterminal (pid)) {
         kill (pid, SIGTERM);
-
+        delete_cterminal (pid);
+    }
     return 0;
 }
 
@@ -5657,13 +5677,13 @@ struct server_data {
 
 static void close_cterminal (struct sock_data *sock_data, struct cterminal *c)
 {E_
-    if (c->cmd_fd >= 0) {
-        close (c->cmd_fd);
-        c->cmd_fd = -1;
-    }
     if (c->cmd_pid) {
         kill (c->cmd_pid, SIGTERM);
         c->cmd_pid = 0;
+    }
+    if (c->cmd_fd >= 0) {
+        close (c->cmd_fd);
+        c->cmd_fd = -1;
     }
 
 #warning handle waitpid

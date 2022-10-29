@@ -1451,6 +1451,7 @@ void SHUTSOCK (struct sock_data *p)
 #define REMOTEFS_ACTION_SHELLRESIZE             11
 #define REMOTEFS_ACTION_SHELLREAD               12
 #define REMOTEFS_ACTION_SHELLWRITE              13
+#define REMOTEFS_ACTION_SHELLKILL               14
 
 const char *action_descr[] = {
     "NOTIMPLEMENTED",
@@ -1467,6 +1468,7 @@ const char *action_descr[] = {
     "SHELLRESIZE",
     "SHELLREAD",
     "SHELLWRITE",
+    "SHELLKILL",
 };
 
 
@@ -1482,7 +1484,8 @@ const char *error_code_descr[RFSERR_LAST_INTERNAL_ERROR + 1] = {
     "endoffile",                                /* 8   RFSERR_ENDOFFILE                             */
     "pathname too long",                        /* 9   RFSERR_PATHNAME_TOO_LONG                     */
     "non-crypto op attempted",                  /* 10  RFSERR_NON_CRYPTO_OP_ATTEMPTED               */
-    "last internal error",                      /* 11  RFSERR_LAST_INTERNAL_ERROR                   */
+    "server closed shell died",                 /* 11  RFSERR_SERVER_CLOSED_SHELL_DIED              */
+    "last internal error",                      /* 12  RFSERR_LAST_INTERNAL_ERROR                   */
 };
 
 
@@ -4010,7 +4013,7 @@ static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io,
     }
 
     MARSHAL_START_LOCAL;
-#warning handle error
+    /* remotefs_shellcmd_ returns non-zero if error, so no error possible here */
     if (decode_uint (&p, end, &cmd_pid_))
         return -1;
     if (decode_str (&p, end, config->ttydev, sizeof (config->ttydev)))
@@ -4111,6 +4114,14 @@ static int local_shellwrite (struct remotefs *rfs, struct remotefs_terminalio *i
             return -1;
         }
     }
+    return 0;
+}
+
+static int local_shellkill (struct remotefs *rfs, unsigned long pid)
+{
+    if (lookup_cterminal (pid))
+        kill (pid, SIGTERM);
+
     return 0;
 }
 
@@ -4528,6 +4539,14 @@ static int len_args (char *const *s)
     return i;
 }
 
+void remotefs_free_terminalio (struct remotefs_terminalio *io)
+{
+    if (io->reader_data) {
+        free (io->reader_data);
+        io->reader_data = NULL;
+    }
+}
+
 static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, char *const args[], char *errmsg)
 {E_
     CStr s, msg;
@@ -4600,7 +4619,6 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
     config->cmd_pid = (unsigned long) cmd_pid_;
     config->erase_char = (int) erase_char_;
 
-#warning must free this
     io->reader_data = (struct reader_data *) malloc (sizeof (*io->reader_data));
     memset (io->reader_data, '\0', sizeof (*io->reader_data));
     io->reader_data->sock_data = rfs->remotefs_private->sock_data;
@@ -4626,7 +4644,7 @@ static int send_blind_message (struct sock_data *sock_data, int action, char *da
 
     /* see encode_cstr() */
     p = t2data;
-    v[2].data = p;
+    v[2].data = (char *) p;
     v[2].len = encode_uint (&p, l);
 
     v[3].data = (char *) data;
@@ -4672,10 +4690,10 @@ static int remote_shellresize (struct remotefs *rfs, unsigned long pid, int colu
     encode_uint (&q, rows);
 
     if (send_blind_message1 (rfs->remotefs_private->sock_data, REMOTEFS_ACTION_SHELLRESIZE, msg.data, msg.len)) {
-#warning finish
-        printf ("error writing to terminal socket\n");
+        snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "fail trying to send SHELLRESIZE to remote: [%s]", strerror (errno));
         free (msg.data);
-        return 1;
+        SHUTSOCK (rfs->remotefs_private->sock_data);
+        return -1;
     }
 
     free (msg.data);
@@ -4704,14 +4722,12 @@ static int remote_shellread (struct remotefs *rfs, struct remotefs_terminalio *i
         free (s.data);
         return -1;
     }
-
     MARSHAL_END_REMOTE(NULL);
 }
 
 static int remote_shellwrite (struct remotefs *rfs, struct remotefs_terminalio *io, const CStr *chunk, char *errmsg)
 {
     CStr msg;
-    int r;
     unsigned char *q;
 
     *errmsg = '\0';
@@ -4721,9 +4737,36 @@ static int remote_shellwrite (struct remotefs *rfs, struct remotefs_terminalio *
     q = (unsigned char *) msg.data;
     encode_str (&q, chunk->data, chunk->len);
 
-    r = send_blind_message (rfs->remotefs_private->sock_data, REMOTEFS_ACTION_SHELLWRITE, chunk->data, chunk->len);
+    if (send_blind_message (rfs->remotefs_private->sock_data, REMOTEFS_ACTION_SHELLWRITE, chunk->data, chunk->len)) {
+        snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "fail trying to write terminal data remote: [%s]", strerror (errno));
+        free (msg.data);
+        SHUTSOCK (rfs->remotefs_private->sock_data);
+        return -1;
+    }
     free (msg.data);
-    return r;
+    return 0;
+}
+
+static int remote_shellkill (struct remotefs *rfs, unsigned long pid)
+{
+    unsigned char *q;
+    CStr msg;
+
+    msg.len = encode_uint (NULL, pid);
+
+    msg.data = (char *) malloc (msg.len);
+    q = (unsigned char *) msg.data;
+
+    encode_uint (&q, pid);
+
+    if (send_blind_message1 (rfs->remotefs_private->sock_data, REMOTEFS_ACTION_SHELLKILL, msg.data, msg.len)) {
+        free (msg.data);
+        SHUTSOCK (rfs->remotefs_private->sock_data);
+        return -1;
+    }
+
+    free (msg.data);
+    return 0;
 }
 
 
@@ -5189,7 +5232,7 @@ static int send_mesg (struct remotefs *rfs, struct reader_data *d, CStr * msg, i
         retries = 0;
         goto retry;
     }
-    if (error_code == RFSERR_SERVER_CLOSED_IDLE_CLIENT) {
+    if (error_code == RFSERR_SERVER_CLOSED_IDLE_CLIENT || error_code == RFSERR_SERVER_CLOSED_SHELL_DIED) {
         SHUTSOCK (rfs->remotefs_private->sock_data);
         goto retry;
     }
@@ -5235,6 +5278,14 @@ static int recv_mesg_ (struct remotefs *rfs, struct reader_data *d, CStr * respo
         const char *remote;
         remote = rfs->remotefs_private->remote;
         snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "invalid magic response from %s", remote);
+        SHUTSOCK (rfs->remotefs_private->sock_data);
+        return -1;
+    }
+
+    if (msglen < 0 || msglen > CRYPTO_CHUNK * 2) {
+        const char *remote;
+        remote = rfs->remotefs_private->remote;
+        snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "invalid msglen %lld from %s", msglen, remote);
         SHUTSOCK (rfs->remotefs_private->sock_data);
         return -1;
     }
@@ -5364,12 +5415,18 @@ static int dummyerr_shellresize (struct remotefs *rfs, unsigned long pid, int co
 }
 
 static int dummyerr_shellread (struct remotefs *rfs, struct remotefs_terminalio *io, CStr *chunk, char *errmsg, int *timeout, int no_io)
-{
+{E_
     return remotefs_error_return (errmsg);
 }
 
 static int dummyerr_shellwrite (struct remotefs *rfs, struct remotefs_terminalio *io, const CStr *chunk, char *errmsg)
-{
+{E_
+    return remotefs_error_return (errmsg);
+}
+
+static int dummyerr_shellkill (struct remotefs *rfs, unsigned long pid)
+{E_
+    char errmsg[REMOTEFS_ERR_MSG_LEN];
     return remotefs_error_return (errmsg);
 }
 
@@ -5390,6 +5447,7 @@ struct remotefs remotefs_dummyerr = {
     dummyerr_shellresize,
     dummyerr_shellread,
     dummyerr_shellwrite,
+    dummyerr_shellkill,
     NULL,
 };
 
@@ -5408,6 +5466,7 @@ struct remotefs remotefs_local = {
     local_shellresize,
     local_shellread,
     local_shellwrite,
+    local_shellkill,
     NULL
 };
 
@@ -5426,6 +5485,7 @@ struct remotefs remotefs_socket = {
     remote_shellresize,
     remote_shellread,
     remote_shellwrite,
+    remote_shellkill,
     NULL
 };
 
@@ -5555,8 +5615,37 @@ struct server_data {
     struct ttyreader_data *ttyreader_data;
 };
 
+static void close_cterminal (struct sock_data *sock_data, struct cterminal *c)
+{E_
+    if (c->cmd_fd >= 0) {
+        close (c->cmd_fd);
+        c->cmd_fd = -1;
+    }
+    if (c->cmd_pid) {
+        kill (c->cmd_pid, SIGTERM);
+        c->cmd_pid = 0;
+    }
+
+#warning handle waitpid
+    if (sock_data) {
+        struct cooledit_remote_msg_header m;
+        CStr v[2];
+
+        v[0].data = (char *) &m;
+        v[0].len = sizeof (m);
+
+        alloc_encode_error (&v[1], RFSERR_SERVER_CLOSED_SHELL_DIED, "process died", 1);
+        encode_msg_header (&m, v[1].len, MSG_VERSION, REMOTEFS_ACTION_SHELLREAD, FILE_PROTO_MAGIC);
+
+        writervec (sock_data, v, 2);
+
+        free (v[1].data);
+    }
+}
+
 static void free_ttyreader_data (struct ttyreader_data *p)
 {E_
+    cterminal_cleanup (&p->cterminal);
     if (p->rd.buf)
         free (p->rd.buf);
     if (p->wr.buf)
@@ -5911,7 +6000,6 @@ static int remote_action_fn_v3_dummyaction (struct server_data *sd, CStr *s, con
     return -1;
 }
 
-#warning failure means to close the terminal
 static int remote_action_fn_v3_shellwrite (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
 {E_
     unsigned long long chunklen, error_code = 0;
@@ -5926,7 +6014,6 @@ static int remote_action_fn_v3_shellwrite (struct server_data *sd, CStr *s, cons
     chunklen = 0ULL;
     if (decode_uint (&p, end, &error_code))
         return -1;
-#warning handle error:
     if (error_code != REMOTEFS_SUCCESS)
         return -1;
     if (decode_uint (&p, end, &chunklen))
@@ -5951,6 +6038,25 @@ printf("REALLOC ====> %d\n", tt->wr.alloced);
     return ACTION_SILENT;
 }
 
+static int remote_action_fn_v3_shellkill (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
+{E_
+    const unsigned char *p, *end;
+    unsigned long long pid;
+    struct ttyreader_data *tt;
+    tt = sd->ttyreader_data;
+
+    p = in;
+    end = in + inlen;
+
+    if (decode_uint (&p, end, &pid))
+        return -1;
+
+    if (pid == tt->cterminal.cmd_pid)
+        kill (pid, SIGTERM);
+
+    return ACTION_SILENT;
+}
+
 struct action_item {
     int (*action_fn) (struct server_data *sd, CStr *r, const unsigned char *in, int inlen);
 };
@@ -5970,6 +6076,7 @@ struct action_item action_list[] = {
     { remote_action_fn_v3_shellresize, },
     { remote_action_fn_v3_dummyaction, },       /* server does not handle shellread */
     { remote_action_fn_v3_shellwrite, },
+    { remote_action_fn_v3_shellkill, },
 };
 
 static unsigned int client_count = 0L;
@@ -6151,7 +6258,7 @@ static void process_client (struct client_item *i)
     memset (&ack, '\0', sizeof (ack));
     encode_msg_ack (&ack, 0, MSG_VERSION);
 
-    if (action == REMOTEFS_ACTION_SHELLWRITE || action == REMOTEFS_ACTION_SHELLRESIZE) {
+    if (action == REMOTEFS_ACTION_SHELLWRITE || action == REMOTEFS_ACTION_SHELLRESIZE || action == REMOTEFS_ACTION_SHELLKILL) {
         printf ("REMOTEFS_ACTION_SHELLWRITE or REMOTEFS_ACTION_SHELLRESIZE skipping ack\n");
     } else
     if (writer (&i->sock_data, &ack, sizeof (ack)))
@@ -6226,14 +6333,6 @@ static void process_client (struct client_item *i)
 #undef r
 }
 
-static void close_terminal (void *o)
-{E_
-    printf ("close_terminal\n");
-    fflush (stdout);
-    exit (1);
-#warning finish
-}
-
 // 0x7fffffffde70
 static long tv_delta (struct timeval *now, struct timeval *then)
 {
@@ -6265,18 +6364,15 @@ static void run_service (struct service *serv)
         assert (i->magic == CLIENT_MAGIC);
         FD_SET (i->sock_data.sock, &rd);
         n = MAX (n, i->sock_data.sock);
-        if (i->sd.ttyreader_data && i->sd.ttyreader_data->cterminal.cmd_fd >= 0) {
+        if (i->sd.ttyreader_data) {
             struct ttyreader_data *tt;
             tt = i->sd.ttyreader_data;
             there_are_shells_running = 1;
-
-// printf("fdset rd[%d,%d] wr[%d,%d]\n", tt->rd.written, tt->rd.avail, tt->wr.written, tt->wr.avail);
-
-            if (tt->rd.avail < tt->rd.alloced) {
+            if (tt->cterminal.cmd_fd >= 0 && tt->rd.avail < tt->rd.alloced) {
                 FD_SET (tt->cterminal.cmd_fd, &rd);
                 n = MAX (n, tt->cterminal.cmd_fd);
             }
-            if (tt->wr.written < tt->wr.avail) {
+            if (tt->cterminal.cmd_fd >= 0 && tt->wr.written < tt->wr.avail) {
                 FD_SET (tt->cterminal.cmd_fd, &wr);
                 n = MAX (n, tt->cterminal.cmd_fd);
             }
@@ -6318,21 +6414,23 @@ static void run_service (struct service *serv)
                 time (&i->last_accessed);
             }
         }
-        if (i->sd.ttyreader_data && i->sd.ttyreader_data->cterminal.cmd_fd >= 0) {
+        if (i->sd.ttyreader_data) {
             int c;
             struct ttyreader_data *tt;
             tt = i->sd.ttyreader_data;
-            if (FD_ISSET (tt->cterminal.cmd_fd, &rd)) {
+            if (tt->cterminal.cmd_fd >= 0 && FD_ISSET (tt->cterminal.cmd_fd, &rd)) {
                 c = read (tt->cterminal.cmd_fd, tt->rd.buf + tt->rd.avail, tt->rd.alloced - tt->rd.avail);
                 if (c > 0) {
                     tt->rd.avail += c;
                 } else if (c < 0 && (ERROR_EINTR() || ERROR_EAGAIN())) {
                     /* ok */
                 } else if (c <= 0) {
-                    close_terminal (i);
+printf("kill\n");
+                    close_cterminal (&i->sock_data, &tt->cterminal);
+                    i->kill = KILL_SOFT;
                 }
             }
-            if (FD_ISSET (tt->cterminal.cmd_fd, &wr)) {
+            if (tt->cterminal.cmd_fd >= 0 && FD_ISSET (tt->cterminal.cmd_fd, &wr)) {
                 tt->didread = 1;
                 c = write (tt->cterminal.cmd_fd, tt->wr.buf + tt->wr.written, tt->wr.avail - tt->wr.written);
                 if (c > 0) {
@@ -6342,7 +6440,8 @@ static void run_service (struct service *serv)
                 } else if (c < 0 && (ERROR_EINTR() || ERROR_EAGAIN())) {
                     /* ok */
                 } else if (c <= 0) {
-                    close_terminal (i);
+                    close_cterminal (&i->sock_data, &tt->cterminal);
+                    i->kill = KILL_SOFT;
                 }
             }
 
@@ -6360,8 +6459,9 @@ static void run_service (struct service *serv)
                     tt->didread = 0;
                     l = tt->rd.avail - tt->rd.written; /* which might be something else in the future */
                     if (send_blind_message (&i->sock_data, REMOTEFS_ACTION_SHELLREAD, (char *) (tt->rd.buf + tt->rd.written), l)) {
-                        printf ("error writing to terminal socket\n");
-                        close_terminal (i);
+                        printf ("error writing to terminal socket: [%s]\n", strerror (errno));
+                        close_cterminal (NULL, &tt->cterminal);
+                        i->kill = KILL_SOFT;
                     }
 #warning finish dont flood the TCP connection
                     tt->rd.written += l;

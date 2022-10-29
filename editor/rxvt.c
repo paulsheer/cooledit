@@ -38,17 +38,12 @@ int rxvt_event (XEvent * xevent)
 	if (l->killed || l->rxvt->killed) {
 	    struct rxvts *next;
 	    next = l->next;
-printf("%s:%d: CRemoveWatch read\n", __FILE__, __LINE__);
 	    CRemoveWatch (l->rxvt->cmd_fd, rxvt_fd_read_watch, 1);
-printf("%s:%d: CRemoveWatch write\n", __FILE__, __LINE__);
 	    CRemoveWatch (l->rxvt->cmd_fd, rxvt_fd_write_watch, 2);
-	    close (l->rxvt->cmd_fd);
-	    if (l->killed) {
-		XDestroyWindow (l->rxvt->Xdisplay,
-				l->rxvt->TermWin.parent[0]);
-		XDestroyWindow (l->rxvt->Xdisplay, l->rxvt->TermWin.vt);
-		XDestroyWindow (l->rxvt->Xdisplay, l->rxvt->scrollBar.win);
-	    }
+	    XDestroyWindow (l->rxvt->Xdisplay,
+			    l->rxvt->TermWin.parent[0]);
+	    XDestroyWindow (l->rxvt->Xdisplay, l->rxvt->TermWin.vt);
+	    XDestroyWindow (l->rxvt->Xdisplay, l->rxvt->scrollBar.win);
 	    prev->next = next;
 	    rxvtlib_shut (l->rxvt);
 	    free (l->rxvt);
@@ -245,11 +240,8 @@ void rxvtlib_shutall (void)
     while (l) {
 	struct rxvts *next;
 	next = l->next;
-printf("%s:%d: CRemoveWatch both\n", __FILE__, __LINE__);
 	CRemoveWatch (l->rxvt->cmd_fd, 0, 3);
 	CRemoveWatch (l->rxvt->cmd_fd, 0, 3);
-	if (!l->killed)
-	    close (l->rxvt->cmd_fd);
 	XDestroyWindow (l->rxvt->Xdisplay, l->rxvt->TermWin.parent[0]);
 	XDestroyWindow (l->rxvt->Xdisplay, l->rxvt->TermWin.vt);
 	XDestroyWindow (l->rxvt->Xdisplay, l->rxvt->scrollBar.win);

@@ -314,7 +314,7 @@ void cterminal_cleanup (struct cterminal *o)
 /* EXTPROTO */
 static void cterminal_privileges (int mode)
 {E_
-#warning comment out
+#if 0
 #ifdef HAVE_SETEUID
     static uid_t euid;
     static gid_t egid;
@@ -348,6 +348,7 @@ static void cterminal_privileges (int mode)
     case CTERMINAL_RESTORE:
         break;
     }
+#endif
 #endif
 }
 

@@ -22,7 +22,8 @@ enum remotefs_error_code {
     RFSERR_ENDOFFILE,                           /* 8 */
     RFSERR_PATHNAME_TOO_LONG,                   /* 9 */
     RFSERR_NON_CRYPTO_OP_ATTEMPTED,             /* 10 */
-    RFSERR_LAST_INTERNAL_ERROR,                 /* 11 */
+    RFSERR_SERVER_CLOSED_SHELL_DIED,            /* 11 */
+    RFSERR_LAST_INTERNAL_ERROR,                 /* 12 */
 
 /* The combined errors from: opengroup.org, Linux, FreeBSD, Solaris, HP-UX,
    and Windows _sys_errlist are listed below.  This excludes the Windows WSA
@@ -378,6 +379,7 @@ struct remotefs_terminalio {
 
 const char *remotefs_home_dir (struct remotefs *rfs);
 void remotefs_set_password_cb (remotfs_password_cb_t f, void *d);
+void remotefs_free_terminalio (struct remotefs_terminalio *io);
 
 struct remotefs {
     unsigned int magic;
@@ -394,6 +396,7 @@ struct remotefs {
     int (*remotefs_shellresize) (struct remotefs *rfs, unsigned long pid, int columns, int rows, char *errmsg);
     int (*remotefs_shellread) (struct remotefs *rfs, struct remotefs_terminalio *io, CStr *chunk, char *errmsg, int *time_out, int no_io);
     int (*remotefs_shellwrite) (struct remotefs *rfs, struct remotefs_terminalio *io, const CStr *chunk, char *errmsg);
+    int (*remotefs_shellkill) (struct remotefs *rfs, unsigned long pid);
     struct remotefs_private *remotefs_private;
 };
 

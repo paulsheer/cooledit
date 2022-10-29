@@ -479,13 +479,18 @@ void rxvtlib_init_xlocale (rxvtlib * o)
 /*}}} */
 #endif
 
+void rxvt_fd_read_watch (int fd, fd_set * reading, fd_set * writing, fd_set * error, void *data);
+void rxvt_fd_write_watch (int fd, fd_set * reading, fd_set * writing, fd_set * error, void *data);
+
 /* EXTPROTO */
 int            rxvtlib_tt_resize (rxvtlib *o)
 {E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
-#warning caller must deal with -1 return
     if ((*o->remotefs->remotefs_shellresize) (o->remotefs, o->cmd_pid, o->TermWin.ncol, o->TermWin.nrow, errmsg)) {
-        printf ("error, resize terminal, [%s]\n", errmsg);
+        printf ("error, resizing terminal, [%s]\n", errmsg);
+        CRemoveWatch (o->cmd_fd, rxvt_fd_read_watch, 1);
+        CRemoveWatch (o->cmd_fd, rxvt_fd_write_watch, 2);
+        o->killed = EXIT_FAILURE | DO_EXIT;
         return -1;
     }
     return 0;
@@ -1236,9 +1241,11 @@ static int rxvt_fd_read_ (rxvtlib * o, const int no_io)
         if (timeout) {
             return 0;
         } else {
-#warning finish handle errors
+	    CRemoveWatch (o->cmd_fd, rxvt_fd_read_watch, 1);
+	    CRemoveWatch (o->cmd_fd, rxvt_fd_write_watch, 2);
+            o->killed = EXIT_FAILURE | DO_EXIT;
 printf("remotefs_shellread error => %s\n", errmsg);
-            return 0;
+            return -1;
         }
     }
 
@@ -1269,26 +1276,31 @@ static int io_avail (int fd)
     return select (fd + 1, &rd, NULL, NULL, &tv) == 1;
 }
 
-static void rxvt_fd_read (rxvtlib *o)
+static int rxvt_fd_read (rxvtlib *o)
 {
     int c;
-    if (!(c = rxvt_fd_read_ (o, 0)))
-	return;
+    c = rxvt_fd_read_ (o, 0);
+    if (c <= 0)
+	return c;
     do {
 /* if x events are pending this could mean a ^C to stop scrolling: */
         if (io_avail (ConnectionNumber (CDisplay))) {
 /* if nothing pending on the socket, then the Watch won't invoke this function again. this would be bad, so do not break */
-            if (io_avail (o->cmd_fd))
+            if (io_avail (o->cmd_fd)) {
+                c = 0;
                 break;
+            }
         }
-    } while ((c = rxvt_fd_read_ (o, 1)));
+    } while ((c = rxvt_fd_read_ (o, 1)) > 0);
+    return c;
 }
 
 void rxvt_fd_read_watch (int fd, fd_set * reading, fd_set * writing,
 				fd_set * error, void *data)
 {E_
     rxvtlib *o = (rxvtlib *) data;
-    rxvt_fd_read (o);
+    if (rxvt_fd_read (o))
+        return;
     rxvtlib_main_loop (o);
     rxvtlib_update_screen (o);
 }
@@ -1327,9 +1339,11 @@ void rxvt_process_x_event (rxvtlib * o)
 	rxvtlib_XProcessEvent (o, o->Xdisplay);
     }
     if (o->killed) {
-#warning finish
-// 	kill (o->cterminal.cmd_pid, SIGTERM);
-	close (o->cmd_fd);
+        (*o->remotefs->remotefs_shellkill) (o->remotefs, o->cmd_pid);
+        if (o->cmd_fd >= 0) {
+	    close (o->cmd_fd);
+            o->cmd_fd = -1;
+        }
     }
 #ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
     if (scrollbar_isUp ()) {
@@ -1371,7 +1385,8 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
 #warning fixme theoretically this could hang up if waiting for an escape sequence to complete, also handle error
 printf("no data: rxvt_fd_read\n");
 	    while (o->cmdbuf_current == o->cmdbuf_len)
-                rxvt_fd_read (o);
+                if (rxvt_fd_read (o) < 0)
+                    return '\0';
         }
     }
     if (o->cmdbuf_current == o->cmdbuf_len)
@@ -3045,7 +3060,10 @@ void rxvt_fd_write_watch (int fd, fd_set * reading,
     chunk.data = o->v_bufstr;
     riten = chunk.len = (p < MAX_PTY_WRITE ? p : MAX_PTY_WRITE);
     if ((*o->remotefs->remotefs_shellwrite) (o->remotefs, o->cterminal_io, &chunk, errmsg)) {
-printf ("remotefs_shellwrite returned error. errmsg = %s\n", errmsg);
+        printf ("remotefs_shellwrite returned error. errmsg = %s\n", errmsg);
+	CRemoveWatch (o->cmd_fd, rxvt_fd_read_watch, 1);
+	CRemoveWatch (o->cmd_fd, rxvt_fd_write_watch, 2);
+        o->killed = EXIT_FAILURE | DO_EXIT;
 	riten = 0;
     }
 #endif
@@ -3579,11 +3597,14 @@ int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const ar
 #warning handle error
     if (!o->remotefs)
         return -1;
-#warning handle error
     o->cterminal_io = (struct remotefs_terminalio *) malloc (sizeof (struct remotefs_terminalio));
     memset (o->cterminal_io, '\0', sizeof (struct remotefs_terminalio));
-    if ((*o->remotefs->remotefs_shellcmd) (o->remotefs, o->cterminal_io, &c, argv, errmsg))
+    if ((*o->remotefs->remotefs_shellcmd) (o->remotefs, o->cterminal_io, &c, argv, errmsg)) {
+        printf ("error trying to start remote shell: [%s]\n", errmsg);
+        free (o->cterminal_io);
+        o->cterminal_io = NULL;
         return -1;
+    }
     o->cmd_fd = o->cterminal_io->cmd_fd;
     o->cmd_pid = c.cmd_pid;
     Cstrlcpy (o->host, host, sizeof (o->host));

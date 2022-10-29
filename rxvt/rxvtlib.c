@@ -49,6 +49,8 @@
 
 #include "inspect.h"
 #include "rxvtlib.h"
+#include <stringtools.h>
+#include <remotefs.h>
 
 static  int      Xfd = -1;
 static  unsigned long PrivateModes = PrivMode_Default;
@@ -324,6 +326,11 @@ void rxvtlib_shut (rxvtlib * o)
 {E_
     int i;
 
+    if (o->cmd_fd >= 0) {
+        close (o->cmd_fd);
+        o->cmd_fd = -1;
+    }
+
     for (i = 0; i < o->TermWin.nrow; i++) {
 	if (o->swap.text)
 	    myfree (o->swap.text[i]);
@@ -394,10 +401,9 @@ void rxvtlib_shut (rxvtlib * o)
 	myfree (o->rs_free[i]);
 
     myfree (o->cmdbuf_base);
-    myfree (o->cterminal_io);
 
-#warning finish tell remotefs to cleanup, or do we just close??
-//     cterminal_cleanup (&o->cterminal);
+    remotefs_free_terminalio (o->cterminal_io);
+    myfree (o->cterminal_io);
 
     memset (o, 0, sizeof (*o));
 }

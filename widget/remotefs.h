@@ -348,7 +348,10 @@ enum remotefs_error_code {
 void remotefs_serverize (const char *listen_address, const char *acceptrange);
 
 struct file_entry;
+struct remotefs;
 
+void remotefs_free (struct remotefs *rfs);
+struct remotefs *remotefs_new (const char *host, char *errmsg);
 struct remotefs *remotefs_lookup (const char *host_, char *directory);
 #define the_remotefs_local                      (remotefs_lookup (REMOTEFS_LOCAL, NULL))
 
@@ -377,9 +380,10 @@ struct remotefs_terminalio {
     struct reader_data *reader_data;
 };
 
+void remotefs_free_terminalio (struct remotefs_terminalio *io);
+
 const char *remotefs_home_dir (struct remotefs *rfs);
 void remotefs_set_password_cb (remotfs_password_cb_t f, void *d);
-void remotefs_free_terminalio (struct remotefs_terminalio *io);
 
 struct remotefs {
     unsigned int magic;

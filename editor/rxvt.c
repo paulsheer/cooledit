@@ -40,10 +40,7 @@ int rxvt_event (XEvent * xevent)
 	    next = l->next;
 	    CRemoveWatch (l->rxvt->cmd_fd, rxvt_fd_read_watch, 1);
 	    CRemoveWatch (l->rxvt->cmd_fd, rxvt_fd_write_watch, 2);
-	    XDestroyWindow (l->rxvt->Xdisplay,
-			    l->rxvt->TermWin.parent[0]);
-	    XDestroyWindow (l->rxvt->Xdisplay, l->rxvt->TermWin.vt);
-	    XDestroyWindow (l->rxvt->Xdisplay, l->rxvt->scrollBar.win);
+            rxvtlib_destroy_windows (l->rxvt);
 	    prev->next = next;
 	    rxvtlib_shut (l->rxvt);
 	    free (l->rxvt);
@@ -169,14 +166,19 @@ extern void (*user_selection_clear) (void);
 
 static rxvtlib *rxvt_allocate (const char *host, Window win, int c, char **a, int do_sleep, int charset_8bit)
 {E_
+    char errmsg[CTERMINAL_ERR_MSG_LEN];
     rxvtlib *rxvt;
     struct rxvts *l;
     rxvt = (rxvtlib *) malloc (sizeof (rxvtlib));
     rxvtlib_init (rxvt, charset_8bit);
     user_selection_clear = (void (*)(void)) rxvt_selection_clear;
     rxvt->parent_window = win;
-    rxvtlib_main (rxvt, host, c, (const char *const *) a, do_sleep);
+    errmsg[0] = '\0';
+    rxvtlib_main (rxvt, host, c, (const char *const *) a, do_sleep, errmsg);
     if (rxvt->killed) {
+        if (errmsg[0])
+	    CErrorDialog(0, 0, 0, _(" Open Terminal "), " Error trying to open terminal: \n [%s] ", errmsg);
+        rxvtlib_destroy_windows (rxvt);
 	free (rxvt);
 	return 0;
     }

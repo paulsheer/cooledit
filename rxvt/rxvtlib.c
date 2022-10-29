@@ -402,6 +402,7 @@ void rxvtlib_shut (rxvtlib * o)
 
     myfree (o->cmdbuf_base);
 
+    remotefs_free (o->remotefs);
     remotefs_free_terminalio (o->cterminal_io);
     myfree (o->cterminal_io);
 

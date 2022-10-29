@@ -5426,8 +5426,7 @@ static int dummyerr_shellwrite (struct remotefs *rfs, struct remotefs_terminalio
 
 static int dummyerr_shellkill (struct remotefs *rfs, unsigned long pid)
 {E_
-    char errmsg[REMOTEFS_ERR_MSG_LEN];
-    return remotefs_error_return (errmsg);
+    return -1;
 }
 
 
@@ -5516,38 +5515,51 @@ const char *remotefs_home_dir (struct remotefs *rfs)
     return i->home_dir;
 }
 
-static int remotefs_start (struct remotefs_item *i, const char *host, char *errmsg)
+static void remotefs_private_cleanup (struct remotefs_private *p)
 {E_
-    memset (i, '\0', sizeof (*i));
-    strcpy (i->host, host);
-    if (!strcmp (host, REMOTEFS_LOCAL)) {
-        i->impl = remotefs_local;
-        i->impl.remotefs_private = NULL;
-    } else {
-        i->impl = remotefs_socket;
-        i->impl.remotefs_private = (struct remotefs_private *) malloc (sizeof (struct remotefs_private));
-        memset (i->impl.remotefs_private, '\0', sizeof (struct remotefs_private));
-        strcpy (i->impl.remotefs_private->remote, host);
-        i->impl.remotefs_private->sock_data = (struct sock_data *) malloc (sizeof (struct sock_data));
-        memset (i->impl.remotefs_private->sock_data, '\0', sizeof (struct sock_data));
-        i->impl.remotefs_private->sock_data->sock = INVALID_SOCKET;
-    }
-    i->impl.magic = REMOTEFS_ITEM_MAGIC;
-    if ((*i->impl.remotefs_gethomedir) (&i->impl, i->home_dir, sizeof (i->home_dir), errmsg)) {
-        if (i->impl.remotefs_private) {
-            if (i->impl.remotefs_private->sock_data) {
-                if (i->impl.remotefs_private->sock_data->crypto_data.symauth) {
-                    symauth_free (i->impl.remotefs_private->sock_data->crypto_data.symauth);
-                }
-                free (i->impl.remotefs_private->sock_data);
+    if (p) {
+        if (p->sock_data) {
+            SHUTSOCK (p->sock_data);
+            if (p->sock_data->crypto_data.symauth) {
+                symauth_free (p->sock_data->crypto_data.symauth);
             }
-            free (i->impl.remotefs_private);
+            free (p->sock_data);
         }
-        return -1;
+        free (p);
+    }
+}
+
+void remotefs_free (struct remotefs *rfs)
+{E_
+    assert (rfs->magic == REMOTEFS_ITEM_MAGIC);
+    remotefs_private_cleanup (rfs->remotefs_private);
+    free (rfs);
+}
+
+static int remotefs_start (struct remotefs *rfs, const char *host, char *home_dir, char *errmsg)
+{E_
+    if (!strcmp (host, REMOTEFS_LOCAL)) {
+        *rfs = remotefs_local;
+        rfs->remotefs_private = NULL;
+    } else {
+        *rfs = remotefs_socket;
+        rfs->remotefs_private = (struct remotefs_private *) malloc (sizeof (struct remotefs_private));
+        memset (rfs->remotefs_private, '\0', sizeof (struct remotefs_private));
+        strcpy (rfs->remotefs_private->remote, host);
+        rfs->remotefs_private->sock_data = (struct sock_data *) malloc (sizeof (struct sock_data));
+        memset (rfs->remotefs_private->sock_data, '\0', sizeof (struct sock_data));
+        rfs->remotefs_private->sock_data->sock = INVALID_SOCKET;
+    }
+    rfs->magic = REMOTEFS_ITEM_MAGIC;
+    if (home_dir) {
+        if ((*rfs->remotefs_gethomedir) (rfs, home_dir, MAX_PATH_LEN, errmsg)) {
+            remotefs_private_cleanup (rfs->remotefs_private);
+            rfs->remotefs_private = NULL;
+            return -1;
+        }
     }
     return 0;
 }
-
 
 struct remotefs *remotefs_lookup (const char *host_, char *last_directory)
 {E_
@@ -5572,7 +5584,9 @@ struct remotefs *remotefs_lookup (const char *host_, char *last_directory)
         if (!strcmp (i->host, host))
             return &i->impl;
     i = (struct remotefs_item *) malloc (sizeof (*i));
-    if (remotefs_start (i, host, remotefs_error_return_)) {
+    memset (i, '\0', sizeof (*i));
+    strcpy (i->host, host);
+    if (remotefs_start (&i->impl, host, i->home_dir, remotefs_error_return_)) {
         free (i);
         goto errout;
     }
@@ -5591,6 +5605,32 @@ struct remotefs *remotefs_lookup (const char *host_, char *last_directory)
     return &dummy.impl;
 }
 
+struct remotefs *remotefs_new (const char *host_, char *errmsg)
+{E_
+    int r;
+    struct remotefs *rfs;
+    char host[256];
+    char addr[64];
+    int addrlen = 0;
+    if (!host_)
+        host_ = REMOTEFS_LOCAL;
+    if (!strcmp (host_, REMOTEFS_LOCAL)) {
+        strcpy (host, host_);
+    } else {
+        if ((r = text_to_ip (host_, NULL, addr, &addrlen))) {
+            snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "invalid ip address %s, (%d)", host_, r);
+            return NULL;
+        }
+        ip_to_text (addr, addrlen, host);
+    }
+    rfs = (struct remotefs *) malloc (sizeof (*rfs));
+    memset (rfs, '\0', sizeof (*rfs));
+    if (remotefs_start (rfs, host, NULL, errmsg)) {
+        free (rfs);
+        return NULL;
+    }
+    return rfs;
+}
 
 
 

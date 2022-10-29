@@ -392,7 +392,7 @@ void            rxvtlib_get_ourmods (rxvtlib *o)
 
 /*{{{ init_command() */
 /* EXTPROTO */
-void            rxvtlib_init_command (rxvtlib *o, const char *host, char *const argv[], int do_sleep)
+void            rxvtlib_init_command (rxvtlib *o, const char *host, char *const argv[], int do_sleep, char *errmsg)
 {E_
 /*
  * Initialize the command connection.
@@ -403,6 +403,7 @@ void            rxvtlib_init_command (rxvtlib *o, const char *host, char *const 
     o->wmDeleteWindow = XInternAtom (o->Xdisplay, "WM_DELETE_WINDOW", False);
     XSetWMProtocols (o->Xdisplay, o->TermWin.parent[0], &o->wmDeleteWindow, 1);
 
+#warning remove num_fds
 /* get number of available file descriptors */
 #if defined(_POSIX_VERSION) || ! defined(__svr4__)
     o->num_fds = sysconf (_SC_OPEN_MAX);
@@ -434,8 +435,7 @@ void            rxvtlib_init_command (rxvtlib *o, const char *host, char *const 
     o->cmdbuf_len = 0;
     o->cmdbuf_alloced = 8;
 
-    if (rxvtlib_run_command (o, host, argv, do_sleep)) {
-	print_error ("aborting");
+    if (rxvtlib_run_command (o, host, argv, do_sleep, errmsg)) {
 	o->killed = EXIT_FAILURE | DO_EXIT;
     }
 }
@@ -1477,6 +1477,25 @@ static int rxvtlib_connection_data_present (rxvtlib * o)
     return FD_ISSET (ConnectionNumber (o->Xdisplay), &r);
 }
 
+void rxvtlib_destroy_windows (rxvtlib * o)
+{
+    if (o->Xdisplay) {
+        if (o->TermWin.parent[0]) {
+            XDestroyWindow (o->Xdisplay, o->TermWin.parent[0]);
+            o->TermWin.parent[0] = 0;
+        }
+        if (o->TermWin.vt) {
+            XDestroyWindow (o->Xdisplay, o->TermWin.vt);
+            o->TermWin.vt = 0;
+        }
+        if (o->scrollBar.win) {
+            XDestroyWindow (o->Xdisplay, o->scrollBar.win);
+            o->scrollBar.win = 0;
+        }
+        XFlush (o->Xdisplay);
+    }
+}
+
 /*{{{ process an X event */
 /* INTPROTO */
 static void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
@@ -1542,10 +1561,7 @@ static void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
     case ClientMessage:
 	if (ev->xclient.format == 32 && ev->xclient.data.l[0] == o->wmDeleteWindow) {
 #ifndef STANDALONE
-	    XDestroyWindow (o->Xdisplay, o->TermWin.parent[0]);
-	    XDestroyWindow (o->Xdisplay, o->TermWin.vt);
-	    XDestroyWindow (o->Xdisplay, o->scrollBar.win);
-	    XFlush (o->Xdisplay);
+            rxvtlib_destroy_windows (o);
 #endif
 	    o->killed = EXIT_SUCCESS | DO_EXIT;
 	    return;
@@ -3568,10 +3584,9 @@ void            rxvtlib_XProcessEvent (rxvtlib *o, Display * display)
 }
 
 
-int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const argv[], int do_sleep)
+int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const argv[], int do_sleep, char *errmsg)
 {E_
     struct cterminal_config c;
-    char errmsg[CTERMINAL_ERR_MSG_LEN];
  
     memset (&c, '\0', sizeof (c));
  
@@ -3592,15 +3607,16 @@ int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const ar
     if (!host)
         host = "localhost";
 
-    if (!o->remotefs)
-        o->remotefs = remotefs_lookup (host, NULL);
-#warning handle error
+    assert (!o->remotefs);
+    o->remotefs = remotefs_new (host, errmsg);
     if (!o->remotefs)
         return -1;
+    assert (!o->cterminal_io);
     o->cterminal_io = (struct remotefs_terminalio *) malloc (sizeof (struct remotefs_terminalio));
     memset (o->cterminal_io, '\0', sizeof (struct remotefs_terminalio));
     if ((*o->remotefs->remotefs_shellcmd) (o->remotefs, o->cterminal_io, &c, argv, errmsg)) {
-        printf ("error trying to start remote shell: [%s]\n", errmsg);
+        remotefs_free (o->remotefs);
+        o->remotefs = NULL;
         free (o->cterminal_io);
         o->cterminal_io = NULL;
         return -1;

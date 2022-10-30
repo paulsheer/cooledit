@@ -4,7 +4,6 @@
 #include <coolwidget.h>
 #include <xim.h>
 #include <stringtools.h>
-#include <remotefs.h>
 
 /*--------------------------------*-C-*---------------------------------*
  * File:	command.c
@@ -430,11 +429,6 @@ void            rxvtlib_init_command (rxvtlib *o, const char *host, char *const 
 #endif
 
     o->Xfd = XConnectionNumber (o->Xdisplay);
-    /* this grows automatically, start off small for testing */
-    o->cmdbuf_base = (unsigned char *) malloc (8);
-    o->cmdbuf_current = 0;
-    o->cmdbuf_len = 0;
-    o->cmdbuf_alloced = 8;
 
     if (rxvtlib_run_command (o, host, argv, do_sleep, errmsg)) {
 	o->killed = EXIT_FAILURE | DO_EXIT;
@@ -1225,44 +1219,6 @@ void rxvtlib_update_screen (rxvtlib * o)
     }
 }
 
-static int rxvt_fd_read_ (rxvtlib * o, const int no_io)
-{E_
-    char errmsg[REMOTEFS_ERR_MSG_LEN];
-    CStr chunk;
-    int count = 0;
-    int timeout = 0;
-
-    assert (o->cmdbuf_current <= o->cmdbuf_len);
-    if (o->cmdbuf_current == o->cmdbuf_len)
-        o->cmdbuf_current = o->cmdbuf_len = 0;
-    memset (&chunk, '\0', sizeof (chunk));
-    timeout = 0;
-    if ((*o->remotefs->remotefs_shellread) (o->remotefs, o->cterminal_io, &chunk, errmsg, &timeout, no_io)) {
-        if (timeout) {
-            return 0;
-        } else {
-	    CRemoveWatch (o->cmd_fd, NULL, 1);
-            o->killed = EXIT_FAILURE | DO_EXIT;
-printf("remotefs_shellread error => %s\n", errmsg);
-            return -1;
-        }
-    }
-
-    assert (chunk.data != NULL);
-
-    if (o->cmdbuf_len + chunk.len > o->cmdbuf_alloced) {
-        o->cmdbuf_base = (unsigned char *) realloc (o->cmdbuf_base, (o->cmdbuf_len + chunk.len) * 2);
-        o->cmdbuf_alloced = (o->cmdbuf_len + chunk.len) * 2;
-    }
-    memcpy (o->cmdbuf_base + o->cmdbuf_len, chunk.data, chunk.len);
-    o->cmdbuf_len += chunk.len;
-    count += chunk.len;
-    assert (o->cmdbuf_len <= o->cmdbuf_alloced);
-    free (chunk.data);
-
-    return count;
-}
-
 static int io_avail (int fd)
 {
     struct timeval tv;
@@ -1277,7 +1233,11 @@ static int io_avail (int fd)
 static int rxvt_fd_read (rxvtlib *o)
 {
     int c;
-    c = rxvt_fd_read_ (o, 0);
+    c = remotefs_reader_util (o->remotefs, o->cterminal_io, 0);
+    if (c < 0) {
+        CRemoveWatch (o->cmd_fd, NULL, 1);
+        o->killed = EXIT_FAILURE | DO_EXIT;
+    }
     if (c <= 0)
 	return c;
     do {
@@ -1289,7 +1249,11 @@ static int rxvt_fd_read (rxvtlib *o)
                 break;
             }
         }
-    } while ((c = rxvt_fd_read_ (o, 1)) > 0);
+    } while ((c = remotefs_reader_util (o->remotefs, o->cterminal_io, 1)) > 0);
+    if (c < 0) {
+        CRemoveWatch (o->cmd_fd, NULL, 1);
+        o->killed = EXIT_FAILURE | DO_EXIT;
+    }
     return c;
 }
 

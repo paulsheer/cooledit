@@ -51,7 +51,9 @@
 #include "_rxvtlib.h"
 #include "rxvtlibtypedef.h"
 #include "rxvtexport.h"
-#include "cterminal.h"
+#include <cterminal.h>
+#include <remotefs.h>
+
 
 /* #if (XtSpecificationRelease >= 6) */
 /* #undef USE_XIM */
@@ -1578,10 +1580,6 @@ struct XCNQueue_t {
 
 /* command input buffering */
 #undef BUFSIZ
- unsigned char *cmdbuf_base;
- int cmdbuf_current;
- int cmdbuf_len;
- int cmdbuf_alloced;
 
 #ifdef UTMP_SUPPORT
 # if ! defined(HAVE_STRUCT_UTMPX) && ! defined(HAVE_STRUCT_UTMP)
@@ -1734,6 +1732,12 @@ struct bar_t {
 /* these next two are probably only on Sun (not Solaris) */
 
  struct remotefs *remotefs;
+
+#define cmdbuf_base     cterminal_io->base
+#define cmdbuf_current  cterminal_io->current
+#define cmdbuf_len      cterminal_io->len
+#define cmdbuf_alloced  cterminal_io->alloced
+
  struct remotefs_terminalio *cterminal_io;
  char     host[256] ;   /* host of cmd_pid */
  char     ttydev[64] ;  /* tty on host */

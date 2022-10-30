@@ -3,6 +3,14 @@
 
 
 
+#ifndef REMOTEFS_H
+#define REMOTEFS_H
+
+
+struct simple_string;
+typedef struct simple_string CStr;
+
+
 #define OS_TYPE_POSIX           0
 #define OS_SUBTYPE_LINUX        0
 #define OS_TYPE_WINDOWS         1
@@ -378,12 +386,19 @@ struct cterminal_config;
 struct remotefs_terminalio {
     int cmd_fd;
     struct reader_data *reader_data;
+    unsigned char *base;
+    int current;
+    int len;
+    int alloced;
 };
 
 void remotefs_free_terminalio (struct remotefs_terminalio *io);
 
 const char *remotefs_home_dir (struct remotefs *rfs);
 void remotefs_set_password_cb (remotfs_password_cb_t f, void *d);
+
+int remotefs_reader_util (struct remotefs *rfs, struct remotefs_terminalio *io, const int no_io);
+
 
 struct remotefs {
     unsigned int magic;
@@ -404,5 +419,7 @@ struct remotefs {
     struct remotefs_private *remotefs_private;
 };
 
+
+#endif  /* REMOTEFS_H */
 
 

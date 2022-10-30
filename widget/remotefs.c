@@ -1500,6 +1500,44 @@ const char *error_code_descr[RFSERR_LAST_INTERNAL_ERROR + 1] = {
 #define MAX(a,b)        ((a) > (b) ? (a) : (b))
 
 
+
+int remotefs_reader_util (struct remotefs *rfs, struct remotefs_terminalio *io, const int no_io)
+{E_
+    char errmsg[REMOTEFS_ERR_MSG_LEN];
+    CStr chunk;
+    int count = 0;
+    int timeout = 0;
+
+    assert (io->current <= io->len);
+    if (io->current == io->len)
+        io->current = io->len = 0;
+    memset (&chunk, '\0', sizeof (chunk));
+    timeout = 0;
+    if ((*rfs->remotefs_shellread) (rfs, io, &chunk, errmsg, &timeout, no_io)) {
+        if (timeout) {
+            return 0;
+        } else {
+printf("remotefs_shellread error => %s\n", errmsg);
+            return -1;
+        }
+    }
+
+    assert (chunk.data != NULL);
+
+    if (io->len + chunk.len > io->alloced) {
+        io->base = (unsigned char *) realloc (io->base, (io->len + chunk.len) * 2);
+        io->alloced = (io->len + chunk.len) * 2;
+    }
+    memcpy (io->base + io->len, chunk.data, chunk.len);
+    io->len += chunk.len;
+    count += chunk.len;
+    assert (io->len <= io->alloced);
+    free (chunk.data);
+
+    return count;
+}
+
+
 struct cooledit_remote_msg_header {
     unsigned char magic[2];
     unsigned char version[2];
@@ -4050,6 +4088,13 @@ static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io,
     config->erase_char = (int) erase_char_;
     io->cmd_fd = (int) cmd_fd_;
     io->reader_data = NULL;
+
+    /* this grows automatically, start off small for testing */
+    io->base = (unsigned char *) malloc (8);
+    io->current = 0;
+    io->len = 0;
+    io->alloced = 8;
+
     MARSHAL_END_LOCAL(NULL);
 }
 
@@ -4570,6 +4615,13 @@ void remotefs_free_terminalio (struct remotefs_terminalio *io)
         free (io->reader_data);
         io->reader_data = NULL;
     }
+    if (io->base) {
+        free (io->base);
+        io->base = NULL;
+    }
+    io->current = 0;
+    io->len = 0;
+    io->alloced = 0;
 }
 
 static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, char *const args[], char *errmsg)
@@ -4651,6 +4703,12 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
     memset (io->reader_data, '\0', sizeof (*io->reader_data));
     io->reader_data->sock_data = rfs->remotefs_private->sock_data;
     io->cmd_fd = rfs->remotefs_private->sock_data->sock;
+
+    /* this grows automatically, start off small for testing */
+    io->base = (unsigned char *) malloc (8);
+    io->current = 0;
+    io->len = 0;
+    io->alloced = 8;
 
     MARSHAL_END_REMOTE(NULL);
 }
@@ -6449,7 +6507,7 @@ static long tv_delta (struct timeval *now, struct timeval *then)
 static void free_service (struct service *serv)
 {E_
     struct client_item *i, *next;
-    for (i = serv->client_list;; i = next) {
+    for (i = serv->client_list; i; i = next) {
         assert (i->magic == CLIENT_MAGIC);
         if (i->sd.ttyreader_data)
             close_cterminal (__LINE__, &i->sock_data, &i->sd.ttyreader_data->cterminal, 1);
@@ -6466,8 +6524,6 @@ static void free_service (struct service *serv)
         if (i->sd.ttyreader_data)
             free_ttyreader_data (i->sd.ttyreader_data);
         free (i);
-        if (!next)
-            break;
     }
     serv->client_list = NULL;
 

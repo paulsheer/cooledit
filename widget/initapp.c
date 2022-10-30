@@ -63,6 +63,7 @@
 #include "remotefs.h"
 #include "remotefspassword.h"
 #include "aafont.h"
+#include "childhandler.h"
 
 #include <signal.h>
 #include <sys/types.h>

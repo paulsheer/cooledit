@@ -1073,6 +1073,7 @@ long CUnicodeDialog (Window in, int x, int y, char *heading);
 char *get_sys_error (const char *s);
 XEvent *CRawkeyQuery (Window in, int x, int y, const char *heading, const char *fmt,...);
 char *CTrivialSelectionDialog (Window in, int x, int y, int columns, int lines, const char *text, int line, int cursor_line);
+KeySym CKeycodeToKeysym (KeyCode keycode);
 
 struct focus_win {
     Window top, bottom, left, right;

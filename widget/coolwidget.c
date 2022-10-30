@@ -1558,3 +1558,13 @@ void CMapDialog (const char *ident)
     XMapWindow (CDisplay, w->winid);	/* shows the window */
     XFlush (CDisplay);
 }
+
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
+KeySym CKeycodeToKeysym (KeyCode keycode)
+{
+    return XKeycodeToKeysym (CDisplay, keycode, 0);
+}
+
+
+

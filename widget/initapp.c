@@ -1229,7 +1229,7 @@ static void get_alt_key (void)
 	    for (j = 0; j < map->max_keypermod; j++) {
 		if (map->modifiermap[k + j] == 0)
 		    break;
-                if (XKeycodeToKeysym (CDisplay, map->modifiermap[k + j], 0) == masks[v]) {
+                if (CKeycodeToKeysym (map->modifiermap[k + j]) == masks[v]) {
                     found_mask = modmasks[i];
 		    goto done;
 		}

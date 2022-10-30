@@ -335,7 +335,7 @@ void            rxvtlib_get_ourmods (rxvtlib *o)
 	for (j = 0; j < map->max_keypermod; j++, k++) {
 	    if (kc[k] == 0)
 		break;
-	    switch (XKeycodeToKeysym (o->Xdisplay, kc[k], 0)) {
+	    switch (CKeycodeToKeysym (kc[k])) {
 	    case XK_Num_Lock:
 		if (!got_numlock) {
 		    o->ModNumLockMask = modmasks[i - 3];

@@ -86,6 +86,18 @@ void childhandler_ (void)
     }
 }
 
+/* returns non-zero on child exit. does not pop the exit status */
+int CChildCheckExitted (pid_t p)
+{E_
+    struct child_exitted_item *c;
+    if (!p)
+        return 0;
+    for (c = child_list.next; c; c = c->next)
+        if (c->pid == p)
+            return 1;
+    return 0;
+}
+
 /* returns non-zero on child exit */
 int CChildExitted (pid_t p, int *status)
 {E_

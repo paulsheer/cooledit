@@ -6672,6 +6672,10 @@ static void run_service (struct service *serv)
                     i->kill = KILL_SOFT;
                 }
             }
+            if (CChildCheckExitted (tt->cterminal.cmd_pid)) {
+                close_cterminal (__LINE__, &i->sock_data, &tt->cterminal, 0);
+                i->kill = KILL_SOFT;
+            }
 
 #warning finish if (1..) condition
             if (FD_ISSET (i->sock_data.sock, &wr)) {

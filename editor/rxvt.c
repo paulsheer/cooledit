@@ -32,7 +32,7 @@ int rxvt_event (XEvent * xevent)
         mine = getpid ();
     win = xevent->xany.window;
     for (l = rxvt_list->next, prev = rxvt_list; l; l = l->next) {
-        if (!strcmp (l->rxvt->host, "localhost"))
+        if (!strcmp (l->rxvt->cterminal_io.host, "localhost"))
  	    l->killed |= CChildExitted (l->rxvt->cmd_pid, 0);
 	if (l->killed || l->rxvt->killed) {
 	    struct rxvts *next;
@@ -270,13 +270,13 @@ rxvtlib *rxvt_start (const char *host, Window win, char **argv, int do_sleep, in
 
 void rxvt_get_tty_name (rxvtlib * rxvt, char *p)
 {E_
-    strcpy (p, rxvt->ttydev);
+    strcpy (p, rxvt->cterminal_io.ttydev);
 }
 
 void rxvt_get_pid_host (rxvtlib * rxvt, pid_t *pid, char *host, int host_len)
 {E_
     *pid = rxvt->cmd_pid;
-    Cstrlcpy (host, rxvt->host, host_len);
+    Cstrlcpy (host, rxvt->cterminal_io.host, host_len);
 }
 
 #if 0

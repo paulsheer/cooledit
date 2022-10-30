@@ -386,7 +386,11 @@ struct cterminal_config;
 struct remotefs_terminalio {
     int cmd_fd;
     struct reader_data *reader_data;
+    struct remotefs *remotefs;
+    unsigned long cmd_pid;
     unsigned char *base;
+    char ttydev[64]; /* fixme: make CTERMINAL_TTYDEV_SZ */
+    char host[256];
     int current;
     int len;
     int alloced;
@@ -397,7 +401,8 @@ void remotefs_free_terminalio (struct remotefs_terminalio *io);
 const char *remotefs_home_dir (struct remotefs *rfs);
 void remotefs_set_password_cb (remotfs_password_cb_t f, void *d);
 
-int remotefs_reader_util (struct remotefs *rfs, struct remotefs_terminalio *io, const int no_io);
+int remotefs_reader_util (struct remotefs_terminalio *io, const int no_io);
+int remotefs_shell_util (const char *host, struct remotefs_terminalio *io, struct cterminal_config *c, int dumb_terminal, char *const argv[], char *errmsg);
 
 
 struct remotefs {

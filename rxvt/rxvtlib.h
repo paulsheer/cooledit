@@ -1731,18 +1731,14 @@ struct bar_t {
 
 /* these next two are probably only on Sun (not Solaris) */
 
- struct remotefs *remotefs;
+#define cmdbuf_base     cterminal_io.base
+#define cmdbuf_current  cterminal_io.current
+#define cmdbuf_len      cterminal_io.len
+#define cmdbuf_alloced  cterminal_io.alloced
+#define cmd_fd          cterminal_io.cmd_fd
+#define cmd_pid         cterminal_io.cmd_pid
 
-#define cmdbuf_base     cterminal_io->base
-#define cmdbuf_current  cterminal_io->current
-#define cmdbuf_len      cterminal_io->len
-#define cmdbuf_alloced  cterminal_io->alloced
-
- struct remotefs_terminalio *cterminal_io;
- char     host[256] ;   /* host of cmd_pid */
- char     ttydev[64] ;  /* tty on host */
- pid_t    cmd_pid ;     /* pid on host */
- int      cmd_fd ;
+ struct remotefs_terminalio cterminal_io;
  int      Xfd ;
 
 #ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING

@@ -402,11 +402,7 @@ void rxvtlib_shut (rxvtlib * o)
     for (i = 0; i < TOTAL_RS; i++)
 	myfree (o->rs_free[i]);
 
-    if (o->remotefs)
-        remotefs_free (o->remotefs);
-    if (o->cterminal_io)
-        remotefs_free_terminalio (o->cterminal_io);
-    myfree (o->cterminal_io);
+    remotefs_free_terminalio (&o->cterminal_io);
 
     memset (o, 0, sizeof (*o));
     o->cmd_fd = -1;

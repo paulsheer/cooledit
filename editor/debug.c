@@ -108,13 +108,13 @@ typedef struct struct_debug {
 	char *query;
 	char *response;
     } query[30];
+    char host[256];
     char *progname;
     char *debugger;
     char *args;
-    pid_t pid;
+#define pid     cterminal_io.cmd_pid
     pid_t child;
-    struct remotefs *remotefs;
-    struct remotefs_terminalio *cterminal_io;
+    struct remotefs_terminalio cterminal_io;
     struct _command {
 	int action;
 	char *command;
@@ -510,7 +510,6 @@ static char *from_end_pattern (char *s, const char *pattern, int n)
 	match_len = match_pattern (e, pattern);
         if (match_len)
 	    if (strlen (e + match_len) <= n) {
-/* printf("FOUNDR: [%s]\n", pattern); */
 	        return e;
             }
     }
@@ -524,7 +523,6 @@ static char *from_start_pattern (char *s, const char *pattern, int n)
 	int match_len;
 	match_len = match_pattern (s, pattern);
 	if (match_len) {
-/* printf ("FOUNDS: [%s]\n", pattern); */
 	    return s;
 	}
         s++;
@@ -586,22 +584,22 @@ int str_empty_space (const char *p)
 }
 
 
-static int debug_fd_read (Debug *o)
+static int debug_fd_read (Debug *d)
 {
     int c, no_io = 0;
-    while ((c = remotefs_reader_util (o->remotefs, o->cterminal_io, no_io)) > 0)
+    while ((c = remotefs_reader_util (&d->cterminal_io, no_io)) > 0)
         no_io = 1;
     return c;
 }
 
-static int debug_writeall (Debug *o, const char *buf, int len, char *errmsg)
+static int debug_writeall (Debug *d, const char *buf, int len, char *errmsg)
 {
     CStr chunk;
     errmsg[0] = '\0';
     memset (&chunk, '\0', sizeof (chunk));
     chunk.data = (char *) buf;
     chunk.len = len;
-    if ((*o->remotefs->remotefs_shellwrite) (o->remotefs, o->cterminal_io, &chunk, errmsg))
+    if ((*d->cterminal_io.remotefs->remotefs_shellwrite) (d->cterminal_io.remotefs, &d->cterminal_io, &chunk, errmsg))
         return -1;
     return len;
 }
@@ -615,7 +613,7 @@ static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_
     int action, n, i;
     struct remotefs_terminalio *io;
     d = &debug_session;
-    io = d->cterminal_io;
+    io = &d->cterminal_io;
 #warning finish: need to handle remote process death
 if (!strcmp (d->xterm_pid_host.xterm_host, "localhost")) {
     if (CChildExitted (d->pid, 0) || (!rxvt_have_pid (d->xterm_pid_host.xterm_pid) && d->show_output)) {
@@ -1120,6 +1118,7 @@ static int xdebug_run_program (Debug * d)
     int i = 0;
     struct stat s;
     xdebug_cursor_bookmark_flush ();
+#warning remotefs
     if (stat (d->progname, &s)) {
 	debug_error2 (d,
 		      _
@@ -1128,22 +1127,27 @@ static int xdebug_run_program (Debug * d)
 	return 1;
     }
     if ((s.st_mode & S_IFMT) != S_IFREG) {
-        char msg[128];
-        snprintf (msg, sizeof (msg), "Your program appears to be a %s \n and not a regular file", thing (s.st_mode));
+        char msg[512];
+        snprintf (msg, sizeof (msg), "Your program (on %s) appears to be a %s \n and not a regular file", d->host, thing (s.st_mode));
         debug_error2 (d, msg, d->progname);
         return 1;
     }
     if (access (d->progname, R_OK | X_OK)) {
-        debug_error2 (d, _("Your program does not seem to have \n execute permissions"), d->progname);
+#warning test
+        char msg[512];
+        snprintf (msg, sizeof (msg), _("Your program (on %s) does not seem to have \n execute permissions"), d->host);
+        debug_error2 (d, msg, d->progname);
         return 1;
     }
     arg[i++] = d->debugger;
     if (d->show_output) {
+        struct cterminal_config c;
 	char *p, *gargv[2] = {0, 0};
+        char errmsg[CTERMINAL_ERR_MSG_LEN];
 	struct _rxvtlib *rxvt;
         gargv[0] = d->progname;
 #warning finish
-	rxvt = rxvt_start ("localhost", CRoot, gargv, 1, 0);
+	rxvt = rxvt_start (d->host, CRoot, gargv, 1, 0);
 	if (!rxvt) {
 	    d->xterm_pid_host.xterm_pid = 0;
 	    d->xterm_pid_host.xterm_host[0] = '\0';
@@ -1158,17 +1162,39 @@ static int xdebug_run_program (Debug * d)
 	arg[i++] = p;
 	arg[i++] = d->progname;
 	arg[i] = 0;
-	d->pid = triple_pipe_open (&d->in, &d->out, 0, 1, d->debugger, arg);
+        memset (&c, '\0', sizeof (c));
+#warning free cterminal_io
+        if (remotefs_shell_util (d->host, &d->cterminal_io, &c, 1, arg, errmsg)) {
+	    d->pid = 0;
+	    d->xterm_pid_host.xterm_pid = 0;
+	    d->xterm_pid_host.xterm_host[0] = '\0';
+	    debug_error2 (d, _("Could not open gdb"), errmsg);
+	    xdebug_flush_commands (d);
+	    return 1;
+        }
+        d->in = d->out = d->cterminal_io.cmd_fd;
+
 	free (p);
     } else {
+        struct cterminal_config c;
 	char *p;
         char errmsg[CTERMINAL_ERR_MSG_LEN];
 	p = (char *) strdup ("-tty=                    ");
 	arg[i++] = p;
 	arg[i++] = d->progname;
 	arg[i] = 0;
+        memset (&c, '\0', sizeof (c));
+#warning free cterminal_io
+        if (remotefs_shell_util (d->host, &d->cterminal_io, &c, 1, arg, errmsg)) {
+	    d->pid = 0;
+	    d->xterm_pid_host.xterm_pid = 0;
+	    d->xterm_pid_host.xterm_host[0] = '\0';
+	    debug_error2 (d, _("Could not open gdb"), errmsg);
+	    xdebug_flush_commands (d);
+	    return 1;
+        }
+        d->in = d->out = d->cterminal_io.cmd_fd;
 
-	d->pid = open_under_pty (&d->in, &d->out, p + 5, d->debugger, arg, errmsg);
 	free (p);
     }
     if (d->pid <= 0) {
@@ -1341,6 +1367,7 @@ static int debug_set_info (unsigned long x)
 #else
     checks_values_result[3] = 0;
 #endif
+    strcpy (debug_session.host, "localhost");
     r = CInputsWithOptions (0, 0, 0, _ (" Debug : Program Data "), inputs_result, input_labels, input_names, input_tool_hint, checks_values_result, check_labels, check_tool_hints, INPUTS_WITH_OPTIONS_BROWSE_LOAD_1, 60);
     if (r)
 	return 1;

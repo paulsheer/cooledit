@@ -1500,14 +1500,36 @@ const char *error_code_descr[RFSERR_LAST_INTERNAL_ERROR + 1] = {
 #define MAX(a,b)        ((a) > (b) ? (a) : (b))
 
 
-
-int remotefs_reader_util (struct remotefs *rfs, struct remotefs_terminalio *io, const int no_io)
+int remotefs_shell_util (const char *host, struct remotefs_terminalio *io, struct cterminal_config *c, int dumb_terminal, char *const argv[], char *errmsg)
 {E_
+    memset (io, '\0', sizeof (*io));
+    io->cmd_fd = -1;
+    io->remotefs = remotefs_new (host, errmsg);
+    if (!io->remotefs)
+        return -1;
+    if ((*io->remotefs->remotefs_shellcmd) (io->remotefs, io, c, dumb_terminal, argv, errmsg)) {
+        remotefs_free (io->remotefs);
+        io->remotefs = NULL;
+        return -1;
+    }
+    io->cmd_pid = c->cmd_pid;
+    strncpy (io->host, host, sizeof (io->host));
+    io->host[sizeof (io->host) - 1] = '\0';
+    strncpy (io->ttydev, c->ttydev, sizeof (io->ttydev));
+    io->ttydev[sizeof (io->ttydev) - 1] = '\0';
+    return 0;
+}
+
+
+int remotefs_reader_util (struct remotefs_terminalio *io, const int no_io)
+{E_
+    struct remotefs *rfs;
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     CStr chunk;
     int count = 0;
     int timeout = 0;
 
+    rfs = io->remotefs;
     assert (io->current <= io->len);
     if (io->current == io->len)
         io->current = io->len = 0;
@@ -4611,6 +4633,8 @@ static int len_args (char *const *s)
 
 void remotefs_free_terminalio (struct remotefs_terminalio *io)
 {
+    if (io->remotefs)
+        remotefs_free (io->remotefs);
     if (io->reader_data) {
         free (io->reader_data);
         io->reader_data = NULL;
@@ -5752,10 +5776,17 @@ static void close_cterminal (int line, struct sock_data *sock_data, struct cterm
 {E_
     char msg[256] = "";
     int wstatus = 0;
-    if (c->cmd_pid)
-        if (waitpid (c->cmd_pid, &wstatus, WNOHANG) == c->cmd_pid || CChildExitted (c->cmd_pid, &wstatus))
-            if (WIFEXITED (wstatus))
-                snprintf (msg, sizeof (msg), "%d: process %ld died with exit code %d", line, (long) c->cmd_pid, (int) WEXITSTATUS (wstatus));
+    if (c->cmd_pid) {
+        for (;;) {
+            childhandler_ ();
+            if (CChildExitted (c->cmd_pid, &wstatus))
+                break;
+            if (kill (c->cmd_pid, SIGKILL))
+                break;
+        }
+        if (WIFEXITED (wstatus))
+            snprintf (msg, sizeof (msg), "%d: process %ld died with exit code %d", line, (long) c->cmd_pid, (int) WEXITSTATUS (wstatus));
+    }
     if (msg[0]) {
         /* ok */
     } else if (server_death) {
@@ -5763,10 +5794,7 @@ static void close_cterminal (int line, struct sock_data *sock_data, struct cterm
     } else {
         snprintf (msg, sizeof (msg), "%d: process %ld died with unknown status", line, (long) c->cmd_pid);
     }
-    if (c->cmd_pid) {
-        kill (c->cmd_pid, SIGTERM);
-        c->cmd_pid = 0;
-    }
+    c->cmd_pid = 0;
     if (c->cmd_fd >= 0) {
         close (c->cmd_fd);
         c->cmd_fd = -1;
@@ -6587,11 +6615,13 @@ static void run_service (struct service *serv)
         FD_ZERO (&rd);
         FD_ZERO (&wr);
     } else if (r == SOCKET_ERROR && (ERROR_EINTR() || ERROR_EAGAIN())) {
+        childhandler_ ();
         return;
     } else if (r == SOCKET_ERROR) {
         perrorsocket ("select");
         exit (1);
     }
+    childhandler_ ();
     gettimeofday (&now, NULL);
 
     if (FD_ISSET (serv->h, &rd))

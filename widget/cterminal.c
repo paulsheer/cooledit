@@ -574,6 +574,82 @@ pid_t open_under_pty (int *in, int *out, char *line, const char *file, char *con
     return o->cmd_pid;
 }
 
+static void get_ttymode_dumb_terminal (ttymode_t * tio)
+{
+#ifdef HAVE_TERMIOS_H
+/*
+ * standard System V termios interface
+ */
+    if (GET_TERMIOS (0, tio) < 0) {
+        /* return error - use system defaults */
+        tio->c_cc[VINTR] = CINTR;
+        tio->c_cc[VQUIT] = CQUIT;
+        tio->c_cc[VERASE] = CERASE;
+        tio->c_cc[VKILL] = CKILL;
+        tio->c_cc[VSTART] = CSTART;
+        tio->c_cc[VSTOP] = CSTOP;
+        tio->c_cc[VSUSP] = CSUSP;
+#ifdef VDSUSP
+        tio->c_cc[VDSUSP] = CDSUSP;
+#endif
+#ifdef VREPRINT
+        tio->c_cc[VREPRINT] = CRPRNT;
+#endif
+#ifdef VDISCRD
+        tio->c_cc[VDISCRD] = CFLUSH;
+#endif
+#ifdef VWERSE
+        tio->c_cc[VWERSE] = CWERASE;
+#endif
+#ifdef VLNEXT
+        tio->c_cc[VLNEXT] = CLNEXT;
+#endif
+    }
+
+#ifdef OCRNL
+    tio->c_oflag &= ~(ONLCR | OCRNL);
+#else
+    tio->c_oflag &= ~ONLCR;
+#endif
+    tio->c_lflag &= ~(ECHO | ICANON | ISIG);
+    tio->c_iflag &= ~(ICRNL);
+#ifdef VTIME
+    tio->c_cc[VTIME] = 1;
+#endif
+#ifdef VMIN
+    tio->c_cc[VMIN] = 1;
+#endif
+    tio->c_iflag &= ~(ISTRIP);
+#if defined(TABDLY) && defined(TAB3)
+    if ((tio->c_oflag & TABDLY) == TAB3)
+        tio->c_oflag &= ~TAB3;
+#endif
+/* disable interpretation of ^S: */
+    tio->c_iflag &= ~IXON;
+#ifdef VDISCARD
+    tio->c_cc[VDISCARD] = 255;
+#endif
+#ifdef VEOL2
+    tio->c_cc[VEOL2] = 255;
+#endif
+#ifdef VEOL
+    tio->c_cc[VEOL] = 255;
+#endif
+#ifdef VLNEXT
+    tio->c_cc[VLNEXT] = 255;
+#endif
+#ifdef VREPRINT
+    tio->c_cc[VREPRINT] = 255;
+#endif
+#ifdef VSUSP
+    tio->c_cc[VSUSP] = 255;
+#endif
+#ifdef VWERASE
+    tio->c_cc[VWERASE] = 255;
+#endif
+#endif                          /* HAVE_TCGETATTR */
+}
+
 
 /*{{{ get_ttymode() */
 /* INTPROTO */
@@ -651,7 +727,7 @@ static void get_ttymode (ttymode_t * tio, int *erase_char)
  * sgtty interface
  */
 /* get parameters -- gtty */
-        if (ioctl (0, TIOCGETP, &(tio->sg)) < 0) {
+    if (ioctl (0, TIOCGETP, &(tio->sg)) < 0) {
         tio->sg.sg_erase = CERASE;      /* ^H */
         tio->sg.sg_kill = CKILL;        /* ^U */
     }
@@ -921,9 +997,13 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
  * get tty settings before fork()
  * and make a reasonable guess at the value for BackSpace
  */
-    get_ttymode (&tio, &o->erase_char);
-    if (config)
+    memset (&tio, '\0', sizeof (tio));
+    if (config) {
+        get_ttymode (&tio, &o->erase_char);
         config->erase_char = o->erase_char;
+    } else {
+        get_ttymode_dumb_terminal (&tio);
+    }
 
 #ifdef OLD_RXVT_STANDALONE_CODE
 #ifdef UTMP_SUPPORT

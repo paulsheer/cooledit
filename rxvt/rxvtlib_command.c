@@ -481,7 +481,7 @@ void rxvt_fd_write_watch (int fd, fd_set * reading, fd_set * writing, fd_set * e
 int            rxvtlib_tt_resize (rxvtlib *o)
 {E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
-    if ((*o->remotefs->remotefs_shellresize) (o->remotefs, o->cmd_pid, o->TermWin.ncol, o->TermWin.nrow, errmsg)) {
+    if ((*o->cterminal_io.remotefs->remotefs_shellresize) (o->cterminal_io.remotefs, o->cmd_pid, o->TermWin.ncol, o->TermWin.nrow, errmsg)) {
         printf ("error, resizing terminal, [%s]\n", errmsg);
         CRemoveWatch (o->cmd_fd, NULL, 3);
         o->killed = EXIT_FAILURE | DO_EXIT;
@@ -1233,7 +1233,7 @@ static int io_avail (int fd)
 static int rxvt_fd_read (rxvtlib *o)
 {
     int c;
-    c = remotefs_reader_util (o->remotefs, o->cterminal_io, 0);
+    c = remotefs_reader_util (&o->cterminal_io, 0);
     if (c < 0) {
         CRemoveWatch (o->cmd_fd, NULL, 1);
         o->killed = EXIT_FAILURE | DO_EXIT;
@@ -1249,7 +1249,7 @@ static int rxvt_fd_read (rxvtlib *o)
                 break;
             }
         }
-    } while ((c = remotefs_reader_util (o->remotefs, o->cterminal_io, 1)) > 0);
+    } while ((c = remotefs_reader_util (&o->cterminal_io, 1)) > 0);
     if (c < 0) {
         CRemoveWatch (o->cmd_fd, NULL, 1);
         o->killed = EXIT_FAILURE | DO_EXIT;
@@ -1301,7 +1301,7 @@ void rxvt_process_x_event (rxvtlib * o)
 	rxvtlib_XProcessEvent (o, o->Xdisplay);
     }
     if (o->killed) {
-        (*o->remotefs->remotefs_shellkill) (o->remotefs, o->cmd_pid);
+        (*o->cterminal_io.remotefs->remotefs_shellkill) (o->cterminal_io.remotefs, o->cmd_pid);
         if (o->cmd_fd >= 0) {
             CRemoveWatch (o->cmd_fd, NULL, 3);
 	    close (o->cmd_fd);
@@ -3037,7 +3037,7 @@ void rxvt_fd_write_watch (int fd, fd_set * reading,
     memset (&chunk, '\0', sizeof (chunk));
     chunk.data = o->v_bufstr;
     riten = chunk.len = (p < MAX_PTY_WRITE ? p : MAX_PTY_WRITE);
-    if ((*o->remotefs->remotefs_shellwrite) (o->remotefs, o->cterminal_io, &chunk, errmsg)) {
+    if ((*o->cterminal_io.remotefs->remotefs_shellwrite) (o->cterminal_io.remotefs, &o->cterminal_io, &chunk, errmsg)) {
         printf ("remotefs_shellwrite returned error. errmsg = %s\n", errmsg);
 	CRemoveWatch (o->cmd_fd, NULL, 3);
         o->killed = EXIT_FAILURE | DO_EXIT;
@@ -3568,24 +3568,9 @@ int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const ar
     if (!host)
         host = "localhost";
 
-    assert (!o->remotefs);
-    o->remotefs = remotefs_new (host, errmsg);
-    if (!o->remotefs)
+    if (remotefs_shell_util (host, &o->cterminal_io, &c, 0, argv, errmsg))
         return -1;
-    assert (!o->cterminal_io);
-    o->cterminal_io = (struct remotefs_terminalio *) malloc (sizeof (struct remotefs_terminalio));
-    memset (o->cterminal_io, '\0', sizeof (struct remotefs_terminalio));
-    if ((*o->remotefs->remotefs_shellcmd) (o->remotefs, o->cterminal_io, &c, 0, argv, errmsg)) {
-        remotefs_free (o->remotefs);
-        o->remotefs = NULL;
-        free (o->cterminal_io);
-        o->cterminal_io = NULL;
-        return -1;
-    }
-    o->cmd_fd = o->cterminal_io->cmd_fd;
-    o->cmd_pid = c.cmd_pid;
-    Cstrlcpy (o->host, host, sizeof (o->host));
-    Cstrlcpy (o->ttydev, c.ttydev, sizeof (o->ttydev));
+
 
 #ifdef STANDALONE
 /* 

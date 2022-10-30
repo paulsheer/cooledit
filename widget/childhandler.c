@@ -72,7 +72,6 @@ struct child_exitted_list {
 };
 
 static struct child_exitted_list child_list = {NULL};
-
 void childhandler_ (void)
 {E_
     while (children_exitted_trailer != children_exitted_leader) {

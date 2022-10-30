@@ -32,7 +32,6 @@ int rxvt_event (XEvent * xevent)
         mine = getpid ();
     win = xevent->xany.window;
     for (l = rxvt_list->next, prev = rxvt_list; l; l = l->next) {
-#warning finish socket death must be the same as CChildExitted()
         if (!strcmp (l->rxvt->host, "localhost"))
  	    l->killed |= CChildExitted (l->rxvt->cmd_pid, 0);
 	if (l->killed || l->rxvt->killed) {
@@ -63,7 +62,6 @@ int rxvt_event (XEvent * xevent)
 	    }
 	    rxvt_process_x_event (l->rxvt);
 	    if (l->rxvt->killed) {
-printf("%s:%d: CRemoveWatch both\n", __FILE__, __LINE__);
 		CRemoveWatch (l->rxvt->cmd_fd, NULL, 3);
 		return 1;
 	    }
@@ -177,6 +175,7 @@ static rxvtlib *rxvt_allocate (const char *host, Window win, int c, char **a, in
         if (errmsg[0])
 	    CErrorDialog(0, 0, 0, _(" Open Terminal "), " Error trying to open terminal: \n [%s] ", errmsg);
         rxvtlib_destroy_windows (rxvt);
+        rxvtlib_shut (rxvt);
 	free (rxvt);
 	return 0;
     }

@@ -49,6 +49,7 @@
 
 #include "inspect.h"
 #include "rxvtlib.h"
+#include <coolwidget.h>
 #include <stringtools.h>
 #include <remotefs.h>
 
@@ -403,10 +404,13 @@ void rxvtlib_shut (rxvtlib * o)
 
     myfree (o->cmdbuf_base);
 
-    remotefs_free (o->remotefs);
-    remotefs_free_terminalio (o->cterminal_io);
+    if (o->remotefs)
+        remotefs_free (o->remotefs);
+    if (o->cterminal_io)
+        remotefs_free_terminalio (o->cterminal_io);
     myfree (o->cterminal_io);
 
     memset (o, 0, sizeof (*o));
+    o->cmd_fd = -1;
 }
 

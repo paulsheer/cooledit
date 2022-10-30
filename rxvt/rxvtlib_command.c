@@ -1253,7 +1253,6 @@ printf("remotefs_shellread error => %s\n", errmsg);
     if (o->cmdbuf_len + chunk.len > o->cmdbuf_alloced) {
         o->cmdbuf_base = (unsigned char *) realloc (o->cmdbuf_base, (o->cmdbuf_len + chunk.len) * 2);
         o->cmdbuf_alloced = (o->cmdbuf_len + chunk.len) * 2;
-printf("REALLOC ====> %d\n", o->cmdbuf_alloced);
     }
     memcpy (o->cmdbuf_base + o->cmdbuf_len, chunk.data, chunk.len);
     o->cmdbuf_len += chunk.len;
@@ -1383,7 +1382,6 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
 	    ch = o->cmdbuf_base[o->cmdbuf_current++];
 	} else {
 #warning fixme theoretically this could hang up if waiting for an escape sequence to complete, also handle error
-printf("no data: rxvt_fd_read\n");
 	    while (o->cmdbuf_current == o->cmdbuf_len)
                 if (rxvt_fd_read (o) < 0)
                     return '\0';

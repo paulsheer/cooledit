@@ -107,7 +107,8 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_remotefs_OBJECTS = remotefs.$(OBJEXT) regex.$(OBJEXT) \
 	regtools.$(OBJEXT) pathdup.$(OBJEXT) ipv6scan.$(OBJEXT) \
-	aes.$(OBJEXT) sha256.$(OBJEXT) symauth.$(OBJEXT) cterminal.$(OBJEXT)
+	aes.$(OBJEXT) sha256.$(OBJEXT) symauth.$(OBJEXT) cterminal.$(OBJEXT) \
+	childhandler.$(OBJEXT)
 remotefs_OBJECTS = $(am_remotefs_OBJECTS)
 remotefs_DEPENDENCIES =
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -329,7 +330,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CPPFLAGS = -I$(top_srcdir)/widget -I$(top_srcdir) 
-remotefs_SOURCES = remotefs.c regex.c regtools.c pathdup.c ipv6scan.c aes.c sha256.c symauth.c cterminal.c
+remotefs_SOURCES = remotefs.c regex.c regtools.c pathdup.c ipv6scan.c aes.c sha256.c symauth.c cterminal.c childhandler.c
 remotefs_LDADD = 
 all: all-am
 
@@ -433,6 +434,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sha256.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/symauth.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cterminal.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/childhandler.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -695,6 +697,9 @@ symauth.c:
 
 cterminal.c:
 	ln -sf ../widget/cterminal.c .
+
+childhandler.c:
+	ln -sf ../widget/childhandler.c .
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

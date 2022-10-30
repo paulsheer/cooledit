@@ -13,7 +13,8 @@ struct cterminal_config {
     int env_bg;
     int erase_char; /* return value */
     unsigned long cmd_pid; /* return value */
-    char ttydev[64]; /* return value */
+#define CTERMINAL_TTYDEV_SZ     64
+    char ttydev[CTERMINAL_TTYDEV_SZ]; /* return value */
 };
 
 #ifndef MSWIN

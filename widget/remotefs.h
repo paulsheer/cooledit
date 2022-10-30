@@ -411,7 +411,7 @@ struct remotefs {
     int (*remotefs_realpathize) (struct remotefs *rfs, const char *path, const char *homedir, char *out, int outlen, char *errmsg);
     int (*remotefs_gethomedir) (struct remotefs *rfs, char *out, int outlen, char *errmsg);
     int (*remotefs_enablecrypto) (struct remotefs *rfs, const unsigned char *challenge_local, unsigned char *challenge_remote, char *errmsg);
-    int (*remotefs_shellcmd) (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, char *const argv[], char *errmsg);
+    int (*remotefs_shellcmd) (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg);
     int (*remotefs_shellresize) (struct remotefs *rfs, unsigned long pid, int columns, int rows, char *errmsg);
     int (*remotefs_shellread) (struct remotefs *rfs, struct remotefs_terminalio *io, CStr *chunk, char *errmsg, int *time_out, int no_io);
     int (*remotefs_shellwrite) (struct remotefs *rfs, struct remotefs_terminalio *io, const CStr *chunk, char *errmsg);

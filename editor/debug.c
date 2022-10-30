@@ -47,6 +47,7 @@
 #include "find.h"
 #include "rxvt/rxvtexport.h"
 #include "cterminal.h"
+#include "remotefs.h"
 #include "debug.h"
 
 extern struct look *look;
@@ -112,6 +113,8 @@ typedef struct struct_debug {
     char *args;
     pid_t pid;
     pid_t child;
+    struct remotefs *remotefs;
+    struct remotefs_terminalio *cterminal_io;
     struct _command {
 	int action;
 	char *command;
@@ -583,14 +586,36 @@ int str_empty_space (const char *p)
 }
 
 
+static int debug_fd_read (Debug *o)
+{
+    int c, no_io = 0;
+    while ((c = remotefs_reader_util (o->remotefs, o->cterminal_io, no_io)) > 0)
+        no_io = 1;
+    return c;
+}
+
+static int debug_writeall (Debug *o, const char *buf, int len, char *errmsg)
+{
+    CStr chunk;
+    errmsg[0] = '\0';
+    memset (&chunk, '\0', sizeof (chunk));
+    chunk.data = (char *) buf;
+    chunk.len = len;
+    if ((*o->remotefs->remotefs_shellwrite) (o->remotefs, o->cterminal_io, &chunk, errmsg))
+        return -1;
+    return len;
+}
+
+
 static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_set * error, void *data)
 {E_
     CWidget *w;
     Debug *d;
     char *p;
-    char buf[1025];
-    int c, action, n, i;
+    int action, n, i;
+    struct remotefs_terminalio *io;
     d = &debug_session;
+    io = d->cterminal_io;
 #warning finish: need to handle remote process death
 if (!strcmp (d->xterm_pid_host.xterm_host, "localhost")) {
     if (CChildExitted (d->pid, 0) || (!rxvt_have_pid (d->xterm_pid_host.xterm_pid) && d->show_output)) {
@@ -598,25 +623,26 @@ if (!strcmp (d->xterm_pid_host.xterm_host, "localhost")) {
 	return;
     }
 }
-    do {
-	c = read (d->out, buf, 1024);
-    } while (c < 0 && (errno == EINTR || errno == EAGAIN));
-    if (c <= 0) {
+    if (debug_fd_read (d)) {
 	debug_error1 (d, _ ("Error reading from the debugger"));
 	debug_finish (0L);
 	return;
     }
-    buf[c] = '\0';
+    if (io->current == io->len) /* got nothing */
+        return;
     n = 0;
     if (!d->pool)
 	d->pool = pool_init ();
-    pool_printf (d->pool, "%s", buf);
+    pool_write (d->pool, io->base + io->current, io->len - io->current);
+    pool_null (d->pool);
     if (d->show_on_stdout) {
-	printf ("%s", buf);
+	printf ("%.*s", io->len - io->current, io->base + io->current);
 	fflush (stdout);
     }
+    io->current = io->len = 0;  /* consume everything */
     for (i = 0; d->query[i].query; i++) {
 	if (from_end_pattern ((char *) pool_start (d->pool), d->query[i].query, 1)) {
+            char errmsg[REMOTEFS_ERR_MSG_LEN];
             char *response = (char *) "\n";
             if (d->query[i].response) {
                 response = d->query[i].response;
@@ -630,8 +656,8 @@ if (!strcmp (d->xterm_pid_host.xterm_host, "localhost")) {
 		printf ("%s", response);
 		fflush (stdout);
 	    }
-	    if (writeall (d->in, response, strlen (response)) != strlen (response)) {
-		debug_error1 (d, _ ("Error writing to the debugger"));
+	    if (debug_writeall (d, response, strlen (response), errmsg) != strlen (response)) {
+		debug_error2 (d, _ ("Error writing to the debugger"), errmsg);
 		debug_finish (0L);
 		return;
 	    }
@@ -1043,8 +1069,9 @@ if (!strcmp (d->xterm_pid_host.xterm_host, "localhost")) {
     d->break_point_line = 0;
 /* no backtrace if no program running, all other commands are ok */
     if (!(!d->child && (d->command[0].action == ACTION_INFO_SOURCE || d->command[0].action == ACTION_BACKTRACE))) {
-	if (writeall (d->in, d->command[0].command, strlen (d->command[0].command)) != strlen (d->command[0].command)) {
-	    debug_error1 (d, _ ("Error writing to the debugger"));
+        char errmsg[REMOTEFS_ERR_MSG_LEN];
+	if (debug_writeall (d, d->command[0].command, strlen (d->command[0].command), errmsg) != strlen (d->command[0].command)) {
+	    debug_error2 (d, _ ("Error writing to the debugger"), errmsg);
 	    debug_finish (0L);
 	    return;
 	}
@@ -1140,6 +1167,7 @@ static int xdebug_run_program (Debug * d)
 	arg[i++] = p;
 	arg[i++] = d->progname;
 	arg[i] = 0;
+
 	d->pid = open_under_pty (&d->in, &d->out, p + 5, d->debugger, arg, errmsg);
 	free (p);
     }

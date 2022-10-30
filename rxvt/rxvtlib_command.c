@@ -3575,7 +3575,7 @@ int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const ar
     assert (!o->cterminal_io);
     o->cterminal_io = (struct remotefs_terminalio *) malloc (sizeof (struct remotefs_terminalio));
     memset (o->cterminal_io, '\0', sizeof (struct remotefs_terminalio));
-    if ((*o->remotefs->remotefs_shellcmd) (o->remotefs, o->cterminal_io, &c, argv, errmsg)) {
+    if ((*o->remotefs->remotefs_shellcmd) (o->remotefs, o->cterminal_io, &c, 0, argv, errmsg)) {
         remotefs_free (o->remotefs);
         o->remotefs = NULL;
         free (o->cterminal_io);

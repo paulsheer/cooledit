@@ -922,7 +922,8 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
  * and make a reasonable guess at the value for BackSpace
  */
     get_ttymode (&tio, &o->erase_char);
-    config->erase_char = o->erase_char;
+    if (config)
+        config->erase_char = o->erase_char;
 
 #ifdef OLD_RXVT_STANDALONE_CODE
 #ifdef UTMP_SUPPORT
@@ -954,10 +955,12 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
         /* signal (SIGINT, Exit_signal); */
         /* avoid passing old settings and confusing term size */
 
-        UNSETENV ("LINES");
-        UNSETENV ("COLUMNS");
-        /* avoid passing termcap since terminfo should be okay */
-        UNSETENV ("TERMCAP");
+        if (config) {
+
+            UNSETENV ("LINES");
+            UNSETENV ("COLUMNS");
+            /* avoid passing termcap since terminfo should be okay */
+            UNSETENV ("TERMCAP");
 
 /* add entries to the environment:
  * @ DISPLAY:   in case we started with -display
@@ -971,27 +974,34 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
     do {  snprintf (envstr, sizeof(envstr), a, b); \
           PUTENV(envstr); } while (0)
 
-        PUTENVF ("DISPLAY=%.90s", config->display_env_var);
-        PUTENVF ("WINDOWID=%lu", config->term_win_id);
-        PUTENVF ("TERM=%s", config->term_name);
-        PUTENVF ("COLORTERM=%s", config->colorterm_name);
-        strcpy (envstr, "COLORFGBG=");
-        if (config->env_fg >= 0)
-            snprintf (envstr + strlen (envstr), 32, "%d;", config->env_fg);
-        else
-            snprintf (envstr + strlen (envstr), 32, "default;");
-        if (config->env_bg >= 0)
-            snprintf (envstr + strlen (envstr), 32, "%d", config->env_bg);
-        else
-            snprintf (envstr + strlen (envstr), 32, "default");
-        PUTENV (envstr);
-        PUTENV ("CLICOLOR=1");  /* Enable colorize ls output on FreeBSD. See the FreeBSD man page for ls */
-        if (config->charset_8bit)
-            PUTENV ("LANG");
-
+            PUTENVF ("DISPLAY=%.90s", config->display_env_var);
+            PUTENVF ("WINDOWID=%lu", config->term_win_id);
+            PUTENVF ("TERM=%s", config->term_name);
+            PUTENVF ("COLORTERM=%s", config->colorterm_name);
+            strcpy (envstr, "COLORFGBG=");
+            if (config->env_fg >= 0)
+                snprintf (envstr + strlen (envstr), 32, "%d;", config->env_fg);
+            else
+                snprintf (envstr + strlen (envstr), 32, "default;");
+            if (config->env_bg >= 0)
+                snprintf (envstr + strlen (envstr), 32, "%d", config->env_bg);
+            else
+                snprintf (envstr + strlen (envstr), 32, "default");
+            PUTENV (envstr);
+            PUTENV ("CLICOLOR=1");  /* Enable colorize ls output on FreeBSD. See the FreeBSD man page for ls */
+            if (config->charset_8bit)
+                PUTENV ("LANG");
 #ifdef RXVT_TERMINFO
-        PUTENV ("TERMINFO=" RXVT_TERMINFO);
+            PUTENV ("TERMINFO=" RXVT_TERMINFO);
 #endif
+        } else {
+
+            UNSETENV ("LINES");
+            UNSETENV ("COLUMNS");
+            UNSETENV ("TERMCAP");
+            UNSETENV ("TERM=dumb");
+
+        }
 
         /* establish a controlling teletype for the new session */
         if (cterminal_get_tty (o, errmsg) < 0)
@@ -1017,7 +1027,8 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
 #endif                          /* SRIOCSREDIR */
         }
 #endif
-        cterminal_tt_winsize (o, 0, config->col, config->row);  /* set window size */
+        if (config)
+            cterminal_tt_winsize (o, 0, config->col, config->row);  /* set window size */
 
         /* reset signals and spin off the command interpreter */
         signal (SIGINT, SIG_DFL);
@@ -1039,7 +1050,7 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
 
         /* command interpreter path */
         if (argv != NULL && argv[0] != NULL) {
-            if (config->do_sleep)
+            if (config && config->do_sleep)
                 while (1)
                     sleep (60);
             execve_path_search (argv[0], argv, set_env_var (o->envvar, o->n_envvar));
@@ -1051,7 +1062,7 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
                 shell = "/bin/sh";
 
             argv0 = my_basename (shell);
-            if (config->login_shell) {
+            if (config && config->login_shell) {
                 char *p = (char *) malloc ((strlen (argv0) + 2) * sizeof (char));
 
                 p[0] = '-';

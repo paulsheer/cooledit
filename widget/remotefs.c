@@ -3818,7 +3818,7 @@ static void delete_cterminal (unsigned long pid)
     }
 }
 
-static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_config *config, char *const argv[], CStr * r)
+static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_config *config, int dumb_terminal, char *const argv[], CStr * r)
 {E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     unsigned char *p;
@@ -3826,7 +3826,7 @@ static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_con
     assert (CTERMINAL_ERR_MSG_LEN == REMOTEFS_ERR_MSG_LEN);
 
 #ifdef SHELL_SUPPORT
-    if (cterminal_run_command (cterminal, config, argv, errmsg)) {
+    if (cterminal_run_command (cterminal, dumb_terminal ? NULL : config, argv, errmsg)) {
         alloc_encode_error (r, RFSERR_SUCCESS, errmsg, 0);
         return -1;
     }
@@ -4055,7 +4055,7 @@ static int local_enablecrypto (struct remotefs *rfs, const unsigned char *challe
     return 0;
 }
 
-static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, char *const argv[], char *errmsg)
+static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg)
 {E_
     CStr s;
     unsigned long long cmd_pid_, cmd_fd_, erase_char_;
@@ -4067,7 +4067,7 @@ static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io,
     memset (ct, '\0', sizeof (struct cterminal_item));
     ct->cterminal.cmd_fd = -1;
 
-    if (remotefs_shellcmd_ (&ct->cterminal, config, argv, &s)) {
+    if (remotefs_shellcmd_ (&ct->cterminal, config, dumb_terminal, argv, &s)) {
         free (ct);
     } else {
         ct->next = cterminal_list;
@@ -4624,7 +4624,7 @@ void remotefs_free_terminalio (struct remotefs_terminalio *io)
     io->alloced = 0;
 }
 
-static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, char *const args[], char *errmsg)
+static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const args[], char *errmsg)
 {E_
     CStr s, msg;
     unsigned long long cmd_pid_, cmd_fd_, erase_char_;
@@ -4649,6 +4649,7 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
     msg.len += encode_uint (NULL, config->charset_8bit);
     msg.len += encode_uint (NULL, config->env_fg);
     msg.len += encode_uint (NULL, config->env_bg);
+    msg.len += encode_uint (NULL, dumb_terminal);
     msg.len += encode_uint (NULL, n_args);
     for (i = 0; i < n_args; i++)
         msg.len += encode_str (NULL, args[i], strlen (args[i]));
@@ -4667,6 +4668,7 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
     encode_uint (&q, config->charset_8bit);
     encode_uint (&q, config->env_fg);
     encode_uint (&q, config->env_bg);
+    encode_uint (&q, dumb_terminal);
     encode_uint (&q, n_args);
     for (i = 0; i < n_args; i++)
         encode_str (&q, args[i], strlen (args[i]));
@@ -5495,7 +5497,7 @@ static int dummyerr_enablecrypto (struct remotefs *rfs, const unsigned char *cha
     return remotefs_error_return (errmsg);
 }
 
-static int dummyerr_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, char *const argv[], char *errmsg)
+static int dummyerr_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
 }
@@ -6044,6 +6046,7 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
     const unsigned char *p, *end;
     unsigned long long v;
     unsigned long long n_args;
+    unsigned long long dumb_terminal_;
     char **args = NULL;
     struct cterminal_config c;
     struct ttyreader_data *t;
@@ -6078,6 +6081,8 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
 
 #undef D
 
+    if (decode_uint (&p, end, &dumb_terminal_))
+        return -1;
     if (decode_uint (&p, end, &n_args))
         return -1;
 
@@ -6101,7 +6106,7 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
     t->wr.buf = (unsigned char *) malloc (128);
     t->wr.alloced = 128;
 
-    if (remotefs_shellcmd_ (&t->cterminal, &c, args, s)) {
+    if (remotefs_shellcmd_ (&t->cterminal, &c, (int) dumb_terminal_, args, s)) {
         free (t);
     } else {
         sd->ttyreader_data = t;

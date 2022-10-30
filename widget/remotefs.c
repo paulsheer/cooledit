@@ -4049,7 +4049,7 @@ static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io,
 }
 
 static int local_shellresize (struct remotefs *rfs, unsigned long pid, int columns, int rows, char *errmsg)
-{
+{E_
     struct cterminal_item *i;
     CStr s;
     *errmsg = '\0';
@@ -4063,7 +4063,7 @@ static int local_shellresize (struct remotefs *rfs, unsigned long pid, int colum
 }
 
 static int local_shellread (struct remotefs *rfs, struct remotefs_terminalio *io, CStr *chunk, char *errmsg, int *time_out, int no_io)
-{
+{E_
     int r;
 
     *errmsg = '\0';
@@ -4098,7 +4098,7 @@ static int local_shellread (struct remotefs *rfs, struct remotefs_terminalio *io
 }
 
 static int local_shellwrite (struct remotefs *rfs, struct remotefs_terminalio *io, const CStr *chunk, char *errmsg)
-{
+{E_
     const char *data;
     int len;
     *errmsg = '\0';
@@ -5686,7 +5686,6 @@ static void close_cterminal (struct sock_data *sock_data, struct cterminal *c)
         c->cmd_fd = -1;
     }
 
-#warning handle waitpid
     if (sock_data) {
         struct cooledit_remote_msg_header m;
         CStr v[2];
@@ -6039,6 +6038,8 @@ static int remote_action_fn_v3_shellresize (struct server_data *sd, CStr *s, con
     unsigned long long columns;
     unsigned long long rows;
 
+    memset (s, '\0', sizeof (*s));
+
     p = in;
     end = in + inlen;
 
@@ -6056,6 +6057,7 @@ static int remote_action_fn_v3_shellresize (struct server_data *sd, CStr *s, con
 
 static int remote_action_fn_v3_dummyaction (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
 {E_
+    memset (s, '\0', sizeof (*s));
     alloc_encode_error (s, RFSERR_UNIMPLEMENTED_FUNCTION, "not implemented", 1);
     return -1;
 }
@@ -6066,6 +6068,8 @@ static int remote_action_fn_v3_shellwrite (struct server_data *sd, CStr *s, cons
     const unsigned char *p, *end;
     struct ttyreader_data *tt;
     tt = sd->ttyreader_data;
+
+    memset (s, '\0', sizeof (*s));
 
     p = in;
     end = in + inlen;
@@ -6105,38 +6109,41 @@ static int remote_action_fn_v3_shellkill (struct server_data *sd, CStr *s, const
     struct ttyreader_data *tt;
     tt = sd->ttyreader_data;
 
+    memset (s, '\0', sizeof (*s));
+
     p = in;
     end = in + inlen;
 
     if (decode_uint (&p, end, &pid))
         return -1;
 
-    if (pid == tt->cterminal.cmd_pid)
-        kill (pid, SIGTERM);
+    if (tt->cterminal.cmd_pid == pid)
+        close_cterminal (NULL, &tt->cterminal);
 
-    return ACTION_SILENT;
+    return -1;
 }
 
 struct action_item {
+    int silent;
     int (*action_fn) (struct server_data *sd, CStr *r, const unsigned char *in, int inlen);
 };
 
 struct action_item action_list[] = {
-    { remote_action_fn_v1_notimplemented, },
-    { remote_action_fn_v1_listdir, },
-    { remote_action_fn_v1_readfile, },
-    { remote_action_fn_v1_writefile, },
-    { remote_action_fn_v1_checkordinaryfileaccess, },
-    { remote_action_fn_v1_stat, },
-    { remote_action_fn_v1_chdir, },
-    { remote_action_fn_v1_realpathize, },
-    { remote_action_fn_v1_gethomedir, },
-    { remote_action_fn_v2_enablecrypto, },
-    { remote_action_fn_v3_shellcmd, },
-    { remote_action_fn_v3_shellresize, },
-    { remote_action_fn_v3_dummyaction, },       /* server does not handle shellread */
-    { remote_action_fn_v3_shellwrite, },
-    { remote_action_fn_v3_shellkill, },
+    { 0, remote_action_fn_v1_notimplemented, },
+    { 0, remote_action_fn_v1_listdir, },
+    { 0, remote_action_fn_v1_readfile, },
+    { 0, remote_action_fn_v1_writefile, },
+    { 0, remote_action_fn_v1_checkordinaryfileaccess, },
+    { 0, remote_action_fn_v1_stat, },
+    { 0, remote_action_fn_v1_chdir, },
+    { 0, remote_action_fn_v1_realpathize, },
+    { 0, remote_action_fn_v1_gethomedir, },
+    { 0, remote_action_fn_v2_enablecrypto, },
+    { 0, remote_action_fn_v3_shellcmd, },
+    { 1, remote_action_fn_v3_shellresize, },
+    { 0, remote_action_fn_v3_dummyaction, },       /* server does not handle shellread */
+    { 1, remote_action_fn_v3_shellwrite, },
+    { 1, remote_action_fn_v3_shellkill, },
 };
 
 static unsigned int client_count = 0L;
@@ -6313,15 +6320,20 @@ static void process_client (struct client_item *i)
    recieve this ack. the subsequent response could take a long time
    if the filesystem is slow, but this response should always come
    within an order of the ping time. the case of the client not getting
-   this response means it can choose to try reconnect rather than waiste
+   this response means it can choose to try reconnect rather than waist
    the users time. See (*1*): */
     memset (&ack, '\0', sizeof (ack));
     encode_msg_ack (&ack, 0, MSG_VERSION);
 
-    if (action == REMOTEFS_ACTION_SHELLWRITE || action == REMOTEFS_ACTION_SHELLRESIZE || action == REMOTEFS_ACTION_SHELLKILL) {
-        printf ("REMOTEFS_ACTION_SHELLWRITE or REMOTEFS_ACTION_SHELLRESIZE skipping ack\n");
-    } else
-    if (writer (&i->sock_data, &ack, sizeof (ack)))
+    log_action[0] = '\0';
+    if (action <= REMOTEFS_ACTION_NOTIMPLEMENTED || action >= sizeof (action_list) / sizeof (action_list[0])) {
+        snprintf (log_action, sizeof (log_action), "(%ld)", action);
+        action = REMOTEFS_ACTION_NOTIMPLEMENTED;
+    }
+
+    if (action_list[action].silent) {
+        /* skipping ack */
+    } else if (writer (&i->sock_data, &ack, sizeof (ack)))
         ERR ("writing ack", i->action);
 
     p = (unsigned char *) malloc (msglen);
@@ -6331,11 +6343,6 @@ static void process_client (struct client_item *i)
 
     memset (&r, '\0', sizeof (r));
 
-    log_action[0] = '\0';
-    if (action <= REMOTEFS_ACTION_NOTIMPLEMENTED || action >= sizeof (action_list) / sizeof (action_list[0])) {
-        snprintf (log_action, sizeof (log_action), "(%ld)", action);
-        action = REMOTEFS_ACTION_NOTIMPLEMENTED;
-    }
     if (!action_list[action].action_fn) {
         snprintf (log_action, sizeof (log_action), "(%ld)", action);
         action = REMOTEFS_ACTION_NOTIMPLEMENTED;
@@ -6485,7 +6492,6 @@ static void run_service (struct service *serv)
                 } else if (c < 0 && (ERROR_EINTR() || ERROR_EAGAIN())) {
                     /* ok */
                 } else if (c <= 0) {
-printf("kill\n");
                     close_cterminal (&i->sock_data, &tt->cterminal);
                     i->kill = KILL_SOFT;
                 }

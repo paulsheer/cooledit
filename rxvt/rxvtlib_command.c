@@ -489,8 +489,7 @@ int            rxvtlib_tt_resize (rxvtlib *o)
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     if ((*o->remotefs->remotefs_shellresize) (o->remotefs, o->cmd_pid, o->TermWin.ncol, o->TermWin.nrow, errmsg)) {
         printf ("error, resizing terminal, [%s]\n", errmsg);
-        CRemoveWatch (o->cmd_fd, rxvt_fd_read_watch, 1);
-        CRemoveWatch (o->cmd_fd, rxvt_fd_write_watch, 2);
+        CRemoveWatch (o->cmd_fd, NULL, 3);
         o->killed = EXIT_FAILURE | DO_EXIT;
         return -1;
     }
@@ -1242,8 +1241,7 @@ static int rxvt_fd_read_ (rxvtlib * o, const int no_io)
         if (timeout) {
             return 0;
         } else {
-	    CRemoveWatch (o->cmd_fd, rxvt_fd_read_watch, 1);
-	    CRemoveWatch (o->cmd_fd, rxvt_fd_write_watch, 2);
+	    CRemoveWatch (o->cmd_fd, NULL, 1);
             o->killed = EXIT_FAILURE | DO_EXIT;
 printf("remotefs_shellread error => %s\n", errmsg);
             return -1;
@@ -1342,6 +1340,7 @@ void rxvt_process_x_event (rxvtlib * o)
     if (o->killed) {
         (*o->remotefs->remotefs_shellkill) (o->remotefs, o->cmd_pid);
         if (o->cmd_fd >= 0) {
+            CRemoveWatch (o->cmd_fd, NULL, 3);
 	    close (o->cmd_fd);
             o->cmd_fd = -1;
         }
@@ -3078,8 +3077,7 @@ void rxvt_fd_write_watch (int fd, fd_set * reading,
     riten = chunk.len = (p < MAX_PTY_WRITE ? p : MAX_PTY_WRITE);
     if ((*o->remotefs->remotefs_shellwrite) (o->remotefs, o->cterminal_io, &chunk, errmsg)) {
         printf ("remotefs_shellwrite returned error. errmsg = %s\n", errmsg);
-	CRemoveWatch (o->cmd_fd, rxvt_fd_read_watch, 1);
-	CRemoveWatch (o->cmd_fd, rxvt_fd_write_watch, 2);
+	CRemoveWatch (o->cmd_fd, NULL, 3);
         o->killed = EXIT_FAILURE | DO_EXIT;
 	riten = 0;
     }

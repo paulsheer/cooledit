@@ -327,6 +327,7 @@ void rxvtlib_shut (rxvtlib * o)
     int i;
 
     if (o->cmd_fd >= 0) {
+        CRemoveWatch (o->cmd_fd, NULL, 3);
         close (o->cmd_fd);
         o->cmd_fd = -1;
     }

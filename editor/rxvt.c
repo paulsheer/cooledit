@@ -38,8 +38,7 @@ int rxvt_event (XEvent * xevent)
 	if (l->killed || l->rxvt->killed) {
 	    struct rxvts *next;
 	    next = l->next;
-	    CRemoveWatch (l->rxvt->cmd_fd, rxvt_fd_read_watch, 1);
-	    CRemoveWatch (l->rxvt->cmd_fd, rxvt_fd_write_watch, 2);
+	    CRemoveWatch (l->rxvt->cmd_fd, NULL, 3);
             rxvtlib_destroy_windows (l->rxvt);
 	    prev->next = next;
 	    rxvtlib_shut (l->rxvt);
@@ -65,8 +64,7 @@ int rxvt_event (XEvent * xevent)
 	    rxvt_process_x_event (l->rxvt);
 	    if (l->rxvt->killed) {
 printf("%s:%d: CRemoveWatch both\n", __FILE__, __LINE__);
-		CRemoveWatch (l->rxvt->cmd_fd, 0, 3);
-		CRemoveWatch (l->rxvt->cmd_fd, 0, 3);
+		CRemoveWatch (l->rxvt->cmd_fd, NULL, 3);
 		return 1;
 	    }
 	    rxvtlib_update_screen (l->rxvt);
@@ -242,7 +240,6 @@ void rxvtlib_shutall (void)
     while (l) {
 	struct rxvts *next;
 	next = l->next;
-	CRemoveWatch (l->rxvt->cmd_fd, 0, 3);
 	CRemoveWatch (l->rxvt->cmd_fd, 0, 3);
 	XDestroyWindow (l->rxvt->Xdisplay, l->rxvt->TermWin.parent[0]);
 	XDestroyWindow (l->rxvt->Xdisplay, l->rxvt->TermWin.vt);

@@ -1095,7 +1095,7 @@ int eh_editor (CWidget * w, XEvent * xevent, CEvent * cwevent)
 	cwevent->ident = w->ident;
         if (e->test_file_on_disk_for_changes && (cwevent->command > 0 || cwevent->xlat_len > 0)) {
             if (cwevent->command != CK_Save && cwevent->command != CK_Exit && cwevent->command != CK_Load && cwevent->command != CK_Menu &&
-                cwevent->command != CK_Close_Last && cwevent->command != CK_Maximize) {
+                cwevent->command != CK_Close_Last && cwevent->command != CK_Maximize && cwevent->command != CK_Terminal) {
                 if (!edit_is_movement_command(cwevent->command) && !CCheckGlobalHotKey (xevent, cwevent, 0)) {
                     e->test_file_on_disk_for_changes = 0;       /* simple state machine to check on KeyPress after Focus */
                     if (cwevent->command > 0) {

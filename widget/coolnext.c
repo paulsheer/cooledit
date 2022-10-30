@@ -1002,22 +1002,15 @@ void CRemoveWatch (int fd, void (*callback) (int, fd_set *, fd_set *, fd_set *, 
 {E_
     int i;
     for (i = 0; i < watch_table_last; i++) {
-	if (!watch_table[i])
-	    continue;
-	if (watch_table[i]->callback == callback && watch_table[i]->fd == fd) {
+	if (watch_table[i] && (!callback || watch_table[i]->callback == callback) && watch_table[i]->fd == fd) {
 	    watch_table[i]->how &= ~how;
-	    if (!watch_table[i]->how)
-		goto do_free;
-	    return;
-	}
+	    if (!watch_table[i]->how) {
+		free (watch_table[i]);
+		watch_table[i] = NULL;
+	    }
+ 	}
     }
-    return;
-  do_free:
-    free (watch_table[i]);
-    watch_table[i] = 0;
-    for (;;) {
-	if (!watch_table_last)
-	    break;
+    while (watch_table_last > 0) {
 	if (watch_table[watch_table_last - 1])
 	    break;
 	watch_table_last--;

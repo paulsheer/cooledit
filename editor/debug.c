@@ -1169,7 +1169,7 @@ printf("p=%s\n", p);
 	arg[i++] = d->progname;
 	arg[i] = 0;
         memset (&c, '\0', sizeof (c));
-        if (remotefs_shell_util (d->host, &d->cterminal_io, &c, 1, arg, errmsg)) {
+        if (remotefs_shell_util (d->host, &d->cterminal_io, &c, 2, arg, errmsg)) {
 	    d->pid = 0;
 	    d->xterm_pid = 0;
 	    debug_error2 (d, _("Could not open gdb"), errmsg);
@@ -1184,7 +1184,7 @@ printf("p=%s\n", p);
 	arg[i++] = d->progname;
 	arg[i] = 0;
         memset (&c, '\0', sizeof (c));
-        if (remotefs_shell_util (d->host, &d->cterminal_io, &c, 1, arg, errmsg)) {
+        if (remotefs_shell_util (d->host, &d->cterminal_io, &c, 2, arg, errmsg)) {
 	    d->pid = 0;
 	    d->xterm_pid = 0;
 	    debug_error2 (d, _("Could not open gdb"), errmsg);
@@ -1622,7 +1622,7 @@ void debug_init (void)
     debug_session.query[3].response = "c\n";
     debug_session.query[4].query = 0;
     debug_session.query[4].response = 0;
-    debug_session.debugger = "cooledit-gdb";
+    debug_session.debugger = "gdb";
     debug_session.stop_at_main = 1;
 #if 0
     debug_session.ignore_SIGTTOU = 1;

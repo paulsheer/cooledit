@@ -53,7 +53,7 @@ struct cterminal {
 void cterminal_tt_winsize (struct cterminal *o, int fd, int col, int row);
 void cterminal_cleanup (struct cterminal *o);
 int cterminal_get_pty (struct cterminal *o, char *errmsg);
-int cterminal_run_command (struct cterminal *o, struct cterminal_config *config, char *const argv[], char *errmsg);
+int cterminal_run_command (struct cterminal *o, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg);
 
 #endif
 

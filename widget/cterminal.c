@@ -939,7 +939,7 @@ void cterminal_tt_winsize (struct cterminal *o, int fd, int col, int row)
  * the slave.
  */
 /* INTPROTO */
-int cterminal_run_command (struct cterminal *o, struct cterminal_config *config, char *const argv[], char *errmsg)
+int cterminal_run_command (struct cterminal *o, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg)
 {E_
     int cmd_fd = -1;
     ttymode_t tio;
@@ -1081,6 +1081,16 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
             UNSETENV ("TERMCAP");
             UNSETENV ("TERM=dumb");
 
+        }
+
+printf("dumb_terminal = %d\n", dumb_terminal);
+
+        if (dumb_terminal == 2) {
+            PUTENV ("LC_ALL=C");
+            PUTENV ("LC_CTYPE=C");
+            PUTENV ("LC_MESSAGE=C");
+            UNSETENV ("LANG");
+            UNSETENV ("LANGUAGE");
         }
 
         /* establish a controlling teletype for the new session */

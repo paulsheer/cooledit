@@ -3863,7 +3863,7 @@ static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_con
     assert (CTERMINAL_ERR_MSG_LEN == REMOTEFS_ERR_MSG_LEN);
 
 #ifdef SHELL_SUPPORT
-    if (cterminal_run_command (cterminal, dumb_terminal ? NULL : config, argv, errmsg)) {
+    if (cterminal_run_command (cterminal, dumb_terminal ? NULL : config, dumb_terminal, argv, errmsg)) {
         alloc_encode_error (r, RFSERR_SUCCESS, errmsg, 0);
         return -1;
     }

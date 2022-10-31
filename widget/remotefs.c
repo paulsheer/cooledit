@@ -4703,7 +4703,8 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
     int i, n_args;
     *errmsg = '\0';
 
-#define TERMINAL_TCP_BUF_SIZE           (1312 * 2)
+#define FUDGE_MTU                       1312
+#define TERMINAL_TCP_BUF_SIZE           (FUDGE_MTU * 2)
     rfs->remotefs_private->sock_data->setsockopt_rcvbuf = TERMINAL_TCP_BUF_SIZE;
 
     n_args = len_args (args);
@@ -6792,7 +6793,7 @@ static void run_service (struct service *serv)
  * the didread mechanism is based on the idea that, if there was some input, like a keypress, then
  * certainly we should dispense with waiting. */
 
-                if (avail > 1312 || (avail >= 1 && tt->didread) || (avail >= 1 && tv_delta (&now, &tt->lastwrite) > (1000000 / SENDS_PER_SEC))) {
+                if (avail > FUDGE_MTU || (avail >= 1 && tt->didread) || (avail >= 1 && tv_delta (&now, &tt->lastwrite) > (1000000 / SENDS_PER_SEC))) {
                     int l;
                     tt->lastwrite = now;
                     tt->didread = 0;

@@ -3570,7 +3570,7 @@ int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const ar
 
     if (remotefs_shell_util (host, &o->cterminal_io, &c, 0, argv, errmsg))
         return -1;
-
+    printf ("opened rxvt on host %s\n", o->cterminal_io.host);
 
 #ifdef STANDALONE
 /* 

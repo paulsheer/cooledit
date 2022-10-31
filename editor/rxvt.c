@@ -82,14 +82,13 @@ int rxvt_event (XEvent * xevent)
     return 0;
 }
 
-int rxvt_have_pid (pid_t pid)
+int rxvt_have_pid (const char *host, pid_t pid)
 {E_
-#warning finish - the pid is remote
     struct rxvts *l;
-    if (!rxvt_list)
+    if (!rxvt_list || !pid)
 	return 0;
     for (l = rxvt_list->next; l; l = l->next)
-	if (l->rxvt->cmd_pid == pid)
+	if (l->rxvt->cmd_pid == pid && !strcmp (host, l->rxvt->cterminal_io.host))
 	    return 1;
     return 0;
 }
@@ -268,15 +267,26 @@ rxvtlib *rxvt_start (const char *host, Window win, char **argv, int do_sleep, in
     return rxvt;
 }
 
+void rxvt_kill (pid_t p)
+{E_
+    struct rxvts *l;
+    if (!rxvt_list)
+	return;
+    for (l = rxvt_list->next; l; l = l->next)
+	if (l->rxvt->cmd_pid == p)
+            if (l->rxvt->cterminal_io.remotefs)
+                (*l->rxvt->cterminal_io.remotefs->remotefs_shellkill) (l->rxvt->cterminal_io.remotefs, p);
+}
+
 void rxvt_get_tty_name (rxvtlib * rxvt, char *p)
 {E_
     strcpy (p, rxvt->cterminal_io.ttydev);
 }
 
-void rxvt_get_pid_host (rxvtlib * rxvt, pid_t *pid, char *host, int host_len)
+void rxvt_get_pid (rxvtlib * rxvt, pid_t *pid, const char *host)
 {E_
     *pid = rxvt->cmd_pid;
-    Cstrlcpy (host, rxvt->cterminal_io.host, host_len);
+    assert (!strcmp (host, rxvt->cterminal_io.host));
 }
 
 #if 0

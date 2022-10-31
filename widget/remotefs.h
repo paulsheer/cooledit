@@ -421,6 +421,7 @@ struct remotefs {
     int (*remotefs_shellread) (struct remotefs *rfs, struct remotefs_terminalio *io, CStr *chunk, char *errmsg, int *time_out, int no_io);
     int (*remotefs_shellwrite) (struct remotefs *rfs, struct remotefs_terminalio *io, const CStr *chunk, char *errmsg);
     int (*remotefs_shellkill) (struct remotefs *rfs, unsigned long pid);
+    int (*remotefs_shellsignal) (struct remotefs *rfs, unsigned long pid, int signum, int *killret, char *errmsg);
     struct remotefs_private *remotefs_private;
 };
 

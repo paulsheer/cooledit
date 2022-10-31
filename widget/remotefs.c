@@ -1457,6 +1457,7 @@ void SHUTSOCK (struct sock_data *p)
 #define REMOTEFS_ACTION_SHELLREAD               12
 #define REMOTEFS_ACTION_SHELLWRITE              13
 #define REMOTEFS_ACTION_SHELLKILL               14
+#define REMOTEFS_ACTION_SHELLSIGNAL             15
 
 const char *action_descr[] = {
     "NOTIMPLEMENTED",
@@ -1474,6 +1475,7 @@ const char *action_descr[] = {
     "SHELLREAD",
     "SHELLWRITE",
     "SHELLKILL",
+    "SHELLSIGNAL",
 };
 
 
@@ -3131,6 +3133,19 @@ static int recv_crypto (struct sock_data *sock_data, unsigned char *out, int out
     return c;
 }
 
+static int buffered_data (struct reader_data *d)
+{
+    if (d->avail > d->written)
+        return d->avail - d->written;
+    if (d->sock_data && d->sock_data->crypto) {
+        struct crypto_buf *c;
+        c = &d->sock_data->crypto_data.read_buf;
+        if (c->avail > c->written)
+            return c->avail - c->written;
+    }
+    return 0;
+}
+
 static int check_min_len (unsigned char *s, int len)
 {E_
     struct cooledit_remote_msg_header *h;
@@ -3883,6 +3898,21 @@ static void remotefs_shellresize_ (struct cterminal *c, int columns, int rows, C
     }
 }
 
+static void remotefs_shellsignal_ (pid_t pid, int signum, CStr * r)
+{E_
+    unsigned char *p;
+    int killret;
+
+    killret = kill (pid, signum);
+
+    r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
+    r->len += encode_sint (NULL, killret);
+    r->data = (char *) malloc (r->len);
+    p = (unsigned char *) r->data;
+    encode_uint (&p, REMOTEFS_SUCCESS);
+    encode_sint (&p, killret);
+}
+
 
 
 #define MARSHAL_START_LOCAL \
@@ -4215,6 +4245,22 @@ static int local_shellkill (struct remotefs *rfs, unsigned long pid)
         delete_cterminal (pid);
     }
     return 0;
+}
+
+static int local_shellsignal (struct remotefs *rfs, unsigned long pid, int signum, int *killret, char *errmsg)
+{E_
+    long long killret_ = 0;
+    CStr s;
+
+    *errmsg = '\0';
+
+    remotefs_shellsignal_ (pid, signum, &s);
+
+    MARSHAL_START_LOCAL;
+    if (decode_sint (&p, end, &killret_))
+        return -1;
+    *killret = killret_;
+    MARSHAL_END_LOCAL(NULL);
 }
 
 static int encode_listdir_params (unsigned char **p_, const char *directory, unsigned long options, char *filter)
@@ -4881,6 +4927,34 @@ static int remote_shellkill (struct remotefs *rfs, unsigned long pid)
     return 0;
 }
 
+static int remote_shellsignal (struct remotefs *rfs, unsigned long pid, int signum, int *killret, char *errmsg)
+{
+    long long killret_ = 0;
+    CStr s, msg;
+    unsigned char *q;
+
+    *errmsg = '\0';
+
+    msg.len = encode_uint (NULL, pid);
+    msg.len += encode_uint (NULL, signum);
+    msg.data = (char *) malloc (msg.len);
+    q = (unsigned char *) msg.data;
+    encode_uint (&q, pid);
+    encode_uint (&q, signum);
+
+    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_SHELLSIGNAL, errmsg, NULL)) {
+        free (msg.data);
+        return -1;
+    }
+    free (msg.data);
+
+    MARSHAL_START_REMOTE;
+    if (decode_sint (&p, end, &killret_))
+        return -1;
+    *killret = killret_;
+    MARSHAL_END_REMOTE(NULL);
+}
+
 
 struct iprange_list;
 int iprange_match (struct iprange_list *l, const void *a, int addrlen);
@@ -5419,6 +5493,7 @@ static int recv_mesg_ (struct remotefs *rfs, struct reader_data *d, CStr * respo
         free (response->data);
         if (no_such_action)
             *no_such_action = 1;
+        strcpy (errmsg, "not implemented");
         return -1;
     }
 
@@ -5546,6 +5621,11 @@ static int dummyerr_shellkill (struct remotefs *rfs, unsigned long pid)
     return -1;
 }
 
+static int dummyerr_shellsignal (struct remotefs *rfs, unsigned long pid, int signum, int *killret, char *errmsg)
+{E_
+    return remotefs_error_return (errmsg);
+}
+
 
 
 struct remotefs remotefs_dummyerr = {
@@ -5564,6 +5644,7 @@ struct remotefs remotefs_dummyerr = {
     dummyerr_shellread,
     dummyerr_shellwrite,
     dummyerr_shellkill,
+    dummyerr_shellsignal,
     NULL,
 };
 
@@ -5583,6 +5664,7 @@ struct remotefs remotefs_local = {
     local_shellread,
     local_shellwrite,
     local_shellkill,
+    local_shellsignal,
     NULL
 };
 
@@ -5602,6 +5684,7 @@ struct remotefs remotefs_socket = {
     remote_shellread,
     remote_shellwrite,
     remote_shellkill,
+    remote_shellsignal,
     NULL
 };
 
@@ -6240,6 +6323,27 @@ static int remote_action_fn_v3_shellkill (struct server_data *sd, CStr *s, const
     return ACTION_KILL;
 }
 
+static int remote_action_fn_v3_shellsignal (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
+{E_
+    const unsigned char *p, *end;
+    unsigned long long pid;
+    unsigned long long signum;
+
+    memset (s, '\0', sizeof (*s));
+
+    p = in;
+    end = in + inlen;
+
+    if (decode_uint (&p, end, &pid))
+        return -1;
+    if (decode_uint (&p, end, &signum))
+        return -1;
+
+    remotefs_shellsignal_ (pid, signum, s);
+
+    return 0;
+}
+
 struct action_item {
     int logging;
     int sendack;
@@ -6247,21 +6351,22 @@ struct action_item {
 };
 
 struct action_item action_list[] = {
-    { 1, 1, remote_action_fn_v1_notimplemented, },
-    { 1, 1, remote_action_fn_v1_listdir, },
-    { 1, 1, remote_action_fn_v1_readfile, },
-    { 1, 1, remote_action_fn_v1_writefile, },
-    { 1, 1, remote_action_fn_v1_checkordinaryfileaccess, },
-    { 1, 1, remote_action_fn_v1_stat, },
-    { 1, 1, remote_action_fn_v1_chdir, },
-    { 1, 1, remote_action_fn_v1_realpathize, },
-    { 1, 1, remote_action_fn_v1_gethomedir, },
-    { 1, 1, remote_action_fn_v2_enablecrypto, },
-    { 1, 1, remote_action_fn_v3_shellcmd, },
-    { 0, 0, remote_action_fn_v3_shellresize, },
-    { 1, 1, remote_action_fn_v3_dummyaction, },       /* server does not handle shellread */
-    { 0, 0, remote_action_fn_v3_shellwrite, },
-    { 1, 0, remote_action_fn_v3_shellkill, },
+    { 1, 1, remote_action_fn_v1_notimplemented, },              /* REMOTEFS_ACTION_NOTIMPLEMENTED          */
+    { 1, 1, remote_action_fn_v1_listdir, },                     /* REMOTEFS_ACTION_READDIR                 */
+    { 1, 1, remote_action_fn_v1_readfile, },                    /* REMOTEFS_ACTION_READFILE                */
+    { 1, 1, remote_action_fn_v1_writefile, },                   /* REMOTEFS_ACTION_WRITEFILE               */
+    { 1, 1, remote_action_fn_v1_checkordinaryfileaccess, },     /* REMOTEFS_ACTION_CHECKORDINARYFILEACCESS */
+    { 1, 1, remote_action_fn_v1_stat, },                        /* REMOTEFS_ACTION_STAT                    */
+    { 1, 1, remote_action_fn_v1_chdir, },                       /* REMOTEFS_ACTION_CHDIR                   */
+    { 1, 1, remote_action_fn_v1_realpathize, },                 /* REMOTEFS_ACTION_REALPATHIZE             */
+    { 1, 1, remote_action_fn_v1_gethomedir, },                  /* REMOTEFS_ACTION_GETHOMEDIR              */
+    { 1, 1, remote_action_fn_v2_enablecrypto, },                /* REMOTEFS_ACTION_ENABLECRYPTO            */
+    { 1, 1, remote_action_fn_v3_shellcmd, },                    /* REMOTEFS_ACTION_SHELLCMD                */
+    { 0, 0, remote_action_fn_v3_shellresize, },                 /* REMOTEFS_ACTION_SHELLRESIZE             */
+    { 1, 1, remote_action_fn_v3_dummyaction, },                 /* REMOTEFS_ACTION_SHELLREAD   (not handled by server) */
+    { 0, 0, remote_action_fn_v3_shellwrite, },                  /* REMOTEFS_ACTION_SHELLWRITE              */
+    { 1, 0, remote_action_fn_v3_shellkill, },                   /* REMOTEFS_ACTION_SHELLKILL               */
+    { 1, 1, remote_action_fn_v3_shellsignal, },                 /* REMOTEFS_ACTION_SHELLSIGNAL             */
 };
 
 static unsigned int client_count = 0L;
@@ -6410,6 +6515,8 @@ static void process_client (struct client_item *i)
             } else {
                 ERR ("reading header, error msg sent", "");
             }
+        } else if (!buffered_data (&i->d)) {
+            ERR ("closed by remote", "");
         } else {
             ERR ("reading header, no error msg sent", "");
         }
@@ -6677,7 +6784,6 @@ static void run_service (struct service *serv)
                 i->kill = KILL_SOFT;
             }
 
-#warning finish if (1..) condition
             if (FD_ISSET (i->sock_data.sock, &wr)) {
                 int avail;
                 long delta;
@@ -6690,12 +6796,12 @@ static void run_service (struct service *serv)
                     tt->lastwrite = now;
                     tt->didread = 0;
                     l = tt->rd.avail - tt->rd.written; /* which might be something else in the future */
+#warning finish: this should do partial writes
                     if (send_blind_message (&i->sock_data, REMOTEFS_ACTION_SHELLREAD, (char *) (tt->rd.buf + tt->rd.written), l)) {
                         printf ("error writing to terminal socket: [%s]\n", strerror (errno));
                         close_cterminal (__LINE__, NULL, &tt->cterminal, 0);
                         i->kill = KILL_SOFT;
                     }
-#warning finish dont flood the TCP connection
                     tt->rd.written += l;
                     if (tt->rd.written == tt->rd.avail)
                         tt->rd.written = tt->rd.avail = 0;

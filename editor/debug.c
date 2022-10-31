@@ -90,16 +90,11 @@ static void debug_write_callback (int fd, fd_set * reading, fd_set * writing, fd
 #define MAX_QUEUED_COMMANDS	100
 #define MAX_VARIABLES		60
 
-struct xterm_pid_host {
-    pid_t xterm_pid;
-    char xterm_host[256];
-};
+#define inout   cterminal_io.cmd_fd
 
 typedef struct struct_debug {
     int x, y, r;
     Window w;
-    int in;
-    int out;
     char *prompt;
     char *get_line;
     char *get_source;
@@ -136,7 +131,7 @@ typedef struct struct_debug {
     char *condition;
     int show_output, stop_at_main, show_on_stdout;
 /*    int ignore_SIGTTOU; */
-    struct xterm_pid_host xterm_pid_host;
+    pid_t xterm_pid;
     int break_point_line;
     char *break_point_editor;
 } Debug;
@@ -152,25 +147,21 @@ static int debug_query_yes_no (const char *heading, const char *str)
 
 static void debug_message (Debug * d, const char *heading, const char *str, int options)
 {E_
-    if (d->pid) {
-	CRemoveWatch (d->in, debug_write_callback, WATCH_WRITING);
-	CRemoveWatch (d->out, debug_read_callback, WATCH_READING);
-    }
+    if (d->pid)
+	CRemoveWatch (d->inout, NULL, WATCH_READING | WATCH_WRITING);
     CMessageDialog (0, 20, 20, options, heading, "%s", str);
     if (d->pid) {
 	if (d->n_commands && !d->action)
-	    CAddWatch (d->in, debug_write_callback, WATCH_WRITING, 0);
-	CAddWatch (d->out, debug_read_callback, WATCH_READING, 0);
+	    CAddWatch (d->inout, debug_write_callback, WATCH_WRITING, 0);
+	CAddWatch (d->inout, debug_read_callback, WATCH_READING, 0);
     }
 }
 
 static void debug_error2 (Debug * d, const char *par1, const char *par2)
 {E_
     char *t;
-    if (d->pid) {
-	CRemoveWatch (d->in, debug_write_callback, WATCH_WRITING);
-	CRemoveWatch (d->out, debug_read_callback, WATCH_READING);
-    }
+    if (d->pid)
+	CRemoveWatch (d->inout, NULL, WATCH_READING | WATCH_WRITING);
     t = malloc (strlen (par1) + strlen (par2) + 80);
     if (*par2)
 	sprintf (t, " %s: %s ", par1, par2);
@@ -180,19 +171,24 @@ static void debug_error2 (Debug * d, const char *par1, const char *par2)
     free (t);
     if (d->pid) {
 	if (d->n_commands && !d->action)
-	    CAddWatch (d->in, debug_write_callback, WATCH_WRITING, 0);
-	CAddWatch (d->out, debug_read_callback, WATCH_READING, 0);
+	    CAddWatch (d->inout, debug_write_callback, WATCH_WRITING, 0);
+	CAddWatch (d->inout, debug_read_callback, WATCH_READING, 0);
     }
 }
 
 #define debug_error1(d, x)		debug_error2(d, x, "")
+#define xdebug_cursor_bookmark_flush()  xdebug_cursor_bookmark_flush_(1)
 
-static void xdebug_cursor_bookmark_flush (void)
+static void xdebug_cursor_bookmark_flush_ (int redraw)
 {E_
     int i;
     for (i = 0; i < last_edit; i++)
 	if (edit[i]->editor)
 	    book_mark_flush (edit[i]->editor, DEBUG_CURRENT_COLOR);
+    if (redraw) {
+        edit[current_edit]->editor->force |= REDRAW_COMPLETELY;
+        edit_render_keypress (edit[current_edit]->editor);
+    }
 }
 
 static void xdebug_append_command (Debug * d, char *s, int action, char *editor, int line)
@@ -217,7 +213,7 @@ static void xdebug_append_command (Debug * d, char *s, int action, char *editor,
 	d->command[d->n_commands].line = line;
 	d->n_commands++;
 	if (!d->action)
-	    CAddWatch (d->in, debug_write_callback, WATCH_WRITING, 0);
+	    CAddWatch (d->inout, debug_write_callback, WATCH_WRITING, 0);
     }
 }
 
@@ -233,7 +229,7 @@ static void xdebug_flush_commands (Debug * d)
     d->action = 0;
     d->n_commands = 0;
     d->last_variable_displayed = 0;
-    CRemoveWatch (d->in, debug_write_callback, WATCH_WRITING);
+    CRemoveWatch (d->inout, debug_write_callback, WATCH_WRITING);
 }
 
 
@@ -404,10 +400,10 @@ static int xdebug_set_current (char *file, int line)
 
 static void xdebug_goto_line (Debug * d, char *file, int line)
 {E_
-    xdebug_cursor_bookmark_flush ();
+    xdebug_cursor_bookmark_flush_ (0);
     if (!xdebug_set_current (file, line))
 	book_mark_insert (edit[current_edit]->editor, edit[current_edit]->editor->curs_line, DEBUG_CURRENT_COLOR, 0, 0, 0);
-    edit[current_edit]->editor->force |= REDRAW_PAGE;
+    edit[current_edit]->editor->force |= REDRAW_COMPLETELY;
     edit_render_keypress (edit[current_edit]->editor);
     edit_status (edit[current_edit]->editor);
 }
@@ -604,6 +600,12 @@ static int debug_writeall (Debug *d, const char *buf, int len, char *errmsg)
     return len;
 }
 
+static int gdb_exitted (Debug *d)
+{
+    if (strcmp (d->host, "localhost"))
+        return 0;       /* impossible to tell */
+    return CChildExitted (d->pid, 0);
+}
 
 static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_set * error, void *data)
 {E_
@@ -614,13 +616,10 @@ static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_
     struct remotefs_terminalio *io;
     d = &debug_session;
     io = &d->cterminal_io;
-#warning finish: need to handle remote process death
-if (!strcmp (d->xterm_pid_host.xterm_host, "localhost")) {
-    if (CChildExitted (d->pid, 0) || (!rxvt_have_pid (d->xterm_pid_host.xterm_pid) && d->show_output)) {
+    if (gdb_exitted (d) || (!rxvt_have_pid (d->host, d->xterm_pid) && d->show_output)) {
 	debug_finish (0);
 	return;
     }
-}
     if (debug_fd_read (d)) {
 	debug_error1 (d, _ ("Error reading from the debugger"));
 	debug_finish (0L);
@@ -1043,20 +1042,17 @@ loop () at test.c:7
     }
   fin_read:
     if (d->n_commands && !d->action)
-	CAddWatch (d->in, debug_write_callback, WATCH_WRITING, 0);
+	CAddWatch (d->inout, debug_write_callback, WATCH_WRITING, 0);
 }
 
 static void debug_write_callback (int fd, fd_set * reading, fd_set * writing, fd_set * error, void *data)
 {E_
     Debug *d;
     d = &debug_session;
-#warning finish: need to handle remote process death
-if (!strcmp (d->xterm_pid_host.xterm_host, "localhost")) {
-    if (CChildExitted (d->pid, 0) || (!rxvt_have_pid (d->xterm_pid_host.xterm_pid) && d->show_output)) {
+    if (gdb_exitted (d) || (!rxvt_have_pid (d->host, d->xterm_pid) && d->show_output)) {
 	debug_finish (0);
 	return;
     }
-}
     if (d->show_on_stdout) {
 	printf ("%s", d->command[0].command);
 	fflush (stdout);
@@ -1084,7 +1080,7 @@ if (!strcmp (d->xterm_pid_host.xterm_host, "localhost")) {
     d->command[d->n_commands].action = 0;
     d->command[d->n_commands].command = 0;
     d->n_commands--;
-    CRemoveWatch (d->in, debug_write_callback, WATCH_WRITING);
+    CRemoveWatch (d->inout, debug_write_callback, WATCH_WRITING);
 }
 
 static const char *thing (unsigned long m)
@@ -1114,31 +1110,39 @@ pid_t xx_open_under_pty (int *in, int *out, char *line, const char *file, char *
 
 static int xdebug_run_program (Debug * d)
 {E_
+    char errmsg[REMOTEFS_ERR_MSG_LEN] = "";
+    struct remotefs *u;
+    unsigned long long error_code;
     char *arg[10];
     int i = 0;
-    struct stat s;
+    struct portable_stat s;
     xdebug_cursor_bookmark_flush ();
-#warning remotefs
-    if (stat (d->progname, &s)) {
-	debug_error2 (d,
-		      _
-		      ("Error trying to stat executable: check that the filename and \n current directory are correct"),
-		      strerror (errno));
+
+    u = remotefs_lookup (debug_session.host, NULL);
+    if ((*u->remotefs_stat) (u, d->progname, &s, NULL, &error_code, errmsg)) {
+	debug_error2 (d, _("Error trying to stat executable: check that the filename and \n current directory are correct"), errmsg);
 	return 1;
     }
-    if ((s.st_mode & S_IFMT) != S_IFREG) {
+    if ((s.ustat.st_mode & S_IFMT) != S_IFREG) {
         char msg[512];
-        snprintf (msg, sizeof (msg), "Your program (on %s) appears to be a %s \n and not a regular file", d->host, thing (s.st_mode));
+        snprintf (msg, sizeof (msg), "Your program (on %s) appears to be a %s \n and not a regular file", d->host, thing (s.ustat.st_mode));
         debug_error2 (d, msg, d->progname);
         return 1;
     }
+    if (!(s.ustat.st_mode & (S_IXOTH | S_IXGRP | S_IXUSR)) || !(s.ustat.st_mode & (S_IROTH | S_IRGRP | S_IRUSR))) {
+        char msg[512];
+        snprintf (msg, sizeof (msg), _("Your program (on %s) does not seem to have \n read and execute permissions"), d->host);
+        debug_error2 (d, msg, d->progname);
+        return 1;
+    }
+
+#if 0
     if (access (d->progname, R_OK | X_OK)) {
-#warning test
-        char msg[512];
-        snprintf (msg, sizeof (msg), _("Your program (on %s) does not seem to have \n execute permissions"), d->host);
-        debug_error2 (d, msg, d->progname);
+        debug_error2 (d, _("Your program does not seem to have \n execute permissions"), d->progname);
         return 1;
     }
+#endif
+
     arg[i++] = d->debugger;
     if (d->show_output) {
         struct cterminal_config c;
@@ -1146,66 +1150,53 @@ static int xdebug_run_program (Debug * d)
         char errmsg[CTERMINAL_ERR_MSG_LEN];
 	struct _rxvtlib *rxvt;
         gargv[0] = d->progname;
-#warning finish
+printf("starting rxvt %s\n", d->host);
 	rxvt = rxvt_start (d->host, CRoot, gargv, 1, 0);
 	if (!rxvt) {
-	    d->xterm_pid_host.xterm_pid = 0;
-	    d->xterm_pid_host.xterm_host[0] = '\0';
+	    d->xterm_pid = 0;
 	    d->pid = 0;
 	    debug_error1 (d, _("Could not open an rxvt"));
 	    xdebug_flush_commands (d);
 	    return 1;
 	}
-	p = (char *) strdup ("-tty=                    ");
+	p = (char *) strdup ("-tty=                                                                 ");
 	rxvt_get_tty_name (rxvt, p + 5);
-        rxvt_get_pid_host (rxvt, &d->xterm_pid_host.xterm_pid, d->xterm_pid_host.xterm_host, sizeof (d->xterm_pid_host.xterm_host));
+	rxvt_get_pid (rxvt, &d->xterm_pid, d->host);
 	arg[i++] = p;
+
+printf("p=%s\n", p);
+
 	arg[i++] = d->progname;
 	arg[i] = 0;
         memset (&c, '\0', sizeof (c));
-#warning free cterminal_io
         if (remotefs_shell_util (d->host, &d->cterminal_io, &c, 1, arg, errmsg)) {
 	    d->pid = 0;
-	    d->xterm_pid_host.xterm_pid = 0;
-	    d->xterm_pid_host.xterm_host[0] = '\0';
+	    d->xterm_pid = 0;
 	    debug_error2 (d, _("Could not open gdb"), errmsg);
 	    xdebug_flush_commands (d);
 	    return 1;
         }
-        d->in = d->out = d->cterminal_io.cmd_fd;
 
 	free (p);
     } else {
         struct cterminal_config c;
-	char *p;
         char errmsg[CTERMINAL_ERR_MSG_LEN];
-	p = (char *) strdup ("-tty=                    ");
-	arg[i++] = p;
 	arg[i++] = d->progname;
 	arg[i] = 0;
         memset (&c, '\0', sizeof (c));
-#warning free cterminal_io
         if (remotefs_shell_util (d->host, &d->cterminal_io, &c, 1, arg, errmsg)) {
 	    d->pid = 0;
-	    d->xterm_pid_host.xterm_pid = 0;
-	    d->xterm_pid_host.xterm_host[0] = '\0';
+	    d->xterm_pid = 0;
 	    debug_error2 (d, _("Could not open gdb"), errmsg);
 	    xdebug_flush_commands (d);
 	    return 1;
         }
-        d->in = d->out = d->cterminal_io.cmd_fd;
-
-	free (p);
     }
     if (d->pid <= 0) {
 	d->pid = 0;
-#warning finish: need to handle remote process death
-if (!strcmp (d->xterm_pid_host.xterm_host, "localhost")) {
-	if (d->xterm_pid_host.xterm_pid)
-	    kill (d->xterm_pid_host.xterm_pid, SIGTERM);
-}
-	d->xterm_pid_host.xterm_pid = 0;
-	d->xterm_pid_host.xterm_host[0] = '\0';
+	if (d->xterm_pid)
+	    rxvt_kill (d->xterm_pid);
+	d->xterm_pid = 0;
 	d->pid = 0;
 	debug_error1 (d, _("Could not open gdb"));
 	xdebug_flush_commands (d);
@@ -1213,7 +1204,7 @@ if (!strcmp (d->xterm_pid_host.xterm_host, "localhost")) {
     }
     d->child = 0;
     d->action = ACTION_VERSION;
-    CAddWatch (d->out, debug_read_callback, WATCH_READING, 0);
+    CAddWatch (d->inout, debug_read_callback, WATCH_READING, 0);
     return 0;
 }
 
@@ -1312,12 +1303,14 @@ static int debug_set_info (unsigned long x)
     {
 	gettext_noop (""),
 	gettext_noop (""),
+	gettext_noop (""),
 	0
     };
     char *input_labels[10] =
     {
 	gettext_noop ("Program name"),
 	gettext_noop ("Enter program arguments (space for none)"),
+	gettext_noop ("IP address for remote debugging"),
 	0
     };
     char *check_labels[10] =
@@ -1344,12 +1337,14 @@ static int debug_set_info (unsigned long x)
     {
 	gettext_noop ("debugprogname"),
 	gettext_noop ("debugargs+"),
+	gettext_noop ("debugremoteip"),
 	0
     };
     char *input_tool_hint[10] =
     {
 	gettext_noop ("The executable that you would like to debug - this must be compiled with the -g option"),
 	gettext_noop ("Arguments to be passed to the executable - can be empty"),
+	gettext_noop ("Remote debugging requires the remotefs tool to be running on the remote Unix system"),
 	0
     };
     int *checks_values_result[10];
@@ -1357,7 +1352,8 @@ static int debug_set_info (unsigned long x)
     int r;
     inputs_result[0] = &inputs[0];
     inputs_result[1] = &inputs[1];
-    inputs_result[2] = 0;
+    inputs_result[2] = &inputs[2];
+    inputs_result[3] = 0;
     checks_values_result[0] = &debug_session.show_output;
     checks_values_result[1] = &debug_session.stop_at_main;
     checks_values_result[2] = &debug_session.show_on_stdout;
@@ -1367,7 +1363,6 @@ static int debug_set_info (unsigned long x)
 #else
     checks_values_result[3] = 0;
 #endif
-    strcpy (debug_session.host, "localhost");
     r = CInputsWithOptions (0, 0, 0, _ (" Debug : Program Data "), inputs_result, input_labels, input_names, input_tool_hint, checks_values_result, check_labels, check_tool_hints, INPUTS_WITH_OPTIONS_BROWSE_LOAD_1, 60);
     if (r)
 	return 1;
@@ -1377,6 +1372,9 @@ static int debug_set_info (unsigned long x)
     if (debug_session.args)
 	free (debug_session.args);
     debug_session.args = inputs[1];
+    Cstrlcpy (debug_session.host, inputs[2], sizeof (debug_session.host));
+    if (!debug_session.host[0])
+        strcpy (debug_session.host, "localhost");
     if (debug_session.pid)
 	debug_error1 (&debug_session, _ (" The debugger is currently running. You will have \n to kill the debugger for these changes to take effect. "));
     return 0;
@@ -1451,7 +1449,12 @@ static void debug_break (unsigned long x)
     if (debug_session.action == ACTION_RUNNING || debug_session.action == ACTION_STEP || debug_session.action == ACTION_UNTIL) {
 	xdebug_flush_commands (&debug_session);
 	if (debug_session.child) {
-	    kill (debug_session.child, SIGINT);
+	    char errmsg[REMOTEFS_ERR_MSG_LEN];
+	    struct remotefs *u;
+	    int res = 0;
+	    u = remotefs_lookup (debug_session.host, NULL);
+	    if ((*u->remotefs_shellsignal) (u, debug_session.child, SIGINT, &res, errmsg))
+	        debug_error2 (&debug_session, _ ("Error trying to interrupt process"), errmsg);
 	    debug_session.action = ACTION_RUNNING;
 	}
     }
@@ -1465,23 +1468,20 @@ static void debug_finish (unsigned long x)
 	pool_free (debug_session.pool);
     debug_session.pool = 0;
     if (debug_session.pid) {
-	kill (debug_session.pid, SIGTERM);
+        (*debug_session.cterminal_io.remotefs->remotefs_shellkill) (debug_session.cterminal_io.remotefs, debug_session.pid);
 	debug_session.pid = 0;
-	CRemoveWatch (debug_session.in, debug_write_callback, WATCH_WRITING);
-	CRemoveWatch (debug_session.out, debug_read_callback, WATCH_READING);
-	close (debug_session.in);
-	close (debug_session.out);
-	if (debug_session.xterm_pid_host.xterm_pid) {
-if (!strcmp (debug_session.xterm_pid_host.xterm_host, "localhost")) {
-	    kill (debug_session.xterm_pid_host.xterm_pid, SIGTERM);
-}
-	    debug_session.xterm_pid_host.xterm_pid = 0;
-	    debug_session.xterm_pid_host.xterm_host[0] = '\0';
+        CRemoveWatch (debug_session.inout, NULL, WATCH_READING | WATCH_WRITING);
+	close (debug_session.inout);
+        debug_session.inout = -1;
+	if (debug_session.xterm_pid) {
+            rxvt_kill (debug_session.xterm_pid);
+	    debug_session.xterm_pid = 0;
 	}
 	if (debug_session.child) {
 	    kill (debug_session.child, SIGKILL);
 	    debug_session.child = 0;
 	}
+        remotefs_free_terminalio (&debug_session.cterminal_io);
     }
 }
 

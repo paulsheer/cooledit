@@ -186,8 +186,10 @@ static void xdebug_cursor_bookmark_flush_ (int redraw)
 	if (edit[i]->editor)
 	    book_mark_flush (edit[i]->editor, DEBUG_CURRENT_COLOR);
     if (redraw) {
-        edit[current_edit]->editor->force |= REDRAW_COMPLETELY;
-        edit_render_keypress (edit[current_edit]->editor);
+        if (edit[current_edit]) {
+            edit[current_edit]->editor->force |= REDRAW_COMPLETELY;
+            edit_render_keypress (edit[current_edit]->editor);
+        }
     }
 }
 

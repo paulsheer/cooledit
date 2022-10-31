@@ -327,6 +327,11 @@ void rxvtlib_shut (rxvtlib * o)
 {E_
     int i;
 
+    if (!o->shellkill_sent) {
+        o->shellkill_sent = 1;
+        (*o->cterminal_io.remotefs->remotefs_shellkill) (o->cterminal_io.remotefs, o->cmd_pid);
+    }
+
     if (o->cmd_fd >= 0) {
         CRemoveWatch (o->cmd_fd, NULL, 3);
         close (o->cmd_fd);
@@ -398,6 +403,8 @@ void rxvtlib_shut (rxvtlib * o)
 	XFreeFont (o->Xdisplay, o->TermWin.boldFont);
 #endif
 #endif
+
+    myfree (o->selection.text);
 
     for (i = 0; i < TOTAL_RS; i++)
 	myfree (o->rs_free[i]);

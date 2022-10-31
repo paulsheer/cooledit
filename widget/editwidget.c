@@ -1003,6 +1003,31 @@ void edit_update_screen (WEdit * e)
     edit_update_screen_ (e, KeyPress | KeyRelease);
 }
 
+static int edit_is_command_that_doesnt_modify_the_file (int command)
+{
+    switch (command) {
+    case CK_Save:
+    case CK_Exit:
+    case CK_Load:
+    case CK_Menu:
+    case CK_Close_Last:
+    case CK_Maximize:
+    case CK_Terminal:
+    case CK_Debug_Start:
+    case CK_Debug_Stop:
+    case CK_Debug_Toggle_Break:
+    case CK_Debug_Clear:
+    case CK_Debug_Next:
+    case CK_Debug_Step:
+    case CK_Debug_Back_Trace:
+    case CK_Debug_Continue:
+    case CK_Debug_Enter_Command:
+    case CK_Debug_Until_Curser:
+        return 1;
+    }
+    return 0;
+}
+
 int eh_editor (CWidget * w, XEvent * xevent, CEvent * cwevent)
 {E_
     WEdit *e = w->editor;
@@ -1094,8 +1119,7 @@ int eh_editor (CWidget * w, XEvent * xevent, CEvent * cwevent)
     case KeyPress:
 	cwevent->ident = w->ident;
         if (e->test_file_on_disk_for_changes && (cwevent->command > 0 || cwevent->xlat_len > 0)) {
-            if (cwevent->command != CK_Save && cwevent->command != CK_Exit && cwevent->command != CK_Load && cwevent->command != CK_Menu &&
-                cwevent->command != CK_Close_Last && cwevent->command != CK_Maximize && cwevent->command != CK_Terminal) {
+            if (!edit_is_command_that_doesnt_modify_the_file (cwevent->command)) {
                 if (!edit_is_movement_command(cwevent->command) && !CCheckGlobalHotKey (xevent, cwevent, 0)) {
                     e->test_file_on_disk_for_changes = 0;       /* simple state machine to check on KeyPress after Focus */
                     if (cwevent->command > 0) {

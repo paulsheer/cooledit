@@ -2115,7 +2115,7 @@ struct _bgPixmap_t {
 
 #ifndef STANDALONE
     XEvent xevent;
-    int x_events_pending;
+    int shellkill_sent;
     int cmd_fd_available;
     int fds_available;
 #endif

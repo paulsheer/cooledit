@@ -52,7 +52,6 @@ int rxvt_event (XEvent * xevent)
 			   || l->rxvt->TermWin.parent[3] == win
 			   || l->rxvt->scrollBar.win == win
 			   || l->rxvt->menuBar.win == win)) {
-	    l->rxvt->x_events_pending = 1;
 	    memcpy (&l->rxvt->xevent, xevent, sizeof (*xevent));
 	    l->rxvt->fds_available++;
 	    if (XFilterEvent(xevent, 0)) {

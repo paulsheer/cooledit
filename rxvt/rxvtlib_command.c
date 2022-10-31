@@ -1269,7 +1269,7 @@ void rxvt_fd_read_watch (int fd, fd_set * reading, fd_set * writing,
 
 void rxvt_process_x_event (rxvtlib * o)
 {E_
-    if (o->x_events_pending) {
+    {
         switch (o->xevent.type) {
         case KeyPress:
         case ClientMessage:
@@ -1301,7 +1301,10 @@ void rxvt_process_x_event (rxvtlib * o)
 	rxvtlib_XProcessEvent (o, o->Xdisplay);
     }
     if (o->killed) {
-        (*o->cterminal_io.remotefs->remotefs_shellkill) (o->cterminal_io.remotefs, o->cmd_pid);
+        if (!o->shellkill_sent) {
+            o->shellkill_sent = 1;
+            (*o->cterminal_io.remotefs->remotefs_shellkill) (o->cterminal_io.remotefs, o->cmd_pid);
+        }
         if (o->cmd_fd >= 0) {
             CRemoveWatch (o->cmd_fd, NULL, 3);
 	    close (o->cmd_fd);
@@ -3027,11 +3030,6 @@ void rxvt_fd_write_watch (int fd, fd_set * reading,
     int riten, p;
     rxvtlib *o = (rxvtlib *) data;
     p = o->v_bufptr - o->v_bufstr;
-#if 0
-    riten = write (o->cmd_fd, o->v_bufstr, p < MAX_PTY_WRITE ? p : MAX_PTY_WRITE);
-    if (riten < 0)
-	riten = 0;
-#else
     char errmsg[CTERMINAL_ERR_MSG_LEN];
     CStr chunk;
     memset (&chunk, '\0', sizeof (chunk));
@@ -3043,7 +3041,6 @@ void rxvt_fd_write_watch (int fd, fd_set * reading,
         o->killed = EXIT_FAILURE | DO_EXIT;
 	riten = 0;
     }
-#endif
     o->v_bufstr += riten;
     if (o->v_bufstr >= o->v_bufptr) {	/* we wrote it all */
 	o->v_bufstr = o->v_bufptr = o->v_buffer;
@@ -3570,7 +3567,6 @@ int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const ar
 
     if (remotefs_shell_util (host, &o->cterminal_io, &c, 0, argv, errmsg))
         return -1;
-    printf ("opened rxvt on host %s\n", o->cterminal_io.host);
 
 #ifdef STANDALONE
 /* 

@@ -120,6 +120,8 @@ static RETSIGTYPE quit_handler (int x)
 {E_
 /* %s = cooledit */
     fprintf (stderr, _("%s: quiting without saving\n"), argv_nought);
+    rxvtlib_shutall (); /* in theory, need to properly cleanup terminals */
+    debug_shut ();      /* in theory, need to properly cleanup terminals */
 #if 0
     CShutdown ();		/* needed just to close the connection to the display */
 #else

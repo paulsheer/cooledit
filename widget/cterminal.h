@@ -29,6 +29,10 @@ struct cterminal {
     int cmd_fd;
     char *ttydev;
     short changettyowner;
+#ifdef HAVE_SETEUID
+    uid_t euid;
+    gid_t egid;
+#endif
     struct stat ttyfd_stat;
     pid_t cmd_pid;
     pid_t cmd_parentpid;

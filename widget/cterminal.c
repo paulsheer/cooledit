@@ -218,6 +218,7 @@ struct _ttymode_t {
 
 
 
+static int r__ = 0; /* prevent warning warn_unused_result */
 extern char **environ;
 
 char **set_env_var (char *new_var[], int nn)
@@ -304,6 +305,10 @@ void cterminal_cleanup (struct cterminal *o)
         free (o->envvar[i]);
 
     if (o->ttydev) {
+        if (o->changettyowner) {
+	    r__ += chmod (o->ttydev, o->ttyfd_stat.st_mode);
+	    r__ += chown (o->ttydev, o->ttyfd_stat.st_uid, o->ttyfd_stat.st_gid);
+        }
         free (o->ttydev);
         o->ttydev = 0;
     }
@@ -312,43 +317,38 @@ void cterminal_cleanup (struct cterminal *o)
 
 /*{{{ take care of suid/sgid super-user (root) privileges */
 /* EXTPROTO */
-static void cterminal_privileges (int mode)
+static void cterminal_privileges (struct cterminal *o, int mode)
 {E_
-#if 0
 #ifdef HAVE_SETEUID
-    static uid_t euid;
-    static gid_t egid;
-
     switch (mode) {
     case CTERMINAL_IGNORE:
         /*
          * change effective uid/gid - not real uid/gid - so we can switch
          * back to root later, as required
          */
-        seteuid (getuid ());
-        setegid (getgid ());
+        r__ += seteuid (getuid ());
+        r__ += setegid (getgid ());
         break;
     case CTERMINAL_SAVE:
-        euid = geteuid ();
-        egid = getegid ();
+        o->euid = geteuid ();
+        o->egid = getegid ();
         break;
     case CTERMINAL_RESTORE:
-        seteuid (euid);
-        setegid (egid);
+        r__ += seteuid (o->euid);
+        r__ += setegid (o->egid);
         break;
     }
 #else
-        switch (mode) {
+    switch (mode) {
     case CTERMINAL_IGNORE:
-        setuid (getuid ());
-        setgid (getgid ());
+        r__ += setuid (getuid ());
+        r__ += setgid (getgid ());
         /* FALLTHROUGH */
     case CTERMINAL_SAVE:
         /* FALLTHROUGH */
     case CTERMINAL_RESTORE:
         break;
     }
-#endif
 #endif
 }
 
@@ -416,10 +416,10 @@ static int cterminal_get_tty (struct cterminal *o, char *errmsg)
             }
         }
 #endif                          /* TTY_GID_SUPPORT */
-        cterminal_privileges (CTERMINAL_RESTORE);
-        fchown (fd, getuid (), gid);    /* fail silently */
-        fchmod (fd, mode);
-        cterminal_privileges (CTERMINAL_IGNORE);
+        cterminal_privileges (o, CTERMINAL_RESTORE);
+        r__ += fchown (fd, getuid (), gid);    /* fail silently */
+        r__ += fchmod (fd, mode);
+        cterminal_privileges (o, CTERMINAL_IGNORE);
     }
 
     /*
@@ -952,8 +952,8 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
  *  1.  write utmp entries on some systems
  *  2.  chown tty on some systems
  */
-    cterminal_privileges (CTERMINAL_SAVE);
-    cterminal_privileges (CTERMINAL_IGNORE);
+    cterminal_privileges (o, CTERMINAL_SAVE);
+    cterminal_privileges (o, CTERMINAL_IGNORE);
 
 #if 0
     printf ("display_env_var = %s\n", config->display_env_var);
@@ -975,9 +975,7 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
 /* store original tty status for restoration clean_exit() -- rgg 04/12/95 */
     lstat (o->ttydev, &o->ttyfd_stat);
 
-#if 1
-#warning handle cleanup ownerships
-#else
+#if 0
 /* install exit handler for cleanup */
 #ifdef HAVE_ATEXIT
     atexit (clean_exit);
@@ -1083,8 +1081,6 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
 
         }
 
-printf("dumb_terminal = %d\n", dumb_terminal);
-
         if (dumb_terminal == 2) {
             PUTENV ("LC_ALL=C");
             PUTENV ("LC_CTYPE=C");
@@ -1173,9 +1169,9 @@ printf("dumb_terminal = %d\n", dumb_terminal);
 
 #ifdef UTMP_SUPPORT
     if (!(o->Options & Opt_utmpInhibit)) {
-        cterminal_privileges (CTERMINAL_RESTORE);
+        cterminal_privileges (o, CTERMINAL_RESTORE);
         rxvtlib_makeutent (o, o->ttydev, o->rs[Rs_display_name]);       /* stamp /etc/utmp */
-        cterminal_privileges (CTERMINAL_IGNORE);
+        cterminal_privileges (o, CTERMINAL_IGNORE);
     }
 #endif
 

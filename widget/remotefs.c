@@ -6786,12 +6786,13 @@ static void run_service (struct service *serv)
 
             if (FD_ISSET (i->sock_data.sock, &wr)) {
                 int avail;
-                long delta;
                 avail = tt->rd.avail - tt->rd.written;
 
-/* the tv_delta mechanism tries to chunk data together, otherwise we get too many tiny send()s */
+/* the tv_delta mechanism tries to chunk data together, otherwise we get too many tiny send()s.
+ * the didread mechanism is based on the idea that, if there was some input, like a keypress, then
+ * certainly we should dispense with waiting. */
 
-                if (avail > 1312 || tt->didread || (avail >= 1 && (delta = tv_delta (&now, &tt->lastwrite)) > (1000000 / SENDS_PER_SEC))) {
+                if (avail > 1312 || (avail >= 1 && tt->didread) || (avail >= 1 && tv_delta (&now, &tt->lastwrite) > (1000000 / SENDS_PER_SEC))) {
                     int l;
                     tt->lastwrite = now;
                     tt->didread = 0;

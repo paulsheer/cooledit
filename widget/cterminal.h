@@ -33,6 +33,7 @@ struct cterminal {
     uid_t euid;
     gid_t egid;
 #endif
+    char ut_id[8];
     struct stat ttyfd_stat;
     pid_t cmd_pid;
     pid_t cmd_parentpid;
@@ -57,7 +58,7 @@ struct cterminal {
 void cterminal_tt_winsize (struct cterminal *o, int fd, int col, int row);
 void cterminal_cleanup (struct cterminal *o);
 int cterminal_get_pty (struct cterminal *o, char *errmsg);
-int cterminal_run_command (struct cterminal *o, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg);
+int cterminal_run_command (struct cterminal *o, struct cterminal_config *config, int dumb_terminal, const char *log_origin_host, char *const argv[], char *errmsg);
 
 #endif
 

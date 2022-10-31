@@ -358,6 +358,8 @@ void remotefs_serverize (const char *listen_address, const char *acceptrange);
 struct file_entry;
 struct remotefs;
 
+void remotefs_set_display_log_for_wtmp (const char *display);
+
 void remotefs_free (struct remotefs *rfs);
 struct remotefs *remotefs_new (const char *host, char *errmsg);
 struct remotefs *remotefs_lookup (const char *host_, char *directory);

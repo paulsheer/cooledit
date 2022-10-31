@@ -191,6 +191,7 @@ RETSIGTYPE      Exit_signal (int sig)
 }
 #endif
 
+#ifdef STANDALONE
 /*
  * Exit gracefully, clearing the utmp entry and restoring tty attributes
  * TODO: this should free up any known resources if we can
@@ -198,9 +199,6 @@ RETSIGTYPE      Exit_signal (int sig)
 /* INTPROTO */
 void            clean_exit (void)
 {E_
-
-#warning handle cleanup
-
 /*
     scr_release ();
 #if defined(UTMP_SUPPORT) || ! defined(__CYGWIN32__)
@@ -224,6 +222,8 @@ void            clean_exit (void)
 */
 
 }
+
+#endif
 
 /*}}} */
 

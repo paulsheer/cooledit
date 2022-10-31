@@ -3855,7 +3855,7 @@ static void delete_cterminal (unsigned long pid)
     }
 }
 
-static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_config *config, int dumb_terminal, char *const argv[], CStr * r)
+static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_config *config, int dumb_terminal, const char *log_origin_host, char *const argv[], CStr * r)
 {E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     unsigned char *p;
@@ -3863,7 +3863,7 @@ static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_con
     assert (CTERMINAL_ERR_MSG_LEN == REMOTEFS_ERR_MSG_LEN);
 
 #ifdef SHELL_SUPPORT
-    if (cterminal_run_command (cterminal, dumb_terminal ? NULL : config, dumb_terminal, argv, errmsg)) {
+    if (cterminal_run_command (cterminal, dumb_terminal ? NULL : config, dumb_terminal, log_origin_host, argv, errmsg)) {
         alloc_encode_error (r, RFSERR_SUCCESS, errmsg, 0);
         return -1;
     }
@@ -4107,6 +4107,14 @@ static int local_enablecrypto (struct remotefs *rfs, const unsigned char *challe
     return 0;
 }
 
+static char display_log_for_wtmp[256] = "localhost";
+
+void remotefs_set_display_log_for_wtmp (const char *display)
+{
+    strncpy (display_log_for_wtmp, display, sizeof (display_log_for_wtmp));
+    display_log_for_wtmp[sizeof (display_log_for_wtmp) - 1] = '\0';
+}
+
 static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg)
 {E_
     CStr s;
@@ -4119,7 +4127,7 @@ static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io,
     memset (ct, '\0', sizeof (struct cterminal_item));
     ct->cterminal.cmd_fd = -1;
 
-    if (remotefs_shellcmd_ (&ct->cterminal, config, dumb_terminal, argv, &s)) {
+    if (remotefs_shellcmd_ (&ct->cterminal, config, dumb_terminal, display_log_for_wtmp, argv, &s)) {
         free (ct);
     } else {
         ct->next = cterminal_list;
@@ -6153,6 +6161,20 @@ static void free_args (char **s)
     free (s);
 }
 
+void peer_to_text (SOCKET sock, char *peername)
+{E_
+    remotefs_sockaddr_t a;
+    socklen_t len;
+    len = sizeof (a);
+    memset (&a, '\0', sizeof (a));
+    if (getpeername (sock, (struct sockaddr *) &a, &len)) {
+        strcpy (peername, "unknown");
+        return;
+    }
+    ip_to_text (remotefs_sockaddr_t_address (&a), remotefs_sockaddr_t_addresslen (&a), peername);
+}
+
+
 static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
 {E_
     const unsigned char *p, *end;
@@ -6163,6 +6185,7 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
     struct cterminal_config c;
     struct ttyreader_data *t;
     int i;
+    char peername[256] = "";
 
     memset (&c, '\0', sizeof (c));
 
@@ -6218,7 +6241,9 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
     t->wr.buf = (unsigned char *) malloc (128);
     t->wr.alloced = 128;
 
-    if (remotefs_shellcmd_ (&t->cterminal, &c, (int) dumb_terminal_, args, s)) {
+    peer_to_text (sd->reader_data->sock_data->sock, peername);
+
+    if (remotefs_shellcmd_ (&t->cterminal, &c, (int) dumb_terminal_, peername, args, s)) {
         free (t);
     } else {
         sd->ttyreader_data = t;

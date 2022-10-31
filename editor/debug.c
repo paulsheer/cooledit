@@ -1303,16 +1303,16 @@ static int debug_set_info (unsigned long x)
 {E_
     char *inputs[10] =
     {
-	gettext_noop (""),
+	gettext_noop ("localhost"),
 	gettext_noop (""),
 	gettext_noop (""),
 	0
     };
     char *input_labels[10] =
     {
+	gettext_noop ("IP address for remote debugging or 'localhost'"),
 	gettext_noop ("Program name"),
 	gettext_noop ("Enter program arguments (space for none)"),
-	gettext_noop ("IP address for remote debugging"),
 	0
     };
     char *check_labels[10] =
@@ -1337,16 +1337,16 @@ static int debug_set_info (unsigned long x)
     };
     char *input_names[10] =
     {
+	gettext_noop ("debugremoteip"),
 	gettext_noop ("debugprogname"),
 	gettext_noop ("debugargs+"),
-	gettext_noop ("debugremoteip"),
 	0
     };
     char *input_tool_hint[10] =
     {
+	gettext_noop ("Remote debugging requires the remotefs tool to be running on the remote Unix system"),
 	gettext_noop ("The executable that you would like to debug - this must be compiled with the -g option"),
 	gettext_noop ("Arguments to be passed to the executable - can be empty"),
-	gettext_noop ("Remote debugging requires the remotefs tool to be running on the remote Unix system"),
 	0
     };
     int *checks_values_result[10];
@@ -1365,16 +1365,16 @@ static int debug_set_info (unsigned long x)
 #else
     checks_values_result[3] = 0;
 #endif
-    r = CInputsWithOptions (0, 0, 0, _ (" Debug : Program Data "), inputs_result, input_labels, input_names, input_tool_hint, checks_values_result, check_labels, check_tool_hints, INPUTS_WITH_OPTIONS_BROWSE_LOAD_1, 60);
+    r = CInputsWithOptions (0, 0, 0, _ (" Debug : Program Data "), inputs_result, input_labels, input_names, input_tool_hint, checks_values_result, check_labels, check_tool_hints, INPUTS_WITH_OPTIONS_BROWSE_LOAD_2, 60);
     if (r)
 	return 1;
     if (debug_session.progname)
 	free (debug_session.progname);
-    debug_session.progname = inputs[0];
+    debug_session.progname = inputs[1];
     if (debug_session.args)
 	free (debug_session.args);
-    debug_session.args = inputs[1];
-    Cstrlcpy (debug_session.host, inputs[2], sizeof (debug_session.host));
+    debug_session.args = inputs[2];
+    Cstrlcpy (debug_session.host, inputs[0], sizeof (debug_session.host));
     if (!debug_session.host[0])
         strcpy (debug_session.host, "localhost");
     if (debug_session.pid)

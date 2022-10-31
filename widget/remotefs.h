@@ -407,7 +407,7 @@ int remotefs_shell_util (const char *host, struct remotefs_terminalio *io, struc
 
 struct remotefs {
     unsigned int magic;
-    int (*remotefs_listdir) (struct remotefs *rfs, const char *directory, unsigned long options, char *filter, struct file_entry **r, int *n, char *errmsg);
+    int (*remotefs_listdir) (struct remotefs *rfs, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg);
     int (*remotefs_readfile) (struct remotefs *rfs, struct action_callbacks *o, const char *filename, char *errmsg);
     int (*remotefs_writefile) (struct remotefs *rfs, struct action_callbacks *o, const char *filename, long long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg);
     int (*remotefs_checkordinaryfileaccess) (struct remotefs *rfs, const char *filename, unsigned long long sizelimit, struct portable_stat *st, char *errmsg);

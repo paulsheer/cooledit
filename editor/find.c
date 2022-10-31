@@ -158,6 +158,7 @@ int CInputsWithOptions (Window parent, int x, int y, const char *heading, \
 	CFocus (CIdent (input_names[0]));
 
     for (;;) {
+        char host[256], *hostp;
 	CNextEvent (&xev, &cev);
 	if (!CIdent ("_IWO")) {
 	    cancel = 1;
@@ -187,18 +188,36 @@ int CInputsWithOptions (Window parent, int x, int y, const char *heading, \
 	    }
 	    break;
 	}
+
+/* {{{ major hack */
+        if (input_names[0] && strstr (input_names[0], "remoteip")) {
+            Cstrlcpy (host, CIdent (input_names[0])->text.data, sizeof (host));
+            if (!host[0])
+                strcpy (host, "localhost");
+            hostp = host;
+        } else {
+            hostp = NULL;
+        }
+/* }}} */
 #warning maybe backport this fix
 	if (strendswith (cev.ident, ".bl")) {
-	    f = CGetLoadFile (parent, 20, 20, current_dir, "", _ (" Browse "), 0 /* localhost */);
+	    f = CGetLoadFile (parent, 20, 20, current_dir, "", _ (" Browse "), hostp);
 	    goto there;
 	}
 	if (strendswith (cev.ident, ".bs")) {
-	    f = CGetSaveFile (parent, 20, 20, current_dir, "", _ (" Browse "), 0 /* localhost */);
+	    f = CGetSaveFile (parent, 20, 20, current_dir, "", _ (" Browse "), hostp);
 	    goto there;
 	}
 	if (strendswith (cev.ident, ".bd")) {
-	    f = CGetDirectory (parent, 20, 20, current_dir, "", _ (" Browse "), 0 /* localhost */);
+	    f = CGetDirectory (parent, 20, 20, current_dir, "", _ (" Browse "), hostp);
 	  there:
+            if (hostp) {
+		CStr *rip;
+                rip = &(CIdent (input_names[0])->text);
+                free (rip->data);
+                rip->data = strdup (hostp);
+                rip->len = strlen (rip->data);
+            }
 	    if (f) {
 		CWidget *ttw;
 		char tt[33];

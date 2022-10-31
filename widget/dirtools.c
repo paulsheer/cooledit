@@ -143,7 +143,7 @@ int compare_fileentries (struct file_entry *file_entry1, struct file_entry *file
     return (strcmp (file_entry1->name, file_entry2->name));
 }
 
-struct file_entry *get_file_entry_list (char *host, char *directory, unsigned long options, char *filter, char *errmsg)
+struct file_entry *get_file_entry_list (const char *host, char *directory, unsigned long options, const char *filter, char *errmsg)
 {E_
     struct remotefs *u;
     int n = 0;

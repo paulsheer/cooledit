@@ -3228,7 +3228,7 @@ static int reader (struct reader_data *d, void *buf, int buflen, enum reader_err
 }
 
 
-static void remotefs_listdir_ (const char *directory, unsigned long options, char *filter, CStr *r)
+static void remotefs_listdir_ (const char *directory, unsigned long options, const char *filter, CStr *r)
 {E_
     struct file_entry_item *first = NULL, *i, *next;
     struct dirent *directentry;
@@ -3287,7 +3287,7 @@ static void remotefs_listdir_ (const char *directory, unsigned long options, cha
                 got_dot_dot = 1;
             if ((S_ISDIR (stats.ustat.st_mode) && (options & FILELIST_DIRECTORIES_ONLY)) ||
                 (!S_ISDIR (stats.ustat.st_mode) && (options & FILELIST_FILES_ONLY))) {
-                if (regexp_match (filter, dn, match_file) == 1) {
+                if (regexp_match ((char *) filter, dn, match_file) == 1) {
                     i = (struct file_entry_item *) malloc (sizeof (*i));
                     memset (i, '\0', sizeof (*i));
                     portable_stat (1, q, &i->data.pstat, NULL, NULL, NULL);
@@ -3961,7 +3961,7 @@ static void remotefs_shellsignal_ (pid_t pid, int signum, CStr * r)
     }
 
 
-static int local_listdir (struct remotefs *rfs, const char *directory, unsigned long options, char *filter, struct file_entry **r, int *n, char *errmsg)
+static int local_listdir (struct remotefs *rfs, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
 {E_
     CStr s;
     remotefs_listdir_ (directory, options, filter, &s);
@@ -4263,7 +4263,7 @@ static int local_shellsignal (struct remotefs *rfs, unsigned long pid, int signu
     MARSHAL_END_LOCAL(NULL);
 }
 
-static int encode_listdir_params (unsigned char **p_, const char *directory, unsigned long options, char *filter)
+static int encode_listdir_params (unsigned char **p_, const char *directory, unsigned long options, const char *filter)
 {E_
     int r;
     r = encode_str (p_, directory, strlen (directory));
@@ -4280,7 +4280,7 @@ static int recv_mesg_ (struct remotefs *rfs, struct reader_data *d, CStr * respo
 static int reader (struct reader_data *d, void *buf_, int buflen, enum reader_error *reader_error);
 
 
-static int remote_listdir (struct remotefs *rfs, const char *directory, unsigned long options, char *filter, struct file_entry **r, int *n, char *errmsg)
+static int remote_listdir (struct remotefs *rfs, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
 {E_
     CStr s, msg;
     unsigned char *q;
@@ -5552,7 +5552,7 @@ static int remotefs_error_return (char *errmsg)
     return -1;
 }
 
-static int dummyerr_listdir (struct remotefs *rfs, const char *directory, unsigned long options, char *filter, struct file_entry **r, int *n, char *errmsg)
+static int dummyerr_listdir (struct remotefs *rfs, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
 }

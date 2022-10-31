@@ -411,6 +411,35 @@ extern int option_file_browser_height;
 static char *mime_majors[3] =
 {"url", "text", 0};
 
+/* walk up through the directories until we find one that exists: */
+static struct file_entry *get_file_entry_list_host_change (int changed_host, char *host, char *dir, const char *filter, char *errmsg)
+{
+    struct file_entry *filelist = NULL;
+    for (;;) {
+	filelist = get_file_entry_list (host, dir, FILELIST_FILES_ONLY, filter, errmsg);
+        if (!changed_host)
+            break;
+#warning  we need to distinguish between network errors and file system errors and not retry if this is a network error
+        if (!filelist && dir[0] == '/' && !dir[1])
+            break;
+	if (!filelist) {
+	    char *s;
+	    s = strrchr (dir, '/');
+	    if (s) {
+		*s = '\0';
+                if (!dir[0]) {
+                    dir[0] = '/';
+                    dir[1] = '\0';
+                }
+		continue;
+	    }
+	}
+	break;
+    }
+    return filelist;
+}
+
+
 static Window draw_file_browser (const char *identifier, Window parent, int x, int y,
 		    char *host, const char *directory, const char *file, const char *label)
 {E_
@@ -430,27 +459,7 @@ static Window draw_file_browser (const char *identifier, Window parent, int x, i
 	win = CDrawHeadedDialog (identifier, parent, x, y, label);
     (CIdent (identifier))->options |= WINDOW_ALWAYS_RAISED;
     CHourGlass (CFirstWindow);
-    for (;;) {
-        CStr s;
-        s = CLastInput (catstrs (identifier, ".filt", NULL));
-	filelist = get_file_entry_list (host, dir, FILELIST_FILES_ONLY, s.data, errmsg);
-#warning  we need to distinguish between network errors and file system errors and not retry if this is a network error
-        if (!filelist && dir[0] == '/' && !dir[1])
-            break;
-	if (!filelist) {
-	    char *s;
-	    s = strrchr (dir, '/');
-	    if (s) {
-		*s = '\0';
-                if (!dir[0]) {
-                    dir[0] = '/';
-                    dir[1] = '\0';
-                }
-		continue;
-	    }
-	}
-	break;
-    }
+    filelist = get_file_entry_list_host_change (1, host, dir, CLastInput (catstrs (identifier, ".filt", NULL)).data, errmsg);
     CUnHourGlass (CFirstWindow);
     if (!filelist || !(directorylist = get_file_entry_list (host, dir, FILELIST_DIRECTORIES_ONLY, "", errmsg))) {
 	CErrorDialog (parent, 20, 20, _(" File browser "), "%s\n [%s] ", _(" Unable to read directory "), errmsg);
@@ -663,6 +672,7 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
     last_focus = CGetFocus();
 
     if (reread_filelist) {
+        int changed_host = 0;
         char dir[MAX_PATH_LEN + 1];
 	struct file_entry *f;
 	if (ipinput && !ipinput->text.len) {
@@ -679,12 +689,16 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
             r = "";
             goto out;
         }
+
+        if (strcmp (last_ipinput, HOST))
+            changed_host = 1;
+
         strcpy (last_filterinput, filterinput->text.data);
         strcpy (last_ipinput, HOST);
 	CHourGlass (CFirstWindow);
-
         Cstrlcpy (dir, directory->text.data, MAX_PATH_LEN);
-	CRedrawFilelist (idf, f = get_file_entry_list (ipinput ? ipinput->text.data : 0, dir, FILELIST_FILES_ONLY, filterinput->text.data, errmsg), 0);
+        f = get_file_entry_list_host_change (changed_host, ipinput ? ipinput->text.data : 0, dir, filterinput->text.data, errmsg);
+	CRedrawFilelist (idf, f, 0);
         if (f && strcmp (dir, directory->text.data)) {
             CRedrawText (catstrs (identifier, ".dir", NULL), "%s", dir);
             free (f);

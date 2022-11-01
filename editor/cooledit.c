@@ -223,6 +223,7 @@ void get_next_hint_message (void)
 	gettext_noop("Drag a file name from the 'File browser' in the Window menu to insert it"),
 	gettext_noop("Use a macro to record repeatedly used key sequences - see the Command menu"),
 	gettext_noop("Use a TTF, OTF or PCF font directly from a file using -fn myfont.ttf:18"),
+	gettext_noop("Turn off anti-aliasing use the M suffice: -fn LiberationMono-Regular.ttf:16M"),
 	gettext_noop("Get a list of demo fonts with:  cooledit -font h"),
 	gettext_noop("See COMPOSING INTERNATIONAL CHARACTERS in the man page for CJK and extended Latin"),
 	gettext_noop("Undo key-for-key with Ctrl-Backspace"),
@@ -1735,6 +1736,9 @@ static int write_config (int clean)
     if (save_options_section (editor_options_file, "[Files]", t))
 	CErrorDialog (main_window, 20, 20, _(" Save desktop "), get_sys_error (_(" Error trying to save file ")));
     free (t);
+
+    save_setup (editor_options_file);
+
     t = NULL;
     if (save_options_section (editor_options_file, "[Input Histories]", t = get_all_lists ()))
 	CErrorDialog (main_window, 20, 20, _(" Save desktop "), get_sys_error (_(" Error trying to save file ")));
@@ -2260,6 +2264,7 @@ int main (int argc, char **argv)
 	    printf ("\n");
 	    printf ("Examples using fonts on file on the local machine: \n");
 	    printf ("\tcooledit -font NotoSansMono-Bold.ttf:14\n");
+	    printf ("\tcooledit -font LiberationMono-Regular.ttf:16M # 'M' means load in monochrome mode without anti-aliasing\n");
 	    printf ("\tcooledit -font 8x13B.pcf.gz,NotoColorEmoji.ttf:35 --widget-font  NotoSans-Regular.ttf:14     # then hit  Alt-I  then  End  then  PgDn  until 0x1F300\n");
 	    printf ("\tcooledit -font 9x15B.pcf.gz\n");
 	    printf ("\tcooledit -font /usr/share/fonts/truetype/ttf-dejavu/DejaVuSans-Bold.ttf:20\n");

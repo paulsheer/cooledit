@@ -43,6 +43,7 @@ struct aa_font {
     int load_id;
 #endif
     int mean_font_width;
+    int monochrome;
     enum force_fixed_width_enum force_fixed_width;
     XFontSet font_set;
     XFontStruct *font_struct;

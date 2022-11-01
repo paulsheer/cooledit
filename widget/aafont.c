@@ -614,16 +614,22 @@ u = 1000000000;
 
         face = (FT_Face) cache->face;
         if ((g = FT_Get_Char_Index(face, t))) {
+            if (f->f->monochrome)
+                error = FT_Load_Glyph(face, g, FT_LOAD_TARGET_MONO);
+            else
 #ifdef FT_LOAD_COLOR
-            error = FT_Load_Glyph(face, g, FT_LOAD_COLOR);
+                error = FT_Load_Glyph(face, g, FT_LOAD_COLOR);
 #else
 #error Color fonts not supported in your installation of the FreeType library.
 #error Please update your FreeType library libfreetype.so to the latest stable version.
 #error As an alternative just remove these lines and continue compiling -- it is fine.
-            error = FT_Load_Glyph(face, g, FT_LOAD_DEFAULT);
+                error = FT_Load_Glyph(face, g, FT_LOAD_DEFAULT);
 #endif
             if (!error && face->glyph) {
-                error = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
+                if (f->f->monochrome)
+                    error = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_MONO);
+                else
+                    error = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
                 if (!error && face->glyph->bitmap.width) {
                     found = 1;
                     U = cache->loaded_height;

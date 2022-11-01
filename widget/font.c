@@ -902,6 +902,7 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
     Window w;
     int l;
     int desired_height = 0;
+    int monochrome = 0;
     char *colon;
 
     xname = (char *) strdup (xname_);
@@ -920,7 +921,12 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
     }
 
     colon = strrchr(xname, ':');
-    if (colon && strlen(colon) <= 4) {
+    if (colon && strlen(colon) <= 5) {
+        char *mc;
+        if ((mc = strchr(colon, 'M'))) {
+            monochrome = 1;
+            *mc = '\0';
+        }
         desired_height = atoi(colon + 1);
         if (desired_height < 2 || desired_height > 255) {
             fprintf (stderr, "%s: cannot load font\n\t%s\n%s", CAppName, xname, font_error_string);
@@ -1016,6 +1022,7 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
     get_font_dimensions ();
     n->f.mean_font_width = FONT_MEAN_WIDTH;
     n->f.force_fixed_width = force_fixed_width;
+    n->f.monochrome = monochrome;
     if (FONT_MEAN_WIDTH <= 2) {
 	fprintf (stderr, _("%s: display %s cannot load font\n\t%s\n"), CAppName, DisplayString (CDisplay), xname);
         free (xname);

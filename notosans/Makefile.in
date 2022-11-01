@@ -338,7 +338,7 @@ syntax_DATA = sort.py 8x13B-ISO8859-1.pcf.gz 8x13B.pcf.gz 9x15B.pcf.gz NotoKufiA
         NotoSansWarangCiti-Regular.ttf NotoSansYi-Regular.ttf NotoSansZanabazarSquare-Regular.ttf NotoSerifAhom-Regular.ttf NotoSerifDivesAkuru-Regular.ttf \
         NotoSerifDogra-Regular.ttf NotoSerifKhojki-Regular.ttf NotoSerifMakasar-Regular.ttf NotoSerifNyiakengPuachueHmong-Regular.ttf NotoSerifOldUyghur-Regular.ttf \
         NotoSerifTangut-Regular.ttf NotoSerifToto-Regular.ttf NotoSerifYezidi-Regular.ttf NotoTraditionalNushu-Regular.ttf \
-        NotoColorEmoji.ttf
+        NotoColorEmoji.ttf LiberationMono-Regular.ttf
 
 all: all-am
 

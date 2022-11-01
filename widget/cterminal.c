@@ -112,8 +112,16 @@
 
 
 #define UTMP_SUPPORT
+
+#ifdef __FreeBSD__
+#define HAVE_STRUCT_UTMPX
+#define RXVT_UTMP_AS_UTMPX
+#define HAVE_UTMPX_HOST
+#else
 #define HAVE_STRUCT_UTMP
 #define HAVE_UTMP_HOST
+#endif
+
 
 
 /* ways to deal with getting/setting termios structure */
@@ -1392,7 +1400,7 @@ static void cterminal_makeutent_ (struct wtmp_command *tc, int dead)
 
 /* set up the new entry */
     ut.ut_type = dead ? DEAD_PROCESS : USER_PROCESS;
-#ifndef linux
+#if !defined(linux) && !defined(__FreeBSD__)
     ut.ut_exit.e_exit = 2;
 #endif
     strncpy (ut.ut_user, (pwent && pwent->pw_name) ? pwent->pw_name : "?",
@@ -1408,14 +1416,18 @@ static void cterminal_makeutent_ (struct wtmp_command *tc, int dead)
 # endif
 #endif
 
+#ifndef __FreeBSD__
 /* ut_name is normally the same as ut_user, but .... */
     strncpy (ut.ut_name, (pwent && pwent->pw_name) ? pwent->pw_name : "?",
 	     sizeof (ut.ut_name));
+#endif
 
     ut.ut_pid = tc->pid;
 
 #ifdef RXVT_UTMP_AS_UTMPX
+#ifndef __FreeBSD__
     ut.ut_session = tc->sid;
+#endif
     ut.ut_tv.tv_sec = tc->now;
     ut.ut_tv.tv_usec = 0;
 #else

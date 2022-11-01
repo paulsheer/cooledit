@@ -53,6 +53,7 @@
 #endif
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <grp.h>
 #ifdef GREEK_SUPPORT
 #include "grkelot.h"
 #endif
@@ -199,12 +200,12 @@ struct _ttymode_t {
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 
-static void cterminal_makeutent (struct cterminal *o, const char *pty, const char *hostname);
+static void cterminal_makeutent (struct cterminal *o, const char *hostname);
 static void cterminal_cleanutent (struct cterminal *o);
+static void cterminal_setttyowner (struct cterminal *o);
 
 
 
-static int r__ = 0; /* prevent warning warn_unused_result */
 extern char **environ;
 
 char **set_env_var (char *new_var[], int nn)
@@ -282,43 +283,6 @@ static const char *my_basename (const char *str)
     return (base ? base + 1 : str);
 }
 
-/* take care of suid/sgid super-user (root) privileges */
-/* EXTPROTO */
-static void cterminal_privileges (struct cterminal *o, int mode)
-{E_
-#ifdef HAVE_SETEUID
-    switch (mode) {
-    case CTERMINAL_IGNORE:
-        /*
-         * change effective uid/gid - not real uid/gid - so we can switch
-         * back to root later, as required
-         */
-        r__ += seteuid (getuid ());
-        r__ += setegid (getgid ());
-        break;
-    case CTERMINAL_SAVE:
-        o->euid = geteuid ();
-        o->egid = getegid ();
-        break;
-    case CTERMINAL_RESTORE:
-        r__ += seteuid (o->euid);
-        r__ += setegid (o->egid);
-        break;
-    }
-#else
-    switch (mode) {
-    case CTERMINAL_IGNORE:
-        r__ += setuid (getuid ());
-        r__ += setgid (getgid ());
-        /* FALLTHROUGH */
-    case CTERMINAL_SAVE:
-        /* FALLTHROUGH */
-    case CTERMINAL_RESTORE:
-        break;
-    }
-#endif
-}
-
 
 void cterminal_cleanup (struct cterminal *o)
 {E_
@@ -326,17 +290,7 @@ void cterminal_cleanup (struct cterminal *o)
     for (i = 0; i < o->n_envvar; i++)
         free (o->envvar[i]);
 
-    cterminal_privileges (o, CTERMINAL_RESTORE);
-    if (o->ttydev) {
-        if (o->changettyowner) {
-	    r__ += chmod (o->ttydev, o->ttyfd_stat.st_mode);
-	    r__ += chown (o->ttydev, o->ttyfd_stat.st_uid, o->ttyfd_stat.st_gid);
-        }
-    }
-#ifdef UTMP_SUPPORT
     cterminal_cleanutent (o);
-#endif
-    cterminal_privileges (o, CTERMINAL_IGNORE);
 
     if (o->ttydev) {
         free (o->ttydev);
@@ -391,27 +345,10 @@ static int cterminal_get_tty (struct cterminal *o, char *errmsg)
         ioctl (fd, I_PUSH, "ttcompat");
     }
 #endif
-    if (o->changettyowner) {
-        /* change ownership of tty to real uid and real group */
-        unsigned int mode = 0622;
-        gid_t gid = getgid ();
 
-#ifdef TTY_GID_SUPPORT
-        {
-            struct group *gr = getgrnam ("tty");
-
-            if (gr) {
-                /* change ownership of tty to real uid, "tty" gid */
-                gid = gr->gr_gid;
-                mode = 0620;
-            }
-        }
-#endif                          /* TTY_GID_SUPPORT */
-        cterminal_privileges (o, CTERMINAL_RESTORE);
-        r__ += fchown (fd, getuid (), gid);    /* fail silently */
-        r__ += fchmod (fd, mode);
-        cterminal_privileges (o, CTERMINAL_IGNORE);
-    }
+#warning on older unix boxes this may have a problem grabbing lots of terminals in the users name:
+    if (o->changettyowner)
+        cterminal_setttyowner (o);
 
     /*
      * Close all file descriptors.  If only stdin/out/err are closed,
@@ -933,15 +870,6 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
     ttymode_t tio;
 
     o->cmd_fd = -1;
-/*
- * Save and then give up any super-user privileges
- * If we need privileges in any area then we must specifically request it.
- * We should only need to be root in these cases:
- *  1.  write utmp entries on some systems
- *  2.  chown tty on some systems
- */
-    cterminal_privileges (o, CTERMINAL_SAVE);
-    cterminal_privileges (o, CTERMINAL_IGNORE);
 
 #if 0
     printf ("display_env_var = %s\n", config->display_env_var);
@@ -1157,9 +1085,8 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
 
 #ifdef UTMP_SUPPORT
     if (log_origin_host) {
-        cterminal_privileges (o, CTERMINAL_RESTORE);
-        cterminal_makeutent (o, o->ttydev, log_origin_host);       /* stamp /etc/utmp */
-        cterminal_privileges (o, CTERMINAL_IGNORE);
+        o->clean_utmp = 1;
+        cterminal_makeutent (o, log_origin_host);       /* stamp /etc/utmp */
     }
 #endif
 
@@ -1258,6 +1185,25 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
 
 
 
+#ifdef UTMP_SUPPORT
+
+static int utmp_pipe[2] = {-1, -1};
+
+struct wtmp_command {
+    struct cterminal ct;
+#define UTMP_CMD_MAKE           1
+#define UTMP_CMD_CLEAN          2
+#define UTMP_CMD_SETTTYOWNER    3
+    int cmd;
+    char hostname[256];
+    char ttydev[64];
+    pid_t sid;
+    pid_t pid;
+    time_t now;
+};
+
+#endif
+
 /*----------------------------------------------------------------------*
  * Public:
  *	extern void cleanutent (void);
@@ -1323,12 +1269,23 @@ void            rxvt_update_wtmp (const char *fname, const struct utmp *putmp)
 #endif				/* !HAVE_UTMPX_H */
 /* ------------------------------------------------------------------------- */
 #ifdef UTMP_SUPPORT
+
+static int NOWARN_BOUNDS(int v)
+{
+    volatile int r;
+    r = v;
+    return r;
+}
+
 /*
  * make a utmp entry
  */
 /* EXTPROTO */
-static void cterminal_makeutent (struct cterminal *o, const char *pty, const char *hostname)
+static void cterminal_makeutent_ (struct wtmp_command *tc, int dead)
 {E_
+    struct cterminal *o;
+    char ut_id[8];
+    char *pty;
     struct passwd  *pwent = getpwuid (getuid ());
     UTMP            ut;
 
@@ -1354,29 +1311,33 @@ static void cterminal_makeutent (struct cterminal *o, const char *pty, const cha
 
 #endif				/* !USE_SYSV_UTMP */
 
+    o = &tc->ct;
+    pty = tc->ttydev;
+    (void) o;
+
 /* BSD naming is of the form /dev/tty?? or /dev/pty?? */
 
     memset (&ut, 0, sizeof (UTMP));
     if (!strncmp (pty, "/dev/", 5))
 	pty += 5;		/* skip /dev/ prefix */
     if (!strncmp (pty, "pty", 3) || !strncmp (pty, "tty", 3))
-	strncpy (o->ut_id, (pty + 3), sizeof (o->ut_id));
+	strncpy (ut_id, (pty + 3), NOWARN_BOUNDS (sizeof (ut_id)));
     else
 #ifndef USE_SYSV_UTMP
     {
 	print_error ("can't parse tty name \"%s\"", pty);
-	o->ut_id[0] = '\0';	/* entry not made */
+	ut_id[0] = '\0';	/* entry not made */
 	return;
     }
 
     strncpy (ut.ut_line, pty, sizeof (ut.ut_line));
     strncpy (ut.ut_name, (pwent && pwent->pw_name) ? pwent->pw_name : "?",
 	     sizeof (ut.ut_name));
-    strncpy (ut.ut_host, hostname, sizeof (ut.ut_host));
+    strncpy (ut.ut_host, tc->hostname, sizeof (ut.ut_host));
     ut.ut_time = time (NULL);
 
     if ((fd0 = fopen (RXVT_REAL_UTMP_FILE, "r+")) == NULL)
-	o->ut_id[0] = '\0';	/* entry not made */
+	ut_id[0] = '\0';	/* entry not made */
     else {
 	o->utmp_pos = -1;
 	if ((fd1 = fopen (TTYTAB_FILENAME, "r")) != NULL) {
@@ -1394,9 +1355,11 @@ static void cterminal_makeutent (struct cterminal *o, const char *pty, const cha
 	    fclose (fd1);
 	}
 	if (o->utmp_pos < 0)
-	    o->ut_id[0] = '\0';	/* entry not made */
+	    ut_id[0] = '\0';	/* entry not made */
 	else {
 	    fseek (fd0, o->utmp_pos, 0);
+            if (dead)
+                memset (&ut, '\0', sizeof (UTMP));
 	    fwrite (&ut, sizeof (UTMP), 1, fd0);
 	}
 	fclose (fd0);
@@ -1407,10 +1370,10 @@ static void cterminal_makeutent (struct cterminal *o, const char *pty, const cha
 	int             n;
 
 	if (sscanf (pty, "pts/%d", &n) == 1)
-	    snprintf (o->ut_id, sizeof (o->ut_id), "vt%02x", (n % 256));	/* sysv naming */
+	    snprintf (ut_id, sizeof (ut_id), "vt%02x", (n % 256));	/* sysv naming */
 	else {
 	    printf ("can't parse tty name \"%s\"\n", pty);
-	    o->ut_id[0] = '\0';	/* entry not made */
+	    ut_id[0] = '\0';	/* entry not made */
 	    return;
 	}
     }
@@ -1422,23 +1385,23 @@ static void cterminal_makeutent (struct cterminal *o, const char *pty, const cha
 
     setutent ();		/* XXX: should be unnecessaray */
 
-    o->ut_id[sizeof (o->ut_id) - 1] = '\0';
-    strncpy (ut.ut_id, o->ut_id, sizeof (ut.ut_id));
-    ut.ut_type = DEAD_PROCESS;
+    ut_id[sizeof (ut_id) - 1] = '\0';
+    strncpy (ut.ut_id, ut_id, sizeof (ut.ut_id));
+    ut.ut_type = dead ? USER_PROCESS : DEAD_PROCESS;
     (void)getutid (&ut);	/* position to entry in utmp file */
 
 /* set up the new entry */
-    ut.ut_type = USER_PROCESS;
+    ut.ut_type = dead ? DEAD_PROCESS : USER_PROCESS;
 #ifndef linux
     ut.ut_exit.e_exit = 2;
 #endif
     strncpy (ut.ut_user, (pwent && pwent->pw_name) ? pwent->pw_name : "?",
 	     sizeof (ut.ut_user));
-    strncpy (ut.ut_id, o->ut_id, sizeof (ut.ut_id));
+    strncpy (ut.ut_id, ut_id, sizeof (ut.ut_id));
     strncpy (ut.ut_line, pty, sizeof (ut.ut_line));
 
 #if (defined(HAVE_UTMP_HOST) && ! defined(RXVT_UTMP_AS_UTMPX)) || (defined(HAVE_UTMPX_HOST) && defined(RXVT_UTMP_AS_UTMPX))
-    strncpy (ut.ut_host, hostname, sizeof (ut.ut_host));
+    strncpy (ut.ut_host, tc->hostname, sizeof (ut.ut_host));
 # ifndef linux
     if ((colon = strrchr (ut.ut_host, ':')) != NULL)
 	*colon = '\0';
@@ -1449,14 +1412,14 @@ static void cterminal_makeutent (struct cterminal *o, const char *pty, const cha
     strncpy (ut.ut_name, (pwent && pwent->pw_name) ? pwent->pw_name : "?",
 	     sizeof (ut.ut_name));
 
-    ut.ut_pid = getpid ();
+    ut.ut_pid = tc->pid;
 
 #ifdef RXVT_UTMP_AS_UTMPX
-    ut.ut_session = getsid (0);
-    ut.ut_tv.tv_sec = time (NULL);
+    ut.ut_session = tc->sid;
+    ut.ut_tv.tv_sec = tc->now;
     ut.ut_tv.tv_usec = 0;
 #else
-    ut.ut_time = time (NULL);
+    ut.ut_time = tc->now;
 #endif				/* HAVE_UTMPX_H */
 
     pututline (&ut);
@@ -1468,69 +1431,126 @@ static void cterminal_makeutent (struct cterminal *o, const char *pty, const cha
     endutent ();		/* close the file */
 #endif				/* !USE_SYSV_UTMP */
 }
+
 #endif				/* UTMP_SUPPORT */
 
-/* ------------------------------------------------------------------------- */
-#ifdef UTMP_SUPPORT
-/*
- * remove a utmp entry
- */
-/* EXTPROTO */
-static void            cterminal_cleanutent (struct cterminal *o)
+static void cterminal_to_utmpcommand (int cmd, struct wtmp_command *c, struct cterminal *o, const char *hostname)
 {E_
-    UTMP            ut;
-
-#ifndef USE_SYSV_UTMP
-    FILE           *fd;
-
-    if (o->ut_id[0] && ((fd = fopen (RXVT_REAL_UTMP_FILE, "r+")) != NULL)) {
-	memset (&ut, 0, sizeof (struct utmp));
-
-	fseek (fd, o->utmp_pos, 0);
-	fwrite (&ut, sizeof (struct utmp), 1, fd);
-
-	fclose (fd);
-    }
-#else				/* USE_SYSV_UTMP */
-    UTMP           *putmp;
-
-    if (!o->ut_id[0])
-	return;			/* entry not made */
-
-#if 0
-    /* XXX: most likely unnecessary.  could be harmful */
-    utmpname (RXVT_REAL_UTMP_FILE);
-#endif
-    memset (&ut, 0, sizeof (UTMP));
-    strncpy (ut.ut_id, o->ut_id, sizeof (ut.ut_id));
-    ut.ut_type = USER_PROCESS;
-
-    setutent ();		/* XXX: should be unnecessaray */
-
-    putmp = getutid (&ut);
-    if (!putmp || putmp->ut_pid != getpid ())
-	return;
-
-    putmp->ut_type = DEAD_PROCESS;
-
-#ifdef RXVT_UTMP_AS_UTMPX
-    putmp->ut_session = getsid (0);
-    putmp->ut_tv.tv_sec = time (NULL);
-    putmp->ut_tv.tv_usec = 0;
-#else				/* HAVE_UTMPX_H */
-    putmp->ut_time = time (NULL);
-#endif				/* HAVE_UTMPX_H */
-
-    pututline (putmp);
-
-#ifdef WTMP_SUPPORT
-    update_wtmp (RXVT_WTMP_FILE, putmp);
-#endif
-
-    endutent ();
-#endif				/* !USE_SYSV_UTMP */
+    assert (o->ttydev);
+    assert (o->ttydev[0]);
+    memset (c, '\0', sizeof (*c));
+    c->ct = *o;
+    c->ct.ttydev = NULL;        /* cannot pass pointers through a pipe */
+    c->cmd = cmd;
+    strncpy (c->hostname, hostname, sizeof (c->hostname));
+    c->hostname[sizeof (c->hostname) - 1] = '\0';
+    strncpy (c->ttydev, o->ttydev, sizeof (c->ttydev));
+    c->ttydev[sizeof (c->ttydev) - 1] = '\0';
+    c->sid = getsid (0);
+    c->pid = getpid ();
+    time (&c->now);
 }
-#endif
+
+static void cterminal_makeutent (struct cterminal *o, const char *hostname)
+{E_
+    struct wtmp_command c;
+    if (utmp_pipe[1] == -1)
+        return;
+    cterminal_to_utmpcommand (UTMP_CMD_MAKE, &c, o, hostname);
+    if (write (utmp_pipe[1], &c, sizeof (c)) != sizeof (c))
+        exit (1);
+}
+
+static void cterminal_cleanutent (struct cterminal *o)
+{E_
+    struct wtmp_command c;
+    if (utmp_pipe[1] == -1)
+        return;
+    cterminal_to_utmpcommand (UTMP_CMD_CLEAN, &c, o, "");
+    if (write (utmp_pipe[1], &c, sizeof (c)) != sizeof (c))
+        exit (1);
+}
+
+static void cterminal_setttyowner (struct cterminal *o)
+{E_
+    struct wtmp_command c;
+    if (utmp_pipe[1] == -1)
+        return;
+    cterminal_to_utmpcommand (UTMP_CMD_SETTTYOWNER, &c, o, "");
+    if (write (utmp_pipe[1], &c, sizeof (c)) != sizeof (c))
+        exit (1);
+}
+
+void cterminal_fork_utmp_manager (void)
+{
+    int res = 0;
+    pid_t p;
+    if (pipe (utmp_pipe)) {
+        perror ("pipe");
+        utmp_pipe[0] = -1;
+        utmp_pipe[1] = -1;
+        return;
+    }
+    p = fork ();
+    if (p < 0) {
+        perror ("fork");
+        return;
+    }
+    if (p) {
+        if (getuid () != geteuid () || getgid () != getegid ())
+            printf ("dropping setuid and setgid privileges\n");
+        if (seteuid (getuid ())) {
+            perror ("seteuid");
+            exit (1);
+        }
+        if (setegid (getgid ())) {
+            perror ("setegid");
+            exit (1);
+        }
+        return;
+    }
+    /* retain privileges */
+    if (!p) {
+        struct group *gr;       /* change ownership of tty to real uid, "tty" gid */
+        gid_t gid;
+        uid_t uid;
+        unsigned int mode = 0622;
+        gid = getgid ();
+        uid = getuid ();
+        if ((gr = getgrnam ("tty"))) {
+            gid = gr->gr_gid;
+            mode = 0620;
+        }
+        for (;;) {
+            struct wtmp_command c;
+            if (read (utmp_pipe[0], &c, sizeof (c)) != sizeof (c)) {
+                perror ("utmp commander, read");
+                exit (1);
+            }
+            switch (c.cmd) {
+            case UTMP_CMD_MAKE:
+                cterminal_makeutent_ (&c, 0);
+                break;
+            case UTMP_CMD_CLEAN:
+                if (c.ct.changettyowner) {
+                    res += chmod (c.ttydev, c.ct.ttyfd_stat.st_mode & 0x777);                   /* fail silently, prevent warning */
+                    res += chown (c.ttydev, c.ct.ttyfd_stat.st_uid, c.ct.ttyfd_stat.st_gid);    /* fail silently, prevent warning */
+                }
+                if (c.ct.clean_utmp)
+                    cterminal_makeutent_ (&c, 1);
+                break;
+            case UTMP_CMD_SETTTYOWNER:
+                /* change ownership of tty to real uid and real group */
+                res += chown (c.ttydev, uid, gid);      /* fail silently, prevent warning */
+                res += chmod (c.ttydev, mode);          /* fail silently, prevent warning */
+                break;
+            default:
+                fprintf (stderr, "utmp invalid command %d\n", c.cmd);
+                exit (res);
+            }
+        }
+    }
+}
 
 #endif          /* UTMP_SUPPORT */
 #endif          /* !MSWIN */

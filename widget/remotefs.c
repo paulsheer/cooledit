@@ -6240,6 +6240,7 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
     t->rd.alloced = TERMINAL_TCP_BUF_SIZE;
     t->wr.buf = (unsigned char *) malloc (128);
     t->wr.alloced = 128;
+    t->didread = 1; /* startup has not set lastwrite */
 
     peer_to_text (sd->reader_data->sock_data->sock, peername);
 
@@ -7113,6 +7114,8 @@ int main (int argc, char **argv)
     }
 
     read_keyfile (keyfile);
+
+    cterminal_fork_utmp_manager ();
 
     if (!option_no_crypto) { /* only one side need do this check */
         unsigned char *aeskey;

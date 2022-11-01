@@ -64,6 +64,17 @@ The address ranges allowed to connect. Remote clients not in the range are dropp
 who is allowed to connect since \fBremotefs\fP gives full access to all files on the machine. Both IPv4 and IPv6 addresses
 are supported. Ranges of the form IP-IP and IP/MASK are supported. An example is \fB10.1.0.1-10.1.0.99,fe80::9df2:ea47:67b9:644f,fe80::c6f0:196e:0000:123a/64,192.168.1.16/30\fP.
 .PP
+.SH INSTALLATION
+\fBRemotefs\fP should be installed with \fIutmp\fP privileges to allow properly logging to the w(1) or who(1) facility.
+This means using the following shell commands:
+
+.nf
+chgrp utmp remotefs
+chmod g+s remotefs
+.fi
+
+For securiy, these privileges are dropped on startup.
+.PP
 .SH ENCRYPTION
 The encryption algorithm is as follows.
 .PP

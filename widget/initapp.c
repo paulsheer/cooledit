@@ -166,7 +166,7 @@ static void open_display (char *app_name, int wait_for_display)
 	    exit (1);
 	}
     }
-    remotefs_set_display_log_for_wtmp (init_display);
+    remotefs_set_display_log_for_wtmp (XDisplayName (init_display));
     CRoot = DefaultRootWindow (CDisplay);
     if (verbose_operation)
 	printf (_ ("Opened display \"%s\"\n"), XDisplayName (init_display));

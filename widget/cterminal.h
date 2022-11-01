@@ -28,12 +28,12 @@ typedef struct _ttymode_t ttymode_t;
 struct cterminal {
     int cmd_fd;
     char *ttydev;
-    short changettyowner;
+    int changettyowner;
+    int clean_utmp;
 #ifdef HAVE_SETEUID
     uid_t euid;
     gid_t egid;
 #endif
-    char ut_id[8];
     struct stat ttyfd_stat;
     pid_t cmd_pid;
     pid_t cmd_parentpid;
@@ -55,6 +55,7 @@ struct cterminal {
 # define EXIT_FAILURE		        1	/* exit function failure */
 #endif
 
+void cterminal_fork_utmp_manager (void);
 void cterminal_tt_winsize (struct cterminal *o, int fd, int col, int row);
 void cterminal_cleanup (struct cterminal *o);
 int cterminal_get_pty (struct cterminal *o, char *errmsg);

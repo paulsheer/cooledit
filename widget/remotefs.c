@@ -50,10 +50,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
-#endif
-
 #include <sys/types.h>
 #include <sys/wait.h>
+#endif
 
 #include <errno.h>
 #ifdef HAVE_SYS_ERRNO_H
@@ -89,6 +88,7 @@
 
 
 #ifdef MSWIN
+
 
 #define makedev(a,b)            (((a) << 8) | ((b) & 0xFF))
 #define random()                rand()
@@ -1442,6 +1442,9 @@ void SHUTSOCK (struct sock_data *p)
 #define FILE_PROTO_MAGIC                        0x726f
 
 
+#define ACTION_SILENT            (-536870912)
+#define ACTION_KILL              (-553648128)
+
 #define REMOTEFS_ACTION_NOTIMPLEMENTED          0
 #define REMOTEFS_ACTION_READDIR                 1
 #define REMOTEFS_ACTION_READFILE                2
@@ -1501,6 +1504,7 @@ const char *error_code_descr[RFSERR_LAST_INTERNAL_ERROR + 1] = {
 #define MIN(a,b)        ((a) < (b) ? (a) : (b))
 #define MAX(a,b)        ((a) > (b) ? (a) : (b))
 
+#ifdef SHELL_SUPPORT
 
 int remotefs_shell_util (const char *host, struct remotefs_terminalio *io, struct cterminal_config *c, int dumb_terminal, char *const argv[], char *errmsg)
 {E_
@@ -1561,6 +1565,7 @@ printf("remotefs_shellread error => %s\n", errmsg);
     return count;
 }
 
+#endif
 
 struct cooledit_remote_msg_header {
     unsigned char magic[2];
@@ -3820,6 +3825,7 @@ static int remotefs_enablecrypto_ (CStr * r, struct crypto_data *crypto_data, co
     return -1;
 }
 
+#ifdef SHELL_SUPPORT
 struct cterminal_item {
     struct cterminal_item *next;
     struct cterminal cterminal;
@@ -3862,7 +3868,6 @@ static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_con
 
     assert (CTERMINAL_ERR_MSG_LEN == REMOTEFS_ERR_MSG_LEN);
 
-#ifdef SHELL_SUPPORT
     if (cterminal_run_command (cterminal, dumb_terminal ? NULL : config, dumb_terminal, log_origin_host, argv, errmsg)) {
         alloc_encode_error (r, RFSERR_SUCCESS, errmsg, 0);
         return -1;
@@ -3882,10 +3887,6 @@ static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_con
     encode_uint (&p, cterminal->cmd_fd);
     encode_uint (&p, config->erase_char);
     return 0;
-#else
-    alloc_encode_error (r, RFSERR_SUCCESS, "not supported on Windows", 0);
-    return -1;
-#endif
 }
 
 static void remotefs_shellresize_ (struct cterminal *c, int columns, int rows, CStr * r)
@@ -3912,6 +3913,8 @@ static void remotefs_shellsignal_ (pid_t pid, int signum, CStr * r)
     encode_uint (&p, REMOTEFS_SUCCESS);
     encode_sint (&p, killret);
 }
+
+#endif
 
 
 
@@ -4107,6 +4110,8 @@ static int local_enablecrypto (struct remotefs *rfs, const unsigned char *challe
     return 0;
 }
 
+#ifdef SHELL_SUPPORT
+
 static char display_log_for_wtmp[256] = "localhost";
 
 void remotefs_set_display_log_for_wtmp (const char *display)
@@ -4270,6 +4275,8 @@ static int local_shellsignal (struct remotefs *rfs, unsigned long pid, int signu
     *killret = killret_;
     MARSHAL_END_LOCAL(NULL);
 }
+
+#endif
 
 static int encode_listdir_params (unsigned char **p_, const char *directory, unsigned long options, const char *filter)
 {E_
@@ -4678,6 +4685,8 @@ static int remote_enablecrypto (struct remotefs *rfs, const unsigned char *chall
     MARSHAL_END_REMOTE(NULL);
 }
 
+#ifdef SHELL_SUPPORT
+
 static int len_args (char *const *s)
 {E_
     int i;
@@ -4686,7 +4695,7 @@ static int len_args (char *const *s)
 }
 
 void remotefs_free_terminalio (struct remotefs_terminalio *io)
-{
+{E_
     if (io->remotefs)
         remotefs_free (io->remotefs);
     if (io->reader_data) {
@@ -4963,6 +4972,8 @@ static int remote_shellsignal (struct remotefs *rfs, unsigned long pid, int sign
     *killret = killret_;
     MARSHAL_END_REMOTE(NULL);
 }
+
+#endif
 
 
 struct iprange_list;
@@ -5482,10 +5493,10 @@ static int recv_mesg_ (struct remotefs *rfs, struct reader_data *d, CStr * respo
         return -1;
     }
 
-    if (msglen < 0 || msglen > CRYPTO_CHUNK * 2) {
+    if (msglen > CRYPTO_CHUNK * 2) {
         const char *remote;
         remote = rfs->remotefs_private->remote;
-        snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "invalid msglen %lld from %s", msglen, remote);
+        snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "invalid msglen %ld from %s", (long) msglen, remote);
         SHUTSOCK (rfs->remotefs_private->sock_data);
         return -1;
     }
@@ -5605,6 +5616,8 @@ static int dummyerr_enablecrypto (struct remotefs *rfs, const unsigned char *cha
     return remotefs_error_return (errmsg);
 }
 
+#ifdef SHELL_SUPPORT
+
 static int dummyerr_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
@@ -5635,6 +5648,8 @@ static int dummyerr_shellsignal (struct remotefs *rfs, unsigned long pid, int si
     return remotefs_error_return (errmsg);
 }
 
+#endif
+
 
 
 struct remotefs remotefs_dummyerr = {
@@ -5648,12 +5663,21 @@ struct remotefs remotefs_dummyerr = {
     dummyerr_realpathize,
     dummyerr_gethomedir,
     dummyerr_enablecrypto,
+#ifdef SHELL_SUPPORT
     dummyerr_shellcmd,
     dummyerr_shellresize,
     dummyerr_shellread,
     dummyerr_shellwrite,
     dummyerr_shellkill,
     dummyerr_shellsignal,
+#else
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+#endif
     NULL,
 };
 
@@ -5668,12 +5692,21 @@ struct remotefs remotefs_local = {
     local_realpathize,
     local_gethomedir,
     local_enablecrypto,
+#ifdef SHELL_SUPPORT
     local_shellcmd,
     local_shellresize,
     local_shellread,
     local_shellwrite,
     local_shellkill,
     local_shellsignal,
+#else
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+#endif
     NULL
 };
 
@@ -5688,12 +5721,21 @@ struct remotefs remotefs_socket = {
     remote_realpathize,
     remote_gethomedir,
     remote_enablecrypto,
+#ifdef SHELL_SUPPORT
     remote_shellcmd,
     remote_shellresize,
     remote_shellread,
     remote_shellwrite,
     remote_shellkill,
     remote_shellsignal,
+#else
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+#endif
     NULL
 };
 
@@ -5843,6 +5885,7 @@ struct remotefs *remotefs_new (const char *host_, char *errmsg)
 
 
 
+#ifdef SHELL_SUPPORT
 
 struct ttyreader_ {
     unsigned char *buf;
@@ -5859,10 +5902,16 @@ struct ttyreader_data {
     struct ttyreader_ wr;
 };
 
+#endif
+
 struct server_data {
     struct reader_data *reader_data;
+#ifdef SHELL_SUPPORT
     struct ttyreader_data *ttyreader_data;
+#endif
 };
+
+#ifdef SHELL_SUPPORT
 
 static void close_cterminal (int line, struct sock_data *sock_data, struct cterminal *c, int server_death)
 {E_
@@ -5917,6 +5966,8 @@ static void free_ttyreader_data (struct ttyreader_data *p)
         free (p->wr.buf);
     free (p);
 }
+
+#endif
 
 static int remote_action_fn_v1_notimplemented (struct server_data *sd, CStr * s, const unsigned char *in, int inlen)
 {E_
@@ -6153,6 +6204,8 @@ static int remote_action_fn_v2_enablecrypto (struct server_data *sd, CStr *s, co
     return 0;
 }
 
+#ifdef SHELL_SUPPORT
+
 static void free_args (char **s)
 {
     int i;
@@ -6173,7 +6226,6 @@ void peer_to_text (SOCKET sock, char *peername)
     }
     ip_to_text (remotefs_sockaddr_t_address (&a), remotefs_sockaddr_t_addresslen (&a), peername);
 }
-
 
 static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
 {E_
@@ -6255,9 +6307,6 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
 
     return 0;
 }
-
-#define ACTION_SILENT            (-536870912)
-#define ACTION_KILL              (-553648128)
 
 static int remote_action_fn_v3_shellresize (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
 {E_
@@ -6371,6 +6420,8 @@ static int remote_action_fn_v3_shellsignal (struct server_data *sd, CStr *s, con
     return 0;
 }
 
+#endif
+
 struct action_item {
     int logging;
     int sendack;
@@ -6388,12 +6439,14 @@ struct action_item action_list[] = {
     { 1, 1, remote_action_fn_v1_realpathize, },                 /* REMOTEFS_ACTION_REALPATHIZE             */
     { 1, 1, remote_action_fn_v1_gethomedir, },                  /* REMOTEFS_ACTION_GETHOMEDIR              */
     { 1, 1, remote_action_fn_v2_enablecrypto, },                /* REMOTEFS_ACTION_ENABLECRYPTO            */
+#ifdef SHELL_SUPPORT
     { 1, 1, remote_action_fn_v3_shellcmd, },                    /* REMOTEFS_ACTION_SHELLCMD                */
     { 0, 0, remote_action_fn_v3_shellresize, },                 /* REMOTEFS_ACTION_SHELLRESIZE             */
     { 1, 1, remote_action_fn_v3_dummyaction, },                 /* REMOTEFS_ACTION_SHELLREAD   (not handled by server) */
     { 0, 0, remote_action_fn_v3_shellwrite, },                  /* REMOTEFS_ACTION_SHELLWRITE              */
     { 1, 0, remote_action_fn_v3_shellkill, },                   /* REMOTEFS_ACTION_SHELLKILL               */
     { 1, 1, remote_action_fn_v3_shellsignal, },                 /* REMOTEFS_ACTION_SHELLSIGNAL             */
+#endif
 };
 
 static unsigned int client_count = 0L;
@@ -6655,7 +6708,9 @@ static void process_client (struct client_item *i)
 #undef r
 }
 
-// 0x7fffffffde70
+
+#ifdef SHELL_SUPPORT
+
 static long tv_delta (struct timeval *now, struct timeval *then)
 {
     long long now_, then_;
@@ -6671,13 +6726,18 @@ static long tv_delta (struct timeval *now, struct timeval *then)
     return (long) (now_ - then_);
 }
 
+#endif
+
+
 static void free_service (struct service *serv)
 {E_
     struct client_item *i, *next;
     for (i = serv->client_list; i; i = next) {
         assert (i->magic == CLIENT_MAGIC);
+#ifdef SHELL_SUPPORT
         if (i->sd.ttyreader_data)
             close_cterminal (__LINE__, &i->sock_data, &i->sd.ttyreader_data->cterminal, 1);
+#endif
         SHUTSOCK (&i->sock_data);
         next = i->next;
         i->magic = 0;
@@ -6688,8 +6748,10 @@ static void free_service (struct service *serv)
         if (i->sock_data.crypto_data.symauth) {
             symauth_free (i->sock_data.crypto_data.symauth);
         }
+#ifdef SHELL_SUPPORT
         if (i->sd.ttyreader_data)
             free_ttyreader_data (i->sd.ttyreader_data);
+#endif
         free (i);
     }
     serv->client_list = NULL;
@@ -6722,6 +6784,7 @@ static void run_service (struct service *serv)
         FD_SET (i->sock_data.sock, &rd);
         FD_SET (i->sock_data.sock, &wr);
         n = MAX (n, i->sock_data.sock);
+#ifdef SHELL_SUPPORT
         if (i->sd.ttyreader_data) {
             struct ttyreader_data *tt;
             tt = i->sd.ttyreader_data;
@@ -6735,6 +6798,7 @@ static void run_service (struct service *serv)
                 n = MAX (n, tt->cterminal.cmd_fd);
             }
         }
+#endif
     }
     FD_SET (serv->h, &rd);
     n = MAX (n, serv->h);
@@ -6777,6 +6841,7 @@ static void run_service (struct service *serv)
                 time (&i->last_accessed);
             }
         }
+#ifdef SHELL_SUPPORT
         if (i->sd.ttyreader_data) {
             int c;
             struct ttyreader_data *tt;
@@ -6836,6 +6901,7 @@ static void run_service (struct service *serv)
                 }
             }
         }
+#endif
     }
 
     for (j = &serv->client_list;;) {
@@ -6846,9 +6912,12 @@ static void run_service (struct service *serv)
             break;
         assert (i->magic == CLIENT_MAGIC);
 
+#ifdef SHELL_SUPPORT
         if (i->sd.ttyreader_data && i->sd.ttyreader_data->cterminal.cmd_fd >= 0) {
             /* no timeout while shell is running */
-        } else if (now > i->last_accessed + 25 /* for firewalls that are 30s timeout */) {
+        } else
+#endif
+        if (now > i->last_accessed + 25 /* for firewalls that are 30s timeout */) {
             struct cooledit_remote_msg_ack ack;
             memset (&ack, '\0', sizeof (ack));
             encode_msg_ack (&ack, RFSERR_SERVER_CLOSED_IDLE_CLIENT, MSG_VERSION);
@@ -6868,8 +6937,10 @@ static void run_service (struct service *serv)
             if (i->sock_data.crypto_data.symauth) {
                 symauth_free (i->sock_data.crypto_data.symauth);
             }
+#ifdef SHELL_SUPPORT
             if (i->sd.ttyreader_data)
                 free_ttyreader_data (i->sd.ttyreader_data);
+#endif
             free (i);
             *j = next;
         } else {
@@ -6886,12 +6957,16 @@ static void run_service (struct service *serv)
 
 static int kill_received = 0;
 
+#ifdef SHELL_SUPPORT
+
 static void kill_handler (int x)
 {
     printf ("exitting\n");
     fflush (stdout);
     kill_received = 1;
 }
+
+#endif
 
 void remotefs_serverize (const char *listen_address, const char *option_range)
 {E_
@@ -7115,7 +7190,9 @@ int main (int argc, char **argv)
 
     read_keyfile (keyfile);
 
+#ifdef SHELL_SUPPORT
     cterminal_fork_utmp_manager ();
+#endif
 
     if (!option_no_crypto) { /* only one side need do this check */
         unsigned char *aeskey;

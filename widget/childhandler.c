@@ -1,6 +1,10 @@
 /* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 
 #include "inspect.h"
+#include "global.h"
+
+#ifndef MSWIN
+
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -136,4 +140,6 @@ void set_child_handler (void)
     memset (children_exitted, 0, sizeof (children_exitted));
     signal (SIGCHLD, childhandler);
 }
+
+#endif          /* MSWIN */
 

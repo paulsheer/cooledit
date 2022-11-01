@@ -1,6 +1,6 @@
 #!/bin/bash
 
-src='widget/remotefs.c widget/regex.c widget/regtools.c widget/pathdup.c widget/ipv6scan.c widget/aes.c widget/sha256.c widget/symauth.c'
+src='widget/remotefs.c widget/regex.c widget/regtools.c widget/pathdup.c widget/ipv6scan.c widget/aes.c widget/sha256.c widget/symauth.c widget/cterminal.c widget/childhandler.c'
 def='-DSTANDALONE -DNO_INSPECT'
 inc='-I. -Iwidget'
 

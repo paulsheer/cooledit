@@ -1,4 +1,6 @@
 
+#ifndef MSWIN
+
 struct cterminal_config {
     char display_env_var[128];
     char term_name[32];
@@ -16,8 +18,6 @@ struct cterminal_config {
 #define CTERMINAL_TTYDEV_SZ     64
     char ttydev[CTERMINAL_TTYDEV_SZ]; /* return value */
 };
-
-#ifndef MSWIN
 
 #ifdef HAVE_TERMIOS_H
 typedef struct termios ttymode_t;

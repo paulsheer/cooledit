@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 
+#include "inspect.h"
+#include "global.h"
+
 #ifndef MSWIN
 
-#include "inspect.h"
 #include <config.h>
 #if defined(__sun) && defined(__SVR4)
 #include <sys/strredir.h>

@@ -557,6 +557,13 @@ static wchar_t *Cwchar_to_wchar (const C_wchar_t * s, int l)
     return ret;
 }
 
+int CIsAaFont (void)
+{
+    if (FONT_ANTIALIASING)
+        return 1;
+    return 0;
+}
+
 int CImageTextWidthWC (XChar2b * s, C_wchar_t * swc, int l)
 {E_
     if (FONT_USE_FONT_SET)
@@ -865,11 +872,12 @@ static Window get_dummy_gc (void)
 			   CWOverrideRedirect, &xswa);
     }
     gcv.foreground = COLOR_BLACK;
+    gcv.line_width = 1 + BOLD_EFFECT_OFF;
     if (current_font->f.font_struct) {
 	gcv.font = current_font->f.font_struct->fid;
-	CGC = XCreateGC (CDisplay, dummy_window, GCForeground | GCFont, &gcv);
+	CGC = XCreateGC (CDisplay, dummy_window, GCForeground | GCFont | GCLineWidth, &gcv);
     } else {
-	CGC = XCreateGC (CDisplay, dummy_window, GCForeground, &gcv);
+	CGC = XCreateGC (CDisplay, dummy_window, GCForeground | GCLineWidth, &gcv);
     }
     return dummy_window;
 }

@@ -141,6 +141,8 @@ int allocate_color (char *color);
 #define CSetColor(c)			XSetForeground(CDisplay, CGC, c)
 /* set the background color */
 #define CSetBackgroundColor(c)		XSetBackground(CDisplay, CGC, c)
+/* true if anti-aliasing support which implies bold support through TrueColor visual and local ximage rendering */
+int CIsAaFont (void);
 /* width of text in pixels in the current font */
 int CImageTextWidth (const char *s, int l);
 /* width of a string in pixels in the current font Wide Character */

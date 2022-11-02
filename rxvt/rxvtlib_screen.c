@@ -2098,11 +2098,11 @@ static int draw_image_string_ (Display * display, Drawable d, GC gc, int x, int 
 {
     XGCValues values_return;
     XGetGCValues (display, gc, GCForeground | GCBackground, &values_return);
-    if (bfont)
-        CSetColor (scale_brightness (values_return.foreground, 3, 5));
-    else
-        CSetColor (values_return.foreground);
-    CSetBackgroundColor (values_return.background);
+    if (CIsAaFont ())
+        values_return.line_width = bfont ? (1 + 1 /* BOLD_EFFECT_STRONG */) : (1 + 2 /* BOLD_EFFECT_WEAK */);
+    else if (!bfont)
+        values_return.foreground = scale_brightness (values_return.foreground, 11, 16);
+    XChangeGC (display, CGC, GCForeground | GCBackground | GCLineWidth, &values_return);
     return CImageTextWC (d, x, y, NULL, string, length);
 }
 #endif

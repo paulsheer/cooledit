@@ -424,7 +424,8 @@ void            rxvtlib_Create_Windows (rxvtlib *o, int argc, const char *const 
 	gcvalue.foreground = o->PixColors[Color_fg];
 	gcvalue.background = o->PixColors[Color_bg];
 	gcvalue.graphics_exposures = 0;
-	o->TermWin.gc = XCreateGC (o->Xdisplay, o->TermWin.vt, GCForeground | GCBackground | GCGraphicsExposures, &gcvalue);
+	gcvalue.line_width = 1 + 0 /* BOLD_EFFECT_OFF */;
+	o->TermWin.gc = XCreateGC (o->Xdisplay, o->TermWin.vt, GCForeground | GCBackground | GCGraphicsExposures | GCLineWidth, &gcvalue);
     }
 #else
 /* graphics context for the vt window */

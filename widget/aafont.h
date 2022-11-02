@@ -28,6 +28,9 @@ int XAaDrawImageString16 (Display * display, Drawable d, GC gc, const struct aa_
 extern int option_interchar_spacing;
 extern int option_rgb_order;
 
+#define BOLD_EFFECT_OFF         0
+#define BOLD_EFFECT_STRONG      1
+#define BOLD_EFFECT_WEAK        2
 
 #define X_ENLARGEMENT	3
 #define Y_ENLARGEMENT	5

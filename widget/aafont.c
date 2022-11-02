@@ -36,6 +36,9 @@ int option_interchar_spacing = 0;
 #include FT_FREETYPE_H
 #endif
 
+#undef MAX
+#define MAX(a, b)               ((a) > (b) ? (a) : (b))
+
 /* harfbuzz library is C++  :-(  */
 void _ZSt20__throw_system_errori(void)
 {E_
@@ -101,6 +104,7 @@ struct aa_font_cache {
     GC gc;
     unsigned long fg;
     unsigned long bg;
+    int bold_effect;
     struct aa_glyph_cache *glyph[NUM_GLYPH_BLOCKS];
     int num_pixmaps;
     int scale;
@@ -141,11 +145,11 @@ static void aa_free (struct aa_font_cache *f)
 }
 
 /* passing fg == bg == 0 finds any load_id */
-static struct aa_font_cache *aa_find (int load_id, unsigned long fg, unsigned long bg)
+static struct aa_font_cache *aa_find (int load_id, unsigned long fg, unsigned long bg, int bold_effect)
 {E_
     struct aa_font_cache *p;
     for (p = font_cache_list; p; p = p->next)
-	if (load_id && p->f->load_id == load_id && p->fg == fg && p->bg == bg)
+	if (load_id && p->f->load_id == load_id && p->fg == fg && p->bg == bg && p->bold_effect == bold_effect)
 	    return p;
     return 0;
 }
@@ -532,7 +536,7 @@ static const char *hex_chars[16][7] = {
 }};
 #endif
 
-static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int dy, FT_Bitmap *bitmap, FT_Glyph_Metrics *metrics, int u_, int U_, int u, int U, int w, int h, int W, int H, int blank);
+static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int dy, FT_Bitmap *bitmap, FT_Glyph_Metrics *metrics, int u_, int U_, int u, int U, int w, int h, int W, int H, int blank, int bold_effect);
 int load_one_freetype_font (FT_Face *face, const char *filename, int *desired_height, int *loaded_height);
 
 /* third level */
@@ -714,11 +718,11 @@ u = 1000000000;
     dy = f->f->font_freetype.measured_ascent * U / u - metrics->horiBearingY / 64;
 
     if (!metrics_only)
-        glyph->pixmap = aa_render_glyph (f->gc, f->fg, f->bg, dx, dy, &face->glyph->bitmap, metrics, u_, U_, u, U, w, h, W, H, the_chr == ' ');
+        glyph->pixmap = aa_render_glyph (f->gc, f->fg, f->bg, dx, dy, &face->glyph->bitmap, metrics, u_, U_, u, U, w, h, W, H, the_chr == ' ', f->bold_effect);
 }
 
 
-static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int dy, FT_Bitmap *bitmap, FT_Glyph_Metrics *metrics, int u_, int U_, int u, int U, int w, int h, int W, int H, int blank)
+static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int dy, FT_Bitmap *bitmap, FT_Glyph_Metrics *metrics, int u_, int U_, int u, int U, int w, int h, int W, int H, int blank, int bold_effect)
 {E_
     XImage *shrunk;
     Pixmap pixmap;
@@ -752,6 +756,12 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
     g_fg = ((font_fg >> green_shift) & green_mask);
     b_fg = ((font_fg >> blue_shift) & blue_mask);
 
+    if (bold_effect == BOLD_EFFECT_WEAK) {
+        r_fg = r_fg * 7 / 8;
+        g_fg = g_fg * 7 / 8;
+        b_fg = b_fg * 7 / 8;
+    }
+
     r_bg = ((font_bg >> red_shift) & red_mask);;
     g_bg = ((font_bg >> green_shift) & green_mask);
     b_bg = ((font_bg >> blue_shift) & blue_mask);
@@ -766,10 +776,22 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
     if (dx < 0)
         dx = 0;
 
+#define BOLD_Y_SHIFT            0
+#define BOLD_X_SHIFT            1
+#define BOLD(grey, bold)        MAX(16 * grey, 13 * bold)
+
 #define DECLM \
     unsigned long grey = 0; \
     unsigned long r, g, b; \
     unsigned long pixel; \
+    int ii, jj
+
+#define DECLMbold \
+    unsigned long grey = 0; \
+    unsigned long bold = 0; \
+    unsigned long r, g, b; \
+    unsigned long pixel; \
+    int iib, jjb; \
     int ii, jj
 
 #define RGB(s) \
@@ -779,10 +801,24 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
     pixel = (r << red_shift) | (g << green_shift) | (b << blue_shift); \
     XPutPixel (shrunk, i, j, pixel)
 
+#define RGBbold(s) \
+    r = (r_fg * BOLD(grey, bold) / (16 * (s))) + (r_bg * (16 * (s) - BOLD(grey, bold)) / (16 * (s))); \
+    g = (g_fg * BOLD(grey, bold) / (16 * (s))) + (g_bg * (16 * (s) - BOLD(grey, bold)) / (16 * (s))); \
+    b = (b_fg * BOLD(grey, bold) / (16 * (s))) + (b_bg * (16 * (s) - BOLD(grey, bold)) / (16 * (s))); \
+    pixel = (r << red_shift) | (g << green_shift) | (b << blue_shift); \
+    XPutPixel (shrunk, i, j, pixel)
+
 #define RGBC \
     r = (r * red_mask   + (255 - grey) * r_bg) / 255; \
     g = (g * green_mask + (255 - grey) * g_bg) / 255; \
     b = (b * blue_mask  + (255 - grey) * b_bg) / 255; \
+    pixel = (r << red_shift) | (g << green_shift) | (b << blue_shift); \
+    XPutPixel (shrunk, i, j, pixel)
+
+#define RGBCbold \
+    r = (16 * (r) * red_mask   + (4095 - BOLD(grey, bold)) * r_bg) / 4095; \
+    g = (16 * (g) * green_mask + (4095 - BOLD(grey, bold)) * g_bg) / 4095; \
+    b = (16 * (b) * blue_mask  + (4095 - BOLD(grey, bold)) * b_bg) / 4095; \
     pixel = (r << red_shift) | (g << green_shift) | (b << blue_shift); \
     XPutPixel (shrunk, i, j, pixel)
 
@@ -795,11 +831,10 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
                 ii = i - dx; \
                 if (jj >= 0 && ii >= 0 && jj < bitmap->rows && ii < bitmap->width && !blank) { \
                     grey = ((bitmap->buffer[jj * bitmap->pitch + (ii / s8)] >> (s7 - (ii % s8))) & s1); \
-                    RGB(s1); \
                 } else { \
                     grey = 0; \
-                    RGB(s1); \
                 } \
+                RGB(s1); \
             } \
         } else { \
             for (i = 0; i < w; i++) { \
@@ -808,11 +843,53 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
                 ii = i - dx; \
                 if (jj >= 0 && ii >= 0 && jj < bitmap->rows && ii < bitmap->width && !blank) { \
                     grey = ((bitmap->buffer[(h - 1 - jj) * (-bitmap->pitch) + (ii / s8)] >> (s7 - (ii % s8))) & s1); \
-                    RGB(s1); \
                 } else { \
                     grey = 0; \
-                    RGB(s1); \
                 } \
+                RGB(s1); \
+            } \
+        } \
+    } while (0)
+
+#define BITMbold(s1,s7,s8) \
+    do { \
+        if (bitmap->pitch >= 0) { \
+            DECLMbold; \
+            for (i = 0; i < w; i++) { \
+                jjb = j - dy + BOLD_Y_SHIFT; \
+                iib = i - dx - BOLD_X_SHIFT; \
+                if (jjb >= 0 && iib >= 0 && jjb < bitmap->rows && iib < bitmap->width && !blank) { \
+                    bold = ((bitmap->buffer[jjb * bitmap->pitch + (iib / s8)] >> (s7 - (iib % s8))) & s1); \
+                } else { \
+                    bold = 0; \
+                } \
+                jj = j - dy; \
+                ii = i - dx; \
+                if (jj >= 0 && ii >= 0 && jj < bitmap->rows && ii < bitmap->width && !blank) { \
+                    grey = ((bitmap->buffer[jj * bitmap->pitch + (ii / s8)] >> (s7 - (ii % s8))) & s1); \
+                } else { \
+                    grey = 0; \
+                } \
+                RGBbold(s1); \
+            } \
+        } else { \
+            for (i = 0; i < w; i++) { \
+                DECLMbold; \
+                jjb = j - dy + BOLD_Y_SHIFT; \
+                iib = i - dx - BOLD_X_SHIFT; \
+                if (jjb >= 0 && iib >= 0 && jjb < bitmap->rows && iib < bitmap->width && !blank) { \
+                    bold = ((bitmap->buffer[(h - 1 - jjb) * (-bitmap->pitch) + (iib / s8)] >> (s7 - (iib % s8))) & s1); \
+                } else { \
+                    bold = 0; \
+                } \
+                jj = j - dy; \
+                ii = i - dx; \
+                if (jj >= 0 && ii >= 0 && jj < bitmap->rows && ii < bitmap->width && !blank) { \
+                    grey = ((bitmap->buffer[(h - 1 - jj) * (-bitmap->pitch) + (ii / s8)] >> (s7 - (ii % s8))) & s1); \
+                } else { \
+                    grey = 0; \
+                } \
+                RGBbold(s1); \
             } \
         } \
     } while (0)
@@ -826,11 +903,10 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
                 ii = i - dx; \
                 if (jj >= 0 && ii >= 0 && jj < bitmap->rows && ii < bitmap->width && !blank) { \
                     grey = bitmap->buffer[jj * bitmap->pitch + ii]; \
-                    RGB(255); \
                 } else { \
                     grey = 0; \
-                    RGB(255); \
                 } \
+                RGB(255); \
             } \
         } else { \
             DECLM; \
@@ -839,11 +915,53 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
                 ii = i - dx; \
                 if (jj >= 0 && ii >= 0 && jj < bitmap->rows && ii < bitmap->width && !blank) { \
                     grey = bitmap->buffer[(h - 1 - jj) * (-bitmap->pitch) + ii]; \
-                    RGB(255); \
                 } else { \
                     grey = 0; \
-                    RGB(255); \
                 } \
+                RGB(255); \
+            } \
+        } \
+    } while (0)
+
+#define BIT255bold \
+    do { \
+        if (bitmap->pitch >= 0) { \
+            DECLMbold; \
+            for (i = 0; i < w; i++) { \
+                jjb = j - dy + BOLD_Y_SHIFT; \
+                iib = i - dx - BOLD_X_SHIFT; \
+                if (jjb >= 0 && iib >= 0 && jjb < bitmap->rows && iib < bitmap->width && !blank) { \
+                    bold = bitmap->buffer[jjb * bitmap->pitch + iib]; \
+                } else { \
+                    bold = 0; \
+                } \
+                jj = j - dy; \
+                ii = i - dx; \
+                if (jj >= 0 && ii >= 0 && jj < bitmap->rows && ii < bitmap->width && !blank) { \
+                    grey = bitmap->buffer[jj * bitmap->pitch + ii]; \
+                } else { \
+                    grey = 0; \
+                } \
+                RGBbold(255); \
+            } \
+        } else { \
+            DECLMbold; \
+            for (i = 0; i < w; i++) { \
+                jjb = j - dy + BOLD_Y_SHIFT; \
+                iib = i - dx - BOLD_X_SHIFT; \
+                if (jjb >= 0 && iib >= 0 && jjb < bitmap->rows && iib < bitmap->width && !blank) { \
+                    bold = bitmap->buffer[(h - 1 - jjb) * (-bitmap->pitch) + iib]; \
+                } else { \
+                    bold = 0; \
+                } \
+                jj = j - dy; \
+                ii = i - dx; \
+                if (jj >= 0 && ii >= 0 && jj < bitmap->rows && ii < bitmap->width && !blank) { \
+                    grey = bitmap->buffer[(h - 1 - jj) * (-bitmap->pitch) + ii]; \
+                } else { \
+                    grey = 0; \
+                } \
+                RGBbold(255); \
             } \
         } \
     } while (0)
@@ -957,7 +1075,7 @@ for (j = 0; j < w; j++) {
 */
 
 
-#define SUM_COLOR(result, color_y_x) \
+#define SUM_COLORi(ii, jj, result, color_y_x) \
     do { \
         int x, y; \
         int c3 = 0, C3 = 0; \
@@ -1004,6 +1122,7 @@ for (j = 0; j < w; j++) {
             result = 0; \
     } while (0)
 
+#define SUM_COLOR(result, color_y_x)    SUM_COLORi(ii, jj, result, color_y_x)
 
 #define BITC \
     do { \
@@ -1017,11 +1136,10 @@ for (j = 0; j < w; j++) {
                     SUM_COLOR(g, bitmap->buffer[y * bitmap->pitch + x * 4 + 1]); \
                     SUM_COLOR(r, bitmap->buffer[y * bitmap->pitch + x * 4 + 2]); \
                     SUM_COLOR(grey, bitmap->buffer[y * bitmap->pitch + x * 4 + 3]); \
-                    RGBC; \
                 } else { \
                     r = g = b = grey = 0; \
-                    RGBC; \
                 } \
+                RGBC; \
             } \
         } else { \
             DECLM; \
@@ -1033,11 +1151,10 @@ for (j = 0; j < w; j++) {
                     SUM_COLOR(g, bitmap->buffer[(h - 1 - y) * (-bitmap->pitch) + x * 4 + 1]); \
                     SUM_COLOR(r, bitmap->buffer[(h - 1 - y) * (-bitmap->pitch) + x * 4 + 2]); \
                     SUM_COLOR(grey, bitmap->buffer[(h - 1 - y) * (-bitmap->pitch) + x * 4 + 3]); \
-                    RGBC; \
                 } else { \
                     r = g = b = grey = 0; \
-                    RGBC; \
                 } \
+                RGBC; \
             } \
         } \
     } while (0)
@@ -1051,11 +1168,10 @@ for (j = 0; j < w; j++) {
                 ii = i; \
                 if (!blank) { \
                     SUM_COLOR(grey, bitmap->buffer[y * bitmap->pitch + x]); \
-                    RGB(255); \
                 } else { \
                     grey = 0; \
-                    RGB(255); \
                 } \
+                RGB(255); \
             } \
         } else { \
             DECLM; \
@@ -1064,11 +1180,53 @@ for (j = 0; j < w; j++) {
                 ii = i; \
                 if (!blank) { \
                     SUM_COLOR(grey, bitmap->buffer[(h - 1 - y) * (-bitmap->pitch) + x]); \
-                    RGB(255); \
                 } else { \
                     grey = 0; \
-                    RGB(255); \
                 } \
+                RGB(255); \
+            } \
+        } \
+    } while (0)
+
+#define BIT255Sbold \
+    do { \
+        if (bitmap->pitch >= 0) { \
+            DECLMbold; \
+            for (i = 0; i < w; i++) { \
+                jjb = j + BOLD_Y_SHIFT; \
+                iib = i - BOLD_X_SHIFT; \
+                if (!blank) { \
+                    SUM_COLORi(iib, jjb, bold, bitmap->buffer[y * bitmap->pitch + x]); \
+                } else { \
+                    bold = 0; \
+                } \
+                jj = j; \
+                ii = i; \
+                if (!blank) { \
+                    SUM_COLOR(grey, bitmap->buffer[y * bitmap->pitch + x]); \
+                } else { \
+                    grey = 0; \
+                } \
+                RGBbold(255); \
+            } \
+        } else { \
+            DECLMbold; \
+            for (i = 0; i < w; i++) { \
+                jjb = j + BOLD_Y_SHIFT; \
+                iib = i - BOLD_X_SHIFT; \
+                if (!blank) { \
+                    SUM_COLORi(iib, jjb, bold, bitmap->buffer[(h - 1 - y) * (-bitmap->pitch) + x]); \
+                } else { \
+                    bold = 0; \
+                } \
+                jj = j; \
+                ii = i; \
+                if (!blank) { \
+                    SUM_COLOR(grey, bitmap->buffer[(h - 1 - y) * (-bitmap->pitch) + x]); \
+                } else { \
+                    grey = 0; \
+                } \
+                RGBbold(255); \
             } \
         } \
     } while (0)
@@ -1085,6 +1243,32 @@ for (j = 0; j < w; j++) {
     } while (0)
 
     if (U == u && U_ == u_) {
+        if (bold_effect == BOLD_EFFECT_STRONG) {
+            for (j = 0; j < h; j++) {
+                switch (bitmap->pixel_mode) {
+                case FT_PIXEL_MODE_MONO:
+                    BITMbold(1,7,8);
+                    break;
+                case FT_PIXEL_MODE_GRAY2:
+                    BITMbold(3,3,4);
+                    break;
+                case FT_PIXEL_MODE_GRAY4:
+                    BITMbold(15,1,2);
+                    break;
+                case FT_PIXEL_MODE_GRAY:
+                    BIT255bold;
+                    break;
+#ifdef FT_LOAD_COLOR
+                case FT_PIXEL_MODE_BGRA:
+                    BITC;
+                    break;
+#endif
+                default:
+                    FGZERO;
+                    break;
+                }
+            }
+        } else
         for (j = 0; j < h; j++) {
             switch (bitmap->pixel_mode) {
             case FT_PIXEL_MODE_MONO:
@@ -1110,6 +1294,32 @@ for (j = 0; j < w; j++) {
             }
         }
     } else {
+        if (bold_effect == BOLD_EFFECT_STRONG) {
+            for (j = 0; j < h; j++) {
+                switch ((int) bitmap->pixel_mode) {
+                case FT_PIXEL_MODE_MONO:
+                    BITMbold(1,7,8);
+                    break;
+                case FT_PIXEL_MODE_GRAY2:
+                    BITMbold(3,3,4);
+                    break;
+                case FT_PIXEL_MODE_GRAY4:
+                    BITMbold(15,1,2);
+                    break;
+                case FT_PIXEL_MODE_GRAY:
+                    BIT255Sbold;
+                    break;
+#ifdef FT_LOAD_COLOR
+                case FT_PIXEL_MODE_BGRA:
+                    BITC;
+                    break;
+#endif
+                default:
+                    FGZERO;
+                    break;
+                }
+            }
+        } else
         for (j = 0; j < h; j++) {
             switch ((int) bitmap->pixel_mode) {
             case FT_PIXEL_MODE_MONO:
@@ -1185,8 +1395,8 @@ int _XAaDrawImageStringWC (Display * display, Drawable d, GC gc, const struct aa
     if (metrics_only) {
         f = aa_find_metrics_only(aa_font->load_id);
     } else {
-        XGetGCValues (display, gc, GCForeground | GCBackground, &values_return);
-        f = aa_find (aa_font->load_id, values_return.foreground, values_return.background);
+        XGetGCValues (display, gc, GCForeground | GCBackground | GCLineWidth, &values_return);
+        f = aa_find (aa_font->load_id, values_return.foreground, values_return.background, values_return.line_width - 1);
     }
 
     if (!f) {
@@ -1205,6 +1415,7 @@ int _XAaDrawImageStringWC (Display * display, Drawable d, GC gc, const struct aa
         f->gc = gc;
         f->fg = values_return.foreground;
         f->bg = values_return.background;
+        f->bold_effect = values_return.line_width - 1;
     }
 
     if (swc) {

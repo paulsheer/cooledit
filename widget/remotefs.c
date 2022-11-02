@@ -4192,12 +4192,13 @@ static int local_shellread (struct remotefs *rfs, struct remotefs_terminalio *io
 
     chunk->data = malloc (2048);
     chunk->len = 0;
+
+  retry:
     r = read (io->cmd_fd, chunk->data, 2048);
     if (r > 0) {
         chunk->len = r;
     } else if (r < 0 && (ERROR_EINTR() || ERROR_EAGAIN())) {
-        free (chunk->data);
-        chunk->data = NULL;
+        goto retry;
     } else {
         if (!r) {
             strcpy (errmsg, "file descriptor closed");

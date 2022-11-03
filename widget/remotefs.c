@@ -89,6 +89,8 @@
 
 #ifdef MSWIN
 
+#undef WSAEVENT
+typedef void *WSAEVENT;
 
 #define makedev(a,b)            (((a) << 8) | ((b) & 0xFF))
 #define random()                rand()
@@ -1413,6 +1415,9 @@ struct sock_data {
     int ref;
     int setsockopt_rcvbuf;
     SOCKET sock;
+#ifdef MSWIN
+    WSAEVENT ms_event;
+#endif
     unsigned char password[REMOTEFS_MAX_PASSWORD_LEN];
     int crypto;
     int enable_crypto;
@@ -1431,6 +1436,14 @@ void SHUTSOCK (struct sock_data *p)
         p->crypto = 0;
         p->crypto_data.read_buf.avail = 0;
         p->crypto_data.read_buf.written = 0;
+
+#ifdef MSWIN
+        WSAEventSelect(p->sock, NULL, 0);
+        if (p->ms_event) {
+            WSACloseEvent (p->ms_event);
+            p->ms_event = 0;
+        }
+#endif
 
         shutdown (p->sock, 2);
         closesocket (p->sock);
@@ -6800,20 +6813,39 @@ static void run_service (struct service *serv)
 {E_
     int there_are_shells_running = 0;
     struct client_item *i, **j;
+#ifdef MSWIN
+    WSAEVENT ms_events[1024];
+    WSAEVENT accept_event;
+    int n_ms_events = 0;
+    struct timeval now;
+    int r;
+#else
     int n = 0;
     int r;
     fd_set rd, wr;
     struct timeval tv, now;
     FD_ZERO (&rd);
     FD_ZERO (&wr);
+#endif
 
     for (i = serv->client_list; i; i = i->next) {
         assert (i->magic == CLIENT_MAGIC);
-        unsigned char *tbuf = NULL;
-        int *tupdate = NULL;
-        if (recv_space_avail (&i->d, &tbuf, &tupdate) > 0) {
+#ifdef MSWIN
+        assert (!i->sock_data.ms_event);
+#endif
+        if (recv_space_avail (&i->d, NULL, NULL) > 0) {
+#ifdef MSWIN
+            if (!i->sock_data.ms_event) {
+                i->sock_data.ms_event = ms_events[n_ms_events] = WSACreateEvent();
+                n_ms_events++;
+#warning what if too many?
+            }
+            assert (i->sock_data.ms_event);
+            WSAEventSelect(i->sock_data.sock, i->sock_data.ms_event, FD_READ | FD_CLOSE);
+#else
             FD_SET (i->sock_data.sock, &rd);
             n = MAX (n, i->sock_data.sock);
+#endif
         }
 #ifdef SHELL_SUPPORT
         if (i->sd.ttyreader_data) {
@@ -6835,12 +6867,27 @@ static void run_service (struct service *serv)
         }
 #endif
     }
+#ifdef MSWIN
+    accept_event = ms_events[n_ms_events++] = WSACreateEvent();
+    assert (accept_event);
+    WSAEventSelect(serv->h, accept_event, FD_ACCEPT);
+#else
     FD_SET (serv->h, &rd);
     n = MAX (n, serv->h);
+#endif
 
 /* maximum keyboard repeat rate is 30, so this is set to not hangup the user when he hold repeat PgDown/Down keys */
 #define SENDS_PER_SEC           50
 
+#ifdef MSWIN
+    r = WaitForMultipleObjectsEx (n_ms_events, ms_events, FALSE, there_are_shells_running ? (1000 / SENDS_PER_SEC) : 500, TRUE);
+    if (r == WAIT_TIMEOUT) {
+        n_ms_events = 0;
+    } else if (r == WAIT_IO_COMPLETION || r == (WAIT_OBJECT_0 + n_ms_events)) {
+        printf("WaitForMultipleObjectsEx error %d\n", r);
+        goto clear_events;
+    }
+#else
     tv.tv_sec = 0;
     tv.tv_usec = there_are_shells_running ? (1000000 / SENDS_PER_SEC) : 500000;
     r = select (n + 1, &rd, &wr, NULL, &tv);
@@ -6855,14 +6902,42 @@ static void run_service (struct service *serv)
         exit (1);
     }
     childhandler_ ();
+#endif
+
     gettimeofday (&now, NULL);
 
+#ifdef MSWIN
+    WSANETWORKEVENTS ev;
+    memset (&ev, '\0', sizeof (ev));
+    if (WSAEnumNetworkEvents (serv->h, accept_event, &ev)) {
+        printf ("1 WSAEnumNetworkEvents error %ld\n", (long) WSAGetLastError ());
+        abort ();
+    }
+    if ((ev.lNetworkEvents & FD_ACCEPT))
+        add_client (serv);
+#else
     if (FD_ISSET (serv->h, &rd))
         add_client (serv);
+#endif
 
     for (i = serv->client_list; i; i = i->next) {
         assert (i->magic == CLIENT_MAGIC);
-        if (FD_ISSET (i->sock_data.sock, &rd)) {
+#ifdef MSWIN
+        WSANETWORKEVENTS ev;
+        memset (&ev, '\0', sizeof (ev));
+        if (n_ms_events && WSAEnumNetworkEvents (i->sock_data.sock, i->sock_data.ms_event, &ev)) {
+            printf ("WSAEnumNetworkEvents error %ld\n", (long) WSAGetLastError ());
+            abort ();
+        }
+        if ((ev.lNetworkEvents & FD_CLOSE)) {
+            i->kill = KILL_HARD;
+            continue;
+        }
+        if ((ev.lNetworkEvents & FD_READ))
+#else
+        if (FD_ISSET (i->sock_data.sock, &rd))
+#endif
+        {
             if (i->kill) {
                 int discard;
                 char discard_data[16384];
@@ -6999,6 +7074,18 @@ static void run_service (struct service *serv)
             j = &i->next;
         }
     }
+
+#ifdef MSWIN
+  clear_events:
+    for (i = serv->client_list; i; i = i->next) {
+        assert (i->magic == CLIENT_MAGIC);
+        if (i->sock_data.ms_event) {
+            WSAEventSelect(i->sock_data.sock, NULL, 0);
+            WSACloseEvent(i->sock_data.ms_event);
+            i->sock_data.ms_event = 0;
+        }
+    }
+#endif
 }
 
 #if (RETSIGTYPE==void)

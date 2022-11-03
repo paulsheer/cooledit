@@ -3102,6 +3102,31 @@ static int recv_crypto_ (struct sock_data *sock_data, struct crypto_buf *d, unsi
     return plaintextlen - pad_bytes;
 }
 
+static int recv_space_avail (struct reader_data *r, unsigned char **buf, int **update)
+{E_
+    if (r->sock_data->crypto) {
+        struct crypto_buf *d;
+        d = &r->sock_data->crypto_data.read_buf;
+        assert (d->avail >= d->written);
+        if (d->avail == sizeof (d->buf)) {
+            memmove (d->buf, d->buf + d->written, d->avail - d->written);
+            d->avail -= d->written;
+            d->written = 0;
+        }
+        assert (d->avail < sizeof (d->buf));
+        if (buf) {
+            *buf = (d->buf + d->avail);
+            *update = &d->avail;
+        }
+        return sizeof (d->buf) - d->avail;
+    }
+    if (buf) {
+        *buf = (r->buf + r->avail);
+        *update = &r->avail;
+    }
+    return READER_CHUNK - r->avail;
+}
+
 static int recv_crypto (struct sock_data *sock_data, unsigned char *out, int outsz, int *waiting, long milliseconds, enum reader_error *reader_error)
 {E_
     int c;
@@ -6582,7 +6607,9 @@ static void process_client (struct client_item *i)
         goto errout; \
     } while (0)
 
-    if (reader (&i->d, &m, sizeof (m), &reader_error)) {
+    if (reader_timeout (&i->d, &m, sizeof (m), WAITFORREAD_DONTWAIT, &reader_error, 0)) {
+        if (reader_error == READER_ERROR_TIMEOUT)
+            return;
         if (reader_error != READER_ERROR_NOERROR) {
             /* This can only happy if crypto is enabled: */
             int ignore;
@@ -6782,14 +6809,21 @@ static void run_service (struct service *serv)
 
     for (i = serv->client_list; i; i = i->next) {
         assert (i->magic == CLIENT_MAGIC);
-        FD_SET (i->sock_data.sock, &rd);
-        FD_SET (i->sock_data.sock, &wr);
-        n = MAX (n, i->sock_data.sock);
+        unsigned char *tbuf = NULL;
+        int *tupdate = NULL;
+        if (recv_space_avail (&i->d, &tbuf, &tupdate) > 0) {
+            FD_SET (i->sock_data.sock, &rd);
+            n = MAX (n, i->sock_data.sock);
+        }
 #ifdef SHELL_SUPPORT
         if (i->sd.ttyreader_data) {
             struct ttyreader_data *tt;
             tt = i->sd.ttyreader_data;
             there_are_shells_running = 1;
+            if (tt->rd.written < tt->rd.avail) {
+                FD_SET (i->sock_data.sock, &wr);
+                n = MAX (n, i->sock_data.sock);
+            }
             if (tt->cterminal.cmd_fd >= 0 && tt->rd.avail < tt->rd.alloced) {
                 FD_SET (tt->cterminal.cmd_fd, &rd);
                 n = MAX (n, tt->cterminal.cmd_fd);
@@ -6838,8 +6872,22 @@ static void run_service (struct service *serv)
                 else
                     i->discard += discard;
             } else {
-                process_client (i);
-                time (&i->last_accessed);
+                int tavail, c;
+                unsigned char *tbuf = NULL;
+                int *tupdate = NULL;
+                tavail = recv_space_avail (&i->d, &tbuf, &tupdate);
+                if ((c = recv (i->sock_data.sock, (void *) tbuf, tavail, 0)) > 0) {
+                    (*tupdate) += c;
+                    process_client (i);
+                    time (&i->last_accessed);
+                } else if (!c) {
+                    printf ("%d: Error: closed by remote,\n", i->id);
+                    i->kill = KILL_HARD;
+                } else if (c < 0 && (ERROR_EINTR() || ERROR_EAGAIN())) {
+                    /* ok */
+                } else {
+                    printf ("%d: Error: %s,\n", i->id, strerrorsocket ());
+                }
             }
         }
 #ifdef SHELL_SUPPORT

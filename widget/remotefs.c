@@ -6877,9 +6877,7 @@ static void run_service (struct service *serv)
                 int *tupdate = NULL;
                 tavail = recv_space_avail (&i->d, &tbuf, &tupdate);
                 if ((c = recv (i->sock_data.sock, (void *) tbuf, tavail, 0)) > 0) {
-                    (*tupdate) += c;
-                    process_client (i);
-                    time (&i->last_accessed);
+                    /* ok */
                 } else if (!c) {
                     printf ("%d: Error: closed by remote,\n", i->id);
                     i->kill = KILL_HARD;
@@ -6887,6 +6885,11 @@ static void run_service (struct service *serv)
                     /* ok */
                 } else {
                     printf ("%d: Error: %s,\n", i->id, strerrorsocket ());
+                }
+                if (c > 0) {
+                    (*tupdate) += c;
+                    process_client (i);
+                    time (&i->last_accessed);
                 }
             }
         }

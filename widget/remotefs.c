@@ -73,17 +73,16 @@
 
 #define SHELL_SUPPORT
 
-#ifdef MSWIN
-#undef SHELL_SUPPORT
-#endif
-
-
 #include "remotefs.h"
 #include "dirtools.h"
 #include "aes.h"
 #include "sha256.h"
 #include "symauth.h"
+#ifdef MSWIN
+#include "mswinchild.h"
+#else
 #include "cterminal.h"
+#endif
 #include "childhandler.h"
 
 
@@ -1518,6 +1517,7 @@ const char *error_code_descr[RFSERR_LAST_INTERNAL_ERROR + 1] = {
 #define MAX(a,b)        ((a) > (b) ? (a) : (b))
 
 #ifdef SHELL_SUPPORT
+#ifndef MSWIN
 
 int remotefs_shell_util (const char *host, struct remotefs_terminalio *io, struct cterminal_config *c, int dumb_terminal, char *const argv[], char *errmsg)
 {E_
@@ -1578,6 +1578,7 @@ printf("remotefs_shellread error => %s\n", errmsg);
     return count;
 }
 
+#endif
 #endif
 
 struct cooledit_remote_msg_header {
@@ -3864,6 +3865,7 @@ static int remotefs_enablecrypto_ (CStr * r, struct crypto_data *crypto_data, co
 }
 
 #ifdef SHELL_SUPPORT
+#ifndef MSWIN
 struct cterminal_item {
     struct cterminal_item *next;
     struct cterminal cterminal;
@@ -3899,6 +3901,8 @@ static void delete_cterminal (unsigned long pid)
     }
 }
 
+#endif
+
 static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_config *config, int dumb_terminal, const char *log_origin_host, char *const argv[], CStr * r)
 {E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
@@ -3912,8 +3916,26 @@ static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_con
     }
     assert (cterminal->cmd_pid > 1);
 
+#ifdef MSWIN
+    const char *faketty = "/dev/wintty";
     r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
     r->len += encode_uint (NULL, cterminal->cmd_pid);
+    r->len += encode_uint (NULL, (unsigned long long) cterminal->process_handle);
+    r->len += encode_str (NULL, faketty, strlen (faketty));
+    r->len += encode_uint (NULL, (__int64) cterminal->cmd_fd_stdin);
+    r->len += encode_uint (NULL, 0);
+    r->data = (char *) malloc (r->len);
+    p = (unsigned char *) r->data;
+    encode_uint (&p, REMOTEFS_SUCCESS);
+    encode_uint (&p, cterminal->cmd_pid);
+    encode_uint (&p, (unsigned long long) cterminal->process_handle);
+    encode_str (&p, faketty, strlen (faketty));
+    encode_uint (&p, (__int64) cterminal->cmd_fd_stdin);
+    encode_uint (&p, 0);
+#else
+    r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
+    r->len += encode_uint (NULL, cterminal->cmd_pid);
+    r->len += encode_uint (NULL, 0ULL);
     r->len += encode_str (NULL, cterminal->ttydev, strlen (cterminal->ttydev));
     r->len += encode_uint (NULL, cterminal->cmd_fd);
     r->len += encode_uint (NULL, config->erase_char);
@@ -3921,11 +3943,16 @@ static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_con
     p = (unsigned char *) r->data;
     encode_uint (&p, REMOTEFS_SUCCESS);
     encode_uint (&p, cterminal->cmd_pid);
+    encode_uint (&p, 0ULL);
     encode_str (&p, cterminal->ttydev, strlen (cterminal->ttydev));
     encode_uint (&p, cterminal->cmd_fd);
     encode_uint (&p, config->erase_char);
+#endif
+
     return 0;
 }
+
+#ifndef MSWIN
 
 static void remotefs_shellresize_ (struct cterminal *c, int columns, int rows, CStr * r)
 {E_
@@ -3952,6 +3979,7 @@ static void remotefs_shellsignal_ (pid_t pid, int signum, CStr * r)
     encode_sint (&p, killret);
 }
 
+#endif
 #endif
 
 
@@ -4149,6 +4177,7 @@ static int local_enablecrypto (struct remotefs *rfs, const unsigned char *challe
 }
 
 #ifdef SHELL_SUPPORT
+#ifndef MSWIN
 
 static char display_log_for_wtmp[256] = "localhost";
 
@@ -4161,7 +4190,7 @@ void remotefs_set_display_log_for_wtmp (const char *display)
 static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg)
 {E_
     CStr s;
-    unsigned long long cmd_pid_, cmd_fd_, erase_char_;
+    unsigned long long cmd_pid_, process_handle_, cmd_fd_, erase_char_;
     struct cterminal_item *ct;
 
     *errmsg = '\0';
@@ -4181,12 +4210,15 @@ static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io,
     /* remotefs_shellcmd_ returns non-zero if error, so no error possible here */
     if (decode_uint (&p, end, &cmd_pid_))
         return -1;
+    if (decode_uint (&p, end, &process_handle_))
+        return -1;
     if (decode_str (&p, end, config->ttydev, sizeof (config->ttydev)))
         return -1;
     if (decode_uint (&p, end, &cmd_fd_))
         return -1;
     if (decode_uint (&p, end, &erase_char_))
         return -1;
+    (void) process_handle_; /* windows only */
     config->cmd_pid = (unsigned long) cmd_pid_;
     config->erase_char = (int) erase_char_;
     io->cmd_fd = (int) cmd_fd_;
@@ -4315,6 +4347,7 @@ static int local_shellsignal (struct remotefs *rfs, unsigned long pid, int signu
     MARSHAL_END_LOCAL(NULL);
 }
 
+#endif
 #endif
 
 static int encode_listdir_params (unsigned char **p_, const char *directory, unsigned long options, const char *filter)
@@ -4726,6 +4759,10 @@ static int remote_enablecrypto (struct remotefs *rfs, const unsigned char *chall
 
 #ifdef SHELL_SUPPORT
 
+#define TERMINAL_TCP_BUF_SIZE           (REMOTEFS_FUDGE_MTU * 2 + 256)
+
+#ifndef MSWIN
+
 static int len_args (char *const *s)
 {E_
     int i;
@@ -4753,14 +4790,12 @@ void remotefs_free_terminalio (struct remotefs_terminalio *io)
 static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const args[], char *errmsg)
 {E_
     CStr s, msg;
-    unsigned long long cmd_pid_, cmd_fd_, erase_char_;
+    unsigned long long cmd_pid_, process_handle_, cmd_fd_, erase_char_;
     unsigned char *q;
     int no_such_action = 0;
     int i, n_args;
     *errmsg = '\0';
 
-#define FUDGE_MTU                       1312
-#define TERMINAL_TCP_BUF_SIZE           (FUDGE_MTU * 2)
     rfs->remotefs_private->sock_data->setsockopt_rcvbuf = TERMINAL_TCP_BUF_SIZE;
 
     n_args = len_args (args);
@@ -4813,6 +4848,10 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
         free (s.data);
         return -1;
     }
+    if (decode_uint (&p, end, &process_handle_)) {
+        free (s.data);
+        return -1;
+    }
     if (decode_str (&p, end, config->ttydev, sizeof (config->ttydev))) {
         free (s.data);
         return -1;
@@ -4826,6 +4865,9 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
         return -1;
     }
     config->cmd_pid = (unsigned long) cmd_pid_;
+#ifdef MSWIN
+    config->process_handle = (MSWIN_HANDLE) process_handle_;
+#endif
     config->erase_char = (int) erase_char_;
 
     io->reader_data = (struct reader_data *) malloc (sizeof (*io->reader_data));
@@ -4842,33 +4884,51 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
     MARSHAL_END_REMOTE(NULL);
 }
 
-static int send_blind_message (struct sock_data *sock_data, int action, char *data, int l)
+#endif
+
+static int send_blind_message (struct sock_data *sock_data, int action, char *data1, int l1, char *data2, int l2)
 {
-    CStr v[4];
+    CStr v[5];
+    int n = 0;
+    int tot = 0;
     unsigned char t1data[64];
     unsigned char t2data[64];
     unsigned char *p;
     struct cooledit_remote_msg_header m;
 
-    v[0].data = (char *) &m;
-    v[0].len = sizeof (m);
+    v[n].data = (char *) &m;
+    v[n].len = sizeof (m);
+    n++;
 
     p = t1data;
-    v[1].data = (char *) p;
-    v[1].len = encode_uint (&p, REMOTEFS_SUCCESS);
+    v[n].data = (char *) p;
+    v[n].len = encode_uint (&p, REMOTEFS_SUCCESS);
+    tot += v[n++].len;
 
     /* see encode_cstr() */
     p = t2data;
-    v[2].data = (char *) p;
-    v[2].len = encode_uint (&p, l);
+    v[n].data = (char *) p;
+    v[n].len = encode_uint (&p, l1 + l2);
+    tot += v[n++].len;
 
-    v[3].data = (char *) data;
-    v[3].len = l;
+    if (data1) {
+        v[n].data = (char *) data1;
+        v[n].len = l1;
+        tot += v[n++].len;
+    }
 
-    encode_msg_header (&m, v[1].len + v[2].len + v[3].len, MSG_VERSION, action, FILE_PROTO_MAGIC);
+    if (data2) {
+        v[n].data = (char *) data2;
+        v[n].len = l2;
+        tot += v[n++].len;
+    }
 
-    return writervec (sock_data, v, 4);
+    encode_msg_header (&m, tot, MSG_VERSION, action, FILE_PROTO_MAGIC);
+
+    return writervec (sock_data, v, n);
 }
+
+#ifndef MSWIN
 
 static int send_blind_message1 (struct sock_data *sock_data, int action, char *data, int l)
 {
@@ -4952,7 +5012,7 @@ static int remote_shellwrite (struct remotefs *rfs, struct remotefs_terminalio *
     q = (unsigned char *) msg.data;
     encode_str (&q, chunk->data, chunk->len);
 
-    if (send_blind_message (rfs->remotefs_private->sock_data, REMOTEFS_ACTION_SHELLWRITE, chunk->data, chunk->len)) {
+    if (send_blind_message (rfs->remotefs_private->sock_data, REMOTEFS_ACTION_SHELLWRITE, chunk->data, chunk->len, NULL, 0)) {
         snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "fail trying to write terminal data remote: [%s]", strerror (errno));
         free (msg.data);
         SHUTSOCK (rfs->remotefs_private->sock_data);
@@ -5012,6 +5072,7 @@ static int remote_shellsignal (struct remotefs *rfs, unsigned long pid, int sign
     MARSHAL_END_REMOTE(NULL);
 }
 
+#endif
 #endif
 
 
@@ -5731,7 +5792,7 @@ struct remotefs remotefs_local = {
     local_realpathize,
     local_gethomedir,
     local_enablecrypto,
-#ifdef SHELL_SUPPORT
+#if defined(SHELL_SUPPORT) && !defined(MSWIN)
     local_shellcmd,
     local_shellresize,
     local_shellread,
@@ -5760,7 +5821,7 @@ struct remotefs remotefs_socket = {
     remote_realpathize,
     remote_gethomedir,
     remote_enablecrypto,
-#ifdef SHELL_SUPPORT
+#if defined(SHELL_SUPPORT) && !defined(MSWIN)
     remote_shellcmd,
     remote_shellresize,
     remote_shellread,
@@ -5927,6 +5988,12 @@ struct remotefs *remotefs_new (const char *host_, char *errmsg)
 #ifdef SHELL_SUPPORT
 
 struct ttyreader_ {
+#ifdef MSWIN
+    OVERLAPPED overlapped;
+    int overlapped_pending;
+#endif
+#define TTYREADER_MAGIC         0x28fc5e99
+    unsigned int magic;
     unsigned char *buf;
     int avail;
     int written;
@@ -5939,6 +6006,7 @@ struct ttyreader_data {
     struct timeval lastwrite;
     int didread;
     struct ttyreader_ wr;
+    struct ttyreader_ echo;
 };
 
 #endif
@@ -5955,8 +6023,18 @@ struct server_data {
 static void close_cterminal (int line, struct sock_data *sock_data, struct cterminal *c, int server_death)
 {E_
     char msg[256] = "";
-    int wstatus = 0;
+#ifdef MSWIN
+printf("HERE %p %d\n", c->process_handle, line);
+    if (c->process_handle) {
+        unsigned long wstatus = 0;
+        if (kill_child_get_exit_status (c->cmd_pid, c->process_handle, &wstatus))
+            snprintf (msg, sizeof (msg), "%d: process %ld died with exit code %ld", line, (long) c->cmd_pid, wstatus);
+        CloseHandle (c->process_handle);
+        c->process_handle = NULL;
+    }
+#else
     if (c->cmd_pid) {
+        int wstatus = 0;
         for (;;) {
             childhandler_ ();
             if (CChildExitted (c->cmd_pid, &wstatus))
@@ -5967,6 +6045,7 @@ static void close_cterminal (int line, struct sock_data *sock_data, struct cterm
         if (WIFEXITED (wstatus))
             snprintf (msg, sizeof (msg), "%d: process %ld died with exit code %d", line, (long) c->cmd_pid, (int) WEXITSTATUS (wstatus));
     }
+#endif
     if (msg[0]) {
         /* ok */
     } else if (server_death) {
@@ -5975,10 +6054,23 @@ static void close_cterminal (int line, struct sock_data *sock_data, struct cterm
         snprintf (msg, sizeof (msg), "%d: process %ld died with unknown status", line, (long) c->cmd_pid);
     }
     c->cmd_pid = 0;
+
+#ifdef MSWIN
+#warning kill process
+    if (c->cmd_fd_stdin != MSWIN_INVALID_HANDLE_VALUE) {
+        CloseHandle (c->cmd_fd_stdin);
+        c->cmd_fd_stdin = MSWIN_INVALID_HANDLE_VALUE;
+    }
+    if (c->cmd_fd_stdout != MSWIN_INVALID_HANDLE_VALUE) {
+        CloseHandle (c->cmd_fd_stdout);
+        c->cmd_fd_stdout = MSWIN_INVALID_HANDLE_VALUE;
+    }
+#else
     if (c->cmd_fd >= 0) {
         close (c->cmd_fd);
         c->cmd_fd = -1;
     }
+#endif
 
     if (sock_data) {
         struct cooledit_remote_msg_header m;
@@ -6327,11 +6419,28 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
 
     t = (struct ttyreader_data *) malloc (sizeof (struct ttyreader_data));
     memset (t, '\0', sizeof (struct ttyreader_data));
+    t->rd.magic = TTYREADER_MAGIC;
+    t->wr.magic = TTYREADER_MAGIC;
+#ifdef MSWIN
+    t->rd.buf = (unsigned char *) malloc (TERMINAL_TCP_BUF_SIZE);
+    t->rd.alloced = TERMINAL_TCP_BUF_SIZE;
+    t->wr.buf = (unsigned char *) malloc (TERMINAL_TCP_BUF_SIZE);
+    t->wr.alloced = TERMINAL_TCP_BUF_SIZE;
+    t->echo.buf = (unsigned char *) malloc (TERMINAL_TCP_BUF_SIZE);
+    t->echo.alloced = TERMINAL_TCP_BUF_SIZE;
+#else
     t->rd.buf = (unsigned char *) malloc (TERMINAL_TCP_BUF_SIZE);
     t->rd.alloced = TERMINAL_TCP_BUF_SIZE;
     t->wr.buf = (unsigned char *) malloc (128);
     t->wr.alloced = 128;
+#endif
     t->didread = 1; /* startup has not set lastwrite */
+#ifdef MSWIN
+    t->cterminal.cmd_fd_stdin = MSWIN_INVALID_HANDLE_VALUE;
+    t->cterminal.cmd_fd_stdout = MSWIN_INVALID_HANDLE_VALUE;
+#else
+    t->cterminal.cmd_fd = -1;
+#endif
 
     peer_to_text (sd->reader_data->sock_data->sock, peername);
 
@@ -6340,7 +6449,12 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
     } else {
         sd->ttyreader_data = t;
     }
+#ifdef MSWIN
+    assert (t->cterminal.cmd_fd_stdin != MSWIN_INVALID_HANDLE_VALUE);
+    assert (t->cterminal.cmd_fd_stdout != MSWIN_INVALID_HANDLE_VALUE);
+#else
     assert (t->cterminal.cmd_fd >= 0);
+#endif
 
     free_args (args);
 
@@ -6366,7 +6480,11 @@ static int remote_action_fn_v3_shellresize (struct server_data *sd, CStr *s, con
     if (decode_uint (&p, end, &rows))
         return -1;
 
+#ifdef MSWIN
+    /* does this exist? */
+#else
     remotefs_shellresize_ (sd->ttyreader_data ? &sd->ttyreader_data->cterminal : NULL, columns, rows, s);
+#endif
 
     return ACTION_SILENT;
 }
@@ -6403,9 +6521,33 @@ static int remote_action_fn_v3_shellwrite (struct server_data *sd, CStr *s, cons
 
     if (!tt)
         return -1;
+#ifdef MSWIN
+    if (tt->cterminal.cmd_fd_stdin == MSWIN_INVALID_HANDLE_VALUE)
+        return -1;
+#else
     if (tt->cterminal.cmd_fd < 0)
         return -1;
+#endif
 
+#ifdef MSWIN
+    int i;
+    for (i = 0; i < chunklen; i++) {
+        if (p[i] == '\r') {
+            tt->wr.buf[tt->wr.avail++] = '\r';
+            tt->wr.buf[tt->wr.avail++] = '\n';
+            if (tt->echo.avail < tt->echo.alloced - 1) {
+                tt->echo.buf[tt->echo.avail++] = '\r';
+                tt->echo.buf[tt->echo.avail++] = '\n';
+            }
+        } else {
+            tt->wr.buf[tt->wr.avail++] = p[i];
+            if (tt->echo.avail < tt->echo.alloced)
+                tt->echo.buf[tt->echo.avail++] = p[i];
+        }
+        assert (tt->wr.avail <= tt->wr.alloced);
+        assert (tt->echo.avail <= tt->echo.alloced);
+    }
+#else
     if (tt->wr.avail + chunklen > tt->wr.alloced) {
         tt->wr.buf = (unsigned char *) realloc (tt->wr.buf, tt->wr.avail + chunklen);
         tt->wr.alloced = tt->wr.avail + chunklen;
@@ -6413,6 +6555,7 @@ static int remote_action_fn_v3_shellwrite (struct server_data *sd, CStr *s, cons
 
     memcpy (tt->wr.buf + tt->wr.avail, p, chunklen);
     tt->wr.avail += chunklen;
+#endif
 
     return ACTION_SILENT;
 }
@@ -6454,7 +6597,11 @@ static int remote_action_fn_v3_shellsignal (struct server_data *sd, CStr *s, con
     if (decode_uint (&p, end, &signum))
         return -1;
 
+#ifdef MSWIN
+    /* used for graphical debugger - not on windows */
+#else
     remotefs_shellsignal_ (pid, signum, s);
+#endif
 
     return 0;
 }
@@ -6533,6 +6680,15 @@ struct client_item {
     long long discard;
 };
 
+static int count_clients (struct service *serv)
+{E_
+    struct client_item *i;
+    int n = 0;
+    for (i = serv->client_list; i; i = i->next)
+        n++;
+    return n;
+}
+
 static void add_client (struct service *serv)
 {E_
     struct client_item *i;
@@ -6555,6 +6711,13 @@ static void add_client (struct service *serv)
     sock_data->sock = accept (serv->h, (struct sockaddr *) &client_address, &l);
     if (sock_data->sock == INVALID_SOCKET) {
         perrorsocket ("accept fail");
+        return;
+    }
+
+    if (count_clients (serv) > 128) {
+        fprintf (stderr, "more than 128 clients, dropping\n");
+        shutdown (sock_data->sock, 2);
+        closesocket (sock_data->sock);
         return;
     }
 
@@ -6809,6 +6972,42 @@ static void free_service (struct service *serv)
     }
 }
 
+#ifdef MSWIN
+
+void completion_rd_cb (unsigned long err, unsigned long c, OVERLAPPED * overlapped)
+{
+    int i;
+    char *s;
+    struct ttyreader_ *r;
+    r = (struct ttyreader_ *) overlapped;
+    assert (r->magic == TTYREADER_MAGIC);
+    s = (char *) alloca (c);
+    memcpy (s, &r->buf[r->avail], c);
+    for (i = 0; i < c; i++) {
+/* translate \n to \r\n on input like unix termios */
+        if (s[i] == '\n') {
+            r->buf[r->avail++] = '\r';
+            r->buf[r->avail++] = '\n';
+        } else {
+            r->buf[r->avail++] = s[i];
+        }
+        assert (r->avail <= r->alloced);
+    }
+    r->overlapped_pending = 0;
+}
+
+void completion_wr_cb (unsigned long err, unsigned long c, OVERLAPPED * overlapped)
+{
+    struct ttyreader_ *r;
+    r = (struct ttyreader_ *) overlapped;
+    assert (r->magic == TTYREADER_MAGIC);
+    r->written += c;
+    if (r->written == r->avail)
+        r->written = r->avail = 0;
+    r->overlapped_pending = 0;
+}
+#endif
+
 static void run_service (struct service *serv)
 {E_
     int there_are_shells_running = 0;
@@ -6833,12 +7032,11 @@ static void run_service (struct service *serv)
 #ifdef MSWIN
         assert (!i->sock_data.ms_event);
 #endif
-        if (recv_space_avail (&i->d, NULL, NULL) > 0) {
+        if (i->sock_data.sock != INVALID_HANDLE_VALUE && recv_space_avail (&i->d, NULL, NULL) > 0) {
 #ifdef MSWIN
             if (!i->sock_data.ms_event) {
                 i->sock_data.ms_event = ms_events[n_ms_events] = WSACreateEvent();
                 n_ms_events++;
-#warning what if too many?
             }
             assert (i->sock_data.ms_event);
             WSAEventSelect(i->sock_data.sock, i->sock_data.ms_event, FD_READ | FD_CLOSE);
@@ -6852,18 +7050,44 @@ static void run_service (struct service *serv)
             struct ttyreader_data *tt;
             tt = i->sd.ttyreader_data;
             there_are_shells_running = 1;
-            if (tt->rd.written < tt->rd.avail) {
+#ifndef MSWIN
+            if (i->sock_data.sock != INVALID_HANDLE_VALUE && tt->rd.written < tt->rd.avail) {
                 FD_SET (i->sock_data.sock, &wr);
                 n = MAX (n, i->sock_data.sock);
             }
+#endif
+#ifdef MSWIN
+            if (tt->cterminal.cmd_fd_stdout != MSWIN_INVALID_HANDLE_VALUE && !tt->rd.overlapped_pending && tt->rd.avail < tt->rd.alloced - 1) {
+                if (tt->rd.written == tt->rd.avail)
+                    tt->rd.written = tt->rd.avail = 0;
+                if (ReadFileEx (tt->cterminal.cmd_fd_stdout, tt->rd.buf + tt->rd.avail, (tt->rd.alloced - tt->rd.avail) / 2, &tt->rd.overlapped, completion_rd_cb)) {
+                    tt->rd.overlapped_pending = 1;
+                } else {
+                    close_cterminal (__LINE__, &i->sock_data, &tt->cterminal, 0);
+                    i->kill = KILL_SOFT;
+                }
+            }
+#else
             if (tt->cterminal.cmd_fd >= 0 && tt->rd.avail < tt->rd.alloced) {
                 FD_SET (tt->cterminal.cmd_fd, &rd);
                 n = MAX (n, tt->cterminal.cmd_fd);
             }
+#endif
+#ifdef MSWIN
+            if (tt->cterminal.cmd_fd_stdin != MSWIN_INVALID_HANDLE_VALUE && !tt->wr.overlapped_pending && tt->wr.written < tt->wr.avail) {
+                if (WriteFileEx (tt->cterminal.cmd_fd_stdin, tt->wr.buf + tt->wr.written, tt->wr.avail - tt->wr.written, &tt->wr.overlapped, completion_wr_cb)) {
+                    tt->wr.overlapped_pending = 1;
+                } else {
+                    close_cterminal (__LINE__, &i->sock_data, &tt->cterminal, 0);
+                    i->kill = KILL_SOFT;
+                }
+            }
+#else
             if (tt->cterminal.cmd_fd >= 0 && tt->wr.written < tt->wr.avail) {
                 FD_SET (tt->cterminal.cmd_fd, &wr);
                 n = MAX (n, tt->cterminal.cmd_fd);
             }
+#endif
         }
 #endif
     }
@@ -6883,8 +7107,8 @@ static void run_service (struct service *serv)
     r = WaitForMultipleObjectsEx (n_ms_events, ms_events, FALSE, there_are_shells_running ? (1000 / SENDS_PER_SEC) : 500, TRUE);
     if (r == WAIT_TIMEOUT) {
         n_ms_events = 0;
-    } else if (r == WAIT_IO_COMPLETION || r == (WAIT_OBJECT_0 + n_ms_events)) {
-        printf("WaitForMultipleObjectsEx error %d\n", r);
+    } else if (r == (WAIT_OBJECT_0 + n_ms_events)) {
+        printf("WaitForMultipleObjectsEx returned %d\n", r);
         goto clear_events;
     }
 #else
@@ -6925,17 +7149,22 @@ static void run_service (struct service *serv)
 #ifdef MSWIN
         WSANETWORKEVENTS ev;
         memset (&ev, '\0', sizeof (ev));
-        if (n_ms_events && WSAEnumNetworkEvents (i->sock_data.sock, i->sock_data.ms_event, &ev)) {
+        if (i->sock_data.sock != INVALID_HANDLE_VALUE && n_ms_events && WSAEnumNetworkEvents (i->sock_data.sock, i->sock_data.ms_event, &ev)) {
             printf ("WSAEnumNetworkEvents error %ld\n", (long) WSAGetLastError ());
-            abort ();
+            exit (1);
         }
+printf("b.1.2.2\n");
         if ((ev.lNetworkEvents & FD_CLOSE)) {
+            if (i->sd.ttyreader_data)
+                close_cterminal (__LINE__, NULL, &i->sd.ttyreader_data->cterminal, 0);
             i->kill = KILL_HARD;
+printf("b.1.2.3\n");
             continue;
         }
+printf("b.1.3\n");
         if ((ev.lNetworkEvents & FD_READ))
 #else
-        if (FD_ISSET (i->sock_data.sock, &rd))
+        if (i->sock_data.sock != INVALID_HANDLE_VALUE && FD_ISSET (i->sock_data.sock, &rd))
 #endif
         {
             if (i->kill) {
@@ -6956,6 +7185,8 @@ static void run_service (struct service *serv)
                 } else if (!c) {
                     printf ("%d: Error: closed by remote,\n", i->id);
                     i->kill = KILL_HARD;
+                    if (i->sd.ttyreader_data)
+                        close_cterminal (__LINE__, NULL, &i->sd.ttyreader_data->cterminal, 0);
                 } else if (c < 0 && (ERROR_EINTR() || ERROR_EAGAIN())) {
                     /* ok */
                 } else {
@@ -6965,14 +7196,19 @@ static void run_service (struct service *serv)
                     (*tupdate) += c;
                     process_client (i);
                     time (&i->last_accessed);
+                    if (i->kill && i->sd.ttyreader_data)
+                        close_cterminal (__LINE__, NULL, &i->sd.ttyreader_data->cterminal, 0);
                 }
             }
         }
 #ifdef SHELL_SUPPORT
         if (i->sd.ttyreader_data) {
+#ifndef MSWIN
             int c;
+#endif
             struct ttyreader_data *tt;
             tt = i->sd.ttyreader_data;
+#ifndef MSWIN
             if (tt->cterminal.cmd_fd >= 0 && FD_ISSET (tt->cterminal.cmd_fd, &rd)) {
                 c = read (tt->cterminal.cmd_fd, tt->rd.buf + tt->rd.avail, tt->rd.alloced - tt->rd.avail);
                 if (c > 0) {
@@ -6984,6 +7220,8 @@ static void run_service (struct service *serv)
                     i->kill = KILL_SOFT;
                 }
             }
+#endif
+#ifndef MSWIN
             if (tt->cterminal.cmd_fd >= 0 && FD_ISSET (tt->cterminal.cmd_fd, &wr)) {
                 tt->didread = 1;
                 c = write (tt->cterminal.cmd_fd, tt->wr.buf + tt->wr.written, tt->wr.avail - tt->wr.written);
@@ -6998,33 +7236,64 @@ static void run_service (struct service *serv)
                     i->kill = KILL_SOFT;
                 }
             }
+#endif
+#ifdef MSWIN
+#warning finish
+#else
             if (CChildCheckExitted (tt->cterminal.cmd_pid)) {
                 close_cterminal (__LINE__, &i->sock_data, &tt->cterminal, 0);
                 i->kill = KILL_SOFT;
             }
+#endif
 
-            if (FD_ISSET (i->sock_data.sock, &wr)) {
+#ifdef MSWIN
+            if (i->sock_data.sock != INVALID_HANDLE_VALUE)
+#else
+            if (i->sock_data.sock != INVALID_HANDLE_VALUE && FD_ISSET (i->sock_data.sock, &wr))
+#endif
+            {
                 int avail;
                 avail = tt->rd.avail - tt->rd.written;
+#ifdef MSWIN
+                avail += tt->echo.avail - tt->echo.written;
+#endif
 
 /* the tv_delta mechanism tries to chunk data together, otherwise we get too many tiny send()s.
  * the didread mechanism is based on the idea that, if there was some input, like a keypress, then
  * certainly we should dispense with waiting. */
 
-                if (avail > FUDGE_MTU || (avail >= 1 && tt->didread) || (avail >= 1 && tv_delta (&now, &tt->lastwrite) > (1000000 / SENDS_PER_SEC))) {
+                if (avail > REMOTEFS_FUDGE_MTU || (avail >= 1 && tt->didread) || (avail >= 1 && tv_delta (&now, &tt->lastwrite) > (1000000 / SENDS_PER_SEC))) {
                     int l;
+#ifdef MSWIN
+                    int l2;
+#endif
                     tt->lastwrite = now;
                     tt->didread = 0;
                     l = tt->rd.avail - tt->rd.written; /* which might be something else in the future */
 #warning finish: this should do partial writes
-                    if (send_blind_message (&i->sock_data, REMOTEFS_ACTION_SHELLREAD, (char *) (tt->rd.buf + tt->rd.written), l)) {
+#ifdef MSWIN
+                    l2 = tt->echo.avail - tt->echo.written; /* which might be something else in the future */
+                    if (send_blind_message (&i->sock_data, REMOTEFS_ACTION_SHELLREAD, (char *) (tt->rd.buf + tt->rd.written), l, (char *) (tt->echo.buf + tt->echo.written), l2))
+#else
+                    if (send_blind_message (&i->sock_data, REMOTEFS_ACTION_SHELLREAD, (char *) (tt->rd.buf + tt->rd.written), l, NULL, 0))
+#endif
+                    {
                         printf ("error writing to terminal socket: [%s]\n", strerror (errno));
                         close_cterminal (__LINE__, NULL, &tt->cterminal, 0);
                         i->kill = KILL_SOFT;
                     }
+#ifdef MSWIN
+                    tt->rd.written += l;
+                    tt->echo.written += l2;
+                    if (!tt->rd.overlapped_pending && tt->rd.written == tt->rd.avail)
+                        tt->rd.written = tt->rd.avail = 0;
+                    if (tt->echo.written == tt->echo.avail)
+                        tt->echo.written = tt->echo.avail = 0;
+#else
                     tt->rd.written += l;
                     if (tt->rd.written == tt->rd.avail)
                         tt->rd.written = tt->rd.avail = 0;
+#endif
                 }
             }
         }
@@ -7040,15 +7309,22 @@ static void run_service (struct service *serv)
         assert (i->magic == CLIENT_MAGIC);
 
 #ifdef SHELL_SUPPORT
+#ifdef MSWIN
+        if (i->sd.ttyreader_data && i->sd.ttyreader_data->cterminal.cmd_fd_stdin != MSWIN_INVALID_HANDLE_VALUE) {
+            /* no timeout while shell is running */
+        } else
+#else
         if (i->sd.ttyreader_data && i->sd.ttyreader_data->cterminal.cmd_fd >= 0) {
             /* no timeout while shell is running */
         } else
+#endif
 #endif
         if (now > i->last_accessed + 25 /* for firewalls that are 30s timeout */) {
             struct cooledit_remote_msg_ack ack;
             memset (&ack, '\0', sizeof (ack));
             encode_msg_ack (&ack, RFSERR_SERVER_CLOSED_IDLE_CLIENT, MSG_VERSION);
-            writer (&i->sock_data, &ack, sizeof (ack));
+            if (i->sock_data.sock != INVALID_HANDLE_VALUE)
+                writer (&i->sock_data, &ack, sizeof (ack));
             i->kill = KILL_HARD;
         }
 
@@ -7080,7 +7356,8 @@ static void run_service (struct service *serv)
     for (i = serv->client_list; i; i = i->next) {
         assert (i->magic == CLIENT_MAGIC);
         if (i->sock_data.ms_event) {
-            WSAEventSelect(i->sock_data.sock, NULL, 0);
+            if (i->sock_data.sock != INVALID_HANDLE_VALUE)
+                WSAEventSelect(i->sock_data.sock, NULL, 0);
             WSACloseEvent(i->sock_data.ms_event);
             i->sock_data.ms_event = 0;
         }
@@ -7097,6 +7374,7 @@ static void run_service (struct service *serv)
 static int kill_received = 0;
 
 #ifdef SHELL_SUPPORT
+#ifndef MSWIN
 
 static void kill_handler (int x)
 {
@@ -7105,6 +7383,7 @@ static void kill_handler (int x)
     kill_received = 1;
 }
 
+#endif
 #endif
 
 void remotefs_serverize (const char *listen_address, const char *option_range)
@@ -7330,7 +7609,9 @@ int main (int argc, char **argv)
     read_keyfile (keyfile);
 
 #ifdef SHELL_SUPPORT
+#ifndef MSWIN
     cterminal_fork_utmp_manager ();
+#endif
 #endif
 
     if (!option_no_crypto) { /* only one side need do this check */

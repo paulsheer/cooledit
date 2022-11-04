@@ -351,6 +351,8 @@ enum remotefs_error_code {
 #define REMOTEFS_WRITEFILE_OVERWRITEMODE_SAFE   1
 #define REMOTEFS_WRITEFILE_OVERWRITEMODE_BACKUP 2
 
+#define REMOTEFS_FUDGE_MTU                      1312
+
 #define REMOTEFS_LOCAL                          "localhost"
 
 void remotefs_serverize (const char *listen_address, const char *acceptrange);

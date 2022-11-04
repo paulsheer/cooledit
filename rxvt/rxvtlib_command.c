@@ -3027,14 +3027,15 @@ void rxvtlib_main_loop (rxvtlib * o)
 void rxvt_fd_write_watch (int fd, fd_set * reading,
 				 fd_set * writing, fd_set * error, void *data)
 {E_
-    int riten, p;
+    int riten, p, max_write;
     rxvtlib *o = (rxvtlib *) data;
     p = o->v_bufptr - o->v_bufstr;
     char errmsg[CTERMINAL_ERR_MSG_LEN];
     CStr chunk;
     memset (&chunk, '\0', sizeof (chunk));
     chunk.data = o->v_bufstr;
-    riten = chunk.len = (p < MAX_PTY_WRITE ? p : MAX_PTY_WRITE);
+    max_write = !strcmp (o->cterminal_io.host, "localhost") ? MAX_PTY_WRITE : REMOTEFS_FUDGE_MTU;
+    riten = chunk.len = (p < max_write ? p : max_write);
     if ((*o->cterminal_io.remotefs->remotefs_shellwrite) (o->cterminal_io.remotefs, &o->cterminal_io, &chunk, errmsg)) {
         printf ("remotefs_shellwrite returned error. errmsg = %s\n", errmsg);
 	CRemoveWatch (o->cmd_fd, NULL, 3);

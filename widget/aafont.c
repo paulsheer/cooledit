@@ -778,7 +778,7 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
 
 #define BOLD_Y_SHIFT            0
 #define BOLD_X_SHIFT            1
-#define BOLD(grey, bold)        MAX(16 * grey, 13 * bold)
+#define BOLD(grey, bold)        MAX(16 * grey, 11 * bold)
 
 #define DECLM \
     unsigned long grey = 0; \

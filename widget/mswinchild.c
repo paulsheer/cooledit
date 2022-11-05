@@ -1,8 +1,12 @@
 
 #ifdef WIN32
 
+#define _WIN32_WINNT    0x0A01
+
 #include <assert.h>
 #include <windows.h>
+#include <wincon.h>
+#include <winbase.h>
 #include <tchar.h>
 #include <stdio.h>
 #include <strsafe.h>
@@ -53,18 +57,36 @@ static const char *mswin_error_to_text (long error)
     return r;
 }
 
-void cterminal_cleanup (struct cterminal *o)
+void cterminal_cleanup (struct cterminal *c)
 {
-#warning finish? or is kill process elsewhere?
+    if (c->con_handle) {
+        CloseHandle (c->con_handle);
+        c->con_handle = NULL;
+    }
+    if (c->process_handle) {
+        CloseHandle (c->process_handle);
+        c->process_handle = NULL;
+    }
 }
 
+int child_exitted (MSWIN_HANDLE h)
+{
+    unsigned long exit_status = 0;
+    if (!h)
+        return 1;
+    if (!GetExitCodeProcess (h, &exit_status))
+        return 0;
+    return exit_status != STILL_ACTIVE;
+}
 
 int kill_child_get_exit_status (int pid, MSWIN_HANDLE h, unsigned long *exit_status)
 {
-    int r;
-    r = GetExitCodeProcess (h, exit_status);
-    if (h)
+    int r = 0;
+    if (h) {
+        if (GetExitCodeProcess (h, exit_status))
+            r = 1;
         TerminateProcess (h, 1);
+    }
     return r;
 }
 
@@ -159,6 +181,35 @@ Return Value:
     return (TRUE);
 }
 
+// Initializes the specified startup info struct with the required properties and
+// updates its thread attribute list with the specified ConPTY handle
+static HRESULT InitializeStartupInfoAttachedToConPTY(STARTUPINFOEX* siEx, HPCON hPC)
+{
+    size_t size;
+
+    siEx->StartupInfo.cb = sizeof(STARTUPINFOEX);
+
+    // Create the appropriately sized thread attribute list
+    InitializeProcThreadAttributeList(NULL, 1, 0, &size);
+
+    static LPPROC_THREAD_ATTRIBUTE_LIST l = NULL;
+    l = (LPPROC_THREAD_ATTRIBUTE_LIST) realloc (l, size);
+    ZeroMemory (l, size);
+
+    // Set startup info's attribute list & initialize it
+    siEx->lpAttributeList = l;
+    if (!InitializeProcThreadAttributeList(siEx->lpAttributeList, 1, 0, (PSIZE_T)&size)) {
+        printf ("InitializeProcThreadAttributeList error %s\n", mswin_error_to_text (GetLastError ()));
+        exit (0);
+    }
+
+    // Set thread attribute list's Pseudo Console to the specified ConPTY
+    if (!UpdateProcThreadAttribute(siEx->lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, hPC, sizeof(HPCON), NULL, NULL)) {
+        printf ("UpdateProcThreadAttribute error %s\n", mswin_error_to_text (GetLastError ()));
+        exit (0);
+    }
+    return S_OK;
+}
 
 int cterminal_run_command (struct cterminal *c, struct cterminal_config *config, int dumb_terminal, const char *log_origin_host,
                            char *const argv[], char *errmsg)
@@ -187,26 +238,35 @@ int cterminal_run_command (struct cterminal *c, struct cterminal_config *config,
 
     TCHAR szCmdline[] = TEXT ("CMD");
     PROCESS_INFORMATION piProcInfo;
-    STARTUPINFO siStartInfo;
+    STARTUPINFOEX siStartInfo;
     BOOL bSuccess = FALSE;
 
     ZeroMemory (&piProcInfo, sizeof (PROCESS_INFORMATION));
 
     ZeroMemory (&siStartInfo, sizeof (STARTUPINFO));
-    siStartInfo.cb = sizeof (STARTUPINFO);
-    siStartInfo.hStdError = stdout_wr;
-    siStartInfo.hStdOutput = stdout_wr;
-    siStartInfo.hStdInput = stdin_rd;
-    siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
+    COORD coord;
+    HPCON con = 0;
+
+    coord.X = config->col;
+    coord.Y = config->row;
+
+    printf ("CreatePseudoConsole %d x %d\n", coord.X, coord.Y);
+    if (CreatePseudoConsole(coord, stdin_rd, stdout_wr, 0, &con) != S_OK)
+        ERR ("Stdin SetHandleInformation");
+
+    // Prepare the StartupInfoEx structure attached to the ConPTY.
+    InitializeStartupInfoAttachedToConPTY(&siStartInfo, con);
+
+    printf ("CreateProcess EXTENDED_STARTUPINFO_PRESENT\n");
     bSuccess = CreateProcess (NULL, szCmdline,  // command line 
                               NULL,     // process security attributes 
                               NULL,     // primary thread security attributes 
                               TRUE,     // handles are inherited 
-                              0,        // creation flags 
+                              EXTENDED_STARTUPINFO_PRESENT,        // creation flags 
                               NULL,     // use parent's environment 
                               NULL,     // use parent's current directory 
-                              &siStartInfo,     // STARTUPINFO pointer 
+                              &siStartInfo.StartupInfo,     // STARTUPINFO pointer 
                               &piProcInfo);     // receives PROCESS_INFORMATION 
 
     if (!bSuccess)
@@ -214,15 +274,25 @@ int cterminal_run_command (struct cterminal *c, struct cterminal_config *config,
 
     c->cmd_pid = piProcInfo.dwProcessId;
     c->process_handle = piProcInfo.hProcess;
+    c->con_handle = con;
     assert (c->cmd_pid != 0);
 
     CloseHandle (piProcInfo.hThread);
-
     CloseHandle (stdout_wr);
     CloseHandle (stdin_rd);
 
     return 0;
 }
+
+void cterminal_tt_winsize (struct cterminal *c, MSWIN_HANDLE con, int columns, int rows)
+{
+    COORD coord;
+    coord.X = columns;
+    coord.Y = rows;
+    if (ResizePseudoConsole (c->con_handle, coord) != S_OK)
+        printf ("ResizePseudoConsole error %s\n", mswin_error_to_text (GetLastError ()));
+}
+
 
 #endif  /* WIN32 */
 

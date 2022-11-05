@@ -19,6 +19,7 @@ struct cterminal_config {
     int erase_char; /* return value */
     unsigned long cmd_pid; /* return value */
     MSWIN_HANDLE process_handle;
+    MSWIN_HANDLE con_handle;
 #define CTERMINAL_TTYDEV_SZ     64
     char ttydev[CTERMINAL_TTYDEV_SZ]; /* return value */
 };
@@ -26,6 +27,7 @@ struct cterminal_config {
 struct cterminal {
     int cmd_pid;
     MSWIN_HANDLE process_handle;
+    MSWIN_HANDLE con_handle;
     MSWIN_HANDLE cmd_fd_stdin;
     MSWIN_HANDLE cmd_fd_stdout;
 };
@@ -33,6 +35,8 @@ struct cterminal {
 #define CTERMINAL_ERR_MSG_LEN           384
 
 void cterminal_cleanup (struct cterminal *c);
+void cterminal_tt_winsize (struct cterminal *c, MSWIN_HANDLE con, int columns, int rows);
+int child_exitted (MSWIN_HANDLE h);
 
 int cterminal_run_command (struct cterminal *o, struct cterminal_config *config, int dumb_terminal, const char *log_origin_host, char *const argv[], char *errmsg);;
 

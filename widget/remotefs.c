@@ -3921,6 +3921,7 @@ static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_con
     r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
     r->len += encode_uint (NULL, cterminal->cmd_pid);
     r->len += encode_uint (NULL, (unsigned long long) cterminal->process_handle);
+    r->len += encode_uint (NULL, (unsigned long long) cterminal->con_handle);
     r->len += encode_str (NULL, faketty, strlen (faketty));
     r->len += encode_uint (NULL, (__int64) cterminal->cmd_fd_stdin);
     r->len += encode_uint (NULL, 0);
@@ -3929,13 +3930,15 @@ static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_con
     encode_uint (&p, REMOTEFS_SUCCESS);
     encode_uint (&p, cterminal->cmd_pid);
     encode_uint (&p, (unsigned long long) cterminal->process_handle);
+    encode_uint (&p, (unsigned long long) cterminal->con_handle);
     encode_str (&p, faketty, strlen (faketty));
     encode_uint (&p, (__int64) cterminal->cmd_fd_stdin);
     encode_uint (&p, 0);
 #else
     r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
     r->len += encode_uint (NULL, cterminal->cmd_pid);
-    r->len += encode_uint (NULL, 0ULL);
+    r->len += encode_uint (NULL, 0ULL); /* process_handle */
+    r->len += encode_uint (NULL, 0ULL); /* con_handle */
     r->len += encode_str (NULL, cterminal->ttydev, strlen (cterminal->ttydev));
     r->len += encode_uint (NULL, cterminal->cmd_fd);
     r->len += encode_uint (NULL, config->erase_char);
@@ -3943,7 +3946,8 @@ static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_con
     p = (unsigned char *) r->data;
     encode_uint (&p, REMOTEFS_SUCCESS);
     encode_uint (&p, cterminal->cmd_pid);
-    encode_uint (&p, 0ULL);
+    encode_uint (&p, 0ULL); /* process_handle */
+    encode_uint (&p, 0ULL); /* con_handle */
     encode_str (&p, cterminal->ttydev, strlen (cterminal->ttydev));
     encode_uint (&p, cterminal->cmd_fd);
     encode_uint (&p, config->erase_char);
@@ -3952,17 +3956,23 @@ static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_con
     return 0;
 }
 
-#ifndef MSWIN
-
 static void remotefs_shellresize_ (struct cterminal *c, int columns, int rows, CStr * r)
 {E_
     if (c) {
+#ifdef MSWIN
+        cterminal_tt_winsize (c, c->con_handle, columns, rows);
+#else
         cterminal_tt_winsize (c, c->cmd_fd, columns, rows);
-        alloc_encode_success (r);
+#endif
+        if (r)
+            alloc_encode_success (r);
     } else {
-        alloc_encode_error (r, RFSERR_SUCCESS, "no such terminal", 0);
+        if (r)
+            alloc_encode_error (r, RFSERR_SUCCESS, "no such terminal", 0);
     }
 }
+
+#ifndef MSWIN
 
 static void remotefs_shellsignal_ (pid_t pid, int signum, CStr * r)
 {E_
@@ -4190,7 +4200,7 @@ void remotefs_set_display_log_for_wtmp (const char *display)
 static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg)
 {E_
     CStr s;
-    unsigned long long cmd_pid_, process_handle_, cmd_fd_, erase_char_;
+    unsigned long long cmd_pid_, process_handle_, con_handle_, cmd_fd_, erase_char_;
     struct cterminal_item *ct;
 
     *errmsg = '\0';
@@ -4212,6 +4222,8 @@ static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io,
         return -1;
     if (decode_uint (&p, end, &process_handle_))
         return -1;
+    if (decode_uint (&p, end, &con_handle_))
+        return -1;
     if (decode_str (&p, end, config->ttydev, sizeof (config->ttydev)))
         return -1;
     if (decode_uint (&p, end, &cmd_fd_))
@@ -4219,6 +4231,7 @@ static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io,
     if (decode_uint (&p, end, &erase_char_))
         return -1;
     (void) process_handle_; /* windows only */
+    (void) con_handle_; /* windows only */
     config->cmd_pid = (unsigned long) cmd_pid_;
     config->erase_char = (int) erase_char_;
     io->cmd_fd = (int) cmd_fd_;
@@ -4790,7 +4803,7 @@ void remotefs_free_terminalio (struct remotefs_terminalio *io)
 static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const args[], char *errmsg)
 {E_
     CStr s, msg;
-    unsigned long long cmd_pid_, process_handle_, cmd_fd_, erase_char_;
+    unsigned long long cmd_pid_, process_handle_, con_handle_, cmd_fd_, erase_char_;
     unsigned char *q;
     int no_such_action = 0;
     int i, n_args;
@@ -4852,6 +4865,10 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
         free (s.data);
         return -1;
     }
+    if (decode_uint (&p, end, &con_handle_)) {
+        free (s.data);
+        return -1;
+    }
     if (decode_str (&p, end, config->ttydev, sizeof (config->ttydev))) {
         free (s.data);
         return -1;
@@ -4867,6 +4884,7 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
     config->cmd_pid = (unsigned long) cmd_pid_;
 #ifdef MSWIN
     config->process_handle = (MSWIN_HANDLE) process_handle_;
+    config->con_handle = (MSWIN_HANDLE) con_handle_;
 #endif
     config->erase_char = (int) erase_char_;
 
@@ -6005,6 +6023,12 @@ struct ttyreader_data {
     struct ttyreader_ rd;
     struct timeval lastwrite;
     int didread;
+#ifdef MSWIN
+    int input_echo;
+#endif
+    int resize_rows;
+    int resize_columns;
+    int do_resize;
     struct ttyreader_ wr;
     struct ttyreader_ echo;
 };
@@ -6024,7 +6048,6 @@ static void close_cterminal (int line, struct sock_data *sock_data, struct cterm
 {E_
     char msg[256] = "";
 #ifdef MSWIN
-printf("HERE %p %d\n", c->process_handle, line);
     if (c->process_handle) {
         unsigned long wstatus = 0;
         if (kill_child_get_exit_status (c->cmd_pid, c->process_handle, &wstatus))
@@ -6056,7 +6079,6 @@ printf("HERE %p %d\n", c->process_handle, line);
     c->cmd_pid = 0;
 
 #ifdef MSWIN
-#warning kill process
     if (c->cmd_fd_stdin != MSWIN_INVALID_HANDLE_VALUE) {
         CloseHandle (c->cmd_fd_stdin);
         c->cmd_fd_stdin = MSWIN_INVALID_HANDLE_VALUE;
@@ -6480,11 +6502,14 @@ static int remote_action_fn_v3_shellresize (struct server_data *sd, CStr *s, con
     if (decode_uint (&p, end, &rows))
         return -1;
 
-#ifdef MSWIN
-    /* does this exist? */
-#else
-    remotefs_shellresize_ (sd->ttyreader_data ? &sd->ttyreader_data->cterminal : NULL, columns, rows, s);
-#endif
+    if (sd->ttyreader_data) {
+        sd->ttyreader_data->resize_rows = rows;
+        sd->ttyreader_data->resize_columns = columns;
+        sd->ttyreader_data->do_resize = 1;
+        alloc_encode_success (s);
+    } else {
+        alloc_encode_error (s, RFSERR_SUCCESS, "no such terminal", 0);
+    }
 
     return ACTION_SILENT;
 }
@@ -6530,19 +6555,24 @@ static int remote_action_fn_v3_shellwrite (struct server_data *sd, CStr *s, cons
 #endif
 
 #ifdef MSWIN
+
     int i;
     for (i = 0; i < chunklen; i++) {
         if (p[i] == '\r') {
             tt->wr.buf[tt->wr.avail++] = '\r';
             tt->wr.buf[tt->wr.avail++] = '\n';
-            if (tt->echo.avail < tt->echo.alloced - 1) {
-                tt->echo.buf[tt->echo.avail++] = '\r';
-                tt->echo.buf[tt->echo.avail++] = '\n';
+            if (tt->input_echo) {
+                if (tt->echo.avail < tt->echo.alloced - 1) {
+                    tt->echo.buf[tt->echo.avail++] = '\r';
+                    tt->echo.buf[tt->echo.avail++] = '\n';
+                }
             }
         } else {
             tt->wr.buf[tt->wr.avail++] = p[i];
-            if (tt->echo.avail < tt->echo.alloced)
-                tt->echo.buf[tt->echo.avail++] = p[i];
+            if (tt->input_echo) {
+                if (tt->echo.avail < tt->echo.alloced)
+                    tt->echo.buf[tt->echo.avail++] = p[i];
+            }
         }
         assert (tt->wr.avail <= tt->wr.alloced);
         assert (tt->echo.avail <= tt->echo.alloced);
@@ -6762,7 +6792,7 @@ static void add_client (struct service *serv)
     printf ("adding %u\n", i->id);
 }
 
-static void process_client (struct client_item *i)
+static void process_client (struct client_item *i, int *timeout)
 {E_
 #define r       (v[1])
     int action_ret;
@@ -6775,6 +6805,7 @@ static void process_client (struct client_item *i)
     struct cooledit_remote_msg_ack ack;
     enum reader_error reader_error = READER_ERROR_NOERROR;
 
+    *timeout = 0;
     memset (&r, '\0', sizeof (r));
 
 #define ERR(s,m)  \
@@ -6784,8 +6815,10 @@ static void process_client (struct client_item *i)
     } while (0)
 
     if (reader_timeout (&i->d, &m, sizeof (m), WAITFORREAD_DONTWAIT, &reader_error, 0)) {
-        if (reader_error == READER_ERROR_TIMEOUT)
+        if (reader_error == READER_ERROR_TIMEOUT) {
+            *timeout = 1;
             return;
+        }
         if (reader_error != READER_ERROR_NOERROR) {
             /* This can only happy if crypto is enabled: */
             int ignore;
@@ -6979,10 +7012,12 @@ void completion_rd_cb (unsigned long err, unsigned long c, OVERLAPPED * overlapp
     int i;
     char *s;
     struct ttyreader_ *r;
+
     r = (struct ttyreader_ *) overlapped;
     assert (r->magic == TTYREADER_MAGIC);
     s = (char *) alloca (c);
     memcpy (s, &r->buf[r->avail], c);
+
     for (i = 0; i < c; i++) {
 /* translate \n to \r\n on input like unix termios */
         if (s[i] == '\n') {
@@ -6999,6 +7034,7 @@ void completion_rd_cb (unsigned long err, unsigned long c, OVERLAPPED * overlapp
 void completion_wr_cb (unsigned long err, unsigned long c, OVERLAPPED * overlapped)
 {
     struct ttyreader_ *r;
+
     r = (struct ttyreader_ *) overlapped;
     assert (r->magic == TTYREADER_MAGIC);
     r->written += c;
@@ -7153,15 +7189,12 @@ static void run_service (struct service *serv)
             printf ("WSAEnumNetworkEvents error %ld\n", (long) WSAGetLastError ());
             exit (1);
         }
-printf("b.1.2.2\n");
         if ((ev.lNetworkEvents & FD_CLOSE)) {
             if (i->sd.ttyreader_data)
                 close_cterminal (__LINE__, NULL, &i->sd.ttyreader_data->cterminal, 0);
             i->kill = KILL_HARD;
-printf("b.1.2.3\n");
             continue;
         }
-printf("b.1.3\n");
         if ((ev.lNetworkEvents & FD_READ))
 #else
         if (i->sock_data.sock != INVALID_HANDLE_VALUE && FD_ISSET (i->sock_data.sock, &rd))
@@ -7194,10 +7227,17 @@ printf("b.1.3\n");
                 }
                 if (c > 0) {
                     (*tupdate) += c;
-                    process_client (i);
-                    time (&i->last_accessed);
-                    if (i->kill && i->sd.ttyreader_data)
-                        close_cterminal (__LINE__, NULL, &i->sd.ttyreader_data->cterminal, 0);
+                    for (;;) {
+                        int timeout = 0;
+                        process_client (i, &timeout);
+                        if (timeout)
+                            break;
+                        time (&i->last_accessed);
+                        if (i->kill && i->sd.ttyreader_data) {
+                            close_cterminal (__LINE__, NULL, &i->sd.ttyreader_data->cterminal, 0);
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -7238,13 +7278,30 @@ printf("b.1.3\n");
             }
 #endif
 #ifdef MSWIN
-#warning finish
+            if (child_exitted (tt->cterminal.process_handle)) {
+                close_cterminal (__LINE__, &i->sock_data, &tt->cterminal, 0);
+                i->kill = KILL_SOFT;
+            }
 #else
             if (CChildCheckExitted (tt->cterminal.cmd_pid)) {
                 close_cterminal (__LINE__, &i->sock_data, &tt->cterminal, 0);
                 i->kill = KILL_SOFT;
             }
 #endif
+
+            if (tt->do_resize) {
+                int pendingio = 0;
+                pendingio += tt->wr.avail - tt->wr.written;
+                pendingio += tt->rd.avail - tt->rd.written;
+#ifdef MSWIN
+                pendingio += tt->echo.avail - tt->echo.written;
+#endif
+                if (!pendingio && tv_delta (&now, &tt->lastwrite) > 1000000 / 3) {
+                    remotefs_shellresize_ (&tt->cterminal, tt->resize_columns, tt->resize_rows, NULL);
+                    tt->do_resize = 0;
+                    tt->lastwrite = now;
+                }
+            }
 
 #ifdef MSWIN
             if (i->sock_data.sock != INVALID_HANDLE_VALUE)

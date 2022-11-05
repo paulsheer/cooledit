@@ -6009,6 +6009,7 @@ struct ttyreader_ {
 #ifdef MSWIN
     OVERLAPPED overlapped;
     int overlapped_pending;
+    int input_nlcrnl;
 #endif
 #define TTYREADER_MAGIC         0x28fc5e99
     unsigned int magic;
@@ -7021,7 +7022,8 @@ void completion_rd_cb (unsigned long err, unsigned long c, OVERLAPPED * overlapp
     for (i = 0; i < c; i++) {
 /* translate \n to \r\n on input like unix termios */
         if (s[i] == '\n') {
-            r->buf[r->avail++] = '\r';
+            if (r->input_nlcrnl)
+                r->buf[r->avail++] = '\r';
             r->buf[r->avail++] = '\n';
         } else {
             r->buf[r->avail++] = s[i];

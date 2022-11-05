@@ -127,6 +127,10 @@ static int translate_unix_errno (int err);
 
 #ifdef MSWIN
 
+int getexesize (void);
+int makeexe (const char *fname);
+int option_mswin_cmd = 0;
+
 static int windows_rename (const char *a, const char *b)
 {E_
     if (!MoveFileExA (a, b, MOVEFILE_REPLACE_EXISTING)) {
@@ -7298,7 +7302,7 @@ static void run_service (struct service *serv)
 #ifdef MSWIN
                 pendingio += tt->echo.avail - tt->echo.written;
 #endif
-                if (!pendingio && tv_delta (&now, &tt->lastwrite) > 1000000 / 3) {
+                if (!pendingio && tv_delta (&now, &tt->lastwrite) > 1000000 / 2) {
                     remotefs_shellresize_ (&tt->cterminal, tt->resize_columns, tt->resize_rows, NULL);
                     tt->do_resize = 0;
                     tt->lastwrite = now;
@@ -7725,6 +7729,16 @@ int main (int argc, char **argv)
 
     if (option_no_crypto)
         action_list[REMOTEFS_ACTION_ENABLECRYPTO].action_fn = NULL;
+
+#ifdef MSWIN
+    struct stat st;
+    if (!stat ("BUSYBOX64.EXE", &st) && st.st_size == getexesize ()) {
+printf("already here\n");
+        /* ok */
+    } else if (makeexe ("BUSYBOX64.EXE")) {
+        option_mswin_cmd = 1;
+    }
+#endif
 
     remotefs_serverize (wchar_to_char (argv[1]), wchar_to_char (argv[2]));
 

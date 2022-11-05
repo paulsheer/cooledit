@@ -13,6 +13,7 @@
 
 #include "mswinchild.h"
 
+extern int option_mswin_cmd;
 
 void CreateChildProcess (void);
 void WriteToPipe (void);
@@ -199,13 +200,13 @@ static HRESULT InitializeStartupInfoAttachedToConPTY(STARTUPINFOEX* siEx, HPCON 
     // Set startup info's attribute list & initialize it
     siEx->lpAttributeList = l;
     if (!InitializeProcThreadAttributeList(siEx->lpAttributeList, 1, 0, (PSIZE_T)&size)) {
-        printf ("InitializeProcThreadAttributeList error %s\n", mswin_error_to_text (GetLastError ()));
+        fprintf (stderr, "InitializeProcThreadAttributeList error %s\n", mswin_error_to_text (GetLastError ()));
         exit (0);
     }
 
     // Set thread attribute list's Pseudo Console to the specified ConPTY
     if (!UpdateProcThreadAttribute(siEx->lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, hPC, sizeof(HPCON), NULL, NULL)) {
-        printf ("UpdateProcThreadAttribute error %s\n", mswin_error_to_text (GetLastError ()));
+        fprintf (stderr, "UpdateProcThreadAttribute error %s\n", mswin_error_to_text (GetLastError ()));
         exit (0);
     }
     return S_OK;
@@ -236,7 +237,14 @@ int cterminal_run_command (struct cterminal *c, struct cterminal_config *config,
     if (!SetHandleInformation (c->cmd_fd_stdin, HANDLE_FLAG_INHERIT, 0))
         ERR ("Stdin SetHandleInformation");
 
-    TCHAR szCmdline[] = TEXT ("CMD");
+    char cmdline[2048];
+    char current_dir[1024] = "";
+    GetCurrentDirectory (sizeof (current_dir), current_dir);
+    if (option_mswin_cmd) {
+        snprintf (cmdline, sizeof (cmdline), "CMD");
+    } else {
+        snprintf (cmdline, sizeof (cmdline), "\"%s\\%s\" %s", current_dir, "BUSYBOX64", "bash");
+    }
     PROCESS_INFORMATION piProcInfo;
     STARTUPINFOEX siStartInfo;
     BOOL bSuccess = FALSE;
@@ -251,15 +259,13 @@ int cterminal_run_command (struct cterminal *c, struct cterminal_config *config,
     coord.X = config->col;
     coord.Y = config->row;
 
-    printf ("CreatePseudoConsole %d x %d\n", coord.X, coord.Y);
     if (CreatePseudoConsole(coord, stdin_rd, stdout_wr, 0, &con) != S_OK)
         ERR ("Stdin SetHandleInformation");
 
     // Prepare the StartupInfoEx structure attached to the ConPTY.
     InitializeStartupInfoAttachedToConPTY(&siStartInfo, con);
 
-    printf ("CreateProcess EXTENDED_STARTUPINFO_PRESENT\n");
-    bSuccess = CreateProcess (NULL, szCmdline,  // command line 
+    bSuccess = CreateProcess (NULL, cmdline,  // command line 
                               NULL,     // process security attributes 
                               NULL,     // primary thread security attributes 
                               TRUE,     // handles are inherited 
@@ -290,7 +296,7 @@ void cterminal_tt_winsize (struct cterminal *c, MSWIN_HANDLE con, int columns, i
     coord.X = columns;
     coord.Y = rows;
     if (ResizePseudoConsole (c->con_handle, coord) != S_OK)
-        printf ("ResizePseudoConsole error %s\n", mswin_error_to_text (GetLastError ()));
+        fprintf (stderr, "ResizePseudoConsole error %s\n", mswin_error_to_text (GetLastError ()));
 }
 
 

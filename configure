@@ -13209,7 +13209,7 @@ fi ;
 touch TESTTHIS ;
 echo $ac_n "checking whether '$TST_MAN_CMD' works... " ;
 sh -c "$TST_MAN_CMD" 1>conftestman 2>&1 ;
-if egrep -q '(FreeBSD General Commands Manual|Copyright.*Free.Software.Foundation)' conftestman ; then
+if egrep '(FreeBSD General Commands Manual|Copyright.*Free.Software.Foundation)' conftestman >/dev/null ; then
         MAN_CMD="$THE_MAN_CMD" ;
         echo "yes" ;
 else

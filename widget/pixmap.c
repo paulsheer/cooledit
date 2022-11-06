@@ -86,15 +86,21 @@ Pixmap CCreateClipMask (const char *data[], int width, int height, char backing_
     return pixmap;
 }
 
+static GC pixmap_gc = NULL;
+
 Pixmap CCreatePixmap (const char *data[], int width, int height, char start_char)
 {E_
+    XGCValues gcv;
+    memset (&gcv, '\0', sizeof (gcv));
     Pixmap pixmap;
     XImage *image;
     image = CCreateImage (data, width, height, start_char);
     if (!image)
 	return 0;
     pixmap = XCreatePixmap (CDisplay, CRoot, width, height, CDepth);
-    XPutImage (CDisplay, pixmap, CGC, image, 0, 0, 0, 0, width, height);
+    if (!pixmap_gc)
+        pixmap_gc = XCreateGC (CDisplay, pixmap, 0, &gcv);
+    XPutImage (CDisplay, pixmap, pixmap_gc, image, 0, 0, 0, 0, width, height);
     free (image->data);
     image->data = 0;
     XDestroyImage (image);

@@ -37,7 +37,7 @@
 int CInputsWithOptions (Window parent, int x, int y, const char *heading,
 	    char **inputs[], char *input_labels[], char *input_names[],
     char *input_tool_hint[], int *check_values[], char *check_labels[],
-			char *check_tool_hints[], int options, int width);
+			char *check_tool_hints[], int check_group[], int options, int width);
 
 void ctags (void);
 void find_file (void);

@@ -1071,7 +1071,7 @@ int edit_draw_proportional (void *data,
                 CLine (win, undercaret_offset + 2, Y + 3, undercaret_offset + 2, Y + 4);
                 CLine (win, undercaret_offset + 3, Y + 4, undercaret_offset + 3, Y + 4);
 
-                CPushFont("bookmark");
+                CPushFont("bookmark", 0);
                 CSetColor (edit_normal_background_color);
                 CSetBackgroundColor (color_palette ((book_marks[i]->c >> 0) & 0xFF));
                 CImageString (win, EDIT_TEXT_HORIZONTAL_OFFSET + 1 + FONT_OFFSET_X + 3, Y + FONT_OFFSET_Y + 5, book_marks[i]->text);

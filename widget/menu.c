@@ -72,7 +72,7 @@ void get_menu_item_extents (int n, int j, struct menu_item m[], int *border, int
 int whereis_pointer (int x, int y, int w, int n, struct menu_item m[])
 {E_
     int i, y1, y2, border, relief;
-    CPushFont ("widget");
+    CPushFont ("widget", 0);
     for (i = 0; i < n; i++) {
 	if (!m[i].text[2])
 	    continue;
@@ -484,7 +484,7 @@ CWidget *CDrawMenuButton (const char *ident, Window parent, Window focus_return,
     int i;
     int w, h;
 
-    CPushFont ("widget");
+    CPushFont ("widget", 0);
 
     if (width == AUTO_WIDTH || height == AUTO_HEIGHT)
 	CTextSize (&w, &h, label);

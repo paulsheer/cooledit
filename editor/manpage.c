@@ -291,11 +291,6 @@ int manpagereload_callback (CWidget * w, XEvent * x, CEvent * c)
     return 0;
 }
 
-extern int replace_scanf;
-extern int replace_regexp;
-extern int replace_whole;
-extern int replace_case;
-
 int text_get_byte (unsigned char *text, long index)
 {E_
     return text[index];

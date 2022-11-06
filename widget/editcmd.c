@@ -28,16 +28,6 @@
 
 /* globals: */
 
-/* search and replace: */
-int replace_scanf = 0;
-int replace_regexp = 0;
-int replace_all = 0;
-int replace_prompt = 1;
-int replace_whole = 0;
-int replace_case = 0;
-int replace_backwards = 0;
-int search_create_bookmark = 0;
-
 /* queries on a save */
 #ifdef MIDNIGHT
 int edit_confirm_save = 1;
@@ -1344,13 +1334,13 @@ int edit_replace_prompt (WEdit * edit, char *replace_text, int xpos, int ypos)
 
 int edit_replace_dialog (WEdit * edit, CStr *search_text, CStr *replace_text, char **arg_order)
 {E_
-    int treplace_scanf = replace_scanf;
-    int treplace_regexp = replace_regexp;
-    int treplace_all = replace_all;
-    int treplace_prompt = replace_prompt;
-    int treplace_backwards = replace_backwards;
-    int treplace_whole = replace_whole;
-    int treplace_case = replace_case;
+    int treplace_scanf = option_replace_scanf;
+    int treplace_regexp = option_replace_regexp;
+    int treplace_all = option_replace_all;
+    int treplace_prompt = option_replace_prompt;
+    int treplace_backwards = option_replace_backwards;
+    int treplace_whole = option_replace_whole;
+    int treplace_case = option_replace_case;
 
     char *tsearch_text;
     char *treplace_text;
@@ -1413,13 +1403,13 @@ int edit_replace_dialog (WEdit * edit, CStr *search_text, CStr *replace_text, ch
 	    *arg_order = *(quick_widgets[INPUT_INDEX].str_result);
 	    *replace_text = *(quick_widgets[INPUT_INDEX + 2].str_result);
 	    *search_text = *(quick_widgets[INPUT_INDEX + 4].str_result);
-	    replace_scanf = treplace_scanf;
-	    replace_backwards = treplace_backwards;
-	    replace_regexp = treplace_regexp;
-	    replace_all = treplace_all;
-	    replace_prompt = treplace_prompt;
-	    replace_whole = treplace_whole;
-	    replace_case = treplace_case;
+	    option_replace_scanf = treplace_scanf;
+	    option_replace_backwards = treplace_backwards;
+	    option_replace_regexp = treplace_regexp;
+	    option_replace_all = treplace_all;
+	    option_replace_prompt = treplace_prompt;
+	    option_replace_whole = treplace_whole;
+	    option_replace_case = treplace_case;
 	    return;
 	} else {
 	    *arg_order = NULL;
@@ -1433,11 +1423,11 @@ int edit_replace_dialog (WEdit * edit, CStr *search_text, CStr *replace_text, ch
 
 void edit_search_dialog (WEdit * edit, char **search_text)
 {E_
-    int treplace_scanf = replace_scanf;
-    int treplace_regexp = replace_regexp;
-    int treplace_whole = replace_whole;
-    int treplace_case = replace_case;
-    int treplace_backwards = replace_backwards;
+    int treplace_scanf = option_replace_scanf;
+    int treplace_regexp = option_replace_regexp;
+    int treplace_whole = option_replace_whole;
+    int treplace_case = option_replace_case;
+    int treplace_backwards = option_replace_backwards;
 
     char *tsearch_text;
     QuickWidget quick_widgets[] =
@@ -1479,11 +1469,11 @@ void edit_search_dialog (WEdit * edit, char **search_text)
 
 	if (quick_dialog (&Quick_input) != B_CANCEL) {
 	    *search_text = *(quick_widgets[7].str_result);
-	    replace_scanf = treplace_scanf;
-	    replace_backwards = treplace_backwards;
-	    replace_regexp = treplace_regexp;
-	    replace_whole = treplace_whole;
-	    replace_case = treplace_case;
+	    option_replace_scanf = treplace_scanf;
+	    option_replace_backwards = treplace_backwards;
+	    option_replace_regexp = treplace_regexp;
+	    option_replace_whole = treplace_whole;
+	    option_replace_case = treplace_case;
 	    return;
 	} else {
 	    *search_text = NULL;
@@ -1618,11 +1608,11 @@ void edit_search_dialog (WEdit * edit, char **search_text)
 				"Search", GTK_CAULDRON_TOPLEVEL | GTK_CAULDRON_GRAB,
 				" ( (Enter search text)d | %Eogxf )xf / ( ( %Cd // %Cd // %Cd ) || ( %Cd // %Cd )xf )xf / ( %Bxfgrq || %Bxfgq )f",
 				search_text, "search",
-				"&Whole word", &replace_whole,
-				"Case &sensitive", &replace_case,
-				"&Regular expression", &replace_regexp,
-				"&Backwards", &replace_backwards,
-				"Scanf &expression", &replace_scanf,
+				"&Whole word", &option_replace_whole,
+				"Case &sensitive", &option_replace_case,
+				"&Regular expression", &option_replace_regexp,
+				"&Backwards", &option_replace_backwards,
+				"Scanf &expression", &option_replace_scanf,
 				GNOME_STOCK_BUTTON_OK,
 				GNOME_STOCK_BUTTON_CANCEL
 	);
@@ -1640,13 +1630,13 @@ void edit_replace_dialog (WEdit * edit, char **search_text, char **replace_text,
 				search_text, "search",
 				replace_text, "replace",
 				arg_order, "arg_order",
-				"&Whole word", &replace_whole,
-				"Case &sensitive", &replace_case,
-				"&Regular expression", &replace_regexp,
-				"&Backwards", &replace_backwards,
-				"Pr&ompt on replace", &replace_prompt,
-				"Replace &all", &replace_all,
-				"Scanf &expression", &replace_scanf,
+				"&Whole word", &option_replace_whole,
+				"Case &sensitive", &option_replace_case,
+				"&Regular expression", &option_replace_regexp,
+				"&Backwards", &option_replace_backwards,
+				"Pr&ompt on replace", &option_replace_prompt,
+				"Replace &all", &option_replace_all,
+				"Scanf &expression", &option_replace_scanf,
 				GNOME_STOCK_BUTTON_OK,
 				GNOME_STOCK_BUTTON_CANCEL
 	);
@@ -1773,24 +1763,24 @@ static long edit_find_string_ (long start, CStr exp, int *len, long last_byte, i
 	    if (exp.data[++p] != '%')	/* ...except for "%%" */
 		n++;
 
-    if (replace_scanf || replace_regexp) {
+    if (option_replace_scanf || option_replace_regexp) {
 	int c;
 	unsigned char *buf;
 	unsigned char mbuf[MAX_REPL_LEN * 2 + 8];
 
         memset(mbuf, '\0', sizeof(mbuf));
 
-	replace_scanf = (!replace_regexp);	/* can't have both */
+	option_replace_scanf = (!option_replace_regexp);	/* can't have both */
 
 	buf = mbuf;
 
-	if (replace_scanf) {
+	if (option_replace_scanf) {
 	    unsigned char e[MAX_REPL_LEN + 8];
             unsigned char *expc;
 	    if (n >= NUM_REPL_ARGS)
 		return -3;
 
-	    if (replace_case) {
+	    if (option_replace_case) {
 		for (p = start; p < last_byte && p < start + MAX_REPL_LEN; p++)
 		    buf[p - start] = (*get_byte) (data, p);
 	    } else {
@@ -1818,7 +1808,7 @@ static long edit_find_string_ (long start, CStr exp, int *len, long last_byte, i
 		if (once_only)
 		    return -2;
 		if (q + start < last_byte) {
-		    if (replace_case) {
+		    if (option_replace_case) {
 			buf[q] = (*get_byte) (data, q + start);
 		    } else {
 			c = (*get_byte) (data, q + start);
@@ -1859,7 +1849,7 @@ static long edit_find_string_ (long start, CStr exp, int *len, long last_byte, i
 
 		buf = mbuf;
 		while (q) {
-		    found_start = string_regexp_search ((char *) exp.data, (char *) buf, q, match_normal, match_bol, !replace_case, len, d);
+		    found_start = string_regexp_search ((char *) exp.data, (char *) buf, q, match_normal, match_bol, !option_replace_case, len, d);
 
 		    if (found_start <= -2) {	/* regcomp/regexec error */
 			*len = 0;
@@ -1892,7 +1882,7 @@ static long edit_find_string_ (long start, CStr exp, int *len, long last_byte, i
 	}
     } else {
  	*len = exp.len;
-	if (replace_case) {
+	if (option_replace_case) {
 	    for (p = start; p <= last_byte - l; p++) {
  		if ((*get_byte) (data, p) == (unsigned char)exp.data[0]) {	/* check if first char matches */
 		    for (f = 0, q = 0; q < l && f < 1; q++)
@@ -1941,7 +1931,7 @@ long edit_find_forwards (long search_start, CStr exp, int *len, long last_byte, 
     p = search_start;
 
     while ((p = edit_find_string (p, exp, len, last_byte, get_byte, data, once_only, d)) >= 0) {
-	if (replace_whole) {
+	if (option_replace_whole) {
 /*If the bordering chars are not in option_whole_chars_search then word is whole */
 	    if (!strcasechr (option_whole_chars_search, (*get_byte) (data, p - 1))
 		&& !strcasechr (option_whole_chars_search, (*get_byte) (data, p + *len)))
@@ -1960,7 +1950,7 @@ long edit_find_forwards (long search_start, CStr exp, int *len, long last_byte, 
 long edit_find (long search_start, CStr exp, int *len, long last_byte, int (*get_byte) (void *, long), void *data, void *d)
 {E_
     long p;
-    if (replace_backwards) {
+    if (option_replace_backwards) {
 	while (search_start >= 0) {
 	    p = edit_find_forwards (search_start, exp, len, last_byte, get_byte, data, 1, d);
 	    if (p == search_start)
@@ -2127,7 +2117,7 @@ void edit_replace_cmd (WEdit * edit, int again)
 
     if (!again) {
 	cancel = edit_replace_dialog (edit, &exp1, &exp2, &exp3);
-	treplace_prompt = replace_prompt;
+	treplace_prompt = option_replace_prompt;
     }
 
     if (cancel || !exp1.len)
@@ -2159,12 +2149,12 @@ void edit_replace_cmd (WEdit * edit, int again)
 	}
     }
 
-    replace_continue = replace_all;
+    replace_continue = option_replace_all;
 
-    if (edit->found_len && edit->search_start == edit->found_start + 1 && replace_backwards)
+    if (edit->found_len && edit->search_start == edit->found_start + 1 && option_replace_backwards)
 	edit->search_start--;
 
-    if (edit->found_len && edit->search_start == edit->found_start - 1 && !replace_backwards)
+    if (edit->found_len && edit->search_start == edit->found_start - 1 && !option_replace_backwards)
 	edit->search_start++;
 
     do {
@@ -2225,9 +2215,9 @@ void edit_replace_cmd (WEdit * edit, int again)
 	    }
 
 	    if (replace_yes) {	/* delete then insert new */
-		if (replace_scanf || replace_regexp) {
+		if (option_replace_scanf || option_replace_regexp) {
 		    char repl_str[MAX_REPL_LEN + 8];
-		    if (replace_regexp) {	/* we need to fill in sargs just like with scanf */
+		    if (option_replace_regexp) {	/* we need to fill in sargs just like with scanf */
 			int k, j;
 			for (k = 1; k < NUM_REPL_ARGS && pmatch[k].rm_eo >= 0; k++) {
 			    unsigned char *t;
@@ -2261,7 +2251,7 @@ void edit_replace_cmd (WEdit * edit, int again)
 		edit->found_len = i;
 	    }
 /* so that we don't find the same string again */
-	    if (replace_backwards) {
+	    if (option_replace_backwards) {
 		last_search = edit->search_start;
 		edit->search_start--;
 	    } else {
@@ -2326,7 +2316,7 @@ void edit_search_cmd (WEdit * edit, int again)
     CStr_free(&old);
     old = CStr_dupstr(exp);
 
-	    if (search_create_bookmark) {
+	    if (option_search_create_bookmark) {
 		int found = 0, books = 0;
 		int l = 0, l_last = -1;
 		long p, q = 0;
@@ -2354,10 +2344,10 @@ void edit_search_cmd (WEdit * edit, int again)
 		}
 	    } else {
 
-		if (edit->found_len && edit->search_start == edit->found_start && replace_backwards)
+		if (edit->found_len && edit->search_start == edit->found_start && option_replace_backwards)
 		    edit->search_start--;
 
-		if (edit->found_len && edit->search_start == edit->found_start && !replace_backwards)
+		if (edit->found_len && edit->search_start == edit->found_start && !option_replace_backwards)
 		    edit->search_start += edit->found_len;
 
 		edit->search_start = edit_find (edit->search_start, exp, &len, edit->last_byte,
@@ -2369,7 +2359,7 @@ void edit_search_cmd (WEdit * edit, int again)
 
 		    edit_cursor_move (edit, edit->search_start - edit->curs1);
 		    edit_scroll_screen_over_cursor (edit);
-/*		    if (replace_backwards)
+/*		    if (option_replace_backwards)
 			edit->search_start--;
 		    else
 			edit->search_start++; */

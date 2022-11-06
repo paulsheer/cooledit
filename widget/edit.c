@@ -1305,7 +1305,7 @@ void edit_scroll_downward (WEdit * edit, int i)
 
 /* Now makes sure the last line is on the bottom margin if the
 user attempt to scroll too far: */
-            CPushFont("editor");
+            CPushFont("editor", 0);
 	    for (top = edit->total_lines;; top--) {
 	        y += edit_get_line_height (edit, top);
 	        if (y > CHeightOf (edit->widget) - EDIT_FRAME_H) {

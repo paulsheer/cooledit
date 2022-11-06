@@ -1,0 +1,55 @@
+.TH coolterm 1 "5 November 2022"
+.\"SKIP_SECTION"
+.SH NAME
+coolterm \- Unicode terminal for remote access to Unix/Windows machines
+.\"SKIP_SECTION"
+.SH USAGE
+\fBcoolterm\fP [OPTIONS] -host <remote-ip-address>
+.br
+\fBcoolterm\fP [OPTIONS] -host localhost
+.br
+\fBcoolterm\fP [OPTIONS]
+.br
+\fBcoolterm\fP -h
+.br
+.SH DISCLAIMER
+The information in this file is provided without warranty
+for its accuracy or completeness. Use of this file or its
+information is entirely at your own risk.
+.SH DESCRIPTION
+.LP
+This is a standalone Unicode xterm/rxvt terminal that can connect
+to the remote server \fBremotefs\fP or \fBREMOTEFS.EXE\fP, or run
+locally as a regular terminal.
+
+.\".\"DONT_SPLIT"
+.SH OPTIONS
+.TP
+.I "-h"
+Print out \fBcooledit\fP full help. Not all options apply.
+.TP
+.I "-host"
+Specify the remote IP address where \fBremotefs\fP or \fBREMOTEFS.EXE\fP
+is running. \fI-host\fP \fBlocalhost\fP invokes a local terminal.
+.PP
+.SH INSTALLATION
+See the man page remotefs(1) for info on configuring \fBremotefs\fP or \fBREMOTEFS.EXE\fP
+.PP
+.SH FILES
+.I AESKEYFILE
+.IP
+The contents of file \fIAESKEYFILE\fP on the remote server will need to be copied
+for encryption support.
+.PP
+.SH AVAILABILITY
+The latest public release of this program can be found at
+.br
+\fBhttp://www.ibiblio.org/pub/Linux/apps/editors/X/cooledit/\fP
+.PP
+.SH SEE ALSO
+cooledit(1), remotefs(1).
+.PP
+.SH AUTHORS
+Paul Sheer
+.PP
+

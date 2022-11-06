@@ -883,7 +883,7 @@ int eh_textinput (CWidget * w, XEvent * xevent, CEvent * cwevent)
     int handled = 0, save_options;
     char *u = 0;
 
-    CPushFont ("editor");
+    CPushFont ("editor", 0);
 
     input_insert (w, INPUT_INSERT_FLUSH);
 

@@ -243,14 +243,15 @@ static  XpmAttributes xpmAttr;
 
 
 
-void rxvtlib_init (rxvtlib *o, int charset_8bit)
+void rxvtlib_init (rxvtlib *o, unsigned long rxvt_options)
 {E_
     memset (o, 0, sizeof (rxvtlib));
-    o->charset_8bit = charset_8bit;
-    if (charset_8bit)
+    o->charset_8bit = (rxvt_options & RXVT_OPTIONS_TERM8BIT) ? 1 : 0;
+    if ((rxvt_options & RXVT_OPTIONS_TERM8BIT))
         o->fontname = "rxvt8bit";
     else
         o->fontname = "rxvt";
+    o->rxvt_options = rxvt_options;
     o->Xfd = Xfd;
     o->PrivateModes = PrivateModes;
     o->SavedModes = SavedModes;

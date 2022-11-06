@@ -406,6 +406,8 @@ const char *remotefs_home_dir (struct remotefs *rfs);
 void remotefs_set_password_cb (remotfs_password_cb_t f, void *d);
 
 int remotefs_reader_util (struct remotefs_terminalio *io, const int no_io);
+void remotefs_set_die_on_error (void);
+int remotefs_get_die_exit_code (void);
 int remotefs_shell_util (const char *host, struct remotefs_terminalio *io, struct cterminal_config *c, int dumb_terminal, char *const argv[], char *errmsg);
 
 

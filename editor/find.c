@@ -55,7 +55,7 @@ Window find_mapped_window (Window w);
 int CInputsWithOptions (Window parent, int x, int y, const char *heading, \
 	    char **inputs[], char *input_labels[], char *input_names[], \
     char *input_tool_hint[], int *check_values[], char *check_labels[], \
-			char *check_tool_hints[], int options, int width)
+			char *check_tool_hints[], int check_group[], int options, int width)
 {E_
     char *f = 0;
     Window win;
@@ -64,6 +64,8 @@ int CInputsWithOptions (Window parent, int x, int y, const char *heading, \
     CState s;
     int xh, yh, ys;
     int k, labels_in_column, cancel = 0;
+
+    CPushFont ("widget", 0);
 
     CBackupState (&s);
     CDisable ("*");
@@ -137,7 +139,7 @@ int CInputsWithOptions (Window parent, int x, int y, const char *heading, \
 	CGetHintPos (0, &yh);
 	if (k == labels_in_column)
 	    yh = ys;
-	CDrawSwitch (id, win, xh + ((k >= labels_in_column) ? x / 2 : 0), yh, *check_values[k], _ (check_labels[k]), 0);
+	CDrawSwitch (id, win, xh + ((k >= labels_in_column) ? x / 2 : 0), yh, *check_values[k], _ (check_labels[k]), check_group ? check_group[k] : 0);
 	if (check_tool_hints) {
 	    CSetToolHint (id, _ (check_tool_hints[k]));
 	    strcat (id, ".label");
@@ -160,6 +162,10 @@ int CInputsWithOptions (Window parent, int x, int y, const char *heading, \
     for (;;) {
         char host[256], *hostp;
 	CNextEvent (&xev, &cev);
+        if (xev.type == QuitApplication) {
+	    cancel = 1;
+	    break;
+	}
 	if (!CIdent ("_IWO")) {
 	    cancel = 1;
 	    break;
@@ -242,6 +248,7 @@ int CInputsWithOptions (Window parent, int x, int y, const char *heading, \
 		    free (*inputs[k]);
 		    *inputs[k] = 0;
 		}
+    CPopFont ();
     return cancel;
 }
 
@@ -312,7 +319,7 @@ void find_file (void)
     checks_values_result[3] = &checks_values[3];
     checks_values_result[4] = 0;
 
-    r = CInputsWithOptions (0, 0, 0, _ ("Find File"), inputs_result, input_labels, input_names, input_tool_hint, checks_values_result, check_labels, check_tool_hints, INPUTS_WITH_OPTIONS_BROWSE_DIR_1, 60);
+    r = CInputsWithOptions (0, 0, 0, _ ("Find File"), inputs_result, input_labels, input_names, input_tool_hint, checks_values_result, check_labels, check_tool_hints, NULL, INPUTS_WITH_OPTIONS_BROWSE_DIR_1, 60);
     if (r)
 	return;
     strcat (s, "find ");
@@ -455,7 +462,7 @@ void ctags (void)
     checks_values_result[13] = &checks_values[13];
     checks_values_result[14] = 0;
 
-    r = CInputsWithOptions (0, 0, 0, _ ("Ctags Index"), inputs_result, input_labels, input_names, input_tool_hint, checks_values_result, check_labels, check_tool_hints, INPUTS_WITH_OPTIONS_BROWSE_DIR_1, 60);
+    r = CInputsWithOptions (0, 0, 0, _ ("Ctags Index"), inputs_result, input_labels, input_names, input_tool_hint, checks_values_result, check_labels, check_tool_hints, NULL, INPUTS_WITH_OPTIONS_BROWSE_DIR_1, 60);
     if (r)
 	return;
     for (k = 0, i = 0; i < 13; i++) {

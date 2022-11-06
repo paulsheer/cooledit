@@ -9,6 +9,8 @@
 #include <config.h>
 #include "stringtools.h"
 #include "edit.h"
+#include "debug.h"
+#include "rxvt.h"
 #include "cmdlineopt.h"
 #include "editoptions.h"
 
@@ -215,6 +217,25 @@ static struct {
 	{"option_color_26", &option_color_26, 0, TYPE_HIDDEN_HEX_VALUE},
 	{"option_syntax_highlighting", &option_syntax_highlighting, 0, 0},
 	{"option_auto_spellcheck", &option_auto_spellcheck, 0, 0},
+
+        {"option_replace_scanf", &option_replace_scanf, 0, TYPE_HIDDEN_VALUE},
+        {"option_replace_regexp", &option_replace_regexp, 0, TYPE_HIDDEN_VALUE},
+        {"option_replace_all", &option_replace_all, 0, TYPE_HIDDEN_VALUE},
+        {"option_replace_prompt", &option_replace_prompt, 0, TYPE_HIDDEN_VALUE},
+        {"option_replace_whole", &option_replace_whole, 0, TYPE_HIDDEN_VALUE},
+        {"option_replace_case", &option_replace_case, 0, TYPE_HIDDEN_VALUE},
+        {"option_replace_backwards", &option_replace_backwards, 0, TYPE_HIDDEN_VALUE},
+        {"option_search_create_bookmark", &option_search_create_bookmark, 0, TYPE_HIDDEN_VALUE},
+
+        {"options_debug_show_output", &debug_options.show_output, 0, TYPE_HIDDEN_VALUE},
+        {"options_debug_stop_at_main", &debug_options.stop_at_main, 0, TYPE_HIDDEN_VALUE},
+        {"options_debug_show_on_stdout", &debug_options.show_on_stdout, 0, TYPE_HIDDEN_VALUE},
+
+        {"options_startup_term_8bit", &rxvt_startup_options.term_8bit, 0, TYPE_HIDDEN_VALUE},
+        {"options_startup_large_font", &rxvt_startup_options.large_font, 0, TYPE_HIDDEN_VALUE},
+        {"options_startup_backspace_ctrl_h", &rxvt_startup_options.backspace_ctrl_h, 0, TYPE_HIDDEN_VALUE},
+        {"options_startup_backspace_127", &rxvt_startup_options.backspace_127, 0, TYPE_HIDDEN_VALUE},
+
 	{0, 0}
 };
 
@@ -355,11 +376,14 @@ int load_setup (const char *file)
 
 void get_main_window_geometry (void)
 {E_
-    int x, y;
-    unsigned int width, height, d;
+    int x = 0, y = 0;
+    unsigned int width = 0, height = 0, d;
     Window win, root;
     static char save_geom[80];
     int bitmask;
+
+    if (!main_window)
+        return;
 
     XGetGeometry (CDisplay, main_window, &root, &x, &y, &width, &height, &d, &d);
     win = CGetWMWindow (main_window);
@@ -371,7 +395,7 @@ void get_main_window_geometry (void)
 	bitmask = WidthValue | HeightValue;
 
     save_geom[0] = '\0';
-    if (bitmask & (WidthValue | HeightValue)) {
+    if ((bitmask & (WidthValue | HeightValue)) && width > 50 && height > 50) {
 	strcat (save_geom, itoa (width));
 	strcat (save_geom, "x");
 	strcat (save_geom, itoa (height));

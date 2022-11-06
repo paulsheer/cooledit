@@ -6,6 +6,7 @@
 #include <app_glob.c>
 #include <font.h>
 #endif
+#include <../editor/rxvt.h>
 
 /*--------------------------------*-C-*---------------------------------*
  * File:	main.c
@@ -972,7 +973,7 @@ void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname)
     }
 /* set the sizes */
 #ifdef UTF8_FONT
-    CPushFont (o->fontname);
+    CPushFont (o->fontname, 0);
     o->TermWin.fprop = 0;
     o->TermWin.mprop = 0;
     o->TermWin.bprop = 0;
@@ -1315,7 +1316,6 @@ static void            rxvtlib_init_display (rxvtlib *o)
 	o->rs[Rs_display_name] = val;	/* use broken `:0' value */
 }
 
-void rxvt_set_input_context (rxvtlib *o, XIMStyle input_style);
 XIMStyle get_input_style (void);
 
 

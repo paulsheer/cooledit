@@ -206,7 +206,7 @@ void cooledit_print_dialog (WEdit * editor)
     checks_values_result[8] = &bold;
     checks_values_result[9] = 0;
 
-    r = CInputsWithOptions (0, 0, 0, _ (" Print "), (char ***) inputs_result, input_labels, input_names, input_tool_hint, checks_values_result, check_labels, check_tool_hints, INPUTS_WITH_OPTIONS_BROWSE_SAVE_2 | INPUTS_WITH_OPTIONS_FREE_STRINGS, 50);
+    r = CInputsWithOptions (0, 0, 0, _ (" Print "), (char ***) inputs_result, input_labels, input_names, input_tool_hint, checks_values_result, check_labels, check_tool_hints, NULL, INPUTS_WITH_OPTIONS_BROWSE_SAVE_2 | INPUTS_WITH_OPTIONS_FREE_STRINGS, 50);
     if (r)
 	goto print_done;
 

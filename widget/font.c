@@ -757,7 +757,6 @@ static int get_string_dimensions (const char *s, int n, int *height, int *ascent
                 *height = current_font->f.font_freetype.measured_height / FONT_ANTIALIASING;
         }
         width = XAaTextWidth (&current_font->f, s, n, ink_descent, FONT_ANTIALIASING);
-        return width;
 #endif
     } else {
 	XCharStruct c;
@@ -789,13 +788,10 @@ static int get_string_dimensions (const char *s, int n, int *height, int *ascent
 
 static int check_font_fixed (void)
 {E_
-    int m;
-    char *p;
-    m = get_string_dimensions ("M", 1, 0, 0, 0);
-    for (p = "!MI i.1@~W"; *p; p++)
-	if (m != get_string_dimensions (p, 1, 0, 0, 0))
-	    return 0;
-    return m;
+    const char *p = "!lI i.1'~";
+    if (get_string_dimensions (p, strlen (p), 0, 0, 0) == get_string_dimensions ("M", 1, 0, 0, 0) * strlen (p))
+        return 1;
+    return 0;
 }
 
 static void get_font_dimensions (void)
@@ -1055,40 +1051,34 @@ int font_depth = 0;
 
 static int CPushFont_ (enum force_fixed_width_enum force_fixed_width, const char *name, const char *xname, enum font_encoding *e);
 
-int CPushFont (const char *name, ...)
+int CPushFont (const char *name, const char *xname, ...)
 {E_
     va_list ap;
     enum font_encoding *e;
-    const char *xname;
 
-    va_start (ap, name);
-    xname = va_arg (ap, const char *);
+    va_start (ap, xname);
     e = va_arg (ap, enum font_encoding *);
     va_end (ap);
     return CPushFont_ (FORCE_FIXED_WIDTH__DISABLE, name, xname, e);
 }
 
-int CPushFontForceFixed (const char *name, ...)
+int CPushFontForceFixed (const char *name, const char *xname, ...)
 {E_
     va_list ap;
     enum font_encoding *e;
-    const char *xname;
 
-    va_start (ap, name);
-    xname = va_arg (ap, const char *);
+    va_start (ap, xname);
     e = va_arg (ap, enum font_encoding *);
     va_end (ap);
     return CPushFont_ (FORCE_FIXED_WIDTH__SINGLEWIDTH, name, xname, e);
 }
 
-int CPushFontHonorFixedDoubleWidth (const char *name, ...)
+int CPushFontHonorFixedDoubleWidth (const char *name, const char *xname, ...)
 {E_
     va_list ap;
     enum font_encoding *e;
-    const char *xname;
 
-    va_start (ap, name);
-    xname = va_arg (ap, const char *);
+    va_start (ap, xname);
     e = va_arg (ap, enum font_encoding *);
     va_end (ap);
     return CPushFont_ (FORCE_FIXED_WIDTH__UNICODETERMINALMODE, name, xname, e);
@@ -1102,30 +1092,29 @@ static int CPushFont_ (enum force_fixed_width_enum force_fixed_width, const char
     if (f) {
 	f->ref++;
     } else {
-        if (!e || !*e) {
-	    fprintf (stderr, "CPushFont passed NULL encoding\n");
-	    fflush (stderr);
-	    abort ();
+        if (name && xname)
+            f = load_font (name, xname, e, force_fixed_width);
+        if (f) {
+	    f->ref = 1;
+        } else {
+            assert (name);
+            if (!(xname = font_lazy_find_pref1 (name, &e))) {
+                fprintf (stderr, "CPushFont: pref1 not found\n");
+                fflush (stderr);
+                abort ();
+            }
+            if (!(f = load_font (name, xname, e, force_fixed_width))) {
+                if (!(xname = font_lazy_find_pref2 (name, &e))) {
+                    fprintf (stderr, "CPushFont: pref2 not found\n");
+                    fflush (stderr);
+                    return 1;
+                }
+                if (!(f = load_font (name, xname, e, force_fixed_width)))
+                    if (!(f = load_font (name, "-misc-fixed-*-*-*--13-*", e, force_fixed_width)))
+                        return 1;
+            }
+	    f->ref = 2;         /* these are the base fonts "editor", "widget", etc. that must not be freed */
         }
-        if (!xname) {
-	    fprintf (stderr, "CPushFont passed NULL font name\n");
-	    fflush (stderr);
-	    abort ();
-        }
-	switch (*e) {
-	case FONT_ENCODING_UTF8:
-	case FONT_ENCODING_8BIT:
-	case FONT_ENCODING_LOCALE:
-	    break;
-	default:
-	    fprintf (stderr, "invalid encoding\n");
-	    fflush (stderr);
-	    abort ();
-	}
-	f = load_font (name, xname, e, force_fixed_width);
-	if (!f)
-	    return 1;
-	f->ref = 1;
     }
     p = CMalloc (sizeof (struct font_stack));
     p->f = f;
@@ -1210,10 +1199,91 @@ void CFreeAllFonts (void)
 #ifndef NO_TTF
     load_one_freetype_font(0, 0, 0, 0);
 #endif
+    font_lazy_cleanup ();
 }
 
 int CIsFixedFont (void)
 {E_
     return FIXED_FONT;
 }
+
+
+struct lazy_load {
+    struct lazy_load *next;
+    char *name;
+    char *pref1;
+    char *pref2;
+    enum font_encoding *enc;
+};
+
+static struct lazy_load *lazy_load_list = NULL;
+
+const char *font_lazy_find_pref1 (const char *name, enum font_encoding **e)
+{E_
+    struct lazy_load *i;
+    for (i = lazy_load_list; i; i = i->next)
+        if (!strcmp (name, i->name)) {
+            *e = i->enc;
+            return i->pref1;
+        }
+    return NULL;
+}
+
+const char *font_lazy_find_pref2 (const char *name, enum font_encoding **e)
+{E_
+    struct lazy_load *i;
+    for (i = lazy_load_list; i; i = i->next)
+        if (!strcmp (name, i->name)) {
+            *e = i->enc;
+            return i->pref2;
+        }
+    return NULL;
+}
+
+void font_lazy_cleanup (void)
+{E_
+    struct lazy_load *i, *next;
+    for (i = lazy_load_list; i; i = next) {
+        next = i->next;
+        if (i->name)
+            free (i->name);
+        if (i->pref1)
+            free (i->pref1);
+        if (i->pref2)
+            free (i->pref2);
+        memset (i, '\0', sizeof (*i));
+        free (i);
+    }
+    lazy_load_list = NULL;
+}
+
+void CFontLazy (const char *name, const char *pref1, const char *pref2, enum font_encoding *enc)
+{E_
+    struct lazy_load *i;
+    for (i = lazy_load_list; i; i = i->next)
+        if (!strcmp (name, i->name))
+            break;
+    if (!i) {
+        i = (struct lazy_load *) malloc (sizeof (*i));
+        memset (i, '\0', sizeof (*i));
+        i->next = lazy_load_list;
+        lazy_load_list = i;
+    }
+    if (i->name)
+        free (i->name);
+    i->name = Cstrdup (name);
+    if (i->pref1)
+        free (i->pref1);
+    i->pref1 = Cstrdup (pref1);
+    if (i->pref2)
+        free (i->pref2);
+    i->pref2 = pref2 ? Cstrdup (pref2) : NULL;
+    i->enc = enc;
+}
+
+
+
+
+
+
 

@@ -3404,7 +3404,7 @@ void            rxvtlib_IMInstantiateCallback (Display * display, XPointer clien
     }
 
 #ifdef UTF8_FONT
-    CPushFont (o->fontname);
+    CPushFont (o->fontname, 0);
     fontset = current_font->f.font_set;
 #else
     fontset = o->TermWin.fontset;
@@ -3613,8 +3613,11 @@ printf '\e[?67h'
 printf '\e[?67l'
 
 */
-
-    if (c.erase_char == 8 /* ^H */) {
+    if ((o->rxvt_options & RXVT_OPTIONS_BACKSPACE_CTRLH)) {
+	o->PrivateModes |= PrivMode_BackSpace;
+    } else if ((o->rxvt_options & RXVT_OPTIONS_BACKSPACE_127)) {
+	o->PrivateModes &= ~PrivMode_BackSpace;
+    } else if (c.erase_char == 8 /* ^H */) {
 	o->PrivateModes |= PrivMode_BackSpace;
     }
 

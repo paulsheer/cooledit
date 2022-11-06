@@ -2191,7 +2191,7 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
  */
     wbyte = 0;
 #ifdef UTF8_FONT
-    CPushFont (o->fontname);
+    CPushFont (o->fontname, 0);
     draw_string = draw_image_string_;
     draw_image_string = draw_image_string_;
 #else

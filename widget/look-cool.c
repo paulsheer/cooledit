@@ -27,14 +27,14 @@ extern struct look *look;
 
 /* {{{ search replace dialog */
 
-extern int replace_scanf;
-extern int replace_regexp;
-extern int replace_all;
-extern int replace_prompt;
-extern int replace_whole;
-extern int replace_case;
-extern int replace_backwards;
-extern int search_create_bookmark;
+extern int option_replace_scanf;
+extern int option_replace_regexp;
+extern int option_replace_all;
+extern int option_replace_prompt;
+extern int option_replace_whole;
+extern int option_replace_case;
+extern int option_replace_backwards;
+extern int option_search_create_bookmark;
 
 struct look_cool_list {
     struct file_entry *l;
@@ -84,19 +84,19 @@ int look_cool_search_replace_dialog (Window parent, int x, int y, CStr *search_t
     CGetHintPos (0, &yh);
     ys = yh;
 /* The following are check boxes */
-    CDrawSwitch ("replace.ww", win, xh, yh, replace_whole, _(" Whole words only "), 0);
+    CDrawSwitch ("replace.ww", win, xh, yh, option_replace_whole, _(" Whole words only "), 0);
     CGetHintPos (0, &yh);
-    CDrawSwitch ("replace.case", win, xh, yh, replace_case, _(" Case sensitive "), 0);
+    CDrawSwitch ("replace.case", win, xh, yh, option_replace_case, _(" Case sensitive "), 0);
     yc = yh;
     CGetHintPos (0, &yh);
-    CDrawSwitch ("replace.reg", win, xh, yh, replace_regexp, _(" Regular expression "), 1);
+    CDrawSwitch ("replace.reg", win, xh, yh, option_replace_regexp, _(" Regular expression "), 1);
     CSetToolHint ("replace.reg", _("See the regex man page for how\nto compose a regular expression"));
     CSetToolHint ("replace.reg.label", _("See the regex man page for how\nto compose a regular expression"));
     yb = yh;
     CGetHintPos (0, &yh);
     CGetHintPos (&xb, 0);
     if (option & SEARCH_DIALOG_OPTION_BACKWARDS) {
-	CDrawSwitch ("replace.bkwd", win, xh, yh, replace_backwards, _(" Backwards "), 0);
+	CDrawSwitch ("replace.bkwd", win, xh, yh, option_replace_backwards, _(" Backwards "), 0);
 /* Tool hint */
 	CSetToolHint ("replace.bkwd", _("Warning: Searching backward can be slow"));
 	CSetToolHint ("replace.bkwd.label", _("Warning: Searching backward can be slow"));
@@ -120,23 +120,23 @@ int look_cool_search_replace_dialog (Window parent, int x, int y, CStr *search_t
     }
 
     if (replace_text) {
-	CDrawSwitch ("replace.pr", win, xb, yr, replace_prompt, _(" Prompt on replace "), 0);
+	CDrawSwitch ("replace.pr", win, xb, yr, option_replace_prompt, _(" Prompt on replace "), 0);
 /* Tool hint */
 	CSetToolHint ("replace.pr", _("Ask before making each replacement"));
 	CGetHintPos (0, &yr);
-	CDrawSwitch ("replace.all", win, xb, yr, replace_all, _(" Replace all "), 0);
+	CDrawSwitch ("replace.all", win, xb, yr, option_replace_all, _(" Replace all "), 0);
 /* Tool hint */
 	CSetToolHint ("replace.all", _("Replace repeatedly"));
 	CGetHintPos (0, &yr);
     }
     if (option & SEARCH_DIALOG_OPTION_BOOKMARK) {
-	CDrawSwitch ("replace.bkmk", win, xb, yr, search_create_bookmark, _(" Bookmarks "), 0);
+	CDrawSwitch ("replace.bkmk", win, xb, yr, option_search_create_bookmark, _(" Bookmarks "), 0);
 /* Tool hint */
 	CSetToolHint ("replace.bkmk", _("Create bookmarks at all lines found"));
 	CSetToolHint ("replace.bkmk.label", _("Create bookmarks at all lines found"));
 	CGetHintPos (0, &yr);
     }
-    CDrawSwitch ("replace.scanf", win, xb, yr, replace_scanf, _(" Scanf expression "), 1);
+    CDrawSwitch ("replace.scanf", win, xb, yr, option_replace_scanf, _(" Scanf expression "), 1);
 /* Tool hint */
     CSetToolHint ("replace.scanf", _("Allows entering of a C format string,\nsee the scanf man page"));
 
@@ -178,8 +178,8 @@ int look_cool_search_replace_dialog (Window parent, int x, int y, CStr *search_t
 	}
 	if (!strcmp (cev.ident, "replace.ok") || cev.command == CK_Enter) {
 	    if (replace_text) {
-		replace_all = CIdent ("replace.all")->keypressed;
-		replace_prompt = CIdent ("replace.pr")->keypressed;
+		option_replace_all = CIdent ("replace.all")->keypressed;
+		option_replace_prompt = CIdent ("replace.pr")->keypressed;
                 CStr_free(replace_text);
 		*replace_text = CStr_dupstr (CIdent ("replace.rinp")->text);
                 CStr_free(arg_order);
@@ -187,21 +187,21 @@ int look_cool_search_replace_dialog (Window parent, int x, int y, CStr *search_t
 	    }
             CStr_free(search_text);
 	    *search_text = CStr_dupstr (CIdent ("replace.sinp")->text);
-	    replace_whole = CIdent ("replace.ww")->keypressed;
-	    replace_case = CIdent ("replace.case")->keypressed;
-	    replace_scanf = CIdent ("replace.scanf")->keypressed;
-	    replace_regexp = CIdent ("replace.reg")->keypressed;
+	    option_replace_whole = CIdent ("replace.ww")->keypressed;
+	    option_replace_case = CIdent ("replace.case")->keypressed;
+	    option_replace_scanf = CIdent ("replace.scanf")->keypressed;
+	    option_replace_regexp = CIdent ("replace.reg")->keypressed;
 
 	    if (option & SEARCH_DIALOG_OPTION_BACKWARDS) {
-		replace_backwards = CIdent ("replace.bkwd")->keypressed;
+		option_replace_backwards = CIdent ("replace.bkwd")->keypressed;
 	    } else {
-		replace_backwards = 0;
+		option_replace_backwards = 0;
 	    }
 
 	    if (option & SEARCH_DIALOG_OPTION_BOOKMARK) {
-		search_create_bookmark = CIdent ("replace.bkmk")->keypressed;
+		option_search_create_bookmark = CIdent ("replace.bkmk")->keypressed;
 	    } else {
-		search_create_bookmark = 0;
+		option_search_create_bookmark = 0;
 	    }
 
 	    break;

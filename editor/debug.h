@@ -3,6 +3,11 @@
    Copyright (C) 1996-2022 Paul Sheer
  */
 
+struct debug_options {
+    int show_output, stop_at_main, show_on_stdout;
+};
+
+extern struct debug_options debug_options;
 
 void debug_callback (void);
 void debug_init (void);

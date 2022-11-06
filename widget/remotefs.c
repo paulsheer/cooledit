@@ -1544,6 +1544,19 @@ int remotefs_shell_util (const char *host, struct remotefs_terminalio *io, struc
 }
 
 
+static int die_on_error = 0;
+static int die_exit_code = 0;
+
+void remotefs_set_die_on_error (void)
+{
+    die_on_error = 1;
+}
+
+int remotefs_get_die_exit_code (void)
+{
+    return die_exit_code;
+}
+
 int remotefs_reader_util (struct remotefs_terminalio *io, const int no_io)
 {E_
     struct remotefs *rfs;
@@ -1562,7 +1575,12 @@ int remotefs_reader_util (struct remotefs_terminalio *io, const int no_io)
         if (timeout) {
             return 0;
         } else {
-printf("remotefs_shellread error => %s\n", errmsg);
+            char *p;
+            int exit_code = 0;
+            if (die_on_error && (p = strstr (errmsg, "exit code")) && sscanf (p, "exit code %d", &exit_code) == 1)     /* hack: scan for exit code. see (*5*) */
+                die_exit_code = exit_code;
+            else
+                printf("terminal read => %s\n", errmsg);
             return -1;
         }
     }
@@ -4287,7 +4305,23 @@ static int local_shellread (struct remotefs *rfs, struct remotefs_terminalio *io
     } else if (r < 0 && (ERROR_EINTR() || ERROR_EAGAIN())) {
         goto retry;
     } else {
-        if (!r) {
+        char msg[REMOTEFS_ERR_MSG_LEN] = "";
+        if (io->cmd_pid) {
+            int wstatus = 0;
+            for (;;) {
+                childhandler_ ();
+                if (CChildExitted (io->cmd_pid, &wstatus))
+                    break;
+                if (kill (io->cmd_pid, SIGKILL))
+                    break;
+            }
+/* hack: used to scan for exit code at (*5*) */
+            if (WIFEXITED (wstatus))
+                snprintf (msg, sizeof (msg), "process %ld died with exit code %d", (long) io->cmd_pid, (int) WEXITSTATUS (wstatus));
+        }
+        if (msg[0]) {
+            strcpy (errmsg, msg);
+        } else if (!r) {
             strcpy (errmsg, "file descriptor closed");
         } else {
             strncpy (errmsg, strerror (errno), REMOTEFS_ERR_MSG_LEN);

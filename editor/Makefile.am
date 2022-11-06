@@ -1,5 +1,5 @@
 bin_PROGRAMS = cooledit smalledit coolman
-bin_SCRIPTS = cooledit-gdb coolproject
+bin_SCRIPTS = coolterm coolproject
 
 AM_CPPFLAGS = -I$(top_srcdir)/widget -I$(top_srcdir) -I$(top_srcdir)/intl
 

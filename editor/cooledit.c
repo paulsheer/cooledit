@@ -31,6 +31,7 @@
 #include "igloo.h"
 #include "widget/pool.h"
 #include "rxvt/rxvtexport.h"
+#include "rxvt.h"
 #include "debug.h"
 #include "find.h"
 #include "aafont.h"
@@ -65,6 +66,8 @@ extern struct look *look;
 int start_width = 80;
 int start_height = 30;
 char *option_look = "cool";
+static char *option_rxvt_startup_host = NULL;
+static int option_startup_as_rxvt = 0;
 
 /* error handler */
 #ifdef DEBUG
@@ -91,11 +94,11 @@ int er_handler (Display * c, XErrorEvent * e)
 
 extern Atom ATOM_WM_PROTOCOLS, ATOM_WM_DELETE_WINDOW, ATOM_WM_NAME, ATOM_WM_NORMAL_HINTS;
 char *argv_nought = "cooledit";
-Window main_window;
+Window main_window = 0;
 
 /* {{{ signal handling */
 
-static void main_loop (void);
+void cooledit_main_loop (void);
 
 static RETSIGTYPE userone_handler (int x)
 {E_
@@ -111,7 +114,8 @@ static RETSIGTYPE userone_handler (int x)
     signal (SIGUSR1, userone_handler);
     CEnable ("*");
     XUngrabPointer (CDisplay, CurrentTime);
-    main_loop ();		/* continue */
+    for(;;)
+        cooledit_main_loop ();		/* continue */
     exit (0);
     handler_return;
 }
@@ -448,6 +452,8 @@ void version (void)
 struct prog_options cooledit_options[] =
 {
     {' ', "", "", ARG_STRINGS, 0, 0, 0},
+    {0, "-rxvt", "", ARG_SET, 0, 0, &option_startup_as_rxvt},
+    {0, "-host", "", ARG_STRING, &option_rxvt_startup_host, 0, 0},
     {0, "-bg", "--background-color", ARG_STRING, &option_background_color, 0, 0},
 #ifdef GUESS_VISUAL
     {0, "-vis", "--visual", ARG_STRING, &option_preferred_visual, 0, 0},
@@ -1260,8 +1266,8 @@ void exit_app (unsigned long save)
     if (option_save_setup_on_exit)
 	save_setup (editor_options_file);
     save_options_section (editor_options_file, "[Input Histories]", p = get_all_lists ());
-    rxvtlib_shutall ();
     free (p);
+    rxvtlib_shutall ();
     free_all_scripts ();
     complete_command (0);
     debug_shut ();
@@ -1921,19 +1927,19 @@ static void maximise_window (char *ident)
 }
 
 
-/* ----main_loop()--------------------------------------------------------- */
+/* ----cooledit_main_loop()--------------------------------------------------------- */
 
-static void main_loop (void)
+void cooledit_main_loop (void)
 {E_
-    for (;;) {
+    {
 	CNextEvent (&cooledit_xevent, &cooledit_cevent);
 	if (cooledit_xevent.type == TickEvent) {
 	    debug_callback ();
-	    continue;
+	    return;
 	}
 	if (cooledit_xevent.type == Expose || !cooledit_xevent.type
 	    || cooledit_xevent.type == InternalExpose)
-	    continue;
+	    return;
 	switch (cooledit_xevent.type) {
 	case AlarmEvent:{
 		static int hint_count = 0;
@@ -1960,7 +1966,7 @@ static void main_loop (void)
 		    rxvt_start (edit[current_edit]->editor->host, CRoot, 0, 0, 0);
 		    break;
 		case CK_8BitTerminal:
-		    rxvt_start (edit[current_edit]->editor->host, CRoot, 0, 0, 1);
+		    rxvt_start (edit[current_edit]->editor->host, CRoot, 0, 0, RXVT_OPTIONS_TERM8BIT);
 		    break;
 		case CK_Complete:
 		    complete_command (edit[current_edit]);
@@ -2090,7 +2096,7 @@ static void main_loop (void)
 		    break;
 		}
 	    }
-	    continue;
+	    return;
 	}
 	if (cooledit_cevent.command) {
 	    switch ((int) cooledit_cevent.command) {
@@ -2182,12 +2188,11 @@ static struct mouse_funcs main_mouse_funcs =
 };
 
 extern int (*global_callback) (XEvent *x);
-int rxvt_event (XEvent * xevent);
-void rxvt_init (void);
 const char *get_default_widget_font (void);
 const char *get_default_editor_font (void);
 const char *get_default_editor_font_large (void);
 const char *get_default_8bit_term_font (void);
+const char *get_default_8bit_term_font_large (void);
 
 
 
@@ -2311,9 +2316,12 @@ int main (int argc, char **argv)
 	if (!strcmp (option_widget_font2, "default"))
 	    option_widget_font2 = (char *) strdup (get_default_widget_font ());
 
-    if (option_8bit_term_font)
+    if (option_8bit_term_font) {
 	if (!strcmp (option_8bit_term_font, "default"))
 	    option_8bit_term_font = (char *) strdup (get_default_8bit_term_font ());
+	if (!strcmp (option_8bit_term_font, "large"))
+	    option_8bit_term_font = (char *) strdup (get_default_8bit_term_font_large ());
+    }
 
     if (option_font2)
 	if (strspn (option_font2, "0123456789") == strlen (option_font2)) {
@@ -2332,6 +2340,13 @@ int main (int argc, char **argv)
     cooledit_init ();
 
     set_editor_encoding (option_utf_interpretation2, option_locale_encoding);
+
+    if (option_startup_as_rxvt || option_rxvt_startup_host) {
+        global_callback = rxvt_event;
+        rxvt_startup_dialog (option_rxvt_startup_host);
+        cooledit_main_loop ();
+        exit (0);
+    }
 
     main_window = CDrawMainWindow ("cooledit", "Cooledit");
     xdnd_set_dnd_aware (CDndClass, main_window, 0);
@@ -2367,8 +2382,9 @@ int main (int argc, char **argv)
     CMapDialog ("menu");
     height_offset = (CIdent ("menu"))->height + (CIdent ("menu"))->y;
 
+    CPushFont ("editor", 0);  /* for read_config() */
     if (!option_suppress_load_files && !option_suppress_load_files_cmdline)
-	read_config ();
+	read_config (); /* <=== needs font width/height for new window size */
 
     edit_set_user_key_function (user_defined_key);
     edit_set_user_command (custom_keys);
@@ -2474,7 +2490,8 @@ int main (int argc, char **argv)
 
     global_callback = rxvt_event;
 
-    main_loop ();
+    for (;;)
+        cooledit_main_loop ();
     return 0;
 }
 

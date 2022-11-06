@@ -949,7 +949,7 @@ static void shell_create_bookmarks (WEdit * edit, struct shell_cmd *s, const cha
     book_mark_flush (edit, BOOK_MARK_NOTE_COLOR);
     book_mark_flush (edit, BOOK_MARK_WARNING_COLOR);
     book_mark_flush (edit, BOOK_MARK_ERROR_COLOR);
-    CPushFont ("bookmark");
+    CPushFont ("bookmark", 0);
     h = FONT_PIX_PER_LINE + 6;
     for (;;) {
         const char *eol;
@@ -1553,7 +1553,7 @@ int edit_scripts_dialog (Window parent, int x, int y, struct shell_cmd *s)
 #undef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-    CPushFont("widget");
+    CPushFont("widget", 0);
 
     win = CDrawHeadedDialog ("shellopt", parent, x, y, " Script Control ");
     CGetHintPos (&x, &y);

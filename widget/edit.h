@@ -925,6 +925,16 @@ char *option_whole_chars_search = "0123456789abcdefghijklmnopqrstuvwxyz_";
 char *option_chars_move_whole_word = "!=&|<>^~ !:;, !'!`!.?!\"!( !) !Aa0_ !+-*/= |<> ![ !] !\\#! ";
 char *option_backup_ext = "~";
 
+/* search and replace: */
+int option_replace_scanf = 0;
+int option_replace_regexp = 0;
+int option_replace_all = 0;
+int option_replace_prompt = 1;
+int option_replace_whole = 0;
+int option_replace_case = 0;
+int option_replace_backwards = 0;
+int option_search_create_bookmark = 0;
+
 #else				/* ! _EDIT_C */
 
 extern CStr edit_selection;
@@ -974,6 +984,16 @@ extern char *option_chars_move_whole_word;
 extern char *option_backup_ext;
 
 extern int edit_confirm_save;
+
+/* search and replace: */
+extern int option_replace_scanf;
+extern int option_replace_regexp;
+extern int option_replace_all;
+extern int option_replace_prompt;
+extern int option_replace_whole;
+extern int option_replace_case;
+extern int option_replace_backwards;
+extern int option_search_create_bookmark;
 
 #endif				/* ! _EDIT_C */
 #endif 				/* __EDIT_H */

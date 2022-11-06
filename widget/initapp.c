@@ -418,6 +418,15 @@ const char *get_default_8bit_term_font (void)
 #endif
 }
 
+const char *get_default_8bit_term_font_large (void)
+{E_
+#ifndef NO_TTF
+    return "9x15B-ISO8859-1.pcf.gz";
+#else
+    return "-*-fixed-bold-r-*--15-120-*-*-*-*-*";
+#endif
+}
+
 const char *get_default_bookmark_font (void)
 {E_
 #ifndef NO_TTF
@@ -434,31 +443,17 @@ static void init_load_font (void)
     static enum font_encoding rxvt_8bit_encoding = FONT_ENCODING_8BIT;
     static enum font_encoding rxvt_encoding = FONT_ENCODING_UTF8;
     char *f;
-    if (CPushFont ("editor", init_font, &editor_encoding))
-	exit (1);
-    if (CPushFontHonorFixedDoubleWidth ("rxvt", init_font, &rxvt_encoding))
-	exit (1);
-    if (CPushFontForceFixed ("rxvt8bit", init_8bit_term_font, &rxvt_8bit_encoding))
-	exit (1);
+
+    CFontLazy ("editor", init_font, NULL, &editor_encoding);
+    CFontLazy ("rxvt", init_font, NULL, &rxvt_encoding);
+    CFontLazy ("rxvt8bit", init_8bit_term_font, NULL, &rxvt_8bit_encoding);
+
     f = CMalloc (strlen (init_widget_font) + 256);
-    sprintf (f, init_widget_font, FONT_HEIGHT);
-    if (CPushFont ("widget", f, &widget_encoding)) {
-        const char *fallback1 = "-bitstream-*-medium-r-normal--%d-*-*-*-*-*-*-*";
-	sprintf (f, fallback1, FONT_HEIGHT);
-	fprintf (stderr, _ ("%s: falling back to font %s\n"), CAppName, f);
-	if (CPushFont ("widget", f, &widget_encoding)) {
-	    fprintf (stderr, _ ("%s: falling back to font %s\n"), CAppName, init_font);
-	    if (CPushFont ("widget", init_font, &widget_encoding))
-	        exit (1);
-        }
-    }
+    sprintf (f, init_widget_font, 14);
+    CFontLazy ("widget", f, "-bitstream-*-medium-r-normal--14-*-*-*-*-*-*-*", &widget_encoding);
     free(f);
-    if (CPushFont ("bookmark", get_default_bookmark_font(), &bookmark_encoding)) {
-	fprintf (stderr, _ ("%s: could not load bookmark font falling back to font %s\n"), CAppName, init_font);
-        if (CPushFont ("bookmark", init_font, &bookmark_encoding)) {
-            exit (1);
-        }
-    }
+
+    CFontLazy ("bookmark", get_default_bookmark_font(), NULL, &bookmark_encoding);
 }
 
 static void visual_comments (int class)
@@ -1527,6 +1522,7 @@ int ignore_handler (Display * c, XErrorEvent * e)
 }
 
 void init_cursors (void);
+void get_dummy_gc (void);
 
 /*-------------------------------------------------------------*/
 void CInitialise (CInitData * config_start)

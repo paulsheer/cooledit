@@ -46,6 +46,7 @@
 #include "widget/pool.h"
 #include "find.h"
 #include "rxvt/rxvtexport.h"
+#include "rxvt.h"
 #include "cterminal.h"
 #include "remotefs.h"
 #include "debug.h"
@@ -92,6 +93,12 @@ static void debug_write_callback (int fd, fd_set * reading, fd_set * writing, fd
 
 #define inout   cterminal_io.cmd_fd
 
+struct debug_options debug_options = {
+    0,                          /* show_output, options_debug_show_output */
+    1,                          /* stop_at_main, options_debug_stop_at_main */
+    0                           /* show_on_stdout, options_debug_show_on_stdout */
+};
+
 typedef struct struct_debug {
     int x, y, r;
     Window w;
@@ -129,7 +136,7 @@ typedef struct struct_debug {
     int line;
     char *file;
     char *condition;
-    int show_output, stop_at_main, show_on_stdout;
+    struct debug_options *debug_options;
 /*    int ignore_SIGTTOU; */
     pid_t xterm_pid;
     int break_point_line;
@@ -618,7 +625,7 @@ static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_
     struct remotefs_terminalio *io;
     d = &debug_session;
     io = &d->cterminal_io;
-    if (gdb_exitted (d) || (!rxvt_have_pid (d->host, d->xterm_pid) && d->show_output)) {
+    if (gdb_exitted (d) || (!rxvt_have_pid (d->host, d->xterm_pid) && d->debug_options->show_output)) {
 	debug_finish (0);
 	return;
     }
@@ -634,7 +641,7 @@ static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_
 	d->pool = pool_init ();
     pool_write (d->pool, io->base + io->current, io->len - io->current);
     pool_null (d->pool);
-    if (d->show_on_stdout) {
+    if (d->debug_options->show_on_stdout) {
 	printf ("%.*s", io->len - io->current, io->base + io->current);
 	fflush (stdout);
     }
@@ -651,7 +658,7 @@ static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_
                 response = "n\n";
             }
 	    pool_drop_last_line (d->pool);
-	    if (d->show_on_stdout) {
+	    if (d->debug_options->show_on_stdout) {
 		printf ("%s", response);
 		fflush (stdout);
 	    }
@@ -1051,11 +1058,11 @@ static void debug_write_callback (int fd, fd_set * reading, fd_set * writing, fd
 {E_
     Debug *d;
     d = &debug_session;
-    if (gdb_exitted (d) || (!rxvt_have_pid (d->host, d->xterm_pid) && d->show_output)) {
+    if (gdb_exitted (d) || (!rxvt_have_pid (d->host, d->xterm_pid) && d->debug_options->show_output)) {
 	debug_finish (0);
 	return;
     }
-    if (d->show_on_stdout) {
+    if (d->debug_options->show_on_stdout) {
 	printf ("%s", d->command[0].command);
 	fflush (stdout);
     }
@@ -1146,13 +1153,12 @@ static int xdebug_run_program (Debug * d)
 #endif
 
     arg[i++] = d->debugger;
-    if (d->show_output) {
+    if (d->debug_options->show_output) {
         struct cterminal_config c;
 	char *p, *gargv[2] = {0, 0};
         char errmsg[CTERMINAL_ERR_MSG_LEN];
 	struct _rxvtlib *rxvt;
         gargv[0] = d->progname;
-printf("starting rxvt %s\n", d->host);
 	rxvt = rxvt_start (d->host, CRoot, gargv, 1, 0);
 	if (!rxvt) {
 	    d->xterm_pid = 0;
@@ -1165,9 +1171,6 @@ printf("starting rxvt %s\n", d->host);
 	rxvt_get_tty_name (rxvt, p + 5);
 	rxvt_get_pid (rxvt, &d->xterm_pid, d->host);
 	arg[i++] = p;
-
-printf("p=%s\n", p);
-
 	arg[i++] = d->progname;
 	arg[i] = 0;
         memset (&c, '\0', sizeof (c));
@@ -1233,7 +1236,7 @@ static void xdebug_run (Debug * d)
     }
 #endif
     xdebug_append_command (d, "info program\n", ACTION_INFO_PROGRAM, 0, 0);
-    if (!d->stop_at_main)
+    if (!d->debug_options->stop_at_main)
 	xdebug_append_command (d, "c\n", ACTION_RUNNING, 0, 0);
 }
 
@@ -1274,7 +1277,7 @@ static void debug_attach (unsigned long x)
     free (s);
     if (p <= 0)
 	return;
-    debug_session.show_output = 0;
+    debug_session.debug_options->show_output = 0;
     if (xdebug_run_program (&debug_session))
 	return;
     xdebug_set_break_points (&debug_session);
@@ -1356,16 +1359,16 @@ static int debug_set_info (unsigned long x)
     inputs_result[1] = &inputs[1];
     inputs_result[2] = &inputs[2];
     inputs_result[3] = 0;
-    checks_values_result[0] = &debug_session.show_output;
-    checks_values_result[1] = &debug_session.stop_at_main;
-    checks_values_result[2] = &debug_session.show_on_stdout;
+    checks_values_result[0] = &debug_session.debug_options->show_output;
+    checks_values_result[1] = &debug_session.debug_options->stop_at_main;
+    checks_values_result[2] = &debug_session.debug_options->show_on_stdout;
 #if 0
     checks_values_result[3] = &debug_session.ignore_SIGTTOU;
     checks_values_result[4] = 0;
 #else
     checks_values_result[3] = 0;
 #endif
-    r = CInputsWithOptions (0, 0, 0, _ (" Debug : Program Data "), inputs_result, input_labels, input_names, input_tool_hint, checks_values_result, check_labels, check_tool_hints, INPUTS_WITH_OPTIONS_BROWSE_LOAD_2, 60);
+    r = CInputsWithOptions (0, 0, 0, _ (" Debug : Program Data "), inputs_result, input_labels, input_names, input_tool_hint, checks_values_result, check_labels, check_tool_hints, NULL, INPUTS_WITH_OPTIONS_BROWSE_LOAD_2, 60);
     if (r)
 	return 1;
     if (debug_session.progname)
@@ -1610,6 +1613,7 @@ void xdebug_init_animation (void)
 void debug_init (void)
 {E_
     memset (&debug_session, 0, sizeof (debug_session));
+    debug_session.debug_options = &debug_options;
     debug_session.prompt = "(gdb) ";
     debug_session.get_line = "info line\n";
     debug_session.get_source = "info source\n";
@@ -1625,7 +1629,6 @@ void debug_init (void)
     debug_session.query[4].query = 0;
     debug_session.query[4].response = 0;
     debug_session.debugger = "gdb";
-    debug_session.stop_at_main = 1;
 #if 0
     debug_session.ignore_SIGTTOU = 1;
 #endif

@@ -367,7 +367,7 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-bin_SCRIPTS = cooledit-gdb coolproject
+bin_SCRIPTS = coolterm coolproject
 AM_CPPFLAGS = -I$(top_srcdir)/widget -I$(top_srcdir) -I$(top_srcdir)/intl
 cooledit_SOURCES = cooledit.c find.c editoptions.c mancmd.c options.c \
 	debug.c cooleditmenus.c shell.c shell.h copyright.h mail.c complete.c \

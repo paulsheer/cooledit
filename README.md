@@ -19,6 +19,11 @@ Contents
 ---
 
 
+#### Binaries
+
+See https://www.ibiblio.org/pub/Linux/apps/editors/X/cooledit/
+
+
 #### Prerequisites
 
 `cooledit` requires the [`FreeType`](http://freetype.org/) library for fonts.

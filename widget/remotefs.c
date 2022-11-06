@@ -7767,7 +7767,6 @@ int main (int argc, char **argv)
 #ifdef MSWIN
     struct stat st;
     if (!stat ("BUSYBOX64.EXE", &st) && st.st_size == getexesize ()) {
-printf("already here\n");
         /* ok */
     } else if (makeexe ("BUSYBOX64.EXE")) {
         option_mswin_cmd = 1;

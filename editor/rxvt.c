@@ -305,7 +305,7 @@ void cooledit_main_loop (void);
 char *get_all_lists (void);
 extern char *editor_options_file;
 
-int rxvt_startup_dialog (const char *host)
+int rxvt_startup_dialog (const char *host, char *shell_script)
 {E_
     static enum font_encoding rxvt_8bit_encoding = FONT_ENCODING_8BIT;
     static enum font_encoding rxvt_encoding = FONT_ENCODING_UTF8;
@@ -341,7 +341,12 @@ int rxvt_startup_dialog (const char *host)
     if (rxvt_startup_options.backspace_127)
         rxvt_options |= RXVT_OPTIONS_BACKSPACE_127;
 
-    rxvt_start (rxvt_startup_options.host, CRoot, 0, 0, rxvt_options);
+    if (shell_script && *shell_script) {
+        char *arg[4] = {"sh", "-c", shell_script, NULL};
+        rxvt_start (rxvt_startup_options.host, CRoot, arg, 0, rxvt_options);
+    } else {
+        rxvt_start (rxvt_startup_options.host, CRoot, 0, 0, rxvt_options);
+    }
 
     while (rxvt_list && rxvt_list->next)
         cooledit_main_loop ();

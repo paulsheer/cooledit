@@ -67,6 +67,7 @@ int start_width = 80;
 int start_height = 30;
 char *option_look = "cool";
 static char *option_rxvt_startup_host = NULL;
+static char *option_rxvt_script = NULL;
 static int option_startup_as_rxvt = 0;
 
 /* error handler */
@@ -454,6 +455,7 @@ struct prog_options cooledit_options[] =
     {' ', "", "", ARG_STRINGS, 0, 0, 0},
     {0, "-rxvt", "", ARG_SET, 0, 0, &option_startup_as_rxvt},
     {0, "-host", "", ARG_STRING, &option_rxvt_startup_host, 0, 0},
+    {0, "-script", "", ARG_STRING, &option_rxvt_script, 0, 0},
     {0, "-bg", "--background-color", ARG_STRING, &option_background_color, 0, 0},
 #ifdef GUESS_VISUAL
     {0, "-vis", "--visual", ARG_STRING, &option_preferred_visual, 0, 0},
@@ -2343,7 +2345,7 @@ int main (int argc, char **argv)
 
     if (option_startup_as_rxvt || option_rxvt_startup_host) {
         global_callback = rxvt_event;
-        rxvt_startup_dialog (option_rxvt_startup_host);
+        rxvt_startup_dialog (option_rxvt_startup_host, option_rxvt_script);
         cooledit_main_loop ();
         exit (0);
     }

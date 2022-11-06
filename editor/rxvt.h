@@ -23,5 +23,5 @@ void rxvtlib_shutall (void);
 void rxvt_kill (pid_t p);
 void rxvt_get_tty_name (rxvtlib * rxvt, char *p);
 void rxvt_get_pid (rxvtlib * rxvt, pid_t *pid, const char *host);
-int rxvt_startup_dialog (const char *host);
+int rxvt_startup_dialog (const char *host, char *shell_script);
 

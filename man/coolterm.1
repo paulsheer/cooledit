@@ -12,10 +12,6 @@ coolterm \- Unicode terminal for remote access to Unix/Windows machines
 .br
 \fBcoolterm\fP -h
 .br
-.SH DISCLAIMER
-The information in this file is provided without warranty
-for its accuracy or completeness. Use of this file or its
-information is entirely at your own risk.
 .SH DESCRIPTION
 .LP
 This is a standalone Unicode xterm/rxvt terminal that can connect
@@ -31,6 +27,17 @@ Print out \fBcooledit\fP full help. Not all options apply.
 .I "-host"
 Specify the remote IP address where \fBremotefs\fP or \fBREMOTEFS.EXE\fP
 is running. \fI-host\fP \fBlocalhost\fP invokes a local terminal.
+.TP
+.I "-script <sh-shell-script>"
+Run a shell script, retrieving the exit code. This works on Unix and Windows.
+For example try 
+
+.nf
+coolterm -host 192.168.1.1 -script \\
+ 'for i in 1 2 3; do echo $i `date`; sleep 1; done; exit 7;'
+echo $?
+.fi
+
 .PP
 .SH INSTALLATION
 See the man page remotefs(1) for info on configuring \fBremotefs\fP or \fBREMOTEFS.EXE\fP

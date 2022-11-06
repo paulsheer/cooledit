@@ -212,6 +212,13 @@ static HRESULT InitializeStartupInfoAttachedToConPTY(STARTUPINFOEX* siEx, HPCON 
     return S_OK;
 }
 
+static int len_args (char *const *s)
+{
+    int i;
+    for (i = 0; s && s[i]; i++);
+    return i;
+}
+
 int cterminal_run_command (struct cterminal *c, struct cterminal_config *config, int dumb_terminal, const char *log_origin_host,
                            char *const argv[], char *errmsg)
 {
@@ -240,10 +247,15 @@ int cterminal_run_command (struct cterminal *c, struct cterminal_config *config,
     char cmdline[2048];
     char current_dir[1024] = "";
     GetCurrentDirectory (sizeof (current_dir), current_dir);
+
     if (option_mswin_cmd) {
         snprintf (cmdline, sizeof (cmdline), "CMD");
     } else {
-        snprintf (cmdline, sizeof (cmdline), "\"%s\\%s\" %s", current_dir, "BUSYBOX64", "bash");
+        int n;
+        if ((n = len_args (argv)) == 3 && !strcmp (argv[0], "sh") && !strcmp (argv[1], "-c"))
+            snprintf (cmdline, sizeof (cmdline), "\"%s\\%s\" %s -c \"%s\"", current_dir, "BUSYBOX64", "bash", argv[2]);
+        else
+            snprintf (cmdline, sizeof (cmdline), "\"%s\\%s\" %s", current_dir, "BUSYBOX64", "bash");
     }
     PROCESS_INFORMATION piProcInfo;
     STARTUPINFOEX siStartInfo;

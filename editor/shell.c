@@ -133,6 +133,7 @@ static unsigned long shell_string_to_modifier (const char *s)
 /* Here are the default example shells */
 struct shell_cmd default_scripts[] =
 {
+#if 0
     {
 	" C/C++: Complete ",
 	"C/C++ Complete...\tCtrl-.",
@@ -189,6 +190,7 @@ struct shell_cmd default_scripts[] =
 	"coolcref -I`echo $CLANG_SYSTEM_INCLUDE` %p/compile_options %p/%f %L %C\n" \
 	"\n" 
     },
+#endif
     {
 	" CLang Check ",
 	"CLang Check...\tAlt-.",
@@ -1210,7 +1212,7 @@ void load_scripts ()
     if (!s || !*s)
 	goto load_default_scripts;
 
-#define BUILTING_SCRIPTS_VERSION        31
+#define BUILTING_SCRIPTS_VERSION        32
 
     if (!strncmp (s, "BUILTIN SHELL SCRIPTS VERSION ", 30)) {
         old_version = atoi (s + 30);

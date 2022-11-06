@@ -13,6 +13,8 @@
 #include <my_string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include "coolwidget.h"
 
@@ -1162,6 +1164,42 @@ void CNextEvent (XEvent * xevent, CEvent * cwevent)
     }
 }
 
+static int hangup_bug_workaround (int fd)
+{E_
+    int tc;
+    unsigned char v[64];
+    static time_t startup = 0;
+    static int startup_passed = 0;
+
+    if (!startup_passed) {
+        time_t now;
+        time (&now);
+        if (!startup)
+            startup = now;
+        else if (now > startup + 5)
+            startup_passed = 1;
+
+        // example messages that cause XNextEvent to hangup:
+        //    1  2  3   4  5  6  7   8  9  10  1   2  3  4  5   6  7  8  9  20  1  2  3   4  5  6  7  8  9 30  1
+        // 00 03 6a 12  00 00 00 00  00 00 12 00  30 f6 99 07  02 00 00 00  5d 00 00 00  01 00 00 00 38 f9 6f 01
+        // 00 03 68 12  00 00 00 00  00 00 12 00  28 ea 99 07  02 00 00 00  49 00 00 00  01 00 00 00 38 f9 6f 01 
+        // 00 03 68 12  00 00 00 00  00 00 12 00  78 f9 99 07  02 00 00 00  4a 00 00 00  01 00 00 00 38 f9 6f 01 
+        // 00 03 66 12  00 00 00 00  00 00 12 00  08 00 9a 07  02 00 00 00  55 00 00 00  01 00 00 00 04 00 00 00 
+        // 00 03 6b 12  00 00 00 00  00 00 12 00  88 ee 99 07  02 00 00 00  4a 00 00 00  01 00 00 00 38 f9 6f 01 
+        tc = recv (fd, v, sizeof(v), MSG_PEEK);
+
+        if (tc == 32)
+            if (v[0]  == 0 && v[1]  == 3    && v[3]  == 0x12 && v[4]  == 0 &&
+                v[5]  == 0 && v[6]  == 0    && v[7]  == 0    && v[8]  == 0 &&
+                v[9]  == 0 && v[10] == 0x12 && v[15] == 7    && v[16] == 2 &&
+                v[17] == 0 && v[18] == 0    && v[19] == 0    && v[21] == 0 &&
+                v[22] == 0 && v[23] == 0    && v[24] == 1    && v[25] == 0 &&
+                v[26] == 0 && v[27] == 0)
+                return 1;
+    }
+    return 0;
+}
+
 /* xevent or cwevent or both my be passed as NULL */
 void CNextEvent_check_font (XEvent * xevent, CEvent * cwevent)
 {E_
@@ -1207,6 +1245,8 @@ void CNextEvent_check_font (XEvent * xevent, CEvent * cwevent)
 	    next_event = 1;
 	    break;
 	} else if (run_watches ()) {
+            if (hangup_bug_workaround (ConnectionNumber (CDisplay)))
+                continue;
 	    memset (xevent, 0, sizeof (XEvent));
 	    XNextEvent (CDisplay, xevent);
 	    next_event = 1;

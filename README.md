@@ -19,6 +19,11 @@ Contents
 ---
 
 
+#### Binaries
+
+See https://www.ibiblio.org/pub/Linux/apps/editors/X/cooledit/
+
+
 #### Prerequisites
 
 `cooledit` requires the [`FreeType`](http://freetype.org/) library for fonts.
@@ -40,6 +45,8 @@ $ make install
 
 ### Why?
 ---
+
+[![Video Tutorial](https://github.com/paulsheer/cooledit/blob/master/video-thumb.gif)](https://www.youtube.com/watch?v=pPy6FSpz_PE)
 
 `cooledit` provides the most crisp and honed user experience of any editor. It is designed
 to be used both entirely with and without a mouse. It is for people that spend most of their

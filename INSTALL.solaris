@@ -68,9 +68,11 @@ export FREETYPE_CFLAGS='-I/opt/cooledit/include/freetype2 -I/opt/cooledit/includ
 ./configure --disable-shared --prefix=/opt/cooledit/
 
 
-# make the package:
+# make the package, then
 
+VER=4.1.2
 mkdir -p install/opt
+cp REMOTEFS.EXE install/opt/cooledit/bin/
 cp -r /opt/cooledit install/opt/
 rm -rf install/opt/cooledit/include/
 rm -rf install/opt/cooledit/lib
@@ -79,9 +81,9 @@ rm -f  install/opt/cooledit/share/man/man3/*
 rm -f  install/opt/cooledit/share/man/man5/*
 rm -f  install/opt/cooledit/bin/*png*
 ( cd install ;
-  tar -cf cooledit-4.1.1-solaris-bin.tar opt ;
-  gzip -9 cooledit-4.1.1-solaris-bin.tar ; )
-ls -la install/cooledit-4.1.1-solaris-bin.tar.gz
+  tar -cf cooledit-$VER-solaris-bin.tar opt ;
+  gzip -9 cooledit-$VER-solaris-bin.tar ; )
+ls -la install/cooledit-$VER-solaris-bin.tar.gz
 
 
 

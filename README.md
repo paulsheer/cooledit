@@ -46,6 +46,11 @@ $ make install
 ### Why?
 ---
 
+[![Video Tutorial]          // Title
+(screenshot3.gif)] // Thumbnail
+(https://www.youtube.com/watch?v=pPy6FSpz_PE "Video Tutorial")
+// Video Link
+
 `cooledit` provides the most crisp and honed user experience of any editor. It is designed
 to be used both entirely with and without a mouse. It is for people that spend most of their
 work time in an editor. Written with its own widget library, it boasts the fasted GUI response

@@ -47,7 +47,8 @@ $ make install
 ---
 
 [Video Tutorial](https://www.youtube.com/watch?v=pPy6FSpz_PE "Video Tutorial")
-![<img src="video-thumb.gif" width="75%">]
+
+[Video Tutorial](video-thumb.gif)
 
 `cooledit` provides the most crisp and honed user experience of any editor. It is designed
 to be used both entirely with and without a mouse. It is for people that spend most of their

@@ -2350,6 +2350,8 @@ int main (int argc, char **argv)
         exit (0);
     }
 
+    CPushFont ("editor", 0);
+
     main_window = CDrawMainWindow ("cooledit", "Cooledit");
     xdnd_set_dnd_aware (CDndClass, main_window, 0);
     w = CWidgetOfWindow (main_window);

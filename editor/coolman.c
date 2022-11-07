@@ -228,6 +228,7 @@ int main (int argc, char **argv)
     coolman_startup.display = option_display;
     coolman_startup.font = option_font2;
     CInitialise (&coolman_startup);
+    CPushFont ("editor", 0);
 
     set_editor_encoding (option_utf_interpretation2, option_locale_encoding);
 

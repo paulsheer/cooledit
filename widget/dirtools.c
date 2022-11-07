@@ -143,16 +143,24 @@ int compare_fileentries (struct file_entry *file_entry1, struct file_entry *file
     return (strcmp (file_entry1->name, file_entry2->name));
 }
 
-struct file_entry *get_file_entry_list (const char *host, char *directory, unsigned long options, const char *filter, char *errmsg)
+struct file_entry *get_file_entry_list (const char *host, const char *directory, char *last_dir, unsigned long options, const char *filter, char *errmsg)
 {E_
     struct remotefs *u;
     int n = 0;
     struct file_entry *list = NULL;
     errmsg[0] = '\0';
+    char last_dir_[MAX_PATH_LEN];
 
-    u = remotefs_lookup (host, directory);
+    Cstrlcpy (last_dir_, directory, MAX_PATH_LEN);
+
+    u = remotefs_lookup (host, last_dir_);
+    if (!*directory)
+        directory = last_dir_;
     if ((*u->remotefs_listdir) (u, directory, options, filter, &list, &n, errmsg))
         return NULL;
+
+    if (last_dir)
+        Cstrlcpy (last_dir, last_dir_, MAX_PATH_LEN);
 
     qsort((void *) list, n, sizeof (struct file_entry), (int (*) (const void *, const void *)) compare_fileentries);
 

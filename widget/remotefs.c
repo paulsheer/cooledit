@@ -119,6 +119,7 @@ typedef void *WSAEVENT;
 int option_remote_timeout = 2000;
 int option_no_crypto = 0;
 int option_force_crypto = 0;
+char *option_home_dir = NULL;
 
 
 char *pathdup_ (const char *p, const char *home_dir);
@@ -3827,6 +3828,9 @@ static void remotefs_gethomedir_ (CStr * r)
     unsigned char *p;
     static char *homedir = NULL;
 
+    if (option_home_dir)
+        homedir = option_home_dir;
+
     if (!homedir || !*homedir) {
 #ifdef MSWIN
         homedir = getenv ("HOMEPATH");
@@ -5988,8 +5992,13 @@ struct remotefs *remotefs_lookup (const char *host_, char *last_directory)
         ip_to_text (addr, addrlen, host);
     }
     for (i = remotefs_list; i; i = i->next)
-        if (!strcmp (i->host, host))
+        if (!strcmp (i->host, host)) {
+            if (last_directory) {
+                strncpy (last_directory, i->home_dir, MAX_PATH_LEN);
+                last_directory[MAX_PATH_LEN - 1] = '\0';
+            }
             return &i->impl;
+        }
     i = (struct remotefs_item *) malloc (sizeof (*i));
     memset (i, '\0', sizeof (*i));
     strcpy (i->host, host);
@@ -7663,6 +7672,11 @@ int main (int argc, char **argv)
         p = wchar_to_char (argv[i]);
         if (!strcmp (p, "-h")) {
             goto usage;
+        } else if (!strcmp (p, "--home-dir")) {
+            i++;
+            if (i >= argc)
+                goto usage;
+            option_home_dir = wchar_to_char (argv[i]);
         } else if (!strcmp (p, "--no-crypto")) {
             option_no_crypto = 1;
         } else if (!strcmp (p, "--force-crypto")) {

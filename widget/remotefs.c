@@ -7625,7 +7625,17 @@ static void create_aes_key (const char *n)
 static void read_keyfile (const char *n)
 {E_
     FILE *f = NULL;
+    struct stat st;
     printf ("reading AES key from %s\n", n);
+    memset (&st, '\0', sizeof (st));
+    if (stat (n, &st)) {
+        perror (n);
+        exit (1);
+    }
+    if (st.st_size <= 2) {
+        fprintf (stderr, "AES key file %s is empty\n", n);
+        exit (1);
+    }
     f = fopen (n, "rb");
     if (!f) {
         perror (n);
@@ -7633,7 +7643,6 @@ static void read_keyfile (const char *n)
         exit (1);
     }
     if (!fgets ((char *) the_key, sizeof (the_key), f)) {
-#error handle zero-length key files
         perror (n);
         fclose (f);
         exit (1);

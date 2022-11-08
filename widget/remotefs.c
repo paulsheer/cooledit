@@ -7633,6 +7633,7 @@ static void read_keyfile (const char *n)
         exit (1);
     }
     if (!fgets ((char *) the_key, sizeof (the_key), f)) {
+#error handle zero-length key files
         perror (n);
         fclose (f);
         exit (1);

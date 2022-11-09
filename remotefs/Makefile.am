@@ -6,7 +6,7 @@ remotefs_SOURCES = remotefs.c regex.c regtools.c pathdup.c ipv6scan.c aes.c sha2
 FREETYPE_LIBS = 
 LIBS = 
 LDFLAGS = -static 
-# CFLAGS = -O0 -Wall -g3 -s
+# CFLAGS = -O0 -Wall -g3
 CFLAGS = -O2 -s
 
 remotefs.c:

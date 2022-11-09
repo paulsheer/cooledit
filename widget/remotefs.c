@@ -6989,6 +6989,7 @@ static void process_client (struct client_item *i, int *timeout)
     if (r.data)
         free (r.data);
     i->kill = KILL_HARD;
+    *timeout = 1;
     return;
 #undef r
 }

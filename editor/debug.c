@@ -646,6 +646,12 @@ static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_
 
     switch (action) {
     case ACTION_PROMPT:	/* just waiting for the prompt to return, then command is completed */
+       p = strstr ((char *) pool_start (d->pool), "not permitted");
+       if (p) {
+           debug_error1 (d, _ ("You don't have permissions to do this"));
+           debug_finish (0L);
+           break;
+        }
 	pool_free (d->pool);
 	d->pool = 0;
 	break;
@@ -809,9 +815,11 @@ static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_
 
     case ACTION_INFO_SOURCE:
     	{
+#if 0
 	    char *last_file;
 	    last_file = d->file;
 	    d->file = 0;
+#endif
 	    p = strstr ((char *) pool_start (d->pool), "Located in ");
 	    if (p) {
 		char *q;
@@ -819,8 +827,25 @@ static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_
 		p = strchr (q, '\n');
 		if (p) {
 		    *p = '\0';
+                    if (d->file)
+                        free (d->file);
 		    d->file = (char *) strdup (q);
+                    string_chomp (d->file);
 		}
+	    }
+            if (!p && (p = strstr ((char *) pool_start (d->pool), "Current source file is "))) {
+		char *q;
+		q = p + 23;
+		p = strchr (q, '\n');
+		if (p) {
+		    *p = '\0';
+                    if (d->file)
+                        free (d->file);
+		    d->file = (char *) strdup (q);
+                    string_chomp (d->file);
+		}
+            }
+#if 0
 	    } else {	/* try to see if we are still in the same source file */
 
 /* ------ the functionality in this block is currently not useful ------ */
@@ -847,6 +872,7 @@ static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_
 	    }
 	    if (last_file)
 		free (last_file);
+#endif
 	    p = strstr ((char *) pool_start (d->pool), "No current source file");
 	    if (p) {
 		xdebug_cursor_bookmark_flush ();

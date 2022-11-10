@@ -6439,6 +6439,10 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
     struct ttyreader_data *t;
     int i;
     char peername[256] = "";
+    int sock_sndbuf_size = TERMINAL_TCP_BUF_SIZE;
+
+/* we want ^C to kill the output fast */
+    setsockopt (sd->reader_data->sock_data->sock, SOL_SOCKET, SO_SNDBUF, (void *) &sock_sndbuf_size, sizeof (int));
 
     memset (&c, '\0', sizeof (c));
 

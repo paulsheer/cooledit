@@ -246,6 +246,7 @@ static  XpmAttributes xpmAttr;
 void rxvtlib_init (rxvtlib *o, unsigned long rxvt_options)
 {E_
     memset (o, 0, sizeof (rxvtlib));
+    o->cmd_fd = -1;
     o->charset_8bit = (rxvt_options & RXVT_OPTIONS_TERM8BIT) ? 1 : 0;
     if ((rxvt_options & RXVT_OPTIONS_TERM8BIT))
         o->fontname = "rxvt8bit";

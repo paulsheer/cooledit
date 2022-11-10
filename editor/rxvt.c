@@ -164,13 +164,30 @@ static rxvtlib *rxvt_allocate (const char *host, Window win, int c, char **a, in
     char errmsg[CTERMINAL_ERR_MSG_LEN];
     rxvtlib *rxvt;
     struct rxvts *l;
+    struct rxvts *i;
     rxvt = (rxvtlib *) malloc (sizeof (rxvtlib));
     rxvtlib_init (rxvt, rxvt_options);
     user_selection_clear = (void (*)(void)) rxvt_selection_clear;
     rxvt->parent_window = win;
+
+    if (!rxvt_list) {
+	rxvt_list = l = malloc (sizeof (struct rxvts));
+	rxvt_list->next = 0;
+	rxvt_list->rxvt = 0;
+	rxvt_list->killed = 0;
+    }
+    for (i = rxvt_list; i->next; i = i->next);
+    l = (i->next = malloc (sizeof (struct rxvts)));
+    l->next = 0;
+    l->killed = 0;
+    l->rxvt = rxvt;
+
     errmsg[0] = '\0';
     rxvtlib_main (rxvt, host, c, (const char *const *) a, do_sleep, errmsg);
     if (rxvt->killed) {
+        assert (i->next == l);
+        free (i->next);
+        i->next = 0;
         if (errmsg[0])
 	    CErrorDialog(0, 0, 0, _(" Open Terminal "), " Error trying to open terminal: \n [%s] ", errmsg);
         rxvtlib_destroy_windows (rxvt);
@@ -178,17 +195,6 @@ static rxvtlib *rxvt_allocate (const char *host, Window win, int c, char **a, in
 	free (rxvt);
 	return 0;
     }
-    if (!rxvt_list) {
-	rxvt_list = l = malloc (sizeof (struct rxvts));
-	rxvt_list->next = 0;
-	rxvt_list->rxvt = 0;
-	rxvt_list->killed = 0;
-    }
-    for (l = rxvt_list; l->next; l = l->next);
-    l = (l->next = malloc (sizeof (struct rxvts)));
-    l->next = 0;
-    l->killed = 0;
-    l->rxvt = rxvt;
     return rxvt;
 }
 

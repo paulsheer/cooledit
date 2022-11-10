@@ -579,8 +579,116 @@ void current_to_top (void);
 
 /* {{{ process make (and other shell) error message */
 
+static int pathendswith (const char *a, const char *b)
+{E_
+    int al, bl;
+    al = strlen (a);
+    bl = strlen (b);
+    if (al == bl)
+	return !strcmp (a, b);
+    if (bl > al)
+	return 0;
+    return !strcmp (a + al - bl, b) && a[al - bl - 1] == '/';
+}
+
 /* returns -1 on not found and line numbner = -1. Could return only one as -1 */
-static int get_file_and_line_from_error (const char *host, char *message, int *line_number, char **new_file)
+static int get_file_from_debug_path_and_file (const char *host, const char *dir, const char *file, char **new_file)
+{E_
+    int i, k;
+    char errmsg[REMOTEFS_ERR_MSG_LEN];
+    char m[MAX_PATH_LEN], *c = NULL;
+
+    for (k = 0; k < 3; k++) {
+/* Four stages of search, 0,1,2,3 */
+        if (k == 0) {
+/* 0:
+    Current source file is crypto/bio/bio_lib.c    <=== file
+    Compilation directory is /home/paul/some/path  <=== dir
+
+OR
+
+    Current source file is /home/paul/some/path/crypto/bio/bio_lib.c    <=== file with leading '/'
+
+*/
+	    if (*file == '/') {
+	        snprintf (m, sizeof (m), "%s", file);
+            } else {
+	        if (!dir)
+	            continue;
+	        snprintf (m, sizeof (m), "%s/%s", dir, file);
+            }
+            if (c)
+                free (c);
+	    if (!(c = pathdup (host, m, errmsg)))
+	        return -1;
+        } else if (k == 1) {
+/* 1:
+    Current source file is crypto/bio/bio_lib.c    <=== file
+    use pwd as dir
+*/
+            char w[MAX_PATH_LEN - 3];
+	    if (*file == '/')
+                continue;
+            if (strcmp (host, "localhost"))
+                continue;
+	    get_current_wd (w, MAX_PATH_LEN - 3 - 1);
+	    snprintf (m, sizeof (m), "%s/%s", w, file);
+            if (c)
+                free (c);
+	    if (!(c = pathdup (host, m, errmsg)))
+	        return -1;
+        } else if (k == 2) {
+/* 2:
+    Current source file is crypto/bio/bio_lib.c    <=== use see if editor dir+file ends with this using pathendswidth()
+*/
+            snprintf (m, sizeof (m), "%s", file);
+        } else if (k == 3) {
+/* 3:
+    Current source file is crypto/bio/bio_lib.c    <=== use bio_lib.c as file and compare file name only
+*/
+            char *p;
+            snprintf (m, sizeof (m), "%s", (p = strrchr (file, '/')) ? p + 1 : file);
+        }
+	for (i = 0; i < last_edit; i++)
+	    if (edit[i]->editor->filename && *(edit[i]->editor->filename)) {
+                if (k == 3) {
+		    if (!strcmp (edit[i]->editor->filename, m)) {
+		        free (c);
+		        return i;
+		    }
+                } else {
+		    char q[MAX_PATH_LEN];
+		    Cstrlcpy (q, edit[i]->editor->dir, sizeof (q));
+		    if (q[strlen (q) - 1] == '/')
+		        q[strlen (q) - 1] = '\0';
+		    strcat (q, "/");
+		    strcat (q, edit[i]->editor->filename);
+                    if (k == 2) {
+                        if (pathendswith (q, m)) {
+                            free (c);
+                            return i;
+                        }
+                    } else {
+		        if (!strcmp (q, c)) {
+		            free (c);
+		            return i;
+		        }
+                    }
+                }
+	    }
+    }
+
+
+    if (new_file)
+	*new_file = c;
+    else
+	free (c);
+
+    return -1;
+}
+
+/* returns -1 on not found and line numbner = -1. Could return only one as -1 */
+static int get_file_and_line_from_error (const char *host, const char *message, int *line_number, char **new_file)
 {E_
     int i, l;
     char *p;
@@ -615,33 +723,35 @@ static int get_file_and_line_from_error (const char *host, char *message, int *l
 	p++;
 	if (!strncmp (p, "/", 1) || !strncmp (p, "./", 2)) {
             char errmsg[REMOTEFS_ERR_MSG_LEN];
-	    char m[MAX_PATH_LEN], *c;
+	    char m[MAX_PATH_LEN], *c = NULL;
 	    message = p;
 	  try_new:
 	    memset (m, 0, MAX_PATH_LEN);
 	    if (!strncmp (message, "./", 2)) {
+                const char *v;
 		get_current_wd (m, MAX_PATH_LEN - 1);
-		c = strchr (message, ':');
-		if (!c)
-		    c = message + strlen (message);
-		strncpy (m + strlen (m), message + 1, (unsigned long) c - (unsigned long) (message + 1));
+		v = strchr (message, ':');
+		if (!v)
+		    v = message + strlen (message);
+		strncpy (m + strlen (m), message + 1, (unsigned long) v - (unsigned long) (message + 1));
 	    } else {
-		c = strchr (message, ':');
-		if (c) {
-		    if ((unsigned long) c > (unsigned long) message) {
-			if (*(c - 1) == ')') {
-			    char *q;
-			    for (q = c - 2; (unsigned long) q > (unsigned long) message; q--)
+                const char *v;
+		v = strchr (message, ':');
+		if (v) {
+		    if ((unsigned long) v > (unsigned long) message) {
+			if (*(v - 1) == ')') {
+			    const char *q;
+			    for (q = v - 2; (unsigned long) q > (unsigned long) message; q--)
 				if (*q == '(') {
-				    c = q;
+				    v = q;
 				    break;
 				}
 			}
 		    }
 		} else {
-		    c = message + strlen (message);
+		    v = message + strlen (message);
 		}
-		strncpy (m, message, (unsigned long) c - (unsigned long) message);
+		strncpy (m, message, (unsigned long) v - (unsigned long) message);
 	    }
 	    c = pathdup (host, m, errmsg);
             if (!c)
@@ -662,6 +772,8 @@ static int get_file_and_line_from_error (const char *host, char *message, int *l
 		    }
 	    if (new_file)
 		*new_file = c;
+            else
+                free (c);
 	    return -1;
 	}
     }
@@ -726,11 +838,8 @@ void insert_text_into_current (char *text, int len, int delete_word_left)
     edit_render_keypress (e);
 }
 
-int goto_error (char *message, int raise_wm_window)
+static int goto_error_ (int ed, int l, char *new_file, int raise_wm_window)
 {E_
-    int ed, l;
-    char *new_file = 0;
-    ed = get_file_and_line_from_error (edit[current_edit]->editor->host, message, &l, &new_file);
     if (new_file) {
 	if (!new_file_callback (edit[current_edit]->editor->host, new_file)) {
 	    edit_move_to_line_easy (edit[current_edit]->editor, l);
@@ -750,6 +859,22 @@ int goto_error (char *message, int raise_wm_window)
 	current_to_top ();
     }
     return 0;
+}
+
+int goto_debug_error (const char *dir, const char *file, int line)
+{E_
+    int ed;
+    char *new_file = 0;
+    ed = get_file_from_debug_path_and_file (edit[current_edit]->editor->host, dir, file, &new_file);
+    return goto_error_ (ed, line, new_file, 0);
+}
+
+int goto_error (const char *message, int raise_wm_window)
+{E_
+    int ed, l;
+    char *new_file = 0;
+    ed = get_file_and_line_from_error (edit[current_edit]->editor->host, message, &l, &new_file);
+    return goto_error_ (ed, l, new_file, raise_wm_window);
 }
 
 static int bookmarks_select_callback (CWidget * w, XEvent * x, CEvent * c)

@@ -134,6 +134,7 @@ typedef struct struct_debug {
     int action;
     POOL *pool;
     int line;
+    char *dir;
     char *file;
     char *condition;
     struct debug_options *debug_options;
@@ -398,19 +399,17 @@ static void xdebug_set_break_points (Debug * d)
     }
 }
 
-int goto_error (char *message, int raise_wm_window);
+int goto_debug_error (const char *dir, const char *file, int line);
 
-static int xdebug_set_current (char *file, int line)
+static int xdebug_set_current (const char *dir, const char *file, int line)
 {E_
-    char s[MAX_DEBUG_CMD_LEN];
-    sprintf (s, "%s:%d", file, line);
-    return goto_error (s, 0);
+    return goto_debug_error (dir, file, line);
 }
 
-static void xdebug_goto_line (Debug * d, char *file, int line)
+static void xdebug_goto_line (Debug * d, const char *dir, const char *file, int line)
 {E_
     xdebug_cursor_bookmark_flush_ (0);
-    if (!xdebug_set_current (file, line))
+    if (!xdebug_set_current (dir, file, line))
 	book_mark_insert (edit[current_edit]->editor, edit[current_edit]->editor->curs_line, DEBUG_CURRENT_COLOR, 0, 0, 0);
     edit[current_edit]->editor->force |= REDRAW_COMPLETELY;
     edit_render_keypress (edit[current_edit]->editor);
@@ -861,6 +860,22 @@ static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_
 	    last_file = d->file;
 	    d->file = 0;
 #endif
+	    p = strstr ((char *) pool_start (d->pool), "Compilation directory is ");
+	    if (p) {
+		char *q;
+		q = p + 25;
+		p = strchr (q, '\n');
+		if (p) {
+                    int l;
+                    if (d->dir)
+                        free (d->dir);
+                    l = (p - q);
+		    d->dir = (char *) malloc (l + 1);
+                    strncpy (d->dir, q, l);
+                    d->dir[l] = '\0';
+                    string_chomp (d->dir);
+		}
+	    }
 	    p = strstr ((char *) pool_start (d->pool), "Located in ");
 	    if (p) {
 		char *q;
@@ -919,7 +934,7 @@ static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_
 		xdebug_cursor_bookmark_flush ();
 	    } else {
 		if (d->file && d->line)	/* if we can't get the file number, issue a backtrace */
-		    xdebug_goto_line (d, d->file, d->line);
+		    xdebug_goto_line (d, d->dir, d->file, d->line);
 		else
 		    xdebug_append_command (d, d->get_backtrace, ACTION_BACKTRACE, 0, 0);
 	    }

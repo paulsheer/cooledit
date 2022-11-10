@@ -564,7 +564,7 @@ static void complete_dialog (char *text, const char *token)
     CFocus (CIdent ("complete.text"));
 }
 
-void goto_error (char *message, int raise_wm_window);
+void goto_error (const char *message, int raise_wm_window);
 
 /* if you double click on a line of gcc output, this will take you to the file */
 static int goto_file_callback (CWidget * w, XEvent * x, CEvent * c)

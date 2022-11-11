@@ -422,17 +422,40 @@ static Debug debug_session;
 
 static void debug_finish (unsigned long x);
 
+static int running_action (int action)
+{E_
+    switch (action) {
+    case ACTION_RUNNING:
+    case ACTION_STEP:
+    case ACTION_UNTIL:
+	return 1;
+    default:
+	break;
+    }
+    return 0;
+}
+
 void debug_callback (void)
 {E_
-    static int animation = 0;
+    static int skip = 0;
     static int refresh = 0;
+    static int animation = 0;
 
-    if ((animation++) % 50) {
+    if (!((skip++) % 2)) {
 	if (debug_session.action) {
-	    CSetColor (color_widget (4));
+            if (running_action (debug_session.action)) {
+                animation += 1;
+	        CSetColor (color_widget (4));
+            } else {
+                animation += 3;
+	        CSetColor (color_widget (1));
+            }
 	    XFillArc (CDisplay, debug_session.w, CGC, debug_session.x, debug_session.y, debug_session.r * 2, debug_session.r * 2, (animation * 487) % (360 * 64) - 180 * 64, 90 * 64);
 	    XFillArc (CDisplay, debug_session.w, CGC, debug_session.x, debug_session.y, debug_session.r * 2, debug_session.r * 2, (animation * 487 + 180 * 64) % (360 * 64) - 180 * 64, 90 * 64);
-	    CSetColor (color_widget (13));
+            if (running_action (debug_session.action))
+	        CSetColor (color_widget (13));
+            else
+	        CSetColor (color_widget (6));
 	    XFillArc (CDisplay, debug_session.w, CGC, debug_session.x, debug_session.y, debug_session.r * 2, debug_session.r * 2, (animation * 487 + 90 * 64) % (360 * 64) - 180 * 64, 90 * 64);
 	    XFillArc (CDisplay, debug_session.w, CGC, debug_session.x, debug_session.y, debug_session.r * 2, debug_session.r * 2, (animation * 487 + 270 * 64) % (360 * 64) - 180 * 64, 90 * 64);
 	    refresh = 1;

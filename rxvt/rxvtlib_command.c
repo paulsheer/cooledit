@@ -1220,7 +1220,7 @@ void rxvtlib_update_screen (rxvtlib * o)
 }
 
 static int io_avail (int fd)
-{
+{E_
     struct timeval tv;
     tv.tv_sec = 0;
     tv.tv_usec = 0;
@@ -1231,7 +1231,7 @@ static int io_avail (int fd)
 }
 
 static int rxvt_fd_read (rxvtlib *o)
-{
+{E_
     int c;
     c = remotefs_reader_util (&o->cterminal_io, 0);
     if (c < 0) {
@@ -1586,6 +1586,14 @@ static void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
     case ConfigureNotify:
 	if (ev->xconfigure.window != o->TermWin.parent[0])
 	    break;
+
+        {   /* take the last ConfigureNotify event if they have queued up */
+            XEvent twinev;
+            memset (&twinev, '\0', sizeof (twinev));
+            while (XCheckTypedWindowEvent (o->Xdisplay, ev->xconfigure.window, ConfigureNotify, &twinev))
+                *ev = twinev;
+        }
+
 #ifdef TRANSPARENT		/* XXX: maybe not needed - leave in for now */
 	if (o->Options & Opt_transparent)
 	    rxvtlib_check_our_parents (o);

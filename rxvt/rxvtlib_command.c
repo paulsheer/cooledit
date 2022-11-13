@@ -4,6 +4,8 @@
 #include <coolwidget.h>
 #include <xim.h>
 #include <stringtools.h>
+#define XWIN_FWD
+#include <xwinfwd.h>
 
 /*--------------------------------*-C-*---------------------------------*
  * File:	command.c
@@ -3044,7 +3046,7 @@ void rxvt_fd_write_watch (int fd, fd_set * reading,
     chunk.data = o->v_bufstr;
     max_write = !strcmp (o->cterminal_io.host, "localhost") ? MAX_PTY_WRITE : REMOTEFS_FUDGE_MTU;
     riten = chunk.len = (p < max_write ? p : max_write);
-    if ((*o->cterminal_io.remotefs->remotefs_shellwrite) (o->cterminal_io.remotefs, &o->cterminal_io, &chunk, errmsg)) {
+    if ((*o->cterminal_io.remotefs->remotefs_shellwrite) (o->cterminal_io.remotefs, &o->cterminal_io, 0, 0, &chunk, errmsg)) {
         printf ("remotefs_shellwrite returned error. errmsg = %s\n", errmsg);
 	CRemoveWatch (o->cmd_fd, NULL, 3);
         o->killed = EXIT_FAILURE | DO_EXIT;
@@ -3574,7 +3576,10 @@ int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const ar
     if (!host)
         host = "localhost";
 
-    if (remotefs_shell_util (host, &o->cterminal_io, &c, 0, argv, errmsg))
+#ifdef XWIN_FWD
+    xwinclient_set_watch (_CAddWatch, CRemoveWatch);
+#endif
+    if (remotefs_shell_util (host, ConnectionNumber (o->Xdisplay), &o->cterminal_io, &c, 0, argv, errmsg))
         return -1;
 
 #ifdef STANDALONE

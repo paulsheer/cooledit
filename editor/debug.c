@@ -626,7 +626,7 @@ static int debug_writeall (Debug *d, const char *buf, int len, char *errmsg)
     memset (&chunk, '\0', sizeof (chunk));
     chunk.data = (char *) buf;
     chunk.len = len;
-    if ((*d->cterminal_io.remotefs->remotefs_shellwrite) (d->cterminal_io.remotefs, &d->cterminal_io, &chunk, errmsg))
+    if ((*d->cterminal_io.remotefs->remotefs_shellwrite) (d->cterminal_io.remotefs, &d->cterminal_io, 0, 0, &chunk, errmsg))
         return -1;
     return len;
 }
@@ -1238,7 +1238,7 @@ static int xdebug_run_program (Debug * d)
 	arg[i++] = d->progname;
 	arg[i] = 0;
         memset (&c, '\0', sizeof (c));
-        if (remotefs_shell_util (d->host, &d->cterminal_io, &c, 2, arg, errmsg)) {
+        if (remotefs_shell_util (d->host, ConnectionNumber (CDisplay), &d->cterminal_io, &c, 2, arg, errmsg)) {
 	    d->pid = 0;
 	    d->xterm_pid = 0;
 	    debug_error2 (d, _("Could not open gdb"), errmsg);
@@ -1253,7 +1253,7 @@ static int xdebug_run_program (Debug * d)
 	arg[i++] = d->progname;
 	arg[i] = 0;
         memset (&c, '\0', sizeof (c));
-        if (remotefs_shell_util (d->host, &d->cterminal_io, &c, 2, arg, errmsg)) {
+        if (remotefs_shell_util (d->host, ConnectionNumber (CDisplay), &d->cterminal_io, &c, 2, arg, errmsg)) {
 	    d->pid = 0;
 	    d->xterm_pid = 0;
 	    debug_error2 (d, _("Could not open gdb"), errmsg);

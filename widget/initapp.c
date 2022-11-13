@@ -444,9 +444,9 @@ static void init_load_font (void)
     static enum font_encoding rxvt_encoding = FONT_ENCODING_UTF8;
     char *f;
 
-    CFontLazy ("editor", init_font, NULL, &editor_encoding);
-    CFontLazy ("rxvt", init_font, NULL, &rxvt_encoding);
-    CFontLazy ("rxvt8bit", init_8bit_term_font, NULL, &rxvt_8bit_encoding);
+    CFontLazy ("editor", init_font, "-*-fixed-bold-r-*--13-120-*-*-*-80-*", &editor_encoding);
+    CFontLazy ("rxvt", init_font, "-*-fixed-bold-r-*--13-120-*-*-*-80-*", &rxvt_encoding);
+    CFontLazy ("rxvt8bit", init_8bit_term_font, "-*-fixed-bold-r-*--13-120-*-*-*-80-*", &rxvt_8bit_encoding);
 
     f = CMalloc (strlen (init_widget_font) + 256);
     sprintf (f, init_widget_font, 14);

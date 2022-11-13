@@ -559,8 +559,10 @@ static wchar_t *Cwchar_to_wchar (const C_wchar_t * s, int l)
 
 int CIsAaFont (void)
 {
+#ifndef NO_TTF
     if (FONT_ANTIALIASING)
         return 1;
+#endif
     return 0;
 }
 

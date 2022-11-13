@@ -2097,7 +2097,9 @@ unsigned long scale_brightness (unsigned long c, unsigned long denominator, unsi
 static int draw_image_string_ (Display * display, Drawable d, GC gc, int x, int y, rxvt_buf_char_t *string, int length)
 {
     XGCValues values_return;
+    memset (&values_return, '\0', sizeof (values_return));
     XGetGCValues (display, gc, GCForeground | GCBackground, &values_return);
+    values_return.line_width = 1;
     if (CIsAaFont ())
         values_return.line_width = bfont ? (1 + 1 /* BOLD_EFFECT_STRONG */) : (1 + 2 /* BOLD_EFFECT_WEAK */);
     else if (!bfont)

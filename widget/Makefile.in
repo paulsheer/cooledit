@@ -145,7 +145,7 @@ am_libCw_la_OBJECTS = initapp.lo coolwidget.lo dirtools.lo menu.lo \
 	unicodedialog.lo aafont.lo look-cool.lo look-gtk.lo \
 	look-next.lo redblack.lo regtools.lo remotefs.lo ipv6scan.lo \
 	aes.lo sha256.lo remotefspassword.lo symauth.lo inspect.lo \
-	cterminal.lo childhandler.lo
+	cterminal.lo childhandler.lo xwinfwd.lo
 libCw_la_OBJECTS = $(am_libCw_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -388,7 +388,7 @@ libCw_la_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
 	regtools.c remotefs.c remotefs.h ipv6scan.c aes.c aes.h \
 	sha256.c sha256.h remotefspassword.c remotefspassword.h \
 	symauth.c symauth.h inspect.c cterminal.c cterminal.h \
-	childhandler.c childhandler.h
+	childhandler.c childhandler.h xwinfwd.c xwinfwd.h
 
 libCw_la_LDFLAGS = -version-info 1:0:0
 all: all-am
@@ -523,6 +523,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/inspect.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cterminal.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/childhandler.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xwinfwd.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syntax.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/textwidget.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unicodedialog.Plo@am__quote@

@@ -2,7 +2,7 @@ bin_PROGRAMS = remotefs
 
 AM_CPPFLAGS = -I$(top_srcdir)/widget -I$(top_srcdir) 
 
-remotefs_SOURCES = remotefs.c regex.c regtools.c pathdup.c ipv6scan.c aes.c sha256.c symauth.c cterminal.c childhandler.c
+remotefs_SOURCES = remotefs.c regex.c regtools.c pathdup.c ipv6scan.c aes.c sha256.c symauth.c cterminal.c childhandler.c xwinfwd.c
 FREETYPE_LIBS = 
 LIBS = 
 LDFLAGS = -static 
@@ -38,6 +38,9 @@ cterminal.c:
 
 childhandler.c:
 	ln -sf ../widget/childhandler.c .
+
+xwinfwd.c:
+	ln -sf ../widget/xwinfwd.c .
 
 
 remotefs_LDADD = 

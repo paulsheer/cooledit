@@ -1121,7 +1121,7 @@ char    **rxvtlib_init_resources (rxvtlib *o, int argc, const char *const *argv)
     if (r_argc == argc)
 	cmd_argv = NULL;
     else {
-	cmd_argv = (char **)MALLOC (sizeof (char *) * (argc - r_argc));
+	cmd_argv = (char **)MALLOC (sizeof (char *) * (unsigned int) argc);
 
 	for (i = 0; i < argc - r_argc - 1; i++)
 	    cmd_argv[i] = (char *) argv[i + r_argc + 1];

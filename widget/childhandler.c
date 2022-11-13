@@ -102,6 +102,16 @@ int CChildCheckExitted (pid_t p)
     return 0;
 }
 
+void clean_child_handler (void)
+{E_
+    while (child_list.next) {
+        struct child_exitted_item *t;
+        t = child_list.next;
+        child_list.next = child_list.next->next;
+        free (t);
+    }
+}
+
 /* returns non-zero on child exit */
 int CChildExitted (pid_t p, int *status)
 {E_

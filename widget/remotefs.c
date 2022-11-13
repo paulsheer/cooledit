@@ -7586,6 +7586,9 @@ void remotefs_serverize (const char *listen_address, const char *option_range)
     }
 
     free_service (&serv);
+#ifndef MSWIN
+    clean_child_handler ();
+#endif
 }
 
 

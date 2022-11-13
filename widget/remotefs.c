@@ -6624,10 +6624,11 @@ static int remote_action_fn_v3_shellwrite (struct server_data *sd, CStr *s, cons
 
     if (multiplex != 0) {
 #ifdef XWIN_FWD
-        if (xfwdstatus == XFWDSTATUS_SHUTDOWN)
+        if (xfwdstatus == XFWDSTATUS_SHUTDOWN) {
             xwinfwd_kill (sd->xwinfwd_data, multiplex);
-        else if (xfwdstatus == XFWDSTATUS_DATA)
+        } else if (xfwdstatus == XFWDSTATUS_DATA) {
             xwinfwd_write (sd->xwinfwd_data, multiplex, (const char *) p, chunklen);
+        }
 #endif
         return ACTION_SILENT;
     }

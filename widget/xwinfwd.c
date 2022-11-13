@@ -206,6 +206,7 @@ void xwinclient_read_watch (SOCKET sock, fd_set *rd, fd_set *wr, fd_set *er, voi
         /* ok */
     } else if (c <= 0) {
         (*remove_watch_cb) (n->sock, NULL, 3);
+        send_blind_message (remotefs_get_sock_data (n->rfs), REMOTEFS_ACTION_SHELLWRITE, n->xwin_client_id, XFWDSTATUS_SHUTDOWN, "", 0, NULL, 0);
         n->kill = 1;
     } else {
         int l;
@@ -254,6 +255,7 @@ void xwinclient_write_watch (SOCKET sock, fd_set *rd, fd_set *wr, fd_set *er, vo
             /* ok */
         } else if (c <= 0) {
             (*remove_watch_cb) (n->sock, NULL, 3);
+            send_blind_message (remotefs_get_sock_data (n->rfs), REMOTEFS_ACTION_SHELLWRITE, n->xwin_client_id, XFWDSTATUS_SHUTDOWN, "", 0, NULL, 0);
             n->kill = 1;
         } else {
             n->wr.written += c;

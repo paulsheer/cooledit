@@ -8,6 +8,7 @@ struct rxvt_startup_options {
     int large_font;
     int backspace_ctrl_h;
     int backspace_127;
+    int x11_forwarding;
     char host[256];
 };
 

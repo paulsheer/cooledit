@@ -4866,6 +4866,7 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
     msg.len += encode_uint (NULL, config->row);
     msg.len += encode_uint (NULL, config->login_shell);
     msg.len += encode_uint (NULL, config->do_sleep);
+    msg.len += encode_uint (NULL, config->x11_forwarding);
     msg.len += encode_uint (NULL, config->charset_8bit);
     msg.len += encode_uint (NULL, config->env_fg);
     msg.len += encode_uint (NULL, config->env_bg);
@@ -4885,6 +4886,7 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
     encode_uint (&q, config->row);
     encode_uint (&q, config->login_shell);
     encode_uint (&q, config->do_sleep);
+    encode_uint (&q, config->x11_forwarding);
     encode_uint (&q, config->charset_8bit);
     encode_uint (&q, config->env_fg);
     encode_uint (&q, config->env_bg);
@@ -6471,6 +6473,7 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
     D(row);
     D(login_shell);
     D(do_sleep);
+    D(x11_forwarding);
     D(charset_8bit);
     D(env_fg);
     D(env_bg);
@@ -6523,10 +6526,12 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
     peer_to_text (sd->reader_data->sock_data->sock, peername);
 
 #ifdef XWIN_FWD
-    if (!sd->xwinfwd_data)
-        sd->xwinfwd_data = xwinfwd_alloc ();
-    if (sd->xwinfwd_data)
-        snprintf (c.display_env_var, sizeof (c.display_env_var), "localhost:%d.0", xwinfwd_display_port (sd->xwinfwd_data) - 6000);
+    if (c.x11_forwarding) {
+        if (!sd->xwinfwd_data)
+            sd->xwinfwd_data = xwinfwd_alloc ();
+        if (sd->xwinfwd_data)
+            snprintf (c.display_env_var, sizeof (c.display_env_var), "localhost:%d.0", xwinfwd_display_port (sd->xwinfwd_data) - 6000);
+    }
 #endif
 
     if (remotefs_shellcmd_ (&t->cterminal, &c, (int) dumb_terminal_, peername, args, s)) {

@@ -235,6 +235,7 @@ static struct {
         {"options_startup_large_font", &rxvt_startup_options.large_font, 0, TYPE_HIDDEN_VALUE},
         {"options_startup_backspace_ctrl_h", &rxvt_startup_options.backspace_ctrl_h, 0, TYPE_HIDDEN_VALUE},
         {"options_startup_backspace_127", &rxvt_startup_options.backspace_127, 0, TYPE_HIDDEN_VALUE},
+        {"options_startup_x11_forwarding", &rxvt_startup_options.x11_forwarding, 0, TYPE_HIDDEN_VALUE},
 
 	{0, 0}
 };

@@ -10,6 +10,7 @@ struct cterminal_config {
     int row;
     int login_shell;
     int do_sleep;
+    int x11_forwarding;
     int charset_8bit;
     int env_fg;
     int env_bg;

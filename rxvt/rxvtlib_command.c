@@ -3568,6 +3568,7 @@ int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const ar
     c.row = o->TermWin.nrow;
     c.login_shell = !!(o->Options & Opt_loginShell);
     c.do_sleep = do_sleep;
+    c.x11_forwarding = !!(o->rxvt_options & RXVT_OPTIONS_X11_FORWARDING);
     c.charset_8bit = o->charset_8bit;
     c.env_fg = o->env_fg;
     c.env_bg = o->env_bg;

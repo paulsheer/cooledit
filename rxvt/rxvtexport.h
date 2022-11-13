@@ -13,6 +13,7 @@ void rxvtlib_shut (rxvtlib * o);
 #define RXVT_OPTIONS_TERM8BIT           (1<<0)
 #define RXVT_OPTIONS_BACKSPACE_CTRLH    (1<<1)
 #define RXVT_OPTIONS_BACKSPACE_127      (1<<2)
+#define RXVT_OPTIONS_X11_FORWARDING     (1<<3)
 
 void rxvtlib_init (rxvtlib *o, unsigned long rxvt_options);
 void rxvt_process_x_event (rxvtlib * o);

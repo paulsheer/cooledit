@@ -106,14 +106,14 @@
 
 
 
-struct xwinclient_ {E_
+struct xwinclient_ {
     unsigned char *buf;
     int avail;
     int written;
     int alloced;
 };
 
-struct xwinclient_data_item {E_
+struct xwinclient_data_item {
     unsigned long xwin_client_id;
     SOCKET sock;
     struct remotefs *rfs;
@@ -127,7 +127,7 @@ struct xwinclient_data_item {E_
     int state;
 };
 
-struct xwinclient_data {E_
+struct xwinclient_data {
     remotefs_sockaddr_t xwin_peer;
     struct xwinclient_data_item *xwinclient_list;
 };
@@ -431,6 +431,8 @@ int xwinfwd_new_client (struct xwinfwd_data *x)
 
     n->next = x->xwinfwd_list;
     x->xwinfwd_list = n;
+
+    printf ("X11 connection established\n");
 
     return 0;
 }

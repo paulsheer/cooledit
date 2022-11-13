@@ -898,10 +898,21 @@ static XFontSet get_font_set (char *name)
     return fontset;
 }
 
+static const char *msg_shorten (const char *p)
+{
+    const int tail = 24;
+    static char s[136];
+    if (strlen (p) <= sizeof (s) - 1)
+	return p;
+    memcpy (s, p, sizeof (s) - tail);
+    strcpy (s + sizeof (s) - tail, "...");
+    strcpy (s + sizeof (s) - (tail - 3), p + strlen (p) - (tail - 3 - 1));
+    return s;
+}
+
 /* loads a font and sets the current font to it */
 static struct font_object *load_font (const char *name, const char *xname_, enum font_encoding *e, enum force_fixed_width_enum force_fixed_width)
 {E_
-    char compactname[80];
     char *xname;
     int aa = 0;
     struct font_object *n;
@@ -918,7 +929,7 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
         int t;
         t = xname[l - 1] - '0';
 	if (!(t == 1 || t == 3)) {
-            fprintf (stderr, "%s: cannot load font\n\t%s\n%s", CAppName, xname, font_error_string);
+            fprintf (stderr, "%s: cannot load font\n\t%s\n%s", CAppName, msg_shorten (xname), font_error_string);
 	    free (xname);
 	    return 0;
 	}
@@ -935,7 +946,7 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
         }
         desired_height = atoi(colon + 1);
         if (desired_height < 2 || desired_height > 255) {
-            fprintf (stderr, "%s: cannot load font\n\t%s\n%s", CAppName, xname, font_error_string);
+            fprintf (stderr, "%s: cannot load font\n\t%s\n%s", CAppName, msg_shorten (xname), font_error_string);
 	    free (xname);
 	    return 0;
         }
@@ -969,7 +980,7 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
 	if (!n->f.font_set)
 	    fprintf (stderr,
 		     _("%s: display %s cannot load font\n\t%s\nas a font set - trying raw load.\n"),
-		     CAppName, DisplayString (CDisplay), xname);
+		     CAppName, DisplayString (CDisplay), msg_shorten (xname));
 /* font set may have failed only because of an invalid locale, but
    we try load the font anyway */
     }
@@ -979,7 +990,7 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
 
     if (!n->f.font_freetype.n_fonts && !n->f.font_struct && !n->f.font_set) {
 	fprintf (stderr, _("%s: display %s cannot load font\n\t%s\n"), CAppName,
-		 DisplayString (CDisplay), xname);
+		 DisplayString (CDisplay), msg_shorten (xname));
 	free (n);
 	free (xname);
 	return 0;
@@ -1030,7 +1041,7 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
     n->f.force_fixed_width = force_fixed_width;
     n->f.monochrome = monochrome;
     if (FONT_MEAN_WIDTH <= 2) {
-	fprintf (stderr, _("%s: display %s cannot load font\n\t%s\n"), CAppName, DisplayString (CDisplay), xname);
+	fprintf (stderr, _("%s: display %s cannot load font\n\t%s\n"), CAppName, DisplayString (CDisplay), msg_shorten (xname));
         free (xname);
         return 0;
     }
@@ -1040,11 +1051,7 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
 /* font list like rxvt. FIXME: make rxvt and this see same font list */
 	current_font->f.font_set = get_font_set ("7x14,6x10,6x13,8x13,9x15");   /* needed for XIM */
     }
-    if (strlen (xname) > 60)
-        sprintf (compactname, "%.40s...%s", xname, xname + strlen (xname) - 7);
-    else
-        strcpy (compactname, xname);
-    printf("loaded %s as %s\n", compactname, current_font->f.font_struct ? "font struct" : (current_font->f.font_freetype.n_fonts ? "freetype font" : ((current_font->f.font_set ? "font set" : "(error)"))));
+    printf("loaded %s as %s\n", msg_shorten (xname), current_font->f.font_struct ? "font struct" : (current_font->f.font_freetype.n_fonts ? "freetype font" : ((current_font->f.font_set ? "font set" : "(error)"))));
     free (xname);
     return current_font;
 }
@@ -1111,9 +1118,11 @@ static int CPushFont_ (enum force_fixed_width_enum force_fixed_width, const char
                     fflush (stderr);
                     return 1;
                 }
-                if (!(f = load_font (name, xname, e, force_fixed_width)))
-                    if (!(f = load_font (name, "-misc-fixed-*-*-*--13-*", e, force_fixed_width)))
+                if (!(f = load_font (name, xname, e, force_fixed_width))) {
+                    static enum font_encoding fallback_8bit_encoding = FONT_ENCODING_8BIT;
+                    if (!(f = load_font (name, "-*-*-*-*-*--13-*", &fallback_8bit_encoding, force_fixed_width)))
                         return 1;
+                }
             }
 	    f->ref = 2;         /* these are the base fonts "editor", "widget", etc. that must not be freed */
         }

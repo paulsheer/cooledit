@@ -296,7 +296,8 @@ int main (int argc, char **argv)
     cooledit_startup.display = option_display;
     cooledit_startup.font = option_font2;
     CInitialise (&cooledit_startup);
-    CPushFont ("editor", 0);
+    if (CPushFont ("editor", 0))
+        exit (1);
 
 /* create main window */
     main_window = CDrawMainWindow ("smalledit", "Smalledit");

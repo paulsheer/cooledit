@@ -453,7 +453,7 @@ static void init_load_font (void)
     CFontLazy ("widget", f, "-bitstream-*-medium-r-normal--14-*-*-*-*-*-*-*", &widget_encoding);
     free(f);
 
-    CFontLazy ("bookmark", get_default_bookmark_font(), NULL, &bookmark_encoding);
+    CFontLazy ("bookmark", get_default_bookmark_font(), "-*-helvetica-bold-r-*--13-*-*-*-*-*-*", &bookmark_encoding);
 }
 
 static void visual_comments (int class)

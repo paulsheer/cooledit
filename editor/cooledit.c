@@ -2511,7 +2511,8 @@ int main (int argc, char **argv)
     CMapDialog ("menu");
     height_offset = (CIdent ("menu"))->height + (CIdent ("menu"))->y;
 
-    CPushFont ("editor", 0);  /* for read_config() */
+    if (CPushFont ("editor", 0))  /* for read_config() */
+        exit (1);
     if (!option_suppress_load_files && !option_suppress_load_files_cmdline)
 	read_config (); /* <=== needs font width/height for new window size */
 
@@ -2576,7 +2577,8 @@ int main (int argc, char **argv)
     if (setsize || !(w->options & WINDOW_USER_SIZE))	/* this means that the size was specified by the user in 'geometry' */
 	CSetWidgetSize ("cooledit", extents_width, extents_height);
 
-    CPushFont ("editor", 0);
+    if (CPushFont ("editor", 0))
+        exit (1);
     CSetWindowResizable ("cooledit", 300, 300, 20000, 20000);
     CPopFont ();
 /* Toolhint */

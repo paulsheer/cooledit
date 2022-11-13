@@ -108,7 +108,8 @@ void init_xlocale (void)
 #ifdef LC_CTYPE
     char *xim_locale = NULL;
     xim_locale = setlocale (LC_CTYPE, 0);
-    CPushFont ("editor", 0);
+    if (CPushFont ("editor", 0))
+        return;
     assert (current_font);
     if (!xim_locale) {
 	xim_print_error ("Setting locale failed.");

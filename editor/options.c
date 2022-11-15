@@ -172,7 +172,6 @@ static struct {
 	{"option_new_window_ask_for_file", &option_new_window_ask_for_file, gettext_noop(" New windows ask for file "), TYPE_ON_OFF},
 	{"option_smooth_scrolling", &option_smooth_scrolling, gettext_noop(" Smooth scrolling "), TYPE_ON_OFF},
 	{"option_typing_replaces_selection", &option_typing_replaces_selection, gettext_noop(" Typing replaces selection "), TYPE_ON_OFF},
-	{"", &dummy, NULL, TYPE_BLANK},
 	{"option_utf_interpretation2", &option_utf_interpretation2, gettext_noop(" UTF8 Interpretation "), TYPE_ON_OFF},
 	{"option_reverse_levant", &option_reverse_levant, gettext_noop(" Reverse Hebrew/Arabic/etc. "), TYPE_ON_OFF},
 	{"last_unichar_left", &last_unichar_left, 0, TYPE_HIDDEN_VALUE},
@@ -233,9 +232,9 @@ static struct {
 
         {"options_startup_term_8bit", &rxvt_startup_options.term_8bit, 0, TYPE_HIDDEN_VALUE},
         {"options_startup_large_font", &rxvt_startup_options.large_font, 0, TYPE_HIDDEN_VALUE},
-        {"options_startup_backspace_ctrl_h", &rxvt_startup_options.backspace_ctrl_h, 0, TYPE_HIDDEN_VALUE},
-        {"options_startup_backspace_127", &rxvt_startup_options.backspace_127, 0, TYPE_HIDDEN_VALUE},
-        {"options_startup_x11_forwarding", &rxvt_startup_options.x11_forwarding, 0, TYPE_HIDDEN_VALUE},
+        {"options_startup_backspace_ctrl_h", &rxvt_startup_options.backspace_ctrl_h, "rxvt/xterm, Force backspace to ^H", TYPE_ON_OFF},
+        {"options_startup_backspace_127", &rxvt_startup_options.backspace_127, "rxvt/xterm, Force backspace to ^?", TYPE_ON_OFF},
+        {"options_startup_x11_forwarding", &rxvt_startup_options.x11_forwarding, "rxvt/xterm, Enable X11 forwarding", TYPE_ON_OFF},
 
 	{0, 0}
 };
@@ -721,6 +720,13 @@ void draw_switches_dialog (Window parent, int x, int y)
 	    if ((CIdent ("option_locale_encoding"))->keypressed && (CIdent ("option_utf_interpretation2"))->keypressed) {
 		(CIdent ("option_utf_interpretation2"))->keypressed = 0;
 		render_switch (CIdent ("option_utf_interpretation2"));
+	    }
+	}
+
+	if (!strcmp (cev.ident, "options_startup_backspace_ctrl_h")) {
+	    if ((CIdent ("options_startup_backspace_127"))->keypressed && (CIdent ("options_startup_backspace_ctrl_h"))->keypressed) {
+		(CIdent ("options_startup_backspace_127"))->keypressed = 0;
+		render_switch (CIdent ("options_startup_backspace_127"));
 	    }
 	}
 

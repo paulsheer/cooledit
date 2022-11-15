@@ -2090,10 +2090,10 @@ void cooledit_main_loop (void)
 		    }
 		    break;
 		case CK_Terminal:
-		    rxvt_start (edit[current_edit]->editor->host, CRoot, 0, 0, 0);
+		    rxvt_start_unicode (edit[current_edit]->editor->host, CRoot);
 		    break;
 		case CK_8BitTerminal:
-		    rxvt_start (edit[current_edit]->editor->host, CRoot, 0, 0, RXVT_OPTIONS_TERM8BIT);
+		    rxvt_start_8bit (edit[current_edit]->editor->host, CRoot);
 		    break;
 		case CK_Complete:
 		    complete_command (edit[current_edit]);

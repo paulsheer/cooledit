@@ -52,6 +52,7 @@
 #include <netinet/tcp.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/un.h>
 #endif
 
 #include <errno.h>
@@ -5200,6 +5201,25 @@ int remotefs_sockaddr_t_addressfamily (remotefs_sockaddr_t *a)
 #else
     return a->ss.ss_family;
 #endif
+}
+
+/* Seems there is an OS bug that this does not take a struct sockaddr larger than sizeof(struct sockaddr_un) */
+int remotefs_sockaddr_t_socksz (remotefs_sockaddr_t * a)
+{E_
+    int f;
+#ifdef LEGACY_IP4_ONLY
+    f = a->ss.sa_family;
+#else
+    f = a->ss.ss_family;
+#endif
+    switch (f) {
+#ifndef MSWIN
+    case AF_UNIX:
+	return sizeof (struct sockaddr_un);
+#endif
+    default:
+	return sizeof (*a);
+    }
 }
 
 static int ipaddress_port_to_remotefs_sockaddr_t (remotefs_sockaddr_t *a, const char *addr, int port)

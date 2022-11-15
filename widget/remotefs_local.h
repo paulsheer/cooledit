@@ -69,6 +69,7 @@ typedef struct remotefs_sockaddr_s_ remotefs_sockaddr_t;
 SOCKET remotefs_listen_socket (const char *listen_address, int listen_port);
 int remotefs_connection_check (const SOCKET s, int write_set);
 int remotefs_sockaddr_t_addressfamily (remotefs_sockaddr_t *a);
+int remotefs_sockaddr_t_socksz (remotefs_sockaddr_t *a);
 int send_blind_message (struct sock_data *sock_data, int action, unsigned long multiplex, int xfwdstatus, char *data1, int l1, char *data2, int l2);
 struct sock_data *remotefs_get_sock_data (struct remotefs *rfs);
 

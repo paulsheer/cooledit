@@ -256,6 +256,34 @@ void rxvtlib_shutall (void)
     }
 }
 
+rxvtlib *rxvt_start_unicode (const char *host, Window win)
+{E_
+    unsigned long b = 0;
+
+    if (rxvt_startup_options.backspace_ctrl_h)
+        b |= RXVT_OPTIONS_BACKSPACE_CTRLH;
+    if (rxvt_startup_options.backspace_127)
+        b |= RXVT_OPTIONS_BACKSPACE_127;
+    if (rxvt_startup_options.x11_forwarding)
+        b |= RXVT_OPTIONS_X11_FORWARDING;
+
+    return rxvt_start (host, CRoot, 0, 0, b);
+}
+
+rxvtlib *rxvt_start_8bit (const char *host, Window win)
+{E_
+    unsigned long b = 0;
+
+    if (rxvt_startup_options.backspace_ctrl_h)
+        b |= RXVT_OPTIONS_BACKSPACE_CTRLH;
+    if (rxvt_startup_options.backspace_127)
+        b |= RXVT_OPTIONS_BACKSPACE_127;
+    if (rxvt_startup_options.x11_forwarding)
+        b |= RXVT_OPTIONS_X11_FORWARDING;
+
+    return rxvt_start (host, CRoot, 0, 0, b);
+}
+
 rxvtlib *rxvt_start (const char *host, Window win, char **argv, int do_sleep, unsigned long rxvt_options)
 {E_
     int a = 0;

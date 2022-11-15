@@ -52,6 +52,7 @@
 #include <netinet/tcp.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/un.h>
 #endif
 
 #include <errno.h>
@@ -177,6 +178,24 @@ void xwinclient_freeall (struct xwinclient_data *x)
     free (x);
 }
 
+/* seems there is an OS bug where this is filled in with a leading '\0' in front of the path name */
+static void correct_sun_address (struct sockaddr_un *u)
+{E_
+    char *p;
+    if (u->sun_family != AF_UNIX)
+	return;
+    if (u->sun_path[0] == '/')
+	return;
+    if (!(u->sun_path[0] == '\0' && u->sun_path[1] == '/'))
+	return;
+    p = (char *) u;
+    p[sizeof (*u) - 1] = '\0';
+    p = (char *) (&u->sun_path[0]);
+    do {
+	*p = *(p + 1);
+    } while (*p++);
+}
+
 struct xwinclient_data *xwinclient_alloc (int xwin_fd)
 {E_
     struct xwinclient_data *r;
@@ -191,6 +210,9 @@ struct xwinclient_data *xwinclient_alloc (int xwin_fd)
         free (r);
         return NULL;
     }
+
+    correct_sun_address ((struct sockaddr_un *) &r->xwin_peer);
+
     return r;
 }
 
@@ -309,12 +331,13 @@ int xwinclient_new_client (struct remotefs *rfs, struct xwinclient_data *x, unsi
         perror ("setsockopt(TCP_NODELAY)");
     if (ioctlsocket (sock, FIONBIO, &yes))
         perror ("ioctlsocket(FIONBIO)");
-    r = connect (sock, (struct sockaddr *) &x->xwin_peer, sizeof (x->xwin_peer));
+
+    r = connect (sock, (struct sockaddr *) &x->xwin_peer, remotefs_sockaddr_t_socksz (&x->xwin_peer));
     if (r == SOCKET_ERROR && (ERROR_EINTR () || ERROR_EAGAIN ())) {
         /* ok */
     } else if (r == SOCKET_ERROR) {
-        shutdown (sock, 2);
-        close (sock);
+        perror ("connect()");
+        shutdown (sock, 2); close (sock);
         return -1;
     } else {
         connected = 1;
@@ -546,6 +569,8 @@ void xwinfwd_freeall (struct xwinfwd_data *x)
         next = i->next;
         xwinfwd_free (i);
     }
+    shutdown (x->listen_sock, 2);
+    close (x->listen_sock);
     free (x);
 }
 

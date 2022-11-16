@@ -388,9 +388,7 @@ typedef enum remotfs_password_return (*remotfs_password_cb_t) (void *user_data, 
 struct remotefs_private;
 struct portable_stat;
 struct cterminal_config;
-#ifdef XWIN_FWD
 struct xwinclient_data;
-#endif
 struct remotefs_terminalio {
     int cmd_fd;
     struct reader_data *reader_data;
@@ -404,6 +402,8 @@ struct remotefs_terminalio {
     int alloced;
 #ifdef XWIN_FWD
     struct xwinclient_data *xwinclient_data;
+#else
+    struct xwinclient_data *dummy__xwinclient_data;
 #endif
 };
 

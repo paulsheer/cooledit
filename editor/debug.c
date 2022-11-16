@@ -1677,6 +1677,7 @@ void xdebug_init_animation (void)
 void debug_init (void)
 {E_
     memset (&debug_session, 0, sizeof (debug_session));
+    debug_session.cterminal_io.cmd_fd = -1;
     debug_session.debug_options = &debug_options;
     debug_session.prompt = "(gdb) ";
     debug_session.get_line = "info line\n";

@@ -175,6 +175,7 @@ void xwinclient_freeall (struct xwinclient_data *x)
         next = i->next;
         xwinclient_free (i);
     }
+    memset (x, '\0', sizeof (*x));
     free (x);
 }
 

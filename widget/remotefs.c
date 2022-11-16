@@ -4825,8 +4825,10 @@ static int len_args (char *const *s)
 
 void remotefs_free_terminalio (struct remotefs_terminalio *io)
 {E_
-    if (io->remotefs)
+    if (io->remotefs) {
         remotefs_free (io->remotefs);
+        io->remotefs = NULL;
+    }
     if (io->reader_data) {
         free (io->reader_data);
         io->reader_data = NULL;

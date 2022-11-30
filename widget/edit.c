@@ -1721,6 +1721,18 @@ static unsigned long my_type_of (int c)
 
 void edit_left_word_move (WEdit * edit, int s)
 {E_
+#warning do proper unicode interpretation of whole words
+    if (edit_get_byte (edit, edit->curs1 - 1) >= 0x80) {
+        /* until we have unicode support here, skip over unicode character and then consider the word move done */
+        for (;;) {
+            int c;
+	    edit_cursor_move (edit, -1);
+            c = edit_get_byte (edit, edit->curs1);
+            if (c >= 0xC0 || c < 0x80)
+                break;
+        }
+        return;
+    }
     for (;;) {
 	int c1, c2;
 	edit_cursor_move (edit, -1);
@@ -1746,6 +1758,18 @@ static void edit_left_word_move_cmd (WEdit * edit)
 
 void edit_right_word_move (WEdit * edit, int s)
 {E_
+#warning do proper unicode interpretation of whole words
+    if (edit_get_byte (edit, edit->curs1) >= 0x80) {
+        /* until we have unicode support here, skip over unicode character and then consider the word move done */
+        for (;;) {
+            int c;
+	    edit_cursor_move (edit, 1);
+            c = edit_get_byte (edit, edit->curs1 + 1);
+            if (c >= 0xC0 || c < 0x80)
+                break;
+        }
+        return;
+    }
     for (;;) {
 	int c1, c2;
 	edit_cursor_move (edit, 1);

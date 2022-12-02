@@ -5515,6 +5515,28 @@ static void process_client (struct client_item *i)
 
     v[0].data = (char *) &m;
     v[0].len = sizeof (m);
+
+/* Large directory reads segfault here without this block: {{{ */
+    if (v[1].len > READER_CHUNK / 4) {
+        int qlen;
+        char *qdata;
+        if (writervec (&i->sock_data, &v[0], 1))
+            ERR ("writing response header", i->action);
+        qdata = v[1].data;
+        qlen = v[1].len;
+        while (qlen > 0) {
+            int t;
+            CStr w;
+            t = MIN (qlen, READER_CHUNK / 4);
+            w.data = qdata;
+            w.len = t;
+            if (writervec (&i->sock_data, &w, 1))
+                ERR ("writing response header", i->action);
+            qlen -= t;
+            qdata += t;
+        }
+    }
+    else
     if (writervec (&i->sock_data, v, 2))
         ERR ("writing response header", i->action);
 

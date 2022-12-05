@@ -1,0 +1,15 @@
+
+# Package names tend to change from time to time.
+
+
+# for running cooledit:
+sudo apt install  gdb aspell aspell-en indent pkgconf groff groff-base libfreetype6
+
+
+# for building cooledit:
+sudo apt install  gcc libx11-dev x11proto-dev libxpm-dev libfreetype6-dev
+./configure --disable-shared 
+make
+make install
+
+

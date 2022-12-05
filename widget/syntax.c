@@ -1453,7 +1453,7 @@ void edit_free_syntax_rules (WEdit * edit)
     syntax_free (edit->rules);
 }
 
-#define CURRENT_SYNTAX_RULES_VERSION "78"
+#define CURRENT_SYNTAX_RULES_VERSION "83"
 
 #ifndef UNIT_TEST
 
@@ -1480,6 +1480,9 @@ char *syntax_text[] = {
 "",
 "file ..\\*\\\\.(scm|SCM)$ Gimp\\sScript-Fu",
 "include scm.syntax",
+"",
+"file .\\* unknown",
+"include unknown.syntax",
 "",
 0};
 

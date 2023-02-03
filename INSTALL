@@ -1,6 +1,7 @@
 
-# Simple build assuming freetype is installed:
+# Simple build assuming freetype is installed (also works on Windows WSL):
 
+apt install git gcc make pkg-config groff-base aspell indent libfreetype6-dev libx11-dev
 ./configure --disable-shared 
 make
 make install
@@ -8,6 +9,7 @@ make install
 
 
 # Simple build without .ttf or unicode support:
+apt install git gcc make pkg-config groff-base aspell indent libx11-dev
 export FREETYPE_LIBS='-DNO_TTF'
 export FREETYPE_CFLAGS='-DNO_TTF'
 ./configure --disable-shared

@@ -36,7 +36,8 @@ int edit_confirm_save = 0;
 #endif
 
 #define NUM_REPL_ARGS 64
-#define MAX_REPL_LEN 8192
+#define MAX_REPL_LEN            (256*1024)
+#define SCANF_WORKSPACE         (256*1024)
 
 #if defined(MIDNIGHT) || defined(GTK)
 
@@ -1750,7 +1751,7 @@ int string_regexp_search (char *pattern, char *string, int len, int match_type, 
 
 /* thanks to  Liviu Daia <daia@stoilow.imar.ro>  for getting this
    (and the above) routines to work properly - paul */
-static long edit_find_string_ (long start, CStr exp, int *len, long last_byte, int (*get_byte) (void *, long), void *data, int once_only, void *d)
+static long edit_find_string__ (unsigned char **work_space1, unsigned char **work_space2, long start, CStr exp, int *len, long last_byte, int (*get_byte) (void *, long), void *data, int once_only, void *d)
 {E_
     long p, q = 0;
     long l = exp.len, f = 0;
@@ -1765,28 +1766,30 @@ static long edit_find_string_ (long start, CStr exp, int *len, long last_byte, i
 
     if (option_replace_scanf || option_replace_regexp) {
 	int c;
-	unsigned char *buf;
-	unsigned char mbuf[MAX_REPL_LEN * 2 + 8];
-
-        memset(mbuf, '\0', sizeof(mbuf));
 
 	option_replace_scanf = (!option_replace_regexp);	/* can't have both */
 
-	buf = mbuf;
-
 	if (option_replace_scanf) {
-	    unsigned char e[MAX_REPL_LEN + 8];
+	    unsigned char *e;
             unsigned char *expc;
+	    unsigned char *buf;
+	    unsigned char *mbuf;
+
+	    buf = mbuf = *work_space1 = (unsigned char *) realloc (*work_space1, SCANF_WORKSPACE * 2 + 3);
+            *mbuf = 0;
+
 	    if (n >= NUM_REPL_ARGS)
 		return -3;
 
+            e = *work_space2 = realloc (*work_space2, SCANF_WORKSPACE + 1);
+
 	    if (option_replace_case) {
-		for (p = start; p < last_byte && p < start + MAX_REPL_LEN; p++)
+		for (p = start; p < last_byte && p < start + SCANF_WORKSPACE; p++)
 		    buf[p - start] = (*get_byte) (data, p);
 	    } else {
 		for (p = 0; p < exp.len; p++)
 		    exp.data[p] = my_lower_case (exp.data[p]);
-		for (p = start; p < last_byte && p < start + MAX_REPL_LEN; p++) {
+		for (p = start; p < last_byte && p < start + SCANF_WORKSPACE; p++) {
 		    c = (*get_byte) (data, p);
 		    buf[p - start] = my_lower_case (c);
 		}
@@ -1819,7 +1822,7 @@ static long edit_find_string_ (long start, CStr exp, int *len, long last_byte, i
 		buf[q] = 0;
 		start++;
 		buf++;		/* move the window along */
-		if (buf == mbuf + MAX_REPL_LEN) {	/* the window is about to go past the end of array, so... */
+		if (buf >= mbuf + SCANF_WORKSPACE) {	/* the window is about to go past the end of array, so... */
 		    Cmemmove (mbuf, buf, strlen ((char *) buf) + 1);	/* reset it */
 		    buf = mbuf;
 		}
@@ -1827,23 +1830,29 @@ static long edit_find_string_ (long start, CStr exp, int *len, long last_byte, i
 	    }
 	} else {	/* regexp matching */
 	    long offset = 0;
-	    int found_start, match_bol, move_win = 0; 
+	    int found_start, match_bol; 
+	    unsigned char *mbuf;
+            long alloced = 8;
+
+	    mbuf = *work_space1 = (unsigned char *) realloc (*work_space1, alloced + 8);
+            *mbuf = 0;
 
 	    while (start + offset < last_byte) {
-                int big_line = 0;
+	        unsigned char *buf;
 		match_bol = (offset == 0 || (*get_byte) (data, start + offset - 1) == '\n');
-		if (!move_win) {
-		    p = start + offset;
-		    q = 0;
-		}
-		for (; p < last_byte && q < MAX_REPL_LEN; p++, q++) {
+	        p = start + offset;
+		q = 0;
+		for (; p < last_byte; p++, q++) {
+                    if (q >= alloced) {
+                        alloced *= 2;
+                        mbuf = *work_space1 = (unsigned char *) realloc (*work_space1, alloced + 8);
+                    }
 		    mbuf[q] = (*get_byte) (data, p);
 		    if (mbuf[q] == '\n') {
 			q++;
 			break;
                     }
 		}
-                big_line = (q == MAX_REPL_LEN);
 		offset += q;
 		mbuf[q] = 0;
 
@@ -1868,16 +1877,6 @@ static long edit_find_string_ (long start, CStr exp, int *len, long last_byte, i
 		}
 		if (once_only)
 		    return -2;
-
-		if (big_line) { /* incomplete line: try to recover */
-		    buf = mbuf + MAX_REPL_LEN / 2;
-		    q = strlen ((char *) buf);
-		    Cmemmove (mbuf, buf, q);
-		    p = start + q;
-		    move_win = 1;
-		}
-		else
-		    move_win = 0;
 	    }
 	}
     } else {
@@ -1912,6 +1911,16 @@ static long edit_find_string_ (long start, CStr exp, int *len, long last_byte, i
 	}
     }
     return -2;
+}
+
+static long edit_find_string_ (long start, CStr exp, int *len, long last_byte, int (*get_byte) (void *, long), void *data, int once_only, void *d)
+{E_
+    long r;
+    unsigned char *work_space1 = NULL, *work_space2 = NULL;
+    r = edit_find_string__ (&work_space1, &work_space2, start, exp, len, last_byte, get_byte, data, once_only, d);
+    free (work_space2);
+    free (work_space1);
+    return r;
 }
 
 long edit_find_string (long start, CStr exp, int *len, long last_byte, int (*get_byte) (void *, long), void *data, int once_only, void *d)
@@ -2216,7 +2225,8 @@ void edit_replace_cmd (WEdit * edit, int again)
 
 	    if (replace_yes) {	/* delete then insert new */
 		if (option_replace_scanf || option_replace_regexp) {
-		    char repl_str[MAX_REPL_LEN + 8];
+		    char *repl_str;
+                    repl_str = (char *) malloc (MAX_REPL_LEN + 8);
 		    if (option_replace_regexp) {	/* we need to fill in sargs just like with scanf */
 			int k, j;
 			for (k = 1; k < NUM_REPL_ARGS && pmatch[k].rm_eo >= 0; k++) {
@@ -2241,6 +2251,7 @@ void edit_replace_cmd (WEdit * edit, int again)
 			    _ (" Error in replacement format string. "));
 			replace_continue = 0;
 		    }
+                    free (repl_str);
 		} else {
 		    times_replaced++;
 		    while (i--)

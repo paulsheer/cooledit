@@ -47,7 +47,7 @@ unsigned char *wcrtomb_wchar_to_utf8 (C_wchar_t c)
 	APPEND (((c >> 12) & 0x3F) | 0x80);
 	APPEND (((c >> 6) & 0x3F) | 0x80);
 	APPEND ((c & 0x3F) | 0x80);
-    } else if (c < (1 << 31)) {
+    } else if ((unsigned long) c < (unsigned long) (1UL << 31)) {
 	APPEND ((c >> 30) | 0xFC);
 	APPEND (((c >> 24) & 0x3F) | 0x80);
 	APPEND (((c >> 18) & 0x3F) | 0x80);

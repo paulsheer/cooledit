@@ -7184,7 +7184,7 @@ static void run_service (struct service *serv)
     struct client_item *i, **j;
 #ifdef MSWIN
     WSAEVENT ms_events[1024];
-    WSAEVENT accept_event;
+    WSAEVENT accept_event = 0;
     int n_ms_events = 0;
     struct timeval now;
     int r;
@@ -7579,6 +7579,12 @@ static void run_service (struct service *serv)
             WSACloseEvent(i->sock_data.ms_event);
             i->sock_data.ms_event = 0;
         }
+    }
+    if (accept_event) {
+        if (serv->h != INVALID_HANDLE_VALUE)
+            WSAEventSelect(serv->h, NULL, 0);
+        WSACloseEvent(accept_event);
+        accept_event = 0;
     }
 #endif
 }

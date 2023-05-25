@@ -809,7 +809,7 @@ static void debug_read_callback (int fd, fd_set * reading, fd_set * writing, fd_
 	}
 	if (from_start ((char *) pool_start (d->pool), "Function \"main\" not defined", CLEAR_PROMPT_OFFSET) ||
 	    from_start ((char *) pool_start (d->pool), "No source file specified", CLEAR_PROMPT_OFFSET)) {
-	    debug_error1 (d, _ ("The debugger returned a message implying that \n the executable was not compiled with \n the \"-g\" option for debugging"));
+	    debug_error1 (d, _ (" The debugger returned a message implying that the executable \n was not compiled with the \"-g\" option for debugging, or \n compiled with optimizations which mess with debugging"));
 	    debug_finish (0L);
 	    break;
 	}
@@ -1412,7 +1412,7 @@ static int debug_set_info (unsigned long x)
     char *input_tool_hint[10] =
     {
 	gettext_noop ("Remote debugging requires the remotefs tool to be running on the remote Unix system"),
-	gettext_noop ("The executable that you would like to debug - this must be compiled with the -g option"),
+	gettext_noop ("The executable that you would like to debug - this must be\ncompiled with the -g option with optimizations turned off."),
 	gettext_noop ("Arguments to be passed to the executable - can be empty"),
 	0
     };

@@ -92,11 +92,16 @@ typedef unsigned char text_t;
 #endif
 typedef struct _screen_t screen_t;
 typedef struct save_t save_t;
-#ifdef HAVE_TERMIOS_H
+
+#ifndef TTYMODE_T_DEFINED
+#define TTYMODE_T_DEFINED
+#ifdef HAVE_TERMIOS_H   
 typedef struct termios ttymode_t;
 #else
 typedef struct _ttymode_t ttymode_t;
-#endif				/* HAVE_TERMIOS_H */
+#endif                          /* HAVE_TERMIOS_H */
+#endif
+
 typedef struct XCNQueue_t XCNQueue_t;
 #ifdef UTMP_SUPPORT
 # if ! defined(HAVE_STRUCT_UTMPX) && ! defined(HAVE_STRUCT_UTMP)

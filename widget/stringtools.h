@@ -19,7 +19,11 @@ struct simple_string {
     int len;
 };
 
+#ifndef CSTR_DEFINED
+#define CSTR_DEFINED
 typedef struct simple_string CStr;
+#endif
+
 typedef int C_wchar_t;
 
 #undef strdup

@@ -11,6 +11,9 @@
 #include "stringtools.h"
 #include "font.h"
 
+#ifdef __sun
+#include <dlfcn.h>
+#endif
 
 
 #ifndef NO_TTF
@@ -115,7 +118,20 @@ int load_one_freetype_font (FT_Face *face, const char *filename, int *desired_he
         }
     }
 
+#ifdef FT_LOAD_COLOR
     if (size_index != -1 && !FT_Select_Size((*face), size_index)) {
+#elif defined(__sun)
+/* sun comes with an older version of freetype that may not have this function */
+    static int try_load = 1;
+    static FT_Error (*__dl_FT_Select_Size) (FT_Face, FT_Int) = NULL;
+    if (try_load) {
+	try_load = 0;
+	__dl_FT_Select_Size = dlsym (RTLD_NEXT, "FT_Select_Size");
+    }
+    if (size_index != -1 && __dl_FT_Select_Size && !(*__dl_FT_Select_Size)((*face), size_index)) {
+#else
+    if (size_index != -1 && !FT_Select_Size((*face), size_index)) {
+#endif
         nominal_height = (*face)->available_sizes[size_index].height;
     } else if (!FT_Set_Pixel_Sizes((*face), nominal_height, nominal_height)) {
         nominal_height = (*face)->size->metrics.y_ppem;

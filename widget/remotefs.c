@@ -5281,6 +5281,7 @@ SOCKET remotefs_listen_socket (const char *listen_address, int listen_port)
     }
 
     if (bind (s, (struct sockaddr *) &a, remotefs_sockaddr_t_sockaddrlen (&a)) == SOCKET_ERROR) {
+        fprintf(stderr, "%s:%d ", listen_address, listen_port);
         perrorsocket ("bind");
         closesocket (s);
         return INVALID_SOCKET;

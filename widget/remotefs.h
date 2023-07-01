@@ -8,7 +8,11 @@
 
 
 struct simple_string;
+
+#ifndef CSTR_DEFINED
+#define CSTR_DEFINED
 typedef struct simple_string CStr;
+#endif
 
 
 #define OS_TYPE_POSIX           0

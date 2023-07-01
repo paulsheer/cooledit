@@ -20,11 +20,14 @@ struct cterminal_config {
     char ttydev[CTERMINAL_TTYDEV_SZ]; /* return value */
 };
 
+#ifndef TTYMODE_T_DEFINED
+#define TTYMODE_T_DEFINED
 #ifdef HAVE_TERMIOS_H
 typedef struct termios ttymode_t;
 #else
 typedef struct _ttymode_t ttymode_t;
 #endif				/* HAVE_TERMIOS_H */
+#endif
 
 struct cterminal {
     int cmd_fd;

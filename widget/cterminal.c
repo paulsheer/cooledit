@@ -115,7 +115,7 @@
 
 #define UTMP_SUPPORT
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__sun)
 #define HAVE_STRUCT_UTMPX
 #define RXVT_UTMP_AS_UTMPX
 #define HAVE_UTMPX_HOST
@@ -723,7 +723,7 @@ int cterminal_get_pty (struct cterminal *o, char *errmsg)
         o->ttydev = 0;
     }
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__sun)
     fd = posix_openpt (O_RDWR);
     if (fd >= 0) {
         if (grantpt (fd) == 0   /* change slave permissions */

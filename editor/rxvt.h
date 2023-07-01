@@ -1,7 +1,10 @@
 
 
 struct _rxvtlib;
+#ifndef rxvtlib_DEFINED
+#define rxvtlib_DEFINED
 typedef struct _rxvtlib rxvtlib;
+#endif
 
 struct rxvt_startup_options {
     int term_8bit;

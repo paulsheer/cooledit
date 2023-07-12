@@ -6,15 +6,22 @@ context default
     keyword 󼔆 black green
     keyword 󼔅 cyan
     keyword 󼔁 magenta
+    keyword 󼔀 magenta
     keyword 󼔉 cyan
     keyword 󼔊 cyan
+    keyword 󼔂 brightmagenta
+    keyword 󼔃 orange
+    keyword 󼔄 orange
     spellcheck
 
 context exclusive 󼔅 \n orange
     spellcheck
-context 󼔃 󼔄 yellow
+context exclusive 󼔃 󼔄 yellow
     spellcheck
 context exclusive 󼔉 󼔊 RoyalBlue
     spellcheck
-context 󼔂 󼔀 magenta
+context exclusive 󼔂 󼔀 magenta
+    keyword ( yellow
+    keyword ) yellow
+    keyword '*' yellow
     spellcheck

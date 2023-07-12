@@ -5,11 +5,11 @@ context default
     keyword 󼔈 black green
     keyword 󼔆 black green
     keyword 󼔅 cyan
-    keyword 󼔁 magenta
-    keyword 󼔀 magenta
+    keyword 󼔁 BlueViolet
+    keyword 󼔀 BlueViolet
     keyword 󼔉 cyan
     keyword 󼔊 cyan
-    keyword 󼔂 brightmagenta
+    keyword 󼔂 BlueViolet
     keyword 󼔃 orange
     keyword 󼔄 orange
     spellcheck

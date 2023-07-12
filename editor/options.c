@@ -269,7 +269,7 @@ static struct {
 	{"option_foreground_red", &option_foreground_red},
 	{"option_foreground_green", &option_foreground_green},
 	{"option_foreground_blue", &option_foreground_blue},
-	{"option_font4", &option_font2},
+	{"option_font5", &option_font2},
 	{"option_widget_font4", &option_widget_font2},
 	{"option_8bit_term_font", &option_8bit_term_font},
 	{"option_backup_ext", &option_backup_ext},

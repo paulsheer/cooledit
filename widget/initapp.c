@@ -218,6 +218,7 @@ enum font_encoding get_editor_encoding (void)
 
 #ifndef NO_TTF
 #define ALL_TTF_RESIZABLE_FONTS \
+        "cdoc.ttf," \
         "NotoSans-Regular.ttf," \
         "NotoSansSymbols-Regular.ttf," \
         "NotoSansSymbols2-Regular.ttf," \

@@ -314,7 +314,7 @@ syntax_DATA = \
 	pascal.syntax perl.syntax php.syntax PKGBUILD.syntax po.syntax povray.syntax privoxy.syntax procmail.syntax properties.syntax protobuf.syntax puppet.syntax \
 	python.syntax r.syntax ruby.syntax rust.syntax sh.syntax slang.syntax smalltalk.syntax spec.syntax spice.syntax sql.syntax strace.syntax swift.syntax \
 	swig.syntax syntax.syntax tcl.syntax texinfo.syntax ts.syntax tt.syntax unknown.syntax verilog.syntax vhdl.syntax xml.syntax yabasic.syntax yaml.syntax \
-	yum-repo.syntax yxx.syntax bapc.syntax jasm.syntax lsm4.syntax mhtml.syntax mudela.syntax php3.syntax prolog.syntax scm.syntax
+	yum-repo.syntax yxx.syntax bapc.syntax jasm.syntax lsm4.syntax mhtml.syntax mudela.syntax php3.syntax prolog.syntax scm.syntax cdoc.syntax
 
 all: all-am
 

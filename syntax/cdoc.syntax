@@ -1,0 +1,20 @@
+# CDoc typesetting system
+
+context default
+    keyword 󼔇 black green
+    keyword 󼔈 black green
+    keyword 󼔆 black green
+    keyword 󼔅 cyan
+    keyword 󼔁 magenta
+    keyword 󼔉 cyan
+    keyword 󼔊 cyan
+    spellcheck
+
+context exclusive 󼔅 \n orange
+    spellcheck
+context 󼔃 󼔄 yellow
+    spellcheck
+context exclusive 󼔉 󼔊 RoyalBlue
+    spellcheck
+context 󼔂 󼔀 magenta
+    spellcheck

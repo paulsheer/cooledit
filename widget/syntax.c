@@ -1453,7 +1453,7 @@ void edit_free_syntax_rules (WEdit * edit)
     syntax_free (edit->rules);
 }
 
-#define CURRENT_SYNTAX_RULES_VERSION "83"
+#define CURRENT_SYNTAX_RULES_VERSION "84"
 
 #ifndef UNIT_TEST
 
@@ -1461,6 +1461,9 @@ char *syntax_text[] = {
 "# syntax rules version " CURRENT_SYNTAX_RULES_VERSION,
 "",
 #include "syntax-top.c"
+"",
+"file ..\\*\\\\.cdoc$ CDoc\\sTypesetting\\sFile",
+"include cdoc.syntax",
 "",
 /* Legacy rules: */
 "file ..\\*\\\\.(ly|fly|sly)$ Lilypond\\sSource",

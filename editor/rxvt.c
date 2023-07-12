@@ -360,8 +360,8 @@ int rxvt_startup_dialog (const char *host, char *shell_script)
     }
 
     if (rxvt_startup_options.large_font) {
-        CFontLazy ("rxvt", get_default_editor_font_large (), NULL, &rxvt_encoding);
-        CFontLazy ("rxvt8bit", get_default_8bit_term_font_large (), NULL, &rxvt_8bit_encoding);
+        CFontLazyHonorFixedDoubleWidth ("rxvt", get_default_editor_font_large (), NULL, &rxvt_encoding);
+        CFontLazyForceFixed ("rxvt8bit", get_default_8bit_term_font_large (), NULL, &rxvt_8bit_encoding);
     }
 
     if (rxvt_startup_options.term_8bit) {

@@ -101,8 +101,6 @@ int mbrtowc_utf8_to_wchar (C_wchar_t * c, const char *t, int n, void *x /* no sh
 unsigned char *wcrtomb_wchar_to_utf8 (C_wchar_t c);
 int is_unicode_doublewidth_char (C_wchar_t c);
 void font_lazy_cleanup (void);
-const char *font_lazy_find_pref1 (const char *name, enum font_encoding **e);
-const char *font_lazy_find_pref2 (const char *name, enum font_encoding **e);
 
 void CFreeAllFonts (void);
 int CPushFont (const char *name, const char *xname, ...);
@@ -111,6 +109,9 @@ int CPushFontHonorFixedDoubleWidth (const char *name, const char *xname, ...);
 void CPopFont (void);
 int CIsFixedFont (void);
 void CFontLazy (const char *name, const char *pref1, const char *pref2, enum font_encoding *enc);
+void CFontLazyForceFixed (const char *name, const char *pref1, const char *pref2, enum font_encoding *enc);
+void CFontLazyHonorFixedDoubleWidth (const char *name, const char *pref1, const char *pref2, enum font_encoding *enc);
+
 
 
 #endif

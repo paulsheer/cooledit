@@ -446,8 +446,8 @@ static void init_load_font (void)
     char *f;
 
     CFontLazy ("editor", init_font, "-*-fixed-bold-r-*--13-120-*-*-*-80-*", &editor_encoding);
-    CFontLazy ("rxvt", init_font, "-*-fixed-bold-r-*--13-120-*-*-*-80-*", &rxvt_encoding);
-    CFontLazy ("rxvt8bit", init_8bit_term_font, "-*-fixed-bold-r-*--13-120-*-*-*-80-*", &rxvt_8bit_encoding);
+    CFontLazyHonorFixedDoubleWidth ("rxvt", init_font, "-*-fixed-bold-r-*--13-120-*-*-*-80-*", &rxvt_encoding);
+    CFontLazyForceFixed ("rxvt8bit", init_8bit_term_font, "-*-fixed-bold-r-*--13-120-*-*-*-80-*", &rxvt_8bit_encoding);
 
     f = CMalloc (strlen (init_widget_font) + 256);
     sprintf (f, init_widget_font, 14);

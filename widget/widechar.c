@@ -575,8 +575,6 @@ static struct widetable is_wide_table[] = {
     { 0x2fffe, 0 },
     { 0x30000, 1 },
     { 0x3fffe, 0 },
-    { 0xfc500, 1 },     /* CDoc private characters start */
-    { 0xfc520, 0 },     /* CDoc private characters end+1 */
 };
 
 

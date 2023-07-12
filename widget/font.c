@@ -31,6 +31,8 @@ const char *font_error_string = "Use <x-font-name>/3 or <x-font-name>/1 or <font
 
 static int last_font_load_id = 1;
 static void utf8_to_wchar_t (const unsigned char *s, int l, C_wchar_t ** r_ret, int *l_ret, enum font_encoding e);
+static const char *font_lazy_find_pref1 (const char *name, enum font_encoding **e, enum force_fixed_width_enum *force_fixed_width);
+static const char *font_lazy_find_pref2 (const char *name, enum font_encoding **e, enum force_fixed_width_enum *force_fixed_width);
 
 
 int load_one_freetype_font (FT_Face *face, const char *filename, int *desired_height, int *loaded_height)
@@ -1123,13 +1125,13 @@ static int CPushFont_ (enum force_fixed_width_enum force_fixed_width, const char
 	    f->ref = 1;
         } else {
             assert (name);
-            if (!(xname = font_lazy_find_pref1 (name, &e))) {
+            if (!(xname = font_lazy_find_pref1 (name, &e, &force_fixed_width))) {
                 fprintf (stderr, "CPushFont: pref1 not found\n");
                 fflush (stderr);
                 abort ();
             }
             if (!(f = load_font (name, xname, e, force_fixed_width))) {
-                if (!(xname = font_lazy_find_pref2 (name, &e))) {
+                if (!(xname = font_lazy_find_pref2 (name, &e, &force_fixed_width))) {
                     fprintf (stderr, "CPushFont: pref2 not found\n");
                     fflush (stderr);
                     return 1;
@@ -1241,27 +1243,30 @@ struct lazy_load {
     char *pref1;
     char *pref2;
     enum font_encoding *enc;
+    enum force_fixed_width_enum force_fixed_width;
 };
 
 static struct lazy_load *lazy_load_list = NULL;
 
-const char *font_lazy_find_pref1 (const char *name, enum font_encoding **e)
+static const char *font_lazy_find_pref1 (const char *name, enum font_encoding **e, enum force_fixed_width_enum *force_fixed_width)
 {E_
     struct lazy_load *i;
     for (i = lazy_load_list; i; i = i->next)
         if (!strcmp (name, i->name)) {
             *e = i->enc;
+            *force_fixed_width = i->force_fixed_width;
             return i->pref1;
         }
     return NULL;
 }
 
-const char *font_lazy_find_pref2 (const char *name, enum font_encoding **e)
+static const char *font_lazy_find_pref2 (const char *name, enum font_encoding **e, enum force_fixed_width_enum *force_fixed_width)
 {E_
     struct lazy_load *i;
     for (i = lazy_load_list; i; i = i->next)
         if (!strcmp (name, i->name)) {
             *e = i->enc;
+            *force_fixed_width = i->force_fixed_width;
             return i->pref2;
         }
     return NULL;
@@ -1284,7 +1289,7 @@ void font_lazy_cleanup (void)
     lazy_load_list = NULL;
 }
 
-void CFontLazy (const char *name, const char *pref1, const char *pref2, enum font_encoding *enc)
+void CFontLazy_ (enum force_fixed_width_enum force_fixed_width, const char *name, const char *pref1, const char *pref2, enum font_encoding *enc)
 {E_
     struct lazy_load *i;
     for (i = lazy_load_list; i; i = i->next)
@@ -1306,11 +1311,22 @@ void CFontLazy (const char *name, const char *pref1, const char *pref2, enum fon
         free (i->pref2);
     i->pref2 = pref2 ? Cstrdup (pref2) : NULL;
     i->enc = enc;
+    i->force_fixed_width = force_fixed_width;
 }
 
+void CFontLazy (const char *name, const char *pref1, const char *pref2, enum font_encoding *enc)
+{E_
+    CFontLazy_ (FORCE_FIXED_WIDTH__DISABLE, name, pref1, pref2, enc);
+}
 
+void CFontLazyHonorFixedDoubleWidth (const char *name, const char *pref1, const char *pref2, enum font_encoding *enc)
+{E_
+    CFontLazy_ (FORCE_FIXED_WIDTH__UNICODETERMINALMODE, name, pref1, pref2, enc);
+}
 
-
-
+void CFontLazyForceFixed (const char *name, const char *pref1, const char *pref2, enum font_encoding *enc)
+{E_
+    CFontLazy_ (FORCE_FIXED_WIDTH__SINGLEWIDTH, name, pref1, pref2, enc);
+}
 
 

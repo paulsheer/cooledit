@@ -123,20 +123,6 @@ context default
     #=========================
     # Special symbols
     keyword => brightcyan
-    keyword \. yellow
-    keyword \* yellow
-    keyword \+ yellow
-    keyword - yellow
-    keyword / yellow
-    keyword % yellow
-    keyword = yellow
-    keyword ! yellow
-    keyword & yellow
-    keyword | yellow
-    keyword ^ yellow
-    keyword ~ yellow
-    keyword > yellow
-    keyword < yellow
 
     #=========================
     # Separators
@@ -203,3 +189,11 @@ context ` ` green
     keyword \\\{\\'"abtnvfr\} brightgreen
     keyword \\\{0123\}\{01234567\}\{01234567\} brightgreen
     keyword ${*} yellow
+
+# regular expressions:
+context /\{!"#$%&'()\*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\} /  cyan
+    keyword \\/ green
+    keyword \\u\{0123456789abcdef\}\{0123456789abcdef\}\{0123456789abcdef\}\{0123456789abcdef\} green/cyan4
+
+
+

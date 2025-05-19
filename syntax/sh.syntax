@@ -13,7 +13,6 @@ context default
     keyword \\` brightred
     keyword ` brightred
     keyword ; brightcyan
-    keyword $(*) brightgreen
     keyword ${*} brightgreen
     keyword { brightcyan
     keyword } brightcyan
@@ -34,8 +33,9 @@ context default
     keyword whole 2> brightred
     keyword whole 1> brightred
 
-    keyword wholeright $\[0123456789\] brightred
+    keyword wholeright $\{0123456789\} brightred
 
+    keyword $( white
     keyword wholeright $+ brightgreen
 
     keyword $ brightgreen
@@ -1090,6 +1090,10 @@ wholechars abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_
 
 context # \n brown
     spellcheck
+
+context exclusive $( ) yellow/yellow3
+
+    keyword \\) brightgreen
 
 context exclusive whole <<\[\s\]\[-\]\[\s\]\[\\\]EOF EOF green
 context exclusive whole <<\[\s\]\[-\]\[\s\]\[\\\]END END green

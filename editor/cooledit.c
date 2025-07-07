@@ -38,6 +38,7 @@
 #include "postscript.h"
 #include "remotefs.h"
 #include "remotefspassword.h"
+#include "filetool.h"
 
 #if HAVE_DIRENT_H
 #include <dirent.h>
@@ -2367,6 +2368,9 @@ int main (int argc, char **argv)
     textdomain (PACKAGE);
 
     n = sizeof (example_fonts) / sizeof (char *);
+
+    if (!filetool_process_args (argc, argv))
+        exit (0);
 
     process_command_line (argc, argv);
 

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 
 
+#define PASSWORD_FILE           "/.cedit/.password"
 
 int password_load (void);
 int password_save (const char *host, int crypto_enabled_, const char *pass);

@@ -4037,7 +4037,7 @@ static void remotefs_shellsignal_ (pid_t pid, int signum, CStr * r)
 
 #define MARSHAL_START_REMOTE \
     { \
-        int force_shutdown = 0; \
+        int force_shutdown = 0, error_decode_fail; \
         const unsigned char *p, *end; \
         unsigned long long v; \
         end = (const unsigned char *) s.data + s.len; \
@@ -4052,9 +4052,9 @@ static void remotefs_shellsignal_ (pid_t pid, int signum, CStr * r)
         return 0; \
       errout: \
         p = (const unsigned char *) s.data; \
-        decode_error (&p, (const unsigned char *) s.data + s.len, error_code_, errmsg, &force_shutdown); \
+        error_decode_fail = decode_error (&p, (const unsigned char *) s.data + s.len, error_code_, errmsg, &force_shutdown); \
         free (s.data); \
-        if (force_shutdown) \
+        if (error_decode_fail || force_shutdown) \
             SHUTSOCK (rfs->remotefs_private->sock_data); \
         return -1; \
     }
@@ -4456,7 +4456,7 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
     unsigned long long filelen, remaining;
     struct reader_data d;
     unsigned char buf[READER_CHUNK];
-    unsigned char t[6];
+    unsigned char t[256];
     int err = 0;
     enum reader_error reader_error = READER_ERROR_NOERROR;
 
@@ -4467,6 +4467,7 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
     q = (unsigned char *) msg.data;
     encode_str (&q, filename, strlen (filename));
 
+    memset (t, '\0', sizeof (t));
     memset (&d, '\0', sizeof (d));
     d.sock_data = rfs->remotefs_private->sock_data;
 
@@ -4480,6 +4481,22 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
 
     if (reader (&d, t, 6, &reader_error)) {
         set_sockerrmsg_to_errno (errmsg, errno, reader_error);
+        return -1;
+    }
+
+/* If the server's response to REMOTEFS_ACTION_READFILE was an error opening
+   the file, then it would have sent a struct cooledit_remote_msg_header
+   followed by an encode_error(). Therefore we need to detect this case.
+   This means file sizes are limited to 114 terabytes because anything more
+   matches the magic number. This code follows the pattern of
+   MARSHAL_END_REMOTE: */
+    if (t[0] == ((FILE_PROTO_MAGIC >> 8) & 0xff)  &&
+        t[1] == ((FILE_PROTO_MAGIC >> 0) & 0xff)) {
+        const unsigned char *p = t + 12;
+        int force_shutdown = 0;
+        reader_timeout (&d, t + 6, sizeof (t) - 6, WAITFORREAD_NOIO, &reader_error, 0);
+        if (decode_error (&p, t + sizeof (t), NULL, errmsg, &force_shutdown) || force_shutdown)
+            SHUTSOCK (rfs->remotefs_private->sock_data);
         return -1;
     }
 

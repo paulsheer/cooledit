@@ -17,9 +17,9 @@
 
 #include "coollocal.h"
 #include "remotefs.h"
+#include "remotefspassword.h"
 
 
-#define PASSWORD_FILE           "/.cedit/.password"
 #undef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 

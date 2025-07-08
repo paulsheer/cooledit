@@ -165,6 +165,7 @@ static void usage_ (void)
 {E_
     fprintf(stderr, "Usage\n");
     fprintf(stderr, "    cooledit --filetool copy-from-remote <host-ip> <remote-file> <local-file>\n");
+    fprintf(stderr, "    cooledit --filetool copy-to-remote <local-file> <host-ip> <remote-file>\n");
 }
 
 static void usage_exit_error (void)

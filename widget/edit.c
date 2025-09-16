@@ -1082,7 +1082,7 @@ void edit_wide_char_align_left (WEdit * edit)
 int edit_cursor_move (WEdit * edit, long increment)
 {E_
 /* this is the same as a combination of two of the above routines, with only one push onto the undo stack */
-    int c;
+    int c = -1;
 
     if (increment < 0) {
 	for (; increment < 0; increment++) {

@@ -617,6 +617,7 @@ CWidget *CDrawFieldedTextbox (const char *identifier, Window parent, int x, int 
 			      long options, void *data);
 
 struct file_entry *get_file_entry_list (const char *host, const char *directory, char *last_dir, unsigned long options_, const char *filter, char *errmsg);
+int get_file_dir_entry_list (struct file_entry **r1, struct file_entry **r2, const char *host, const char *directory, char *last_dir, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, char *errmsg);
 char *user_file_list_search (Window parent, int x, int y, const char *base_name);
 char *user_file_list_complete (Window parent, int x, int y, int lines, int columns, const char *base_name);
 void get_file_time (char *timestr, time_t file_time, int l);

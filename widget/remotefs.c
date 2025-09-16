@@ -1460,7 +1460,7 @@ const char *action_descr[] = {
     "SHELLWRITE",
     "SHELLKILL",
     "SHELLSIGNAL",
-    "SHELLXWINCLOSE",
+    "READTWODIRS",
 };
 
 
@@ -2805,8 +2805,7 @@ static int encode_filelist (unsigned char **p_, struct file_entry_item *list)
     int r, n = 0;
     for (i = list; i; i = i->next)
         n++;
-    r = encode_uint (p_, REMOTEFS_SUCCESS);
-    r += encode_uint (p_, n);
+    r = encode_uint (p_, n);
     for (i = list; i; i = i->next) {
         r += encode_str (p_, i->data.name, strlen (i->data.name));
         r += encode_stat (p_, &i->data.pstat);
@@ -3287,19 +3286,43 @@ static int reader (struct reader_data *d, void *buf, int buflen, enum reader_err
     return reader_timeout (d, buf, buflen, WAITFORREAD_FOREVER, reader_error, 0);
 }
 
+struct remotefs_listdir_view {
+    unsigned long options;
+    const char *filter;
+};
 
-static void remotefs_listdir_ (const char *directory, unsigned long options, const char *filter, CStr *r)
+#define MAX_VIEWS       10
+
+struct listdirs_data {
+    struct file_entry_item *first;
+    int got_dot_dot;
+};
+
+static void remotefs_listdir_ (const char *directory, int n_view, struct remotefs_listdir_view *view, CStr *r)
 {E_
-    struct file_entry_item *first = NULL, *i, *next;
+    int k;
+    struct listdirs_data data[MAX_VIEWS];
+    struct file_entry_item *i, *next;
     struct dirent *directentry;
     struct portable_stat stats;
     DIR *dir;
     char path_fname[MAX_PATH_LEN * 2];
     unsigned char *p;
-    int got_dot_dot = 0;
 
-    if (!filter || !*filter)
-        filter = "*";
+    if (n_view > MAX_VIEWS) {
+        r->data = NULL;
+        r->len = 0;
+        return;
+    }
+
+    for (k = 0; k < n_view; k++) {
+        data[k].first = NULL;
+        data[k].got_dot_dot = 0;
+    }
+
+    for (k = 0; k < n_view; k++)
+        if (!view[k].filter || !view[k].filter[0])
+            view[k].filter = "*";
 
     if ((dir = opendir (translate_path_sep (directory))) == NULL) {
         alloc_encode_errno_strerror (r, 0);
@@ -3307,22 +3330,24 @@ static void remotefs_listdir_ (const char *directory, unsigned long options, con
     }
 
     if (directory[0] == '/' && directory[1] == '\0') {
-        got_dot_dot = 1;
 #ifdef MSWIN
-        if (!(options & FILELIST_FILES_ONLY)) {
-            long long drives;
-            int j;
-            drives = GetLogicalDrives ();
-            for (j = 'A'; j <= 'Z' && drives; j++, drives >>= 1) {
-                if ((drives & 1)) {
-                    i = (struct file_entry_item *) malloc (sizeof (*i));
-                    memset (i, '\0', sizeof (*i));
-                    i->data.pstat.ustat.st_mode = S_IFDIR | 00777;
-                    i->data.name[0] = j;
-                    i->data.name[1] = ':';
-                    i->data.name[2] = '\0';
-                    i->next = first;
-                    first = i;
+        for (k = 0; k < n_view; k++) {
+            data[k].got_dot_dot = 1;
+            if (!(view[k].options & FILELIST_FILES_ONLY)) {
+                long long drives;
+                int j;
+                drives = GetLogicalDrives ();
+                for (j = 'A'; j <= 'Z' && drives; j++, drives >>= 1) {
+                    if ((drives & 1)) {
+                        i = (struct file_entry_item *) malloc (sizeof (*i));
+                        memset (i, '\0', sizeof (*i));
+                        i->data.pstat.ustat.st_mode = S_IFDIR | 00777;
+                        i->data.name[0] = j;
+                        i->data.name[1] = ':';
+                        i->data.name[2] = '\0';
+                        i->next = data[k].first;
+                        data[k].first = i;
+                    }
                 }
             }
         }
@@ -3343,17 +3368,19 @@ static void remotefs_listdir_ (const char *directory, unsigned long options, con
         }
         q = translate_path_sep (path_fname);
         if (strcmp (dn, ".") && !portable_stat (0, q, &stats, NULL, NULL, NULL)) {
-            if (!strcmp (dn, ".."))
-                got_dot_dot = 1;
-            if ((S_ISDIR (stats.ustat.st_mode) && (options & FILELIST_DIRECTORIES_ONLY)) ||
-                (!S_ISDIR (stats.ustat.st_mode) && (options & FILELIST_FILES_ONLY))) {
-                if (regexp_match ((char *) filter, dn, match_file) == 1) {
-                    i = (struct file_entry_item *) malloc (sizeof (*i));
-                    memset (i, '\0', sizeof (*i));
-                    portable_stat (1, q, &i->data.pstat, NULL, NULL, NULL);
-                    strcpy (i->data.name, dn);
-                    i->next = first;
-                    first = i;
+            for (k = 0; k < n_view; k++) {
+                if (!strcmp (dn, ".."))
+                    data[k].got_dot_dot = 1;
+                if ((S_ISDIR (stats.ustat.st_mode) && (view[k].options & FILELIST_DIRECTORIES_ONLY)) ||
+                    (!S_ISDIR (stats.ustat.st_mode) && (view[k].options & FILELIST_FILES_ONLY))) {
+                    if (regexp_match ((char *) view[k].filter, dn, match_file) == 1) {
+                        i = (struct file_entry_item *) malloc (sizeof (*i));
+                        memset (i, '\0', sizeof (*i));
+                        portable_stat (1, q, &i->data.pstat, NULL, NULL, NULL);
+                        strcpy (i->data.name, dn);
+                        i->next = data[k].first;
+                        data[k].first = i;
+                    }
                 }
             }
         }
@@ -3361,29 +3388,37 @@ static void remotefs_listdir_ (const char *directory, unsigned long options, con
 
     closedir (dir);
 
-    if (!got_dot_dot && !(options & FILELIST_FILES_ONLY)) {
-        char *e;
-        strcpy (path_fname, directory);
-        e = strrchr (path_fname, '/');
-        if (e)
-            *e = '/';
-        i = (struct file_entry_item *) malloc (sizeof (*i));
-        memset (i, '\0', sizeof (*i));
-        if (portable_stat (1, translate_path_sep (path_fname), &i->data.pstat, NULL, NULL, NULL))
-            i->data.pstat.ustat.st_mode = S_IFDIR | 00777;
-        strcpy (i->data.name, "..");
-        i->next = first;
-        first = i;
+    for (k = 0; k < n_view; k++) {
+        if (!data[k].got_dot_dot && !(view[k].options & FILELIST_FILES_ONLY)) {
+            char *e;
+            strcpy (path_fname, directory);
+            e = strrchr (path_fname, '/');
+            if (e)
+                *e = '/';
+            i = (struct file_entry_item *) malloc (sizeof (*i));
+            memset (i, '\0', sizeof (*i));
+            if (portable_stat (1, translate_path_sep (path_fname), &i->data.pstat, NULL, NULL, NULL))
+                i->data.pstat.ustat.st_mode = S_IFDIR | 00777;
+            strcpy (i->data.name, "..");
+            i->next = data[k].first;
+            data[k].first = i;
+        }
     }
 
-    r->len = encode_filelist (NULL, first);
+    r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
+    for (k = 0; k < n_view; k++)
+        r->len += encode_filelist (NULL, data[k].first);
     r->data = (char *) malloc (r->len);
     p = (unsigned char *) r->data;
-    encode_filelist (&p, first);
+    encode_uint (&p, REMOTEFS_SUCCESS);
+    for (k = 0; k < n_view; k++)
+        encode_filelist (&p, data[k].first);
 
-    for (i = first; i; i = next) {
-        next = i->next;
-        free (i);
+    for (k = 0; k < n_view; k++) {
+        for (i = data[k].first; i; i = next) {
+            next = i->next;
+            free (i);
+        }
     }
 }
 
@@ -4062,11 +4097,31 @@ static void remotefs_shellsignal_ (pid_t pid, int signum, CStr * r)
 
 static int local_listdir (struct remotefs *rfs, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
 {E_
+    struct remotefs_listdir_view view = { options, filter };
     CStr s;
-    remotefs_listdir_ (directory, options, filter, &s);
+    remotefs_listdir_ (directory, 1, &view, &s);
 
     MARSHAL_START_LOCAL;
     if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r, n)) {
+        free (s.data);
+        return -1;
+    }
+    MARSHAL_END_LOCAL(NULL);
+}
+
+static int local_listtwodirs (struct remotefs *rfs, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
+{E_
+    struct remotefs_listdir_view view[2] = { {options1, filter1}, {options2, filter2} };
+    CStr s;
+    remotefs_listdir_ (directory, 2, view, &s);
+
+    MARSHAL_START_LOCAL;
+    if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r1, n1)) {
+        free (s.data);
+        return -1;
+    }
+    if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r2, n2)) {
+        free (r1);
         free (s.data);
         return -1;
     }
@@ -4414,6 +4469,17 @@ static int encode_listdir_params (unsigned char **p_, const char *directory, uns
     return r;
 }
 
+static int encode_listtwodirs_params (unsigned char **p_, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2)
+{E_
+    int r;
+    r = encode_str (p_, directory, strlen (directory));
+    r += encode_uint (p_, options1);
+    r += encode_str (p_, filter1, strlen (filter1));
+    r += encode_uint (p_, options2);
+    r += encode_str (p_, filter2, strlen (filter2));
+    return r;
+}
+
 
 static int send_recv_mesg (struct remotefs *rfs, CStr *msg, CStr *response, int action, char *errmsg, int *no_such_action);
 static int send_mesg (struct remotefs *rfs, struct reader_data *d, CStr * msg, int action, char *errmsg);
@@ -4441,6 +4507,36 @@ static int remote_listdir (struct remotefs *rfs, const char *directory, unsigned
 
     MARSHAL_START_REMOTE;
     if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r, n)) {
+        free (s.data);
+        return -1;
+    }
+    MARSHAL_END_REMOTE(NULL);
+}
+
+static int remote_listtwodirs (struct remotefs *rfs, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
+{E_
+    CStr s, msg;
+    unsigned char *q;
+    *errmsg = '\0';
+
+    msg.len = encode_listtwodirs_params (NULL, directory, options1, filter1, options2, filter2);
+    msg.data = (char *) malloc (msg.len);
+    q = (unsigned char *) msg.data;
+    msg.len = encode_listtwodirs_params (&q, directory, options1, filter1, options2, filter2);
+
+    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_READTWODIRS, errmsg, NULL)) {
+        free (msg.data);
+        return -1;
+    }
+    free (msg.data);
+
+    MARSHAL_START_REMOTE;
+    if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r1, n1)) {
+        free (s.data);
+        return -1;
+    }
+    if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r2, n2)) {
+        free (r1);
         free (s.data);
         return -1;
     }
@@ -5780,6 +5876,11 @@ static int dummyerr_listdir (struct remotefs *rfs, const char *directory, unsign
     return remotefs_error_return (errmsg);
 }
 
+static int dummyerr_listtwodirs (struct remotefs *rfs, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
+{E_
+    return remotefs_error_return (errmsg);
+}
+
 static int dummyerr_readfile (struct remotefs *rfs, struct action_callbacks *o, const char *filename, char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
@@ -5859,6 +5960,7 @@ static int dummyerr_shellsignal (struct remotefs *rfs, unsigned long pid, int si
 struct remotefs remotefs_dummyerr = {
     0,
     dummyerr_listdir,
+    dummyerr_listtwodirs,
     dummyerr_readfile,
     dummyerr_writefile,
     dummyerr_checkordinaryfileaccess,
@@ -5888,6 +5990,7 @@ struct remotefs remotefs_dummyerr = {
 struct remotefs remotefs_local = {
     0,
     local_listdir,
+    local_listtwodirs,
     local_readfile,
     local_writefile,
     local_checkordinaryfileaccess,
@@ -5917,6 +6020,7 @@ struct remotefs remotefs_local = {
 struct remotefs remotefs_socket = {
     0,
     remote_listdir,
+    remote_listtwodirs,
     remote_readfile,
     remote_writefile,
     remote_checkordinaryfileaccess,
@@ -6230,6 +6334,7 @@ static int remote_action_fn_v1_listdir (struct server_data *sd, CStr *s, const u
     char directory[MAX_PATH_LEN];
     char filter[256];
     unsigned long long options;
+    struct remotefs_listdir_view view;
 
     p = in;
     end = in + inlen;
@@ -6239,7 +6344,37 @@ static int remote_action_fn_v1_listdir (struct server_data *sd, CStr *s, const u
         return -1;
     if (decode_str (&p, end, filter, sizeof (filter)))
         return -1;
-    remotefs_listdir_ (directory, options, filter, s);
+    view.options = options;
+    view.filter = filter;
+    remotefs_listdir_ (directory, 1, &view, s);
+    return 0;
+}
+
+static int remote_action_fn_v4_listtwodirs (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
+{E_
+    const unsigned char *p, *end;
+    char directory[MAX_PATH_LEN];
+    char filter1[256], filter2[256];
+    unsigned long long options1, options2;
+    struct remotefs_listdir_view view[2];
+
+    p = in;
+    end = in + inlen;
+    if (decode_str (&p, end, directory, sizeof (directory)))
+        return -1;
+    if (decode_uint (&p, end, &options1))
+        return -1;
+    if (decode_str (&p, end, filter1, sizeof (filter1)))
+        return -1;
+    if (decode_uint (&p, end, &options2))
+        return -1;
+    if (decode_str (&p, end, filter2, sizeof (filter2)))
+        return -1;
+    view[0].options = options1;
+    view[0].filter = filter1;
+    view[1].options = options2;
+    view[1].filter = filter2;
+    remotefs_listdir_ (directory, 2, view, s);
     return 0;
 }
 
@@ -6788,7 +6923,15 @@ struct action_item action_list[] = {
     { 0, 0, remote_action_fn_v3_shellwrite, },                  /* REMOTEFS_ACTION_SHELLWRITE              */
     { 1, 0, remote_action_fn_v3_shellkill, },                   /* REMOTEFS_ACTION_SHELLKILL               */
     { 1, 1, remote_action_fn_v3_shellsignal, },                 /* REMOTEFS_ACTION_SHELLSIGNAL             */
+#else
+    { 1, 1, NULL, },
+    { 0, 0, NULL, },
+    { 1, 1, NULL, },
+    { 0, 0, NULL, },
+    { 1, 0, NULL, },
+    { 1, 1, NULL, },
 #endif
+    { 1, 1, remote_action_fn_v4_listtwodirs, },                 /* REMOTEFS_ACTION_READTWODIRS             */
 };
 
 static unsigned int client_count = 0L;

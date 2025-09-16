@@ -412,25 +412,25 @@ static char *mime_majors[3] =
 {"url", "text", 0};
 
 /* walk up through the directories until we find one that exists: */
-static struct file_entry *get_file_entry_list_host_change (int changed_host, char *host, char *dir, const char *filter, char *errmsg)
+static int get_file_dir_entry_list_host_change (int changed_host, struct file_entry **r1, struct file_entry **r2, char *host, char *dir, const char *filter, char *errmsg)
 {
-    struct file_entry *filelist = NULL;
+    int fail = 1;
     char last_dir[MAX_PATH_LEN] = "";
 
     for (;;) {
-	filelist = get_file_entry_list (host, dir, last_dir, FILELIST_FILES_ONLY, filter, errmsg);
+        fail = get_file_dir_entry_list (r1, r2, host, dir, last_dir, FILELIST_FILES_ONLY, filter, FILELIST_DIRECTORIES_ONLY, "", errmsg);
         if (!*dir)
             Cstrlcpy (dir, last_dir, sizeof (last_dir));
         if (!changed_host)
             break;
-        if (!filelist && strcmp (last_dir, dir)) {
+        if (fail && strcmp (last_dir, dir)) {
             Cstrlcpy (dir, last_dir, sizeof (last_dir));
             continue;   /* try again with the remote host's home directory */
         }
 #warning  we need to distinguish between network errors and file system errors and not retry if this is a network error
-        if (!filelist && dir[0] == '/' && !dir[1])
+        if (fail && dir[0] == '/' && !dir[1])
             break;
-	if (!filelist) {
+	if (fail) {
 	    char *s;
 	    s = strrchr (dir, '/');
 	    if (s) {
@@ -444,15 +444,15 @@ static struct file_entry *get_file_entry_list_host_change (int changed_host, cha
 	}
 	break;
     }
-    return filelist;
+    return fail;
 }
-
 
 static Window draw_file_browser (const char *identifier, Window parent, int x, int y,
 		    char *host, const char *directory, const char *file, const char *label)
 {E_
     CWidget * w;
     struct file_entry *filelist = 0, *directorylist = 0;
+    int fail;
     char *resolved_path, *p;
     int y2, x2, x3, y3;
     Window win;
@@ -467,9 +467,9 @@ static Window draw_file_browser (const char *identifier, Window parent, int x, i
 	win = CDrawHeadedDialog (identifier, parent, x, y, label);
     (CIdent (identifier))->options |= WINDOW_ALWAYS_RAISED;
     CHourGlass (CFirstWindow);
-    filelist = get_file_entry_list_host_change (1, host, dir, CLastInput (catstrs (identifier, ".filt", NULL)).data, errmsg);
+    fail = get_file_dir_entry_list_host_change (1, &filelist, &directorylist, host, dir, CLastInput (catstrs (identifier, ".filt", NULL)).data, errmsg);
     CUnHourGlass (CFirstWindow);
-    if (!filelist || !(directorylist = get_file_entry_list (host, dir, NULL, FILELIST_DIRECTORIES_ONLY, "", errmsg))) {
+    if (fail) {
 	CErrorDialog (parent, 20, 20, _(" File browser "), "%s\n [%s] ", _(" Unable to read directory "), errmsg);
 	CDestroyWidget (identifier);
 	goto error;
@@ -682,7 +682,8 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
     if (reread_filelist) {
         int changed_host = 0;
         char dir[MAX_PATH_LEN + 1];
-	struct file_entry *f;
+	struct file_entry *f = NULL, *g = NULL;
+        int fail;
 	if (ipinput && !ipinput->text.len) {
             CStr_free(&ipinput->text);
             ipinput->text = CStr_dup(REMOTEFS_LOCAL);
@@ -705,17 +706,17 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
         strcpy (last_ipinput, HOST);
 	CHourGlass (CFirstWindow);
         Cstrlcpy (dir, directory->text.data, MAX_PATH_LEN);
-        f = get_file_entry_list_host_change (changed_host, ipinput ? ipinput->text.data : 0, dir, filterinput->text.data, errmsg);
-	CRedrawFilelist (idf, f, 0);
-        if (f && strcmp (dir, directory->text.data)) {
+        fail = get_file_dir_entry_list_host_change (changed_host, &f, &g, ipinput ? ipinput->text.data : 0, dir, filterinput->text.data, errmsg);
+        CRedrawFilelist (idf, f, 0);
+        if (!fail) {
             CRedrawText (catstrs (identifier, ".dir", NULL), "%s", dir);
-            free (f);
-            CRedrawFilelist (catstrs (identifier, ".dbox", NULL), f = get_file_entry_list (ipinput ? ipinput->text.data : 0, dir, NULL, FILELIST_DIRECTORIES_ONLY, "", errmsg), 0);
+            CRedrawFilelist (catstrs (identifier, ".dbox", NULL), g, 0);
         }
-
 	if (f)
 	    free (f);
-        else
+	if (g)
+	    free (g);
+        if (fail)
 	    CRedrawText (catstrs (identifier, ".msg", NULL), "[%s]", errmsg);
 	CUnHourGlass (CFirstWindow);
         r = "";
@@ -899,12 +900,13 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
 /* ********* */
 	if (S_ISDIR (st.ustat.st_mode)) {
 	    struct file_entry *g = 0, *f = 0;
+            int fail;
 	    CHourGlass (CFirstWindow);
-	    g = get_file_entry_list (ipinput ? ipinput->text.data : 0, estr, NULL, FILELIST_FILES_ONLY, filterinput->text.data, errmsg);
+            fail = get_file_dir_entry_list (&g, &f, ipinput ? ipinput->text.data : 0, estr, NULL, FILELIST_FILES_ONLY, filterinput->text.data, FILELIST_DIRECTORIES_ONLY, "", errmsg);
 	    CUnHourGlass (CFirstWindow);
-	    if (g) {
+	    if (!fail) {
 		CRedrawFilelist (catstrs (identifier, ".fbox", NULL), g, 0);
-		CRedrawFilelist (catstrs (identifier, ".dbox", NULL), f = get_file_entry_list (ipinput ? ipinput->text.data : 0, estr, NULL, FILELIST_DIRECTORIES_ONLY, "", errmsg), 0);
+		CRedrawFilelist (catstrs (identifier, ".dbox", NULL), f, 0);
 		if (*q != '/') {
 		    *++q = '/';
 		    *++q = '\0';

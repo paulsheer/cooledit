@@ -5695,6 +5695,7 @@ static int recv_mesg_ (struct remotefs *rfs, struct reader_data *d, CStr * respo
         return -1;
     }
 
+#if 0 /* large directories should not give an error here */
     if (msglen > CRYPTO_CHUNK * 2) {
         const char *remote;
         remote = rfs->remotefs_private->remote;
@@ -5702,6 +5703,7 @@ static int recv_mesg_ (struct remotefs *rfs, struct reader_data *d, CStr * respo
         SHUTSOCK (rfs->remotefs_private->sock_data);
         return -1;
     }
+#endif
 
     if (msgtype_response == REMOTEFS_ACTION_NOTIMPLEMENTED) {
         /* read the whole message because we may want to continue with the connection: */

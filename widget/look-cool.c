@@ -624,6 +624,29 @@ static int goto_partial_file_name (CWidget * list, char *text)
 #define GETFILE_WITH_REMOTE		8
 
 
+static time_t last_error_time = 0;
+
+static int time_since_last_error (void)
+{
+    time_t now;
+    if (!last_error_time)
+        return 65536;
+    time (&now);
+    return now - last_error_time;
+}
+
+static void show_error (const char *identifier, const char *errmsg)
+{
+    time (&last_error_time);
+    CRedrawText (catstrs (identifier, ".msg", NULL), "[%s]", errmsg);
+}
+
+static void show_help (const char *identifier)
+{
+    time (&last_error_time);
+    CRedrawText (catstrs (identifier, ".msg", NULL), _("Alt-Ins for clip history, Shift-Up for history"));
+}
+
 
 /*
    Returns "" on no file entered and NULL on exit (i.e. Cancel button pushed)
@@ -650,6 +673,7 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
     static char last_ipinput[256 + 1] = "";
     static Window last_focus = 0;
     int reread_filelist = 0;
+    int show_help_skipped = 0;
 
 #define HOST            (ipinput ? ipinput->text.data : "")
 
@@ -660,8 +684,12 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
 
     CSetDndDirectory (directory->text.data);
 
-    if (cwevent->type == ButtonPress || cwevent->type == KeyPress)
-	CRedrawText (catstrs (identifier, ".msg", NULL), _("Alt-Ins for clip history, Shift-Up for history"));
+    if (cwevent->type == ButtonPress || cwevent->type == KeyPress) {
+        if (time_since_last_error() > 10)
+	    show_help (identifier);
+        else
+            show_help_skipped = 1;
+    }
 
     if (!*init) {
         *init = 1;
@@ -704,6 +732,8 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
 
         strcpy (last_filterinput, filterinput->text.data);
         strcpy (last_ipinput, HOST);
+        if (show_help_skipped)
+            show_help (identifier);
 	CHourGlass (CFirstWindow);
         Cstrlcpy (dir, directory->text.data, MAX_PATH_LEN);
         fail = get_file_dir_entry_list_host_change (changed_host, &f, &g, ipinput ? ipinput->text.data : 0, dir, filterinput->text.data, errmsg);
@@ -717,7 +747,7 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
 	if (g)
 	    free (g);
         if (fail)
-	    CRedrawText (catstrs (identifier, ".msg", NULL), "[%s]", errmsg);
+            show_error (identifier, errmsg);
 	CUnHourGlass (CFirstWindow);
         r = "";
         goto out;
@@ -820,9 +850,11 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
 	if (!strcmp (cwevent->ident, catstrs (identifier, ".ok", NULL))) {
 	    char *resolved_path;
             char errmsg[REMOTEFS_ERR_MSG_LEN] = "";
+            if (show_help_skipped)
+                show_help (identifier);
 	    resolved_path = pathdup (ipinput ? ipinput->text.data : 0, directory->text.data, errmsg);
             if (!resolved_path) {
-	        CRedrawText (catstrs (identifier, ".msg", NULL), "[%s]", errmsg);
+                show_error (identifier, errmsg);
                 r = "";
                 goto out;
             }
@@ -844,6 +876,9 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
         remotefs_error_code_t error_code = 0;
         char new_dir[MAX_PATH_LEN + 1];
         char dir[MAX_PATH_LEN + 1];
+
+        if (show_help_skipped)
+            show_help (identifier);
 
         Cstrlcpy (dir, directory->text.data, MAX_PATH_LEN);
         Cstrlcpy (new_dir, dir, MAX_PATH_LEN);
@@ -869,7 +904,7 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
 	}
 	resolved_path = pathdup (ipinput ? ipinput->text.data : 0, estr, errmsg);
         if (!resolved_path) {
-            CRedrawText (catstrs (identifier, ".msg", NULL), "[%s]", errmsg);
+            show_error (identifier, errmsg);
             r = "";
             goto out;
         }
@@ -882,12 +917,12 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
             goto out;
         }
 	if ((*u->remotefs_stat) (u, estr, &st, &just_not_there, &error_code, errmsg)) {
-	    CRedrawText (catstrs (identifier, ".msg", NULL), "[%s]", errmsg);
+            show_error (identifier, errmsg);
             r = "";
             goto out;
 	}
         if (just_not_there) {
-	    CRedrawText (catstrs (identifier, ".msg", NULL), "[%s]", errmsg);
+            show_error (identifier, errmsg);
 /* The user wanted a directory, but typed in one that doesn't exist */
             if (*q != '/' && !(options & GETFILE_GET_EXISTING_FILE) && !(options & (GETFILE_GET_DIRECTORY | GETFILE_BROWSER))) {
 /* user wants a new file */
@@ -919,9 +954,9 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
 		    CAddToTextInputHistory (textinput->ident, s);
                 }
                 if (!f)
-		    CRedrawText (catstrs (identifier, ".msg", NULL), "[%s]", errmsg);
+                    show_error (identifier, errmsg);
 	    } else {
-	        CRedrawText (catstrs (identifier, ".msg", NULL), "[%s]", errmsg);
+                show_error (identifier, errmsg);
             }
 	    if (g)
 		free (g);
@@ -931,7 +966,7 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
             goto out;
 	} else {
 	    if (options & (GETFILE_GET_DIRECTORY | GETFILE_BROWSER)) {
-		CRedrawText (catstrs (identifier, ".msg", NULL), "[%s]", errmsg);
+                show_error (identifier, errmsg);
 		r = "";
                 goto out;
 	    }

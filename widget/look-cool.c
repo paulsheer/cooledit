@@ -412,7 +412,7 @@ static char *mime_majors[3] =
 {"url", "text", 0};
 
 /* walk up through the directories until we find one that exists: */
-static int get_file_dir_entry_list_host_change (int changed_host, struct file_entry **r1, struct file_entry **r2, char *host, char *dir, const char *filter, char *errmsg)
+static int get_file_dir_entry_list_host_change (int changed_host, struct file_entry **r1, struct file_entry **r2, const char *host, char *dir, const char *filter, char *errmsg)
 {
     int fail = 1;
     char last_dir[MAX_PATH_LEN] = "";
@@ -448,7 +448,7 @@ static int get_file_dir_entry_list_host_change (int changed_host, struct file_en
 }
 
 static Window draw_file_browser (const char *identifier, Window parent, int x, int y,
-		    char *host, const char *directory, const char *file, const char *label)
+		    const char *host, const char *directory, const char *file, const char *label)
 {E_
     CWidget * w;
     struct file_entry *filelist = 0, *directorylist = 0;
@@ -1038,7 +1038,7 @@ static int cb_browser (CWidget * w, XEvent * x, CEvent * c)
 }
 
 void look_cool_draw_browser (const char *ident, Window parent, int x, int y,
-		   char *host, const char *dir, const char *file, const char *label)
+		   const char *host, const char *dir, const char *file, const char *label)
 {E_
     if (!(parent | x | y)) {
 	parent = CFirstWindow;

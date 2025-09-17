@@ -405,7 +405,6 @@ char **get_key_text (void *data, int line, int *num_fields, int *tagged)
     if (!i)
 	for (i = 0; get_klist[i].key_name[0]; i++) {
 	    char *p;
-	    strcpy (get_klist[i].key_name, _(get_klist[i].key_name));
 	    for (p = get_klist[i].key_name; *p; p++)
 		*p = *p == '.' ? '\b' : *p;
 	}

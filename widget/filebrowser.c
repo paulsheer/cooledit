@@ -43,7 +43,7 @@ int option_file_browser_width = FILE_BROWSER_START_WIDTH;
 int option_file_browser_height = FILE_BROWSER_START_HEIGHT;
 
 void CDrawBrowser (const char *ident, Window parent, int x, int y,
-		   const char *dir, const char *file, const char *label, char *host)
+		   const char *dir, const char *file, const char *label, const char *host)
 {E_
     (*look->draw_browser) (ident, parent, x, y, host, dir, file, label);
 }

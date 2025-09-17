@@ -39,7 +39,7 @@ char *look_cool_get_file_or_dir (Window parent, int x, int y,
        char *host, const char *dir, const char *file, const char *label, int options);
 
 void look_cool_draw_browser (const char *ident, Window parent, int x, int y,
-		   char *host, const char *dir, const char *file, const char *label);
+		   const char *host, const char *dir, const char *file, const char *label);
 
 
 /* }}} file browser stuff */

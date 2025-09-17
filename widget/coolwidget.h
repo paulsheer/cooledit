@@ -689,7 +689,7 @@ char *CGetLoadFile (Window parent, int x, int y,
 
 /* Draws a directory browser and returns immediately */
 void CDrawBrowser (const char *ident, Window parent, int x, int y,
-		   const char *dir, const char *file, const char *label, char *host);
+		   const char *dir, const char *file, const char *label, const char *host);
 
 
 /* Draws a simple spreadsheat widget (not supprted) */
@@ -1114,7 +1114,7 @@ struct look {
     int (*get_window_resize_bar_thickness) (void);
     void (*render_switch) (CWidget * wdt);
     int (*get_switch_size) (void);
-    void (*draw_browser) (const char *ident, Window parent, int x, int y, char *host, const char *dir,
+    void (*draw_browser) (const char *ident, Window parent, int x, int y, const char *host, const char *dir,
 			  const char *file, const char *label);
     char *(*get_file_or_dir) (Window parent, int x, int y, char *host, const char *dir, const char *file,
 			      const char *label, int options);

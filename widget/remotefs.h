@@ -440,6 +440,7 @@ struct remotefs {
     int (*remotefs_shellwrite) (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long multiplex, int xfwdstatus, const CStr *chunk, char *errmsg);
     int (*remotefs_shellkill) (struct remotefs *rfs, unsigned long pid);
     int (*remotefs_shellsignal) (struct remotefs *rfs, unsigned long pid, int signum, int *killret, char *errmsg);
+    int (*remotefs_ping) (struct remotefs *rfs, const char *test_msg, char *test_ret, int test_ret_len, char *errmsg);
     struct remotefs_private *remotefs_private;
 };
 

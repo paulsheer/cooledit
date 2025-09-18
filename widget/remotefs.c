@@ -1371,6 +1371,7 @@ struct crypto_packet_trailer {
 #define SYMAUTH_ENCRYPT_LEN(blocks)     ((blocks - 2) * SYMAUTH_BLOCK_SIZE)
 
 #define READER_CHUNK            65536
+#define READER_CHUNK_LITTLE_LESS (65536 - 1024)
 #define CRYPTO_CHUNK            (READER_CHUNK + SYMAUTH_ADMIN_BLOCKS * SYMAUTH_BLOCK_SIZE + SYMAUTH_PREQUEL_BYTES + /* fudge */ 1024)
 
 #define CRYPTO_ERROR_MAGIC      0xffff
@@ -1461,6 +1462,7 @@ const char *action_descr[] = {
     "SHELLKILL",
     "SHELLSIGNAL",
     "READTWODIRS",
+    "PING",
 };
 
 
@@ -4047,6 +4049,18 @@ static void remotefs_shellsignal_ (pid_t pid, int signum, CStr * r)
 #endif
 #endif
 
+static void remotefs_ping_ (const char *test_msg, CStr * r)
+{E_
+    unsigned char *p;
+
+    r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
+    r->len += encode_str (NULL, test_msg, strlen (test_msg));
+    r->data = (char *) malloc (r->len);
+    p = (unsigned char *) r->data;
+    encode_uint (&p, REMOTEFS_SUCCESS);
+    encode_str (&p, test_msg, strlen (test_msg));
+}
+
 
 
 #define MARSHAL_START_LOCAL \
@@ -4460,6 +4474,20 @@ static int local_shellsignal (struct remotefs *rfs, unsigned long pid, int signu
 #endif
 #endif
 
+static int local_ping (struct remotefs *rfs, const char *test_msg, char *test_ret, int test_ret_len, char *errmsg)
+{E_
+    CStr s;
+    *errmsg = '\0';
+    remotefs_ping_ (test_msg, &s);
+
+    MARSHAL_START_LOCAL;
+    if (decode_str (&p, end, test_ret, test_ret_len)) {
+        free (s.data);
+        return -1;
+    }
+    MARSHAL_END_LOCAL(NULL);
+}
+
 static int encode_listdir_params (unsigned char **p_, const char *directory, unsigned long options, const char *filter)
 {E_
     int r;
@@ -4721,7 +4749,7 @@ static int remote_writefile (struct remotefs *rfs, struct action_callbacks *o, c
         if (got_stop)
             break;
 
-        c = (MIN ((unsigned long long) READER_CHUNK, remaining));
+        c = (MIN ((unsigned long long) READER_CHUNK_LITTLE_LESS, remaining));
         if ((*o->sock_writer) (o, buf, &c, errmsg)) {
             SHUTSOCK (rfs->remotefs_private->sock_data);
             strcpy (errmsg, "Ran out of data to write");
@@ -5269,6 +5297,31 @@ static int remote_shellsignal (struct remotefs *rfs, unsigned long pid, int sign
 #endif
 #endif
 
+static int remote_ping (struct remotefs *rfs, const char *test_msg, char *test_ret, int test_ret_len, char *errmsg)
+{
+    CStr s, msg;
+    unsigned char *q;
+    *errmsg = '\0';
+
+    msg.len = encode_str (NULL, test_msg, strlen (test_msg));
+    msg.data = (char *) malloc (msg.len);
+    q = (unsigned char *) msg.data;
+    msg.len = encode_str (&q, test_msg, strlen (test_msg));
+
+    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_PING, errmsg, NULL)) {
+        free (msg.data);
+        return -1;
+    }
+    free (msg.data);
+
+    MARSHAL_START_REMOTE;
+    if (decode_str (&p, end, test_ret, test_ret_len)) {
+        free (s.data);
+        return -1;
+    }
+    MARSHAL_END_REMOTE(NULL);
+}
+
 
 struct iprange_list;
 int iprange_match (struct iprange_list *l, const void *a, int addrlen);
@@ -5695,10 +5748,17 @@ static int send_mesg (struct remotefs *rfs, struct reader_data *d, CStr * msg, i
 
     encode_msg_header (&m, msg->len, MSG_VERSION, action, FILE_PROTO_MAGIC);
 
-    if (writer (rfs->remotefs_private->sock_data, &m, sizeof (m))) {
-        set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
-        SHUTSOCK (rfs->remotefs_private->sock_data);
-        return -1;
+    {   /* to reduce latency on slow network connections, pack this into one chunk: */
+        char *write_buf;
+        write_buf = (char *) malloc (sizeof (m) + msg->len);
+        memcpy (write_buf, &m, sizeof (m));
+        memcpy (write_buf + sizeof (m), msg->data, msg->len);
+        if (writer (rfs->remotefs_private->sock_data, write_buf, sizeof (m) + msg->len)) {
+            set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
+            SHUTSOCK (rfs->remotefs_private->sock_data);
+            return -1;
+        }
+        free (write_buf);
     }
 
 /* See note (*1*) below. */
@@ -5750,12 +5810,6 @@ static int send_mesg (struct remotefs *rfs, struct reader_data *d, CStr * msg, i
             strcpy (errmsg, error_code_descr[error_code]);
         else
             strcpy (errmsg, "remote returned invalid error");
-        SHUTSOCK (rfs->remotefs_private->sock_data);
-        return -1;
-    }
-
-    if (msg->len && writer (rfs->remotefs_private->sock_data, msg->data, msg->len)) {
-        set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
         SHUTSOCK (rfs->remotefs_private->sock_data);
         return -1;
     }
@@ -5955,6 +6009,11 @@ static int dummyerr_shellsignal (struct remotefs *rfs, unsigned long pid, int si
 
 #endif
 
+static int dummyerr_ping (struct remotefs *rfs, const char *test_msg, char *test_ret, int test_ret_len, char *errmsg)
+{
+    return remotefs_error_return (errmsg);
+}
+
 
 
 struct remotefs remotefs_dummyerr = {
@@ -5984,6 +6043,7 @@ struct remotefs remotefs_dummyerr = {
     NULL,
     NULL,
 #endif
+    dummyerr_ping,
     NULL,
 };
 
@@ -6014,6 +6074,7 @@ struct remotefs remotefs_local = {
     NULL,
     NULL,
 #endif
+    local_ping,
     NULL
 };
 
@@ -6044,6 +6105,7 @@ struct remotefs remotefs_socket = {
     NULL,
     NULL,
 #endif
+    remote_ping,
     NULL
 };
 
@@ -6735,8 +6797,6 @@ static int remote_action_fn_v3_shellresize (struct server_data *sd, CStr *s, con
     unsigned long long columns;
     unsigned long long rows;
 
-    memset (s, '\0', sizeof (*s));
-
     p = in;
     end = in + inlen;
 
@@ -6761,7 +6821,6 @@ static int remote_action_fn_v3_shellresize (struct server_data *sd, CStr *s, con
 
 static int remote_action_fn_v3_dummyaction (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
 {E_
-    memset (s, '\0', sizeof (*s));
     alloc_encode_error (s, RFSERR_UNIMPLEMENTED_FUNCTION, "not implemented", 1);
     return -1;
 }
@@ -6773,8 +6832,6 @@ static int remote_action_fn_v3_shellwrite (struct server_data *sd, CStr *s, cons
     const unsigned char *p, *end;
     struct ttyreader_data *tt;
     tt = sd->ttyreader_data;
-
-    memset (s, '\0', sizeof (*s));
 
     p = in;
     end = in + inlen;
@@ -6858,8 +6915,6 @@ static int remote_action_fn_v3_shellkill (struct server_data *sd, CStr *s, const
     struct ttyreader_data *tt;
     tt = sd->ttyreader_data;
 
-    memset (s, '\0', sizeof (*s));
-
     p = in;
     end = in + inlen;
 
@@ -6877,8 +6932,6 @@ static int remote_action_fn_v3_shellsignal (struct server_data *sd, CStr *s, con
     const unsigned char *p, *end;
     unsigned long long pid;
     unsigned long long signum;
-
-    memset (s, '\0', sizeof (*s));
 
     p = in;
     end = in + inlen;
@@ -6898,6 +6951,18 @@ static int remote_action_fn_v3_shellsignal (struct server_data *sd, CStr *s, con
 }
 
 #endif
+
+static int remote_action_fn_v4_ping (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
+{E_
+    const unsigned char *p, *end;
+    char test_msg[1024];
+    p = in;
+    end = in + inlen;
+    if (decode_str (&p, end, test_msg, sizeof (test_msg)))
+        return -1;
+    remotefs_ping_ (test_msg, s);
+    return 0;
+}
 
 struct action_item {
     int logging;
@@ -6932,6 +6997,7 @@ struct action_item action_list[] = {
     { 1, 1, NULL, },
 #endif
     { 1, 1, remote_action_fn_v4_listtwodirs, },                 /* REMOTEFS_ACTION_READTWODIRS             */
+    { 1, 1, remote_action_fn_v4_ping, },                        /* REMOTEFS_ACTION_PING                    */
 };
 
 static unsigned int client_count = 0L;

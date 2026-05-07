@@ -3,6 +3,8 @@
    Copyright (C) 1996-2022 Paul Sheer
  */
 
+#include <stdio.h>
+
 #include "inspect.h"
 #include <config.h>
 #include "stringtools.h"
@@ -10,8 +12,6 @@
 #include "remotefs.h"
 #include "filetool.h"
 #include "remotefspassword.h"
-
-#include <stdio.h>
 
 
 char *get_sys_error (const char *s);
@@ -161,11 +161,16 @@ int filetool_copy_local_to_remote (const char *local_filename, const char *host,
     return 0;
 }
 
+void filetool_usage(FILE *out, const char *prefix)
+{
+    fprintf(out, "%s--filetool copy-from-remote <host-ip> <remote-file> <local-file>\n", prefix);
+    fprintf(out, "%s--filetool copy-to-remote <local-file> <host-ip> <remote-file>\n", prefix);
+}
+
 static void usage_ (void)
 {E_
     fprintf(stderr, "Usage\n");
-    fprintf(stderr, "    cooledit --filetool copy-from-remote <host-ip> <remote-file> <local-file>\n");
-    fprintf(stderr, "    cooledit --filetool copy-to-remote <local-file> <host-ip> <remote-file>\n");
+    filetool_usage(stderr, "    cooledit ");
 }
 
 static void usage_exit_error (void)

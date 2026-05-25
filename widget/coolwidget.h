@@ -589,6 +589,7 @@ CWidget *CDrawBitmapButton (const char *identifier, Window parent, int x, int y,
 #define PIXMAP_BUTTON_SAVE TICK_BUTTON_WIDTH, TICK_BUTTON_WIDTH, save_pixmap, '0'
 #define PIXMAP_BUTTON_CROSS TICK_BUTTON_WIDTH, TICK_BUTTON_WIDTH, cross_bits, '0'
 #define PIXMAP_BUTTON_EXCLAMATION TICK_BUTTON_WIDTH, TICK_BUTTON_WIDTH, exclam_bits, '0'
+#define PIXMAP_BUTTON_REFRESH TICK_BUTTON_WIDTH, TICK_BUTTON_WIDTH, refresh_bits, '0'
 
 CWidget *CDrawPixmapButton (const char *identifier, Window parent,
     int x, int y, int width, int height, const char *data[], char start_char);
@@ -616,8 +617,8 @@ CWidget *CDrawFieldedTextbox (const char *identifier, Window parent, int x, int 
 			      char **(*get_line) (void *, int, int *, int *),
 			      long options, void *data);
 
-struct file_entry *get_file_entry_list (const char *host, const char *directory, char *last_dir, unsigned long options_, const char *filter, char *errmsg);
-int get_file_dir_entry_list (struct file_entry **r1, struct file_entry **r2, const char *host, const char *directory, char *last_dir, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, char *errmsg);
+struct file_entry *get_file_entry_list (int cached, const char *host, const char *directory, char *last_dir, unsigned long options_, const char *filter, char *errmsg);
+int get_file_dir_entry_list (int cached, struct file_entry **r1, struct file_entry **r2, const char *host, const char *directory, char *last_dir, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, char *errmsg);
 char *user_file_list_search (Window parent, int x, int y, const char *base_name);
 char *user_file_list_complete (Window parent, int x, int y, int lines, int columns, const char *base_name);
 void get_file_time (char *timestr, time_t file_time, int l);

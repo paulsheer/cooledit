@@ -1200,6 +1200,7 @@ void CShutdown (void)
     edit_search_cmd (0, 0);
     free_selections ();
     mouse_shut ();
+    remotefs_clean ();
     CFreeAllFonts ();
     utf_tmp_buf_free ();
     XChar2b_tmp_buf_free ();

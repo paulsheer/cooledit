@@ -143,7 +143,7 @@ int compare_fileentries (struct file_entry *file_entry1, struct file_entry *file
     return (strcmp (file_entry1->name, file_entry2->name));
 }
 
-struct file_entry *get_file_entry_list (const char *host, const char *directory, char *last_dir, unsigned long options, const char *filter, char *errmsg)
+struct file_entry *get_file_entry_list (int cached, const char *host, const char *directory, char *last_dir, unsigned long options, const char *filter, char *errmsg)
 {E_
     struct remotefs *u;
     int n = 0;
@@ -156,7 +156,7 @@ struct file_entry *get_file_entry_list (const char *host, const char *directory,
     u = remotefs_lookup (host, last_dir_);
     if (!*directory)
         directory = last_dir_;
-    if ((*u->remotefs_listdir) (u, directory, options, filter, &list, &n, errmsg))
+    if ((*u->remotefs_listdir) (u, cached, directory, options, filter, &list, &n, errmsg))
         return NULL;
 
     if (last_dir)
@@ -168,7 +168,7 @@ struct file_entry *get_file_entry_list (const char *host, const char *directory,
 }
 
 /* returns 0 on success */
-int get_file_dir_entry_list (struct file_entry **r1, struct file_entry **r2, const char *host, const char *directory, char *last_dir, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, char *errmsg)
+int get_file_dir_entry_list (int cached, struct file_entry **r1, struct file_entry **r2, const char *host, const char *directory, char *last_dir, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, char *errmsg)
 {E_
     struct remotefs *u;
     int n1 = 0, n2 = 0;
@@ -183,7 +183,7 @@ int get_file_dir_entry_list (struct file_entry **r1, struct file_entry **r2, con
     u = remotefs_lookup (host, last_dir_);
     if (!*directory)
         directory = last_dir_;
-    if ((*u->remotefs_listtwodirs) (u, directory, options1, filter1, options2, filter2, &list1, &n1, &list2, &n2, errmsg))
+    if ((*u->remotefs_listtwodirs) (u, cached, directory, options1, filter1, options2, filter2, &list1, &n1, &list2, &n2, errmsg))
         return 1;
 
     if (last_dir)

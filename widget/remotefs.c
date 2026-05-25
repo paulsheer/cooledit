@@ -24,6 +24,7 @@
 #endif
 #include <my_string.h>
 #include "stringtools.h"
+#include "hashtable.h"
 
 #ifdef HAVE_PWD_H
 #include <pwd.h>
@@ -1408,6 +1409,8 @@ struct sock_data {
 struct remotefs_private {
     struct sock_data *sock_data;
     char remote[256];
+    struct hash_table *cache;
+    unsigned long cache_epoch;
 };
 
 struct sock_data *remotefs_get_sock_data (struct remotefs *rfs)
@@ -4108,8 +4111,12 @@ static void remotefs_ping_ (const char *test_msg, CStr * r)
         return -1; \
     }
 
+static int local_invalidatecache (struct remotefs *rfs, char *errmsg)
+{E_
+    return 0;
+}
 
-static int local_listdir (struct remotefs *rfs, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
+static int local_listdir (struct remotefs *rfs, int cached, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
 {E_
     struct remotefs_listdir_view view = { options, filter };
     CStr s;
@@ -4123,7 +4130,7 @@ static int local_listdir (struct remotefs *rfs, const char *directory, unsigned 
     MARSHAL_END_LOCAL(NULL);
 }
 
-static int local_listtwodirs (struct remotefs *rfs, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
+static int local_listtwodirs (struct remotefs *rfs, int cached, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
 {E_
     struct remotefs_listdir_view view[2] = { {options1, filter1}, {options2, filter2} };
     CStr s;
@@ -4509,14 +4516,27 @@ static int encode_listtwodirs_params (unsigned char **p_, const char *directory,
 }
 
 
-static int send_recv_mesg (struct remotefs *rfs, CStr *msg, CStr *response, int action, char *errmsg, int *no_such_action);
+enum cache_behavior {
+    CACHE_BEHAVIOR_NOCACHE = 0,
+    CACHE_BEHAVIOR_ALWAYSRETURNCACHE = 1,
+    CACHE_BEHAVIOR_IFNOTEXPIRED = 3,
+    CACHE_BEHAVIOR_NOTCACHEABLE = 4,
+};
+
+static int send_recv_mesg (struct remotefs *rfs, enum cache_behavior cached_behav, CStr *msg, CStr *response, int action, char *errmsg, int *no_such_action);
 static int send_mesg (struct remotefs *rfs, struct reader_data *d, CStr * msg, int action, char *errmsg);
 static int recv_mesg (struct remotefs *rfs, struct reader_data *d, CStr * response, int action, char *errmsg, int *no_such_action);
 static int recv_mesg_ (struct remotefs *rfs, struct reader_data *d, CStr * response, int action, long milliseconds, char *errmsg, int *no_such_action, enum reader_error *reader_error);
 static int reader (struct reader_data *d, void *buf_, int buflen, enum reader_error *reader_error);
 
 
-static int remote_listdir (struct remotefs *rfs, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
+static int remote_invalidatecache (struct remotefs *rfs, char *errmsg)
+{E_
+    rfs->remotefs_private->cache_epoch++;
+    return 0;
+}
+
+static int remote_listdir (struct remotefs *rfs, int cached, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
 {E_
     CStr s, msg;
     unsigned char *q;
@@ -4527,7 +4547,7 @@ static int remote_listdir (struct remotefs *rfs, const char *directory, unsigned
     q = (unsigned char *) msg.data;
     msg.len = encode_listdir_params (&q, directory, options, filter);
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_READDIR, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, cached ? CACHE_BEHAVIOR_ALWAYSRETURNCACHE : CACHE_BEHAVIOR_NOCACHE, &msg, &s, REMOTEFS_ACTION_READDIR, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -4541,7 +4561,7 @@ static int remote_listdir (struct remotefs *rfs, const char *directory, unsigned
     MARSHAL_END_REMOTE(NULL);
 }
 
-static int remote_listtwodirs (struct remotefs *rfs, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
+static int remote_listtwodirs (struct remotefs *rfs, int cached, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
 {E_
     CStr s, msg;
     unsigned char *q;
@@ -4552,7 +4572,7 @@ static int remote_listtwodirs (struct remotefs *rfs, const char *directory, unsi
     q = (unsigned char *) msg.data;
     msg.len = encode_listtwodirs_params (&q, directory, options1, filter1, options2, filter2);
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_READTWODIRS, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, cached ? CACHE_BEHAVIOR_ALWAYSRETURNCACHE : CACHE_BEHAVIOR_NOCACHE, &msg, &s, REMOTEFS_ACTION_READTWODIRS, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -4795,7 +4815,7 @@ static int remote_checkordinaryfileaccess (struct remotefs *rfs, const char *fil
     encode_str (&q, filename, strlen (filename));
     encode_uint (&q, sizelimit);
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_CHECKORDINARYFILEACCESS, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_IFNOTEXPIRED, &msg, &s, REMOTEFS_ACTION_CHECKORDINARYFILEACCESS, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -4825,7 +4845,7 @@ static int remote_stat (struct remotefs *rfs, const char *pathname, struct porta
     encode_str (&q, pathname, strlen (pathname));
     encode_uint (&q, (just_not_there != NULL));
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_STAT, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_IFNOTEXPIRED, &msg, &s, REMOTEFS_ACTION_STAT, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -4859,7 +4879,7 @@ static int remote_chdir (struct remotefs *rfs, const char *dirname, char *cwd, i
     q = (unsigned char *) msg.data;
     encode_str (&q, dirname, strlen (dirname));
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_CHDIR, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, &msg, &s, REMOTEFS_ACTION_CHDIR, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -4886,7 +4906,7 @@ static int remote_realpathize (struct remotefs *rfs, const char *path, const cha
     encode_str (&q, path, strlen (path));
     encode_str (&q, homedir, strlen (homedir));
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_REALPATHIZE, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_IFNOTEXPIRED, &msg, &s, REMOTEFS_ACTION_REALPATHIZE, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -4907,7 +4927,7 @@ static int remote_gethomedir (struct remotefs *rfs, char *out, int outlen, char 
 
     memset (&msg, '\0', sizeof (msg));
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_GETHOMEDIR, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_IFNOTEXPIRED, &msg, &s, REMOTEFS_ACTION_GETHOMEDIR, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -4937,7 +4957,7 @@ static int remote_enablecrypto (struct remotefs *rfs, const unsigned char *chall
     q = (unsigned char *) msg.data;
     encode_str (&q, (const char *) challenge_local, SYMAUTH_BLOCK_SIZE);
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_ENABLECRYPTO, errmsg, &no_such_action)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, &msg, &s, REMOTEFS_ACTION_ENABLECRYPTO, errmsg, &no_such_action)) {
         if (no_such_action)
             strcpy (errmsg, "crypto not supported by remote");
         free (msg.data);
@@ -5039,7 +5059,7 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
     for (i = 0; i < n_args; i++)
         encode_str (&q, args[i], strlen (args[i]));
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_SHELLCMD, errmsg, &no_such_action)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, &msg, &s, REMOTEFS_ACTION_SHELLCMD, errmsg, &no_such_action)) {
         if (no_such_action)
             strcpy (errmsg, "shell commands not supported by remote");
         free (msg.data);
@@ -5281,7 +5301,7 @@ static int remote_shellsignal (struct remotefs *rfs, unsigned long pid, int sign
     encode_uint (&q, pid);
     encode_uint (&q, signum);
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_SHELLSIGNAL, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, &msg, &s, REMOTEFS_ACTION_SHELLSIGNAL, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -5308,7 +5328,7 @@ static int remote_ping (struct remotefs *rfs, const char *test_msg, char *test_r
     q = (unsigned char *) msg.data;
     msg.len = encode_str (&q, test_msg, strlen (test_msg));
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_PING, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, &msg, &s, REMOTEFS_ACTION_PING, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -5900,9 +5920,57 @@ static int recv_mesg (struct remotefs *rfs, struct reader_data *d, CStr * respon
     return recv_mesg_ (rfs, d, response, action, WAITFORREAD_FOREVER, errmsg, no_such_action, &reader_error);
 }
 
-static int send_recv_mesg (struct remotefs *rfs, CStr * msg, CStr * response, int action, char *errmsg, int *no_such_action)
+static CStr CStr_cpy_ (const char *s, int l)
+{E_
+    CStr r;
+    r.len = l;
+    r.data = (char *) malloc (r.len + 1);
+    memcpy (r.data, s, r.len);
+    r.data[r.len] = '\0';
+    return r;
+}
+
+static int send_recv_mesg (struct remotefs *rfs, enum cache_behavior cached_behav, CStr * msg, CStr * response, int action, char *errmsg, int *no_such_action)
 {E_
     struct reader_data d;
+    CStr *cache_entry = NULL;
+    unsigned long entry_age;
+
+    if (cached_behav != CACHE_BEHAVIOR_NOTCACHEABLE)
+        cache_entry = hash_table_lookup (rfs->remotefs_private->cache, (unsigned long) action, (const unsigned char *) msg->data, msg->len, &entry_age);
+    if (cache_entry) {
+
+/* The behavior is quite subtle: if the user presses Ctrl-R in the
+browser, we want to invalidate the cache of little hereafter calls (of
+course not calls like reading and writing the contents of the file --
+which are never cached at all). Ctrl-R will also refresh the file lists
+in the browser. But browsing through the filesystem must be fast, so we
+always look for a cached entry even if it came after a previous Ctrl-R.
+*/
+
+        if (cached_behav == CACHE_BEHAVIOR_NOCACHE) {
+            /* discard */
+        } else if (cached_behav == CACHE_BEHAVIOR_ALWAYSRETURNCACHE) {
+            *response = CStr_cpy_ (cache_entry->data, cache_entry->len);
+            return 0;
+        } else if (cached_behav == CACHE_BEHAVIOR_IFNOTEXPIRED) {
+            if (entry_age == rfs->remotefs_private->cache_epoch) {
+                *response = CStr_cpy_ (cache_entry->data, cache_entry->len);
+                return 0;
+            } else {
+                /* discard */
+            }
+        } else {
+            assert (!"bad cached_behav value");
+        }
+
+        CStr *remove;
+        remove = (CStr *) hash_table_remove (rfs->remotefs_private->cache, (unsigned long) action, (const unsigned char *) msg->data, msg->len);
+        assert (remove == cache_entry);
+        free (cache_entry->data);
+        free (cache_entry);
+        cache_entry = NULL;
+    }
 
     memset (&d, '\0', sizeof (d));
     d.sock_data = rfs->remotefs_private->sock_data;
@@ -5912,6 +5980,12 @@ static int send_recv_mesg (struct remotefs *rfs, CStr * msg, CStr * response, in
 
     if (recv_mesg (rfs, &d, response, action, errmsg, no_such_action))
         return -1;
+
+    if (cached_behav != CACHE_BEHAVIOR_NOTCACHEABLE) {
+        cache_entry = (CStr *) malloc (sizeof (*cache_entry));
+        *cache_entry = CStr_cpy_ (response->data, response->len);
+        hash_table_insert (rfs->remotefs_private->cache, (unsigned long) action, (const unsigned char *) msg->data, msg->len, (void *) cache_entry, rfs->remotefs_private->cache_epoch);
+    }
 
     return 0;
 }
@@ -5925,12 +5999,17 @@ static int remotefs_error_return (char *errmsg)
     return -1;
 }
 
-static int dummyerr_listdir (struct remotefs *rfs, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
+static int dummyerr_invalidatecache (struct remotefs *rfs, char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
 }
 
-static int dummyerr_listtwodirs (struct remotefs *rfs, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
+static int dummyerr_listdir (struct remotefs *rfs, int cached, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
+{E_
+    return remotefs_error_return (errmsg);
+}
+
+static int dummyerr_listtwodirs (struct remotefs *rfs, int cached, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
 }
@@ -6018,6 +6097,7 @@ static int dummyerr_ping (struct remotefs *rfs, const char *test_msg, char *test
 
 struct remotefs remotefs_dummyerr = {
     0,
+    dummyerr_invalidatecache,
     dummyerr_listdir,
     dummyerr_listtwodirs,
     dummyerr_readfile,
@@ -6049,6 +6129,7 @@ struct remotefs remotefs_dummyerr = {
 
 struct remotefs remotefs_local = {
     0,
+    local_invalidatecache,
     local_listdir,
     local_listtwodirs,
     local_readfile,
@@ -6080,6 +6161,7 @@ struct remotefs remotefs_local = {
 
 struct remotefs remotefs_socket = {
     0,
+    remote_invalidatecache,
     remote_listdir,
     remote_listtwodirs,
     remote_readfile,
@@ -6146,8 +6228,21 @@ static void remotefs_private_cleanup (struct remotefs_private *p)
             }
             free (p->sock_data);
         }
+        if (p->cache)
+            hash_table_destroy (p->cache);
         free (p);
     }
+}
+
+void remotefs_clean (void)
+{E_
+    struct remotefs_item *i, *next;
+    for (i = remotefs_list; i; i = next) {
+        next = i->next;
+        remotefs_private_cleanup (i->impl.remotefs_private);
+        free (i);
+    }
+    remotefs_list = NULL;
 }
 
 void remotefs_free (struct remotefs *rfs)
@@ -6155,6 +6250,16 @@ void remotefs_free (struct remotefs *rfs)
     assert (rfs->magic == REMOTEFS_ITEM_MAGIC);
     remotefs_private_cleanup (rfs->remotefs_private);
     free (rfs);
+}
+
+static void hash_table_free_value_fn (void *v)
+{
+    CStr *s;
+    s = (CStr *) v;
+    assert (s);
+    assert (s->data);
+    free (s->data);
+    free (s);
 }
 
 static int remotefs_start (struct remotefs *rfs, const char *host, char *home_dir, char *errmsg)
@@ -6167,6 +6272,7 @@ static int remotefs_start (struct remotefs *rfs, const char *host, char *home_di
         rfs->remotefs_private = (struct remotefs_private *) malloc (sizeof (struct remotefs_private));
         memset (rfs->remotefs_private, '\0', sizeof (struct remotefs_private));
         strcpy (rfs->remotefs_private->remote, host);
+        rfs->remotefs_private->cache = hash_table_create (hash_table_free_value_fn);
         rfs->remotefs_private->sock_data = (struct sock_data *) malloc (sizeof (struct sock_data));
         memset (rfs->remotefs_private->sock_data, '\0', sizeof (struct sock_data));
         rfs->remotefs_private->sock_data->sock = INVALID_SOCKET;

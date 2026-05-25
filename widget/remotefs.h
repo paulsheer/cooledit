@@ -361,6 +361,7 @@ enum remotefs_error_code {
 #define REMOTEFS_LOCAL                          "localhost"
 
 void remotefs_serverize (const char *listen_address, const char *acceptrange);
+void remotefs_clean (void);
 
 struct file_entry;
 struct remotefs;
@@ -424,8 +425,9 @@ int remotefs_shell_util (const char *host, int xwin_fd, struct remotefs_terminal
 
 struct remotefs {
     unsigned int magic;
-    int (*remotefs_listdir) (struct remotefs *rfs, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg);
-    int (*remotefs_listtwodirs) (struct remotefs *rfs, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg);
+    int (*remotefs_invalidatecache) (struct remotefs *rfs, char *errmsg);
+    int (*remotefs_listdir) (struct remotefs *rfs, int cached, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg);
+    int (*remotefs_listtwodirs) (struct remotefs *rfs, int cached, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg);
     int (*remotefs_readfile) (struct remotefs *rfs, struct action_callbacks *o, const char *filename, char *errmsg);
     int (*remotefs_writefile) (struct remotefs *rfs, struct action_callbacks *o, const char *filename, long long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg);
     int (*remotefs_checkordinaryfileaccess) (struct remotefs *rfs, const char *filename, unsigned long long sizelimit, struct portable_stat *st, char *errmsg);

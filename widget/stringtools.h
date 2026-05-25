@@ -13,6 +13,8 @@
 
 #define C_ALNUM(c)  (((c) >= 'A' && (c) <= 'Z') || ((c) >= 'a' && (c) <= 'z') || ((c) >= '0' && (c) <= '9') || ((c) == '_'))
 
+#define HASH401(c)      ((((c) + 9) * ((c) + 2) * 401) >> 1)
+
 
 struct simple_string {
     char *data;
@@ -100,6 +102,7 @@ int Cstrlcpy (char *dst, const char *src, int siz);
 void string_chomp (char *_p);
 char **set_env_var (char *new_var[], int nn);
 int execve_path_search (const char *file, char *const argv[], char *const envp[]);
+unsigned long hash_string (const char *s);
 
 
 #define my_lower_case(c) tolower(c & 0xFF)

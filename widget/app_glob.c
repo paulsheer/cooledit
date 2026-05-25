@@ -65,6 +65,7 @@ int option_low_bandwidth = 0;
 #include "bitmap/switchon.bitmap"
 #include "bitmap/switchoff.bitmap"
 #include "bitmap/exclam.bitmap"
+#include "bitmap/refresh.bitmap"
 
 #else
 
@@ -105,6 +106,7 @@ extern const char *save_pixmap[];
 extern const char *switchon_bits[];
 extern const char *switchoff_bits[];
 extern const char *exclam_bits[];
+extern const char *refresh_bits[];
 
 #endif				/* #ifdef DEF_APP_GLOB */
 #endif				/* #ifndef APP_GLOB_C  */

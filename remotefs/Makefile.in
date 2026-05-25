@@ -107,7 +107,7 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_remotefs_OBJECTS = remotefs.$(OBJEXT) regex.$(OBJEXT) \
 	regtools.$(OBJEXT) pathdup.$(OBJEXT) ipv6scan.$(OBJEXT) \
-	aes.$(OBJEXT) sha256.$(OBJEXT) symauth.$(OBJEXT) cterminal.$(OBJEXT) \
+	aes.$(OBJEXT) sha256.$(OBJEXT) symauth.$(OBJEXT) hashtable.$(OBJEXT) cterminal.$(OBJEXT) \
 	childhandler.$(OBJEXT) xwinfwd.$(OBJEXT)
 remotefs_OBJECTS = $(am_remotefs_OBJECTS)
 remotefs_DEPENDENCIES =
@@ -330,7 +330,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CPPFLAGS = -I$(top_srcdir)/widget -I$(top_srcdir) 
-remotefs_SOURCES = remotefs.c regex.c regtools.c pathdup.c ipv6scan.c aes.c sha256.c symauth.c cterminal.c childhandler.c xwinfwd.c
+remotefs_SOURCES = remotefs.c regex.c regtools.c pathdup.c ipv6scan.c aes.c sha256.c symauth.c hashtable.c cterminal.c childhandler.c xwinfwd.c
 remotefs_LDADD = 
 all: all-am
 
@@ -433,6 +433,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/remotefs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sha256.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/symauth.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hashtable.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cterminal.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/childhandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xwinfwd.Po@am__quote@
@@ -696,6 +697,9 @@ sha256.c:
 symauth.c:
 	ln -sf ../widget/symauth.c .
 
+hashtable.c:
+	ln -sf ../widget/hashtable.c .
+
 cterminal.c:
 	ln -sf ../widget/cterminal.c .
 
@@ -704,6 +708,9 @@ childhandler.c:
 
 xwinfwd.c:
 	ln -sf ../widget/xwinfwd.c .
+
+hashtable.c:
+	ln -sf ../widget/hashtable.c .
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

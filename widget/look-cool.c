@@ -939,7 +939,8 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
             r = "";
             goto out;
         }
-	if ((*u->remotefs_stat) (u, estr, &st, &just_not_there, &error_code, errmsg)) {
+        int from_cache = 1;
+	if ((*u->remotefs_stat) (u, &from_cache, estr, &st, &just_not_there, &error_code, errmsg)) {
             show_error (identifier, errmsg);
             r = "";
             goto out;
@@ -993,6 +994,13 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
 		r = "";
                 goto out;
 	    }
+            if (from_cache) {
+	        if ((*u->remotefs_stat) (u, NULL, estr, &st, &just_not_there, &error_code, errmsg)) {
+                    show_error (identifier, errmsg);
+                    r = "";
+                    goto out;
+	        }
+            }
 	    r = estr;	/* entry exists and is a file */
             goto out;
 	}

@@ -156,7 +156,7 @@ struct file_entry *get_file_entry_list (int cached, const char *host, const char
     u = remotefs_lookup (host, last_dir_);
     if (!*directory)
         directory = last_dir_;
-    if ((*u->remotefs_listdir) (u, cached, directory, options, filter, &list, &n, errmsg))
+    if ((*u->remotefs_listdir) (u, &cached, directory, options, filter, &list, &n, errmsg))
         return NULL;
 
     if (last_dir)
@@ -183,7 +183,7 @@ int get_file_dir_entry_list (int cached, struct file_entry **r1, struct file_ent
     u = remotefs_lookup (host, last_dir_);
     if (!*directory)
         directory = last_dir_;
-    if ((*u->remotefs_listtwodirs) (u, cached, directory, options1, filter1, options2, filter2, &list1, &n1, &list2, &n2, errmsg))
+    if ((*u->remotefs_listtwodirs) (u, &cached, directory, options1, filter1, options2, filter2, &list1, &n1, &list2, &n2, errmsg))
         return 1;
 
     if (last_dir)

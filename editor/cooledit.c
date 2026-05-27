@@ -2050,7 +2050,8 @@ static void maximise_window (char *ident)
     CSetWidgetSize (x, columns * FONT_MEAN_WIDTH + 25 + EDIT_FRAME_W + 4 + 2 + 20 + WIDGET_SPACING * 2,
 		    lines * FONT_PIX_PER_LINE + f + EDIT_FRAME_H + WIDGET_SPACING * 3 + 8 + TEXT_RELIEF * 2 + 3 + 3 + 3 + 2);
     w = CIdent (x);
-    CSetWidgetPosition (x, (wm - w->width) / 2, height_offset + (hm - height_offset - w->height) / 2);
+    if (w)
+        CSetWidgetPosition (x, (wm - w->width) / 2, height_offset + (hm - height_offset - w->height) / 2);
     CPopFont ();
 }
 

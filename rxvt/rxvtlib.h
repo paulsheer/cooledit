@@ -1482,9 +1482,7 @@ EXTSCR int selection_style;
 #  define SCROLLBAR_INITIAL_DELAY	40
 # endif
 #endif
-#ifndef SCROLLBAR_CONTINUOUS_DELAY
-# define SCROLLBAR_CONTINUOUS_DELAY	2
-#endif
+#define SCROLLBAR_REPEAT_DELAY	        50 /* ms */
 
 /* time factor to slow down a `jumpy' mouse */
 #define MOUSE_THRESHOLD		50
@@ -1669,9 +1667,7 @@ struct bar_t {
  struct remotefs_terminalio cterminal_io;
  int      Xfd ;
 
-#ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
- int      scroll_arrow_delay;
-#endif
+ unsigned long scroll_arrow_timestamp_ms;
 #ifdef META8_OPTION
  unsigned char meta_char;
 #endif

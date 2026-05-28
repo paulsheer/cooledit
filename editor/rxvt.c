@@ -76,7 +76,10 @@ int rxvt_event (XEvent * xevent)
 		return 1;
 	    }
 	    return 0;
-	}
+	} else if (xevent->type == TickEvent) {
+	    memcpy (&l->rxvt->xevent, xevent, sizeof (*xevent));
+	    rxvt_process_x_event (l->rxvt);
+        }
 	prev = l;
     }
     return 0;

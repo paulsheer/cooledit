@@ -1104,6 +1104,7 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
 	if (o->v_bufstr < o->v_bufptr)	/* output any pending chars */
 	    rxvtlib_tt_write (o, NULL, 0);
 
+#ifdef STANDALONE
 	while (XPending (o->Xdisplay)) {			/* process pending X events */
 	    rxvtlib_XProcessEvent (o, o->Xdisplay);
 	    if (o->killed)
@@ -1112,19 +1113,7 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
 	    if (o->cmdbuf_ptr < o->cmdbuf_endp)
 		return (*o->cmdbuf_ptr++);
 	}
-#ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
-	if (scrollbar_isUp ()) {
-	    if (!o->scroll_arrow_delay-- && rxvtlib_scr_page (o, UP, 1)) {
-		o->scroll_arrow_delay = SCROLLBAR_CONTINUOUS_DELAY;
-		o->refresh_type |= SMOOTH_REFRESH;
-	    }
-	} else if (scrollbar_isDn ()) {
-	    if (!o->scroll_arrow_delay-- && rxvtlib_scr_page (o, DN, 1)) {
-		o->scroll_arrow_delay = SCROLLBAR_CONTINUOUS_DELAY;
-		o->refresh_type |= SMOOTH_REFRESH;
-	    }
-	}
-#endif				/* NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING */
+#endif
 
 	/* Nothing to do! */
 	FD_ZERO (&readfds);
@@ -1133,11 +1122,7 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
 	value.tv_usec = TIMEOUT_USEC;
 	value.tv_sec = 0;
 
-#ifdef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
-	quick_timeout = o->want_refresh;
-#else
 	quick_timeout = o->want_refresh || scrollbar_isUpDn ();
-#endif
 	retval = select (o->num_fds, &readfds, NULL, NULL,
 			 (quick_timeout ? &value : NULL));
 	/* See if we can read from the application */
@@ -1197,19 +1182,6 @@ void rxvtlib_update_screen (rxvtlib * o)
 {E_
     rxvtlib_line_fresh_algorithm (o);
 
-#ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
-    if (scrollbar_isUp ()) {
-	if (!o->scroll_arrow_delay-- && rxvtlib_scr_page (o, UP, 1)) {
-	    o->scroll_arrow_delay = SCROLLBAR_CONTINUOUS_DELAY;
-	    o->refresh_type |= SMOOTH_REFRESH;
-	}
-    } else if (scrollbar_isDn ()) {
-	if (!o->scroll_arrow_delay-- && rxvtlib_scr_page (o, DN, 1)) {
-	    o->scroll_arrow_delay = SCROLLBAR_CONTINUOUS_DELAY;
-	    o->refresh_type |= SMOOTH_REFRESH;
-	}
-    }
-#endif				/* NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING */
     if (o->want_refresh) {
 	rxvtlib_scr_refresh (o, o->refresh_type);
 	rxvtlib_scrollbar_show (o, 1);
@@ -1313,23 +1285,6 @@ void rxvt_process_x_event (rxvtlib * o)
             o->cmd_fd = -1;
         }
     }
-#ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
-    if (scrollbar_isUp ()) {
-	if (!o->scroll_arrow_delay-- && rxvtlib_scr_page (o, UP, 1)) {
-            o->refresh_count = 0;
-            o->refresh_limit = 1;
-	    o->scroll_arrow_delay = SCROLLBAR_CONTINUOUS_DELAY;
-	    o->refresh_type |= SMOOTH_REFRESH;
-	}
-    } else if (scrollbar_isDn ()) {
-	if (!o->scroll_arrow_delay-- && rxvtlib_scr_page (o, DN, 1)) {
-            o->refresh_count = 0;
-            o->refresh_limit = 1;
-	    o->scroll_arrow_delay = SCROLLBAR_CONTINUOUS_DELAY;
-	    o->refresh_type |= SMOOTH_REFRESH;
-	}
-    }
-#endif
 }
 
 /* cmd_getc() - Return next input character */
@@ -1463,6 +1418,34 @@ void rxvtlib_destroy_windows (rxvtlib * o)
     }
 }
 
+static unsigned long millitime (void)
+{
+    struct timeval tv;
+    gettimeofday (&tv, NULL);
+    return (unsigned long) tv.tv_sec * 1000ULL + (unsigned long) tv.tv_usec / 1000ULL;
+}
+
+static void scrollbar_button_repeat (rxvtlib * o)
+{
+    if (scrollbar_isUp ()) {
+        unsigned long ms;
+        ms = millitime ();
+        if (ms > o->scroll_arrow_timestamp_ms + SCROLLBAR_REPEAT_DELAY && rxvtlib_scr_page (o, UP, 1)) {
+            o->scroll_arrow_timestamp_ms = ms;
+            o->refresh_type |= SMOOTH_REFRESH;
+            rxvtlib_update_screen (o);
+        }
+    } else if (scrollbar_isDn ()) {
+        unsigned long ms;
+        ms = millitime ();
+        if (ms > o->scroll_arrow_timestamp_ms + SCROLLBAR_REPEAT_DELAY && rxvtlib_scr_page (o, DN, 1)) {
+            o->scroll_arrow_timestamp_ms = ms;
+            o->refresh_type |= SMOOTH_REFRESH;
+            rxvtlib_update_screen (o);
+        }
+    }
+}
+
 /*{{{ process an X event */
 /* INTPROTO */
 static void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
@@ -1511,7 +1494,16 @@ static void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
 	"SelectionNotify",
 	"ColormapNotify",
 	"ClientMessage",
-	"MappingNotify"
+	"MappingNotify",
+	"GenericEvent",
+	"LASTEvent",
+	"AlarmEvent",
+	"InternalExpose",
+	"EditorCommand",
+	"TickEvent",
+	"ButtonRepeat",
+	"QuitApplication",
+	"CLASTEvent",
     };
 
     fprintf (stderr, "Event type: %-16s, Window: %lx (p:%lx,vt:%lx,sb:%lx)\n",
@@ -1521,6 +1513,11 @@ static void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
 #endif
 
     switch (ev->type) {
+    case TickEvent:
+        if (scrollbar_isUpDn ())
+            scrollbar_button_repeat (o);
+	break;
+
     case KeyPress:
 	rxvtlib_lookup_key (o, ev);
 	break;
@@ -1784,15 +1781,11 @@ static void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
 #endif				/* NO_SCROLLBAR_REPORT */
 	    {
 		if (scrollbar_upButton (ev->xbutton.y)) {
-#ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
-		    o->scroll_arrow_delay = SCROLLBAR_INITIAL_DELAY;
-#endif
+		    o->scroll_arrow_timestamp_ms = millitime ();
 		    if (rxvtlib_scr_page (o, UP, 1))
 			scrollbar_setUp ();
 		} else if (scrollbar_dnButton (ev->xbutton.y)) {
-#ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
-		    o->scroll_arrow_delay = SCROLLBAR_INITIAL_DELAY;
-#endif
+		    o->scroll_arrow_timestamp_ms = millitime ();
 		    if (rxvtlib_scr_page (o, DN, 1))
 			scrollbar_setDn ();
 		} else
@@ -1858,9 +1851,7 @@ static void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
 	if (scrollbar_isUpDn ()) {
 	    scrollbar_setNone ();
 	    rxvtlib_scrollbar_show (o, 0);
-#ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
 	    o->refresh_type &= ~SMOOTH_REFRESH;
-#endif
 	}
 	if (ev->xany.window == o->TermWin.vt) {
 	    if (ev->xbutton.subwindow != None)

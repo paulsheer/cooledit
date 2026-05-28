@@ -556,7 +556,7 @@ static void process_command_line (int argc, char **argv)
 /* {{{  multiple edit windows */
 
 /* maximum number of edit windows: */
-#define N_EDIT 50
+#define N_EDIT 100
 
 /* the editors (a stack of sorts) */
 CWidget *edit[N_EDIT + 1] = {0, 0};

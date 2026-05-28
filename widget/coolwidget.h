@@ -117,7 +117,7 @@ enum { \
 #define CLASTEvent		(LASTEvent + 7)
 
 /* Library is limited to this number of widgets at once */
-#define MAX_NUMBER_OF_WIDGETS	1024
+#define MAX_NUMBER_OF_WIDGETS	2048
 
 /* one of the (long int) "CoolBlue" colors (0-15) that make up the windows, buttons etc */
 #define color_widget(i)		color_pixels[i].raw

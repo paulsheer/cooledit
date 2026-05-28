@@ -144,7 +144,7 @@ typedef struct struct_debug {
     char *break_point_editor;
 } Debug;
 
-extern CWidget *edit[50];
+extern CWidget *edit[];
 extern int current_edit;
 extern int last_edit;
 

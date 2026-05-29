@@ -681,6 +681,12 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
     int force_reread_filelist = 0;
     int show_help_skipped = 0;
 
+    if (directory && filelist && directorylist && textinput && filterinput) {
+        /* all good */
+    } else {
+        return NULL;
+    }
+
 #define HOST            (ipinput ? ipinput->text.data : "")
 
     if ((options & GETFILE_WITH_REMOTE)) {

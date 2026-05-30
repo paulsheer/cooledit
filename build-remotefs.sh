@@ -22,5 +22,5 @@ echo 'building winrand.obj'
 echo 'building remotefs_res.obj'
 /usr/bin/x86_64-w64-mingw32-windres remotefs.rc -o remotefs_res.obj || { echo error4 ; exit 1 ; }
 echo 'building REMOTEFS.EXE'
-/usr/bin/x86_64-w64-mingw32-gcc -o REMOTEFS.EXE  $warn $opt     $def $inc $src winrand.obj remotefs_res.obj c2exe.obj -lws2_32  || { echo error1 ; exit 1 ; }
+/usr/bin/x86_64-w64-mingw32-gcc -o REMOTEFS.EXE  $warn $opt     $def $inc $src winrand.obj remotefs_res.obj c2exe.obj -lws2_32 -lgdi32  || { echo error1 ; exit 1 ; }
 

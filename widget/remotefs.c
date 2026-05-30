@@ -10,6 +10,7 @@
 #include <winsock2.h>
 #include <ws2ipdef.h>
 #include <aclapi.h>
+#include <sddl.h>
 #include <error.h>
 #else
 #include <config.h>
@@ -100,6 +101,7 @@ int option_force_crypto = 0;
 static char *option_home_dir = NULL;
 static char *option_listen_address = NULL;
 static char *option_ip_range = NULL;
+static char *option_keyfile_path = NULL;
 
 char *pathdup_ (const char *p, const char *home_dir);
 
@@ -609,9 +611,41 @@ static int portable_stat (int link, const char *fname, struct portable_stat *p, 
 #define ERROR_EINTR()           (WSAGetLastError () == WSAEINTR)
 #define ERROR_EAGAIN()          (WSAGetLastError () == WSAEWOULDBLOCK || WSAGetLastError () == WSAEINPROGRESS)
 
+struct tray_icon_shared_data_s;
+struct tray_icon_shared_data_s *tray_icon_shared_data = NULL;
+
+void write_to_tray_status_canvas (const char *s);
+
+static void log_date (char *s)
+{
+    struct timeval tv;
+    time_t now;
+    char t[20];
+    gettimeofday (&tv, NULL);
+    now = tv.tv_sec;
+    strftime (t, sizeof (t), "%Y%m%d-%H%M%S", localtime (&now));
+    snprintf (s, 20, "%s.%03d", t, (int) tv.tv_usec / 1000);
+}
+
+static void log_fmt (int error, const char *fmt, ...)
+{
+    char s[256];
+    va_list ap;
+    va_start (ap, fmt);
+    if (tray_icon_shared_data) {
+        log_date (s);
+        strcat (s, ": ");
+        vsnprintf (s + strlen (s), sizeof (s) - strlen (s), fmt, ap);
+        write_to_tray_status_canvas (s);
+    } else {
+        vfprintf (stderr, fmt, ap);
+    }
+    va_end (ap);
+}
+
 static void exitmsg (int c)
 {E_
-    printf ("exitting %d\n", c);
+    log_fmt (0, "exitting %d\n", c);
     exit (c);
 }
 
@@ -624,7 +658,7 @@ static const char *strerrorsocket (void)
 
 static void perrorsocket (const char *msg)
 {E_
-    fprintf (stderr, "%s: %s\n", msg, strerrorsocket ());
+    log_fmt (1, "%s: %s\n", msg, strerrorsocket ());
 }
 
 #else
@@ -673,9 +707,24 @@ static const char *strerrorsocket (void)
     return strerror (errno);
 }
 
+static void log_fmt (int error, const char *fmt, ...)
+{
+    char s[256];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf (s, sizeof (s), fmt, ap);
+    if (error) {
+        fprintf(stderr, "%s", s);
+        fflush (stderr);
+    } else {
+        printf("%s", s);
+    }
+    va_end(ap);
+}
+
 static void perrorsocket (const char *msg)
 {E_
-    perror (msg);
+    log_fmt (1, "%s: [%s]\n", strerror (errno));
 }
 
 #endif
@@ -1484,7 +1533,8 @@ const char *error_code_descr[RFSERR_LAST_INTERNAL_ERROR + 1] = {
     "pathname too long",                        /* 9   RFSERR_PATHNAME_TOO_LONG                     */
     "non-crypto op attempted",                  /* 10  RFSERR_NON_CRYPTO_OP_ATTEMPTED               */
     "server closed shell died",                 /* 11  RFSERR_SERVER_CLOSED_SHELL_DIED              */
-    "last internal error",                      /* 12  RFSERR_LAST_INTERNAL_ERROR                   */
+    "server graceful exit",                     /* 12  RFSERR_SERVER_GRACEFUL_EXIT                  */
+    "last internal error",                      /* 13  RFSERR_LAST_INTERNAL_ERROR                   */
 };
 
 
@@ -1560,7 +1610,7 @@ int remotefs_reader_util (struct remotefs_terminalio *io, const int no_io)
             if (die_on_error && (p = strstr (errmsg, "exit code")) && sscanf (p, "exit code %d", &exit_code) == 1)     /* hack: scan for exit code. see (*5*) */
                 die_exit_code = exit_code;
             else
-                printf("terminal read => %s\n", errmsg);
+                log_fmt (0, "terminal read => %s\n", errmsg);
             return -1;
         }
     }
@@ -5462,7 +5512,7 @@ SOCKET remotefs_listen_socket (const char *listen_address, int listen_port)
     int yes = 1;
 
     if (ipaddress_port_to_remotefs_sockaddr_t (&a, listen_address, listen_port)) {
-        fprintf (stderr, "invalid address: %s\n", listen_address);
+        log_fmt (1, "invalid address: %s\n", listen_address);
         return INVALID_SOCKET;
     }
 
@@ -5478,8 +5528,9 @@ SOCKET remotefs_listen_socket (const char *listen_address, int listen_port)
     }
 
     if (bind (s, (struct sockaddr *) &a, remotefs_sockaddr_t_sockaddrlen (&a)) == SOCKET_ERROR) {
-        fprintf(stderr, "%s:%d ", listen_address, listen_port);
-        perrorsocket ("bind");
+        char msg[256];
+        snprintf (msg, sizeof (msg), "bind(%s:%d)", listen_address, listen_port);
+        perrorsocket (msg);
         closesocket (s);
         return INVALID_SOCKET;
     }
@@ -5487,7 +5538,7 @@ SOCKET remotefs_listen_socket (const char *listen_address, int listen_port)
     return s;
 }
 
-// #define LOG(s)  printf ("line=%d %s=%ld\n", __LINE__, #s, (long) s)
+// #define LOG(s)  log_fmt (0, "line=%d %s=%ld\n", __LINE__, #s, (long) s)
 #define LOG(s)  do { } while(0)
 
 int remotefs_connection_check (const SOCKET s, int write_set)
@@ -7178,7 +7229,7 @@ static void init_service (struct service *serv, const char *listen_address, cons
     serv->iprange_list = iprange_parse (option_range, &c);
     serv->option_range = option_range;
     if (!serv->iprange_list) {
-        fprintf (stderr, "ip range parse err: %s\n", option_range + c);
+        log_fmt (1, "ip range parse err: %s\n", option_range + c);
         exit (1);
     }
     if (serv->h == INVALID_SOCKET)
@@ -7241,7 +7292,7 @@ static void add_client (struct service *serv)
     }
 
     if (count_clients (serv) > 128) {
-        fprintf (stderr, "more than 128 clients, dropping\n");
+        log_fmt (1, "more than 128 clients, dropping\n");
         shutdown (sock_data->sock, 2);
         closesocket (sock_data->sock);
         return;
@@ -7253,7 +7304,7 @@ static void add_client (struct service *serv)
         char t[64];
         SHUTSOCK (sock_data);
         ip_to_text (remotefs_sockaddr_t_address (&client_address), remotefs_sockaddr_t_addresslen (&client_address), t);
-        printf ("incoming address %s not in range %s\n", t, serv->option_range);
+        log_fmt (0, "incoming address %s not in range %s\n", t, serv->option_range);
         return;
     }
 
@@ -7268,7 +7319,7 @@ static void add_client (struct service *serv)
         return;
     }
 
-    printf ("connection established\n");
+    log_fmt (0, "connection established\n");
 
     client_count++;
 
@@ -7285,7 +7336,7 @@ static void add_client (struct service *serv)
     i->next = serv->client_list;
     serv->client_list = i;
 
-    printf ("adding %u\n", i->id);
+    log_fmt (0, "adding %u\n", i->id);
 }
 
 static void process_client (struct client_item *i, int *timeout)
@@ -7306,7 +7357,7 @@ static void process_client (struct client_item *i, int *timeout)
 
 #define ERR(s,m)  \
     do { \
-        printf ("%d: Error: %s, %s, %s, %s\n", i->id, (s), (m), reader_error == READER_ERROR_NOERROR ? strerrorsocket () : "", reader_error_to_str(reader_error)); \
+        log_fmt (0, "%d: Error: %s, %s, %s, %s\n", i->id, (s), (m), reader_error == READER_ERROR_NOERROR ? strerrorsocket () : "", reader_error_to_str(reader_error)); \
         goto errout; \
     } while (0)
 
@@ -7387,7 +7438,7 @@ static void process_client (struct client_item *i, int *timeout)
     }
     i->action = action_descr[action];
     if (action_list[action].logging)
-        printf ("%u: %s%s%s: \n", i->id, i->sock_data.crypto ? (symauth_with_aesni (i->sock_data.crypto_data.symauth) ?  "(aesni) " : "(aes) ") : "", i->action, log_action);
+        log_fmt (0, "%u: %s%s%s: \n", i->id, i->sock_data.crypto ? (symauth_with_aesni (i->sock_data.crypto_data.symauth) ?  "(aesni) " : "(aes) ") : "", i->action, log_action);
     action_ret = (*action_list[action].action_fn) (&i->sd, &r, p, msglen);
     if (action_ret == ACTION_SILENT) {
         if (p)
@@ -7400,7 +7451,7 @@ static void process_client (struct client_item *i, int *timeout)
         goto errout; /* and kill hard */
     if (action_ret) {
         i->kill = KILL_SOFT;
-        printf ("Error: executing action, %s %d\n", i->action, r.len);
+        log_fmt (0, "Error: executing action, %s %d\n", i->action, r.len);
         if (!r.len)
             goto errout; /* and kill hard */
 
@@ -7484,6 +7535,15 @@ static long tv_delta (struct timeval *now, struct timeval *then)
 
 #endif
 
+static void write_shutdown_trailer (struct client_item *i, enum remotefs_error_code err)
+{
+    if (i->sock_data.sock != INVALID_HANDLE_VALUE) {
+        struct cooledit_remote_msg_ack ack;
+        memset (&ack, '\0', sizeof (ack));
+        encode_msg_ack (&ack, err, MSG_VERSION);
+        writer (&i->sock_data, &ack, sizeof (ack));
+    }
+}
 
 static void free_service (struct service *serv)
 {E_
@@ -7494,13 +7554,15 @@ static void free_service (struct service *serv)
         if (i->sd.ttyreader_data)
             close_cterminal (__LINE__, &i->sock_data, &i->sd.ttyreader_data->cterminal, 1);
 #endif
+        write_shutdown_trailer (i, RFSERR_SERVER_GRACEFUL_EXIT);
         SHUTSOCK (&i->sock_data);
         next = i->next;
         i->magic = 0;
         if (i->discard)
-            printf ("removing %u, discarding %ld bytes\n", i->id, (long) i->discard);
+            log_fmt (0, "removing %u, discarding %ld bytes\n", i->id, (long) i->discard);
         else
-            printf ("removing %u\n", i->id);
+            log_fmt (0, "removing %u\n", i->id);
+
         if (i->sock_data.crypto_data.symauth) {
             symauth_free (i->sock_data.crypto_data.symauth);
         }
@@ -7677,7 +7739,7 @@ static void run_service (struct service *serv)
     if (r == WAIT_TIMEOUT) {
         n_ms_events = 0;
     } else if (r == (WAIT_OBJECT_0 + n_ms_events)) {
-        printf("WaitForMultipleObjectsEx returned %d\n", r);
+        log_fmt (1, "WaitForMultipleObjectsEx returned %d\n", r);
         goto clear_events;
     }
 #else
@@ -7703,7 +7765,7 @@ static void run_service (struct service *serv)
     WSANETWORKEVENTS ev;
     memset (&ev, '\0', sizeof (ev));
     if (WSAEnumNetworkEvents (serv->h, accept_event, &ev)) {
-        printf ("1 WSAEnumNetworkEvents error %ld\n", (long) WSAGetLastError ());
+        log_fmt (1, "1 WSAEnumNetworkEvents error %ld\n", (long) WSAGetLastError ());
         abort ();
     }
     if ((ev.lNetworkEvents & FD_ACCEPT))
@@ -7721,7 +7783,7 @@ static void run_service (struct service *serv)
             if (FD_ISSET (xwinfwd_listen_socket (i->sd.xwinfwd_data), &rd))
                 xwinfwd_new_client (i->sd.xwinfwd_data);
             if (xwinfwd_process_sockets (&i->sock_data, i->sd.xwinfwd_data, &rd, &wr)) {
-                printf ("error writing to terminal socket: [%s]\n", strerror (errno));
+                log_fmt (0, "error writing to terminal socket: [%s]\n", strerror (errno));
                 close_cterminal (__LINE__, NULL, &i->sd.ttyreader_data->cterminal, 0);
                 i->kill = KILL_SOFT;
             }
@@ -7732,7 +7794,7 @@ static void run_service (struct service *serv)
         WSANETWORKEVENTS ev;
         memset (&ev, '\0', sizeof (ev));
         if (i->sock_data.sock != INVALID_HANDLE_VALUE && n_ms_events && WSAEnumNetworkEvents (i->sock_data.sock, i->sock_data.ms_event, &ev)) {
-            printf ("WSAEnumNetworkEvents error %ld\n", (long) WSAGetLastError ());
+            log_fmt (1, "WSAEnumNetworkEvents error %ld\n", (long) WSAGetLastError ());
             exit (1);
         }
         if ((ev.lNetworkEvents & FD_CLOSE)) {
@@ -7762,14 +7824,14 @@ static void run_service (struct service *serv)
                 if ((c = recv (i->sock_data.sock, (void *) tbuf, tavail, 0)) > 0) {
                     /* ok */
                 } else if (!c) {
-                    printf ("%d: Error: closed by remote,\n", i->id);
+                    log_fmt (0, "%d: Error: closed by remote,\n", i->id);
                     i->kill = KILL_HARD;
                     if (i->sd.ttyreader_data)
                         close_cterminal (__LINE__, NULL, &i->sd.ttyreader_data->cterminal, 0);
                 } else if (c < 0 && (ERROR_EINTR() || ERROR_EAGAIN())) {
                     /* ok */
                 } else {
-                    printf ("%d: Error: %s,\n", i->id, strerrorsocket ());
+                    log_fmt (0, "%d: Error: %s,\n", i->id, strerrorsocket ());
                 }
                 if (c > 0) {
                     (*tupdate) += c;
@@ -7882,7 +7944,7 @@ static void run_service (struct service *serv)
                     if (send_blind_message (&i->sock_data, REMOTEFS_ACTION_SHELLREAD, 0 /* multiplex */, 0 /* xfwdstatus */, (char *) (tt->rd.buf + tt->rd.written), l, NULL, 0))
 #endif
                     {
-                        printf ("error writing to terminal socket: [%s]\n", strerror (errno));
+                        log_fmt (0, "error writing to terminal socket: [%s]\n", strerror (errno));
                         close_cterminal (__LINE__, NULL, &tt->cterminal, 0);
                         i->kill = KILL_SOFT;
                     }
@@ -7924,11 +7986,7 @@ static void run_service (struct service *serv)
 #endif
 #endif
         if (now > i->last_accessed + 25 /* for firewalls that are 30s timeout */) {
-            struct cooledit_remote_msg_ack ack;
-            memset (&ack, '\0', sizeof (ack));
-            encode_msg_ack (&ack, RFSERR_SERVER_CLOSED_IDLE_CLIENT, MSG_VERSION);
-            if (i->sock_data.sock != INVALID_HANDLE_VALUE)
-                writer (&i->sock_data, &ack, sizeof (ack));
+            write_shutdown_trailer (i, RFSERR_SERVER_CLOSED_IDLE_CLIENT);
             i->kill = KILL_HARD;
         }
 
@@ -7938,9 +7996,9 @@ static void run_service (struct service *serv)
             next = i->next;
             i->magic = 0;
             if (i->discard)
-                printf ("removing %u, discarding %ld bytes\n", i->id, (long) i->discard);
+                log_fmt (0, "removing %u, discarding %ld bytes\n", i->id, (long) i->discard);
             else
-                printf ("removing %u\n", i->id);
+                log_fmt (0, "removing %u\n", i->id);
             if (i->sock_data.crypto_data.symauth) {
                 symauth_free (i->sock_data.crypto_data.symauth);
             }
@@ -7992,8 +8050,7 @@ static int kill_received = 0;
 
 static void kill_handler (int x)
 {
-    printf ("exitting\n");
-    fflush (stdout);
+    log_fmt (0, "exitting\n");
     kill_received = 1;
 }
 
@@ -8020,7 +8077,7 @@ void remotefs_serverize (void)
 
     err = WSAStartup (wVersionRequested, &wsaData);
     if (err != 0) {
-        printf ("WSAStartup failed with error: %d\n", err);
+        log_fmt (1, "WSAStartup failed with error: %d\n", err);
         exit (1);
     }
 #else
@@ -8031,7 +8088,7 @@ void remotefs_serverize (void)
 
     init_service (&serv, option_listen_address, option_ip_range);
 
-    printf ("running\n");
+    log_fmt (0, "running\n");
 
     while (!kill_received) {
         run_service (&serv);
@@ -8191,14 +8248,14 @@ static void read_keyfile (const char *n)
 {E_
     FILE *f = NULL;
     struct stat st;
-    printf ("reading AES key from %s\n", n);
+    log_fmt (1, "reading AES key from %s\n", n);
     memset (&st, '\0', sizeof (st));
     if (stat (n, &st)) {
         perror (n);
         exit (1);
     }
     if (st.st_size <= 2) {
-        fprintf (stderr, "AES key file %s is empty\n", n);
+        log_fmt (1, "AES key file %s is empty\n", n);
         exit (1);
     }
     f = fopen (n, "rb");
@@ -8214,7 +8271,7 @@ static void read_keyfile (const char *n)
     }
     string_chomp_ ((char *) the_key);
     if (!strlen ((char *) the_key)) {
-        fprintf (stderr, "error, file %s is empty\n", n);
+        log_fmt (1, "error, file %s is empty\n", n);
         fclose (f);
         exit (1);
     }
@@ -8223,6 +8280,8 @@ static void read_keyfile (const char *n)
 
 #ifdef MSWIN
 
+static void ShowStatusWindow (void);
+
 #define REMOTEFS_SERVICE_NAME  "RemoteFS"
 
 static SERVICE_STATUS        g_svc_status;
@@ -8230,6 +8289,94 @@ static SERVICE_STATUS_HANDLE g_svc_handle;
 
 static void StartTrayIcon (void);
 static void StopTrayIcon (void);
+
+
+#define WINDOWS_CONSOLE_ROWS    40
+#define WINDOWS_CONSOLE_COLS    100
+#define WINDOWS_CONSOLE_SIZE    (WINDOWS_CONSOLE_ROWS * WINDOWS_CONSOLE_COLS)
+#define WINDOWS_CONSOLE_SHM     "Global\\RemoteFS_Console"
+
+struct tray_icon_shared_data_s {
+    int out_row;
+    char console[WINDOWS_CONSOLE_SIZE];
+};
+
+static MSWIN_HANDLE g_console_mapping = NULL;
+
+void write_to_tray_status_canvas (const char *s)
+{
+    int l;
+    l = strlen (s);
+    while (l > 0 && (unsigned char) s[l - 1] <= ' ')
+        l--;
+    if (l > WINDOWS_CONSOLE_COLS)
+        l = WINDOWS_CONSOLE_COLS;
+    memcpy (&tray_icon_shared_data->console[(tray_icon_shared_data->out_row + 0) * WINDOWS_CONSOLE_COLS], s, l);
+    memset (&tray_icon_shared_data->console[(tray_icon_shared_data->out_row + 1) * WINDOWS_CONSOLE_COLS], ' ', WINDOWS_CONSOLE_COLS);
+    tray_icon_shared_data->out_row++;
+    if (tray_icon_shared_data->out_row >= WINDOWS_CONSOLE_ROWS - 1)
+        tray_icon_shared_data->out_row = 4;
+}
+
+#define CONPR(i, fmt, arg) \
+    do { char *_p = tray_icon_shared_data->console + (i) * WINDOWS_CONSOLE_COLS; \
+         snprintf (_p, WINDOWS_CONSOLE_COLS, fmt, arg); \
+         memset (_p + strlen (_p), ' ', WINDOWS_CONSOLE_COLS - strlen (_p)); } while(0)
+
+static void windows_console_clear (void)
+{
+    int i;
+    for (i = 0; i < WINDOWS_CONSOLE_ROWS; i++)
+        CONPR (i, "%s", "");
+    tray_icon_shared_data->out_row = 4;
+}
+
+static void windows_console_init (void)
+{
+    int clear_canvas = 0;
+    if (tray_icon_shared_data)
+        return;
+    g_console_mapping = OpenFileMappingA (FILE_MAP_ALL_ACCESS, FALSE, WINDOWS_CONSOLE_SHM);
+    if (!g_console_mapping) {
+	SECURITY_ATTRIBUTES sa;
+	PSECURITY_DESCRIPTOR pSD = NULL;
+	sa.nLength = sizeof (sa);
+	sa.bInheritHandle = FALSE;
+	sa.lpSecurityDescriptor = NULL;
+	if (ConvertStringSecurityDescriptorToSecurityDescriptorA ("D:(A;OICI;GA;;;WD)", SDDL_REVISION_1, &pSD, NULL))
+	    sa.lpSecurityDescriptor = pSD;
+        g_console_mapping = CreateFileMappingA (MSWIN_INVALID_HANDLE_VALUE, &sa, PAGE_READWRITE, 0, sizeof (struct tray_icon_shared_data_s), WINDOWS_CONSOLE_SHM);
+        clear_canvas = 1;
+	if (pSD)
+	    LocalFree (pSD);
+    }
+    if (g_console_mapping)
+        tray_icon_shared_data = (struct tray_icon_shared_data_s *) MapViewOfFile (g_console_mapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof (struct tray_icon_shared_data_s));
+    if (tray_icon_shared_data && clear_canvas)
+        windows_console_clear ();
+}
+
+static void windows_console_cleanup (void)
+{
+    if (tray_icon_shared_data) {
+        UnmapViewOfFile (tray_icon_shared_data);
+        tray_icon_shared_data = NULL;
+    }
+    if (g_console_mapping) {
+        CloseHandle (g_console_mapping);
+        g_console_mapping = NULL;
+    }
+}
+
+static void windows_console_set_status (void)
+{
+    windows_console_init ();
+    CONPR (0, "listen interface: %s", option_listen_address ? option_listen_address : "<not set>");
+    CONPR (1, "allowed remote IP range: %s", option_ip_range ? option_ip_range : "<not set>");
+    CONPR (2, "AES key location: %s", option_keyfile_path ? option_keyfile_path : "<not set>");
+    CONPR (3, "%s", "");
+}
+
 
 static VOID WINAPI ServiceCtrlHandler (DWORD dwControl)
 {E_
@@ -8273,6 +8420,8 @@ static VOID WINAPI ServiceMain (DWORD dwArgc, LPTSTR *lpszArgv)
     g_svc_status.dwCheckPoint = 0;
     g_svc_status.dwWaitHint = 0;
     SetServiceStatus (g_svc_handle, &g_svc_status);
+
+    windows_console_set_status ();
 
     StartTrayIcon ();
     remotefs_serverize ();
@@ -8384,18 +8533,18 @@ static int UninstallService (void)
     hSCManager = OpenSCManagerA (NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hSCManager) {
         if (GetLastError () == ERROR_ACCESS_DENIED)
-            fprintf (stderr, "Access denied. You must run this program as Administrator to install or uninstall the service.\n");
+            log_fmt (1, "Access denied. You must run this program as Administrator to install or uninstall the service.\n");
         else
-            fprintf (stderr, "OpenSCManager failed: %ld\n", GetLastError ());
+            log_fmt (1, "OpenSCManager failed: %ld\n", GetLastError ());
         return 1;
     }
 
     hService = OpenServiceA (hSCManager, REMOTEFS_SERVICE_NAME, SERVICE_STOP | DELETE);
     if (!hService) {
         if (GetLastError () == ERROR_SERVICE_DOES_NOT_EXIST) {
-            fprintf (stderr, "RemoteFS service is not installed.\n");
+            log_fmt (1, "RemoteFS service is not installed.\n");
         } else {
-            fprintf (stderr, "OpenService failed: %ld\n", GetLastError ());
+            log_fmt (1, "OpenService failed: %ld\n", GetLastError ());
             ret = 1;
         }
     } else {
@@ -8404,10 +8553,10 @@ static int UninstallService (void)
         if (ControlService (hService, SERVICE_CONTROL_STOP, &ss))
             fprintf (stdout, "RemoteFS service stopped.\n");
         if (!DeleteService (hService)) {
-            fprintf (stderr, "DeleteService failed: %ld\n", GetLastError ());
+            log_fmt (1, "DeleteService failed: %ld\n", GetLastError ());
             ret = 1;
         } else {
-            fprintf (stdout, "RemoteFS service uninstalled successfully.\n");
+            log_fmt (0, "RemoteFS service uninstalled successfully.\n");
         }
         CloseServiceHandle (hService);
     }
@@ -8440,6 +8589,7 @@ static int UninstallService (void)
 #define IDM_TRAY_START   2001
 #define IDM_TRAY_STOP    2002
 #define IDM_TRAY_UNINSTALL 2003
+#define IDM_TRAY_STATUS   2004
 
 static HWND g_tray_hwnd = NULL;
 static NOTIFYICONDATAA g_nid;
@@ -8509,6 +8659,8 @@ static LRESULT CALLBACK TrayWndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                 AppendMenuA (hMenu, MF_STRING, IDM_TRAY_START, "&Start RemoteFS Service");
             AppendMenuA (hMenu, MF_SEPARATOR, 0, NULL);
             AppendMenuA (hMenu, MF_STRING, IDM_TRAY_UNINSTALL, "&Uninstall RemoteFS Service");
+            AppendMenuA (hMenu, MF_SEPARATOR, 0, NULL);
+            AppendMenuA (hMenu, MF_STRING, IDM_TRAY_STATUS, "&Status");
             SetForegroundWindow (hwnd);
             TrackPopupMenu (hMenu, TPM_RIGHTBUTTON | TPM_RIGHTALIGN, pt.x, pt.y, 0, hwnd, NULL);
             DestroyMenu (hMenu);
@@ -8521,6 +8673,8 @@ static LRESULT CALLBACK TrayWndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             SvcStop ();
         else if (LOWORD (wParam) == IDM_TRAY_UNINSTALL)
             UninstallService ();
+        else if (LOWORD (wParam) == IDM_TRAY_STATUS)
+            ShowStatusWindow ();
         break;
     case WM_DESTROY:
         Shell_NotifyIconA (NIM_DELETE, &g_nid);
@@ -8600,6 +8754,128 @@ static void StopTrayIcon (void)
     g_tray_running = 0;
 }
 
+#define IDT_STATUS_REFRESH 500
+
+static HWND g_status_hwnd = NULL;
+static HFONT g_status_font = NULL;
+
+static LRESULT CALLBACK StatusWndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{E_
+    switch (msg) {
+    case WM_CREATE:
+    {
+        LOGFONTA lf;
+        HDC hdc;
+        TEXTMETRICA tm;
+        RECT rc;
+        memset (&lf, 0, sizeof (lf));
+        lf.lfHeight = 10;
+        lf.lfPitchAndFamily = FIXED_PITCH | FF_MODERN;
+        strcpy (lf.lfFaceName, "Courier");
+        g_status_font = CreateFontIndirectA (&lf);
+        hdc = GetDC (hwnd);
+        if (g_status_font)
+            SelectObject (hdc, g_status_font);
+        GetTextMetricsA (hdc, &tm);
+        ReleaseDC (hwnd, hdc);
+        rc.left = 0;
+        rc.top = 0;
+        rc.right = WINDOWS_CONSOLE_COLS * tm.tmAveCharWidth;
+        rc.bottom = WINDOWS_CONSOLE_ROWS * tm.tmHeight;
+        AdjustWindowRect (&rc, WS_POPUP | WS_CAPTION | WS_SYSMENU, FALSE);
+        SetWindowPos (hwnd, NULL, 0, 0,
+                       rc.right - rc.left, rc.bottom - rc.top,
+                       SWP_NOMOVE | SWP_NOZORDER);
+        SetTimer (hwnd, IDT_STATUS_REFRESH, 250, NULL);
+        SetCapture (hwnd);
+        return 0;
+    }
+    case WM_TIMER:
+        if (wParam == IDT_STATUS_REFRESH)
+            InvalidateRect (hwnd, NULL, FALSE);
+        return 0;
+    case WM_PAINT:
+    {
+        PAINTSTRUCT ps;
+        TEXTMETRICA tm;
+        int char_w, char_h;
+        HDC hdc = BeginPaint (hwnd, &ps);
+        HFONT oldFont = NULL;
+        int y;
+        if (g_status_font)
+            oldFont = SelectObject (hdc, g_status_font);
+        GetTextMetricsA (hdc, &tm);
+        char_w = tm.tmAveCharWidth;
+        char_h = tm.tmHeight;
+        SetBkMode (hdc, TRANSPARENT);
+        windows_console_init ();
+        for (y = 0; y < WINDOWS_CONSOLE_ROWS; y++) {
+            int x;
+            for (x = 0; x < WINDOWS_CONSOLE_COLS; x++) {
+                char ch = tray_icon_shared_data->console[y * WINDOWS_CONSOLE_COLS + x];
+                if (!ch)
+                    ch = '-';
+                TextOutA (hdc, x * char_w, y * char_h, &ch, 1);
+            }
+        }
+        if (oldFont)
+            SelectObject (hdc, oldFont);
+        EndPaint (hwnd, &ps);
+        return 0;
+    }
+    case WM_LBUTTONDOWN:
+    case WM_RBUTTONDOWN:
+    case WM_MBUTTONDOWN:
+    {
+        POINT pt;
+        RECT rc;
+        pt.x = (short) LOWORD (lParam);
+        pt.y = (short) HIWORD (lParam);
+        ClientToScreen (hwnd, &pt);
+        GetWindowRect (hwnd, &rc);
+        if (!PtInRect (&rc, pt))
+            DestroyWindow (hwnd);
+        return 0;
+    }
+    case WM_DESTROY:
+        ReleaseCapture ();
+        KillTimer (hwnd, IDT_STATUS_REFRESH);
+        if (g_status_font) {
+            DeleteObject (g_status_font);
+            g_status_font = NULL;
+        }
+        g_status_hwnd = NULL;
+        return 0;
+    }
+    return DefWindowProcA (hwnd, msg, wParam, lParam);
+}
+
+static void ShowStatusWindow (void)
+{E_
+    if (g_status_hwnd)
+        return;
+    {
+        HINSTANCE hInst = GetModuleHandleA (NULL);
+        WNDCLASSA wc, existing;
+        memset (&wc, 0, sizeof (wc));
+        wc.lpfnWndProc = StatusWndProc;
+        wc.hInstance = hInst;
+        wc.lpszClassName = "RemoteFSStatusClass";
+        if (!GetClassInfoA (hInst, "RemoteFSStatusClass", &existing))
+            RegisterClassA (&wc);
+        g_status_hwnd = CreateWindowExA (WS_EX_TOPMOST, "RemoteFSStatusClass",
+                                          "RemoteFS Status",
+                                          WS_POPUP | WS_CAPTION | WS_SYSMENU,
+                                          CW_USEDEFAULT, CW_USEDEFAULT,
+                                          CW_USEDEFAULT, CW_USEDEFAULT,
+                                          NULL, NULL, hInst, NULL);
+        if (g_status_hwnd) {
+            ShowWindow (g_status_hwnd, SW_SHOW);
+            UpdateWindow (g_status_hwnd);
+        }
+    }
+}
+
 #endif /* MSWIN */
 
 #ifdef MSWIN
@@ -8609,7 +8885,6 @@ int main (int argc, char **argv)
 #endif
 {E_
     int i;
-    const char *keyfile = NULL;
 #ifdef MSWIN
     wchar_t **argv;
     int argc;
@@ -8675,11 +8950,10 @@ int main (int argc, char **argv)
         } else if (!strcmp (p, "--force-crypto")) {
             option_force_crypto = 1;
         } else if (!strcmp (p, "-k") || !strcmp (p, "--key-file")) {
-            keyfile = 0;
             i++;
             if (i >= argc)
                 goto usage;
-            keyfile = wchar_to_char (argv[i]);
+            option_keyfile_path = wchar_to_char (argv[i]);
         } else if (p[0] == '-') {
             goto usage;
         } else {
@@ -8688,13 +8962,13 @@ int main (int argc, char **argv)
     }
 
     if (option_no_crypto && option_force_crypto) {
-        fprintf (stderr, "You cannot specify both --force-crypto and --no-crypto.\n");
+        log_fmt (1, "You cannot specify both --force-crypto and --no-crypto.\n");
         exit (1);
     }
 
     init_random ();
 
-    if (!keyfile) {
+    if (!option_keyfile_path) {
         FILE *f;
 #ifdef MSWIN
         {
@@ -8704,31 +8978,31 @@ int main (int argc, char **argv)
                 _snprintf (keyfile_buf, sizeof (keyfile_buf), "%s\\Cooledit", progdata);
                 CreateDirectoryA (keyfile_buf, NULL);
                 _snprintf (keyfile_buf, sizeof (keyfile_buf), "%s\\Cooledit\\AESKEYFILE", progdata);
-                keyfile = keyfile_buf;
+                option_keyfile_path = keyfile_buf;
             } else {
-                keyfile = "AESKEYFILE";
+                option_keyfile_path = "AESKEYFILE";
             }
         }
 #else
-        keyfile = "AESKEYFILE";
+        option_keyfile_path = "AESKEYFILE";
 #endif
-        f = fopen (keyfile, "rb");
+        f = fopen (option_keyfile_path, "rb");
         if (f) {
             fclose (f);
         } else if (!f && errno == ENOENT) {
             /* ok, doesn't exist yet*/
-            printf ("creating keyfile %s\n", keyfile);
-            create_aes_key (keyfile);
+            log_fmt (1, "creating keyfile %s\n", option_keyfile_path);
+            create_aes_key (option_keyfile_path);
         } else if (!f) {
-            perror (keyfile);
+            perror (option_keyfile_path);
             exit (1);
         }
     }
 
-    read_keyfile (keyfile);
+    read_keyfile (option_keyfile_path);
 
 #ifdef MSWIN
-    restrict_keyfile_to_system (keyfile);
+    restrict_keyfile_to_system (option_keyfile_path);
 
     if (install_mode) {
         char *homedir = NULL;
@@ -8739,7 +9013,7 @@ int main (int argc, char **argv)
             if (homedir && *homedir)
                 homedir = windows_path_to_unix (homedir);
         }
-        return InstallService (install_addr, install_range, keyfile, homedir);
+        return InstallService (install_addr, install_range, option_keyfile_path, homedir);
     }
     if (uninstall_mode)
         return UninstallService ();
@@ -8764,7 +9038,7 @@ int main (int argc, char **argv)
         password_to_key (aeskey, &aeskey_len, the_key, klen, &bits_of_complexity);
 #define MIN_COMPLEXITY           ((SYMAUTH_AES_KEY_BYTES * 8) * 3 / 4)
         if (bits_of_complexity < MIN_COMPLEXITY) {
-            fprintf (stderr, "password error: complexity %d less than %d bits\n", bits_of_complexity, MIN_COMPLEXITY);
+            log_fmt (1, "password error: complexity %d less than %d bits\n", bits_of_complexity, MIN_COMPLEXITY);
             exit (1);
         }
     }
@@ -8845,9 +9119,9 @@ int main (int argc, char **argv)
     };
     if (!StartServiceCtrlDispatcherA (svcTable)) {
         if (GetLastError () == ERROR_FAILED_SERVICE_CONTROLLER_CONNECT) {
-            fprintf (stderr, "RemoteFS: not running as a service. Use --console to run interactively.\n");
+            log_fmt (1, "RemoteFS: not running as a service. Use --console to run interactively.\n");
         } else {
-            fprintf (stderr, "StartServiceCtrlDispatcher failed: %ld\n", GetLastError ());
+            log_fmt (1, "StartServiceCtrlDispatcher failed: %ld\n", GetLastError ());
         }
         return 1;
     }
@@ -8969,6 +9243,8 @@ int main (int argc, char **argv)
     CStr y;
     double w;
     union float_conv f;
+
+    (void) option_keyfile_path;
 
     memset (buf, '\0', sizeof (buf));
 

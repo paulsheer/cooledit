@@ -91,7 +91,7 @@ static inline void comp_free (struct comp *p)
     }
 }
 
-#define COMP_DUMP(p)					\
+#define COMP_DROP(p)					\
 	    if (u == p)					\
 		u = p->next;				\
 	    if (p->next)				\
@@ -110,13 +110,13 @@ static struct comp *comp_strip (struct comp *p)
     for (p = u; p; p = next) {
 	next = p->next;
 	if (!*p->name || !strcmp (p->name, ".")) {
-	    COMP_DUMP (p);
+	    COMP_DROP (p);
 	} else if (!strcmp (p->name, "..")) {
 	    struct comp *t;
 	    if ((t = p->prev)) {
-		COMP_DUMP (t);
+		COMP_DROP (t);
 	    }
-	    COMP_DUMP (p);
+	    COMP_DROP (p);
 	}
     }
     if (!u) {
@@ -172,11 +172,9 @@ static struct comp *comp_tize (const char *s)
     return p;
 }
 
+#ifndef MSWIN
 static inline char *comp_readlink (struct comp *p)
 {E_
-#ifdef MSWIN
-    return "";
-#else
     char *s;
     int r;
     static char buf[2048];
@@ -193,9 +191,10 @@ static inline char *comp_readlink (struct comp *p)
     buf[r] = '\0';
     free (s);
     return buf;
-#endif
 }
+#endif
 
+#ifndef MSWIN
 /* if there is an error, this just returns as far as it got */
 static inline struct comp *resolve_symlink (struct comp *path)
 {E_
@@ -233,6 +232,7 @@ static inline struct comp *resolve_symlink (struct comp *path)
     }
     return path;
 }
+#endif
 
 static char *strdupextra (const char *s)
 {E_
@@ -246,21 +246,11 @@ static char *strdupextra (const char *s)
 
 char *pathdup_debug (const char *cfile, int cline, const char *host, const char *p, char *errmsg)
 {E_
-    static char out[MAX_PATH_LEN] = "";
-    static char in[MAX_PATH_LEN] = "";
-    static char host_[MAX_PATH_LEN] = "";
+    char out[MAX_PATH_LEN] = "";
     struct remotefs *u;
 
     if (!host || !*host)
         host = REMOTEFS_LOCAL;
-
-    if ((!strcmp (in, p) || !strcmp (out, p)) && !strcmp (host_, host))
-        return strdupextra (out);
-
-    strncpy (in, p, MAX_PATH_LEN);
-    in[MAX_PATH_LEN - 1] = '\0';
-
-    strcpy (host_, host);
 
     u = remotefs_lookup (host, NULL);
     if ((*u->remotefs_realpathize) (u, p, remotefs_home_dir (u), out, MAX_PATH_LEN, errmsg))
@@ -281,7 +271,11 @@ char *pathdup_ (const char *p, const char *home_dir)
         get_current_wd (cwd, MAX_PATH_LEN);
 	s = comp_cat (comp_tize (cwd), comp_tize (p));
     }
+#ifdef MSWIN
+    s = comp_strip (comp_first (s));
+#else
     s = resolve_symlink (s);
+#endif
     r = comp_combine (comp_last (s));
     comp_free (s);
     return r;

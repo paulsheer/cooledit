@@ -35,7 +35,8 @@ enum remotefs_error_code {
     RFSERR_PATHNAME_TOO_LONG,                   /* 9 */
     RFSERR_NON_CRYPTO_OP_ATTEMPTED,             /* 10 */
     RFSERR_SERVER_CLOSED_SHELL_DIED,            /* 11 */
-    RFSERR_LAST_INTERNAL_ERROR,                 /* 12 */
+    RFSERR_SERVER_GRACEFUL_EXIT,                /* 12 */
+    RFSERR_LAST_INTERNAL_ERROR,                 /* 13 */
 
 /* The combined errors from: opengroup.org, Linux, FreeBSD, Solaris, HP-UX,
    and Windows _sys_errlist are listed below.  This excludes the Windows WSA

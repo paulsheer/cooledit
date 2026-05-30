@@ -195,7 +195,7 @@ static enum remotfs_password_return password_remotfs_password_cb (void *user_dat
 
     if (!password_loaded) {
         password_loaded = 1;
-        if (password_load ()) {
+        if (password_load_ ()) {
             fprintf (stderr, "Error Loading Passwords: ~%s: %s\n", PASSWORD_FILE, get_sys_error (""));
         }
     }

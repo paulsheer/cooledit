@@ -360,7 +360,8 @@ enum remotefs_error_code {
 
 #define REMOTEFS_LOCAL                          "localhost"
 
-void remotefs_serverize (const char *listen_address, const char *acceptrange);
+void remotefs_cooledit_main_serverize (char *range);
+void remotefs_serverize (void);
 void remotefs_clean (void);
 
 struct file_entry;
@@ -370,6 +371,7 @@ void remotefs_set_display_log_for_wtmp (const char *display);
 
 void remotefs_free (struct remotefs *rfs);
 struct remotefs *remotefs_new (const char *host, char *errmsg);
+int remotefs_drop (const char *host_);
 struct remotefs *remotefs_lookup (const char *host_, char *directory);
 #define the_remotefs_local                      (remotefs_lookup (REMOTEFS_LOCAL, NULL))
 

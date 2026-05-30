@@ -9,6 +9,7 @@
 #include <config-mswin.h>
 #include <winsock2.h>
 #include <ws2ipdef.h>
+#include <aclapi.h>
 #include <error.h>
 #else
 #include <config.h>
@@ -96,8 +97,9 @@
 int option_remote_timeout = 2000;
 int option_no_crypto = 0;
 int option_force_crypto = 0;
-char *option_home_dir = NULL;
-
+static char *option_home_dir = NULL;
+static char *option_listen_address = NULL;
+static char *option_ip_range = NULL;
 
 char *pathdup_ (const char *p, const char *home_dir);
 
@@ -5995,9 +5997,15 @@ always look for a cached entry even if it came after a previous Ctrl-R.
         return -1;
 
     if (cached_behav != CACHE_BEHAVIOR_NOTCACHEABLE) {
-        cache_entry = (CStr *) malloc (sizeof (*cache_entry));
-        *cache_entry = CStr_cpy_ (response->data, response->len);
-        hash_table_insert (rfs->remotefs_private->cache, (unsigned long) action, (const unsigned char *) msg->data, msg->len, (void *) cache_entry, rfs->remotefs_private->cache_epoch);
+        const unsigned char *p, *end;
+        unsigned long long v;
+        end = (const unsigned char *) response->data + response->len;
+        p = (const unsigned char *) response->data;
+        if (!decode_uint (&p, end, &v) && v == REMOTEFS_SUCCESS) {
+            cache_entry = (CStr *) malloc (sizeof (*cache_entry));
+            *cache_entry = CStr_cpy_ (response->data, response->len);
+            hash_table_insert (rfs->remotefs_private->cache, (unsigned long) action, (const unsigned char *) msg->data, msg->len, (void *) cache_entry, rfs->remotefs_private->cache_epoch);
+        }
     }
 
     if (from_cache)
@@ -6301,6 +6309,38 @@ static int remotefs_start (struct remotefs *rfs, const char *host, char *home_di
         }
     }
     return 0;
+}
+
+/* return non-zero on error */
+int remotefs_drop (const char *host_)
+{E_
+    int r;
+    char host[256];
+    char addr[64];
+    int addrlen = 0;
+    struct remotefs_item *i, *prev = NULL;
+    if (!host_)
+        host_ = REMOTEFS_LOCAL;
+    if (!strcmp (host_, REMOTEFS_LOCAL)) {
+        strcpy (host, host_);
+    } else {
+        if ((r = text_to_ip (host_, NULL, addr, &addrlen)))
+            return -1;
+        ip_to_text (addr, addrlen, host);
+    }
+    for (i = remotefs_list; i; i = i->next) {
+        if (!strcmp (i->host, host)) {
+            if (prev)
+                prev->next = i->next;
+            else
+                remotefs_list = i->next;
+            remotefs_private_cleanup (i->impl.remotefs_private);
+            free (i);
+            return 0;
+        }
+        prev = i;
+    }
+    return -1;
 }
 
 struct remotefs *remotefs_lookup (const char *host_, char *last_directory)
@@ -7960,7 +8000,14 @@ static void kill_handler (int x)
 #endif
 #endif
 
-void remotefs_serverize (const char *listen_address, const char *option_range)
+void remotefs_cooledit_main_serverize (char *range)
+{E_
+    option_listen_address = "0.0.0.0";
+    option_ip_range = range;
+    remotefs_serverize ();
+}
+
+void remotefs_serverize (void)
 {E_
     struct service serv;
 
@@ -7982,7 +8029,7 @@ void remotefs_serverize (const char *listen_address, const char *option_range)
     signal (SIGINT, kill_handler);
 #endif
 
-    init_service (&serv, listen_address, option_range);
+    init_service (&serv, option_listen_address, option_ip_range);
 
     printf ("running\n");
 
@@ -8060,6 +8107,53 @@ static unsigned char get_range_char (void)
     return digits[c];
 }
 
+#ifdef MSWIN
+static void restrict_keyfile_to_system (const char *n)
+{E_
+    SID_IDENTIFIER_AUTHORITY SIDAuthNT = SECURITY_NT_AUTHORITY;
+    EXPLICIT_ACCESSA ea[2];
+    PACL pNewDACL = NULL;
+    PSID pSystemSID = NULL;
+    PSID pAdminSID = NULL;
+    DWORD err;
+
+    if (!AllocateAndInitializeSid (&SIDAuthNT, 1, SECURITY_LOCAL_SYSTEM_RID,
+                                    0, 0, 0, 0, 0, 0, 0, &pSystemSID))
+        return;
+    if (!AllocateAndInitializeSid (&SIDAuthNT, 2, SECURITY_BUILTIN_DOMAIN_RID,
+                                    DOMAIN_ALIAS_RID_ADMINS,
+                                    0, 0, 0, 0, 0, 0, &pAdminSID)) {
+        FreeSid (pSystemSID);
+        return;
+    }
+
+    memset (ea, 0, sizeof (ea));
+    ea[0].grfAccessPermissions = GENERIC_READ | GENERIC_EXECUTE;
+    ea[0].grfAccessMode = SET_ACCESS;
+    ea[0].grfInheritance = NO_INHERITANCE;
+    ea[0].Trustee.TrusteeForm = TRUSTEE_IS_SID;
+    ea[0].Trustee.TrusteeType = TRUSTEE_IS_USER;
+    ea[0].Trustee.ptstrName = (LPSTR) pSystemSID;
+
+    ea[1].grfAccessPermissions = GENERIC_READ | GENERIC_EXECUTE;
+    ea[1].grfAccessMode = SET_ACCESS;
+    ea[1].grfInheritance = NO_INHERITANCE;
+    ea[1].Trustee.TrusteeForm = TRUSTEE_IS_SID;
+    ea[1].Trustee.TrusteeType = TRUSTEE_IS_GROUP;
+    ea[1].Trustee.ptstrName = (LPSTR) pAdminSID;
+
+    err = SetEntriesInAclA (2, ea, NULL, &pNewDACL);
+    if (err == ERROR_SUCCESS) {
+        SetNamedSecurityInfoA ((char *) n, SE_FILE_OBJECT,
+            DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
+            NULL, NULL, pNewDACL, NULL);
+        LocalFree (pNewDACL);
+    }
+    FreeSid (pSystemSID);
+    FreeSid (pAdminSID);
+}
+#endif
+
 static void create_aes_key (const char *n)
 {E_
     int i;
@@ -8128,6 +8222,387 @@ static void read_keyfile (const char *n)
 }
 
 #ifdef MSWIN
+
+#define REMOTEFS_SERVICE_NAME  "RemoteFS"
+
+static SERVICE_STATUS        g_svc_status;
+static SERVICE_STATUS_HANDLE g_svc_handle;
+
+static void StartTrayIcon (void);
+static void StopTrayIcon (void);
+
+static VOID WINAPI ServiceCtrlHandler (DWORD dwControl)
+{E_
+    switch (dwControl) {
+    case SERVICE_CONTROL_STOP:
+    case SERVICE_CONTROL_SHUTDOWN:
+        if (g_svc_status.dwCurrentState != SERVICE_STOPPED) {
+            g_svc_status.dwCurrentState = SERVICE_STOP_PENDING;
+            g_svc_status.dwWin32ExitCode = 0;
+            g_svc_status.dwCheckPoint = 0;
+            g_svc_status.dwWaitHint = 5000;
+            SetServiceStatus (g_svc_handle, &g_svc_status);
+            exit (0);
+        }
+        break;
+    default:
+        break;
+    }
+    SetServiceStatus (g_svc_handle, &g_svc_status);
+}
+
+static VOID WINAPI ServiceMain (DWORD dwArgc, LPTSTR *lpszArgv)
+{E_
+    (void) dwArgc;
+    (void) lpszArgv;
+
+    g_svc_handle = RegisterServiceCtrlHandlerA (REMOTEFS_SERVICE_NAME, ServiceCtrlHandler);
+    if (!g_svc_handle)
+        return;
+
+    memset (&g_svc_status, 0, sizeof (g_svc_status));
+    g_svc_status.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+    g_svc_status.dwCurrentState = SERVICE_START_PENDING;
+    g_svc_status.dwControlsAccepted = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
+    g_svc_status.dwWin32ExitCode = NO_ERROR;
+    g_svc_status.dwCheckPoint = 0;
+    g_svc_status.dwWaitHint = 3000;
+    SetServiceStatus (g_svc_handle, &g_svc_status);
+
+    g_svc_status.dwCurrentState = SERVICE_RUNNING;
+    g_svc_status.dwCheckPoint = 0;
+    g_svc_status.dwWaitHint = 0;
+    SetServiceStatus (g_svc_handle, &g_svc_status);
+
+    StartTrayIcon ();
+    remotefs_serverize ();
+    StopTrayIcon ();
+
+    g_svc_status.dwCurrentState = SERVICE_STOPPED;
+    SetServiceStatus (g_svc_handle, &g_svc_status);
+}
+
+static int InstallService (const char *listenaddr, const char *iprange, const char *kf, const char *homedir)
+{E_
+    SC_HANDLE hSCManager, hService;
+    char szPath[MAX_PATH];
+    char szCmd[MAX_PATH * 3 + 512];
+    char *p;
+
+    if (!GetModuleFileNameA (NULL, szPath, sizeof (szPath)))
+        return 1;
+
+    p = szCmd;
+    p += _snprintf (szCmd, sizeof (szCmd), "\"%s\"", szPath);
+
+    if (option_no_crypto)
+        p += _snprintf (p, sizeof (szCmd) - (p - szCmd), " --no-crypto");
+    if (option_force_crypto)
+        p += _snprintf (p, sizeof (szCmd) - (p - szCmd), " --force-crypto");
+    if (kf)
+        p += _snprintf (p, sizeof (szCmd) - (p - szCmd), " -k \"%s\"", kf);
+    if (homedir)
+        p += _snprintf (p, sizeof (szCmd) - (p - szCmd), " --home-dir \"%s\"", homedir);
+    _snprintf (p, sizeof (szCmd) - (p - szCmd), " %s %s", listenaddr, iprange);
+
+    hSCManager = OpenSCManagerA (NULL, NULL, SC_MANAGER_CREATE_SERVICE);
+    if (!hSCManager) {
+        if (GetLastError () == ERROR_ACCESS_DENIED)
+            fprintf (stderr, "Access denied. You must run this program as Administrator to install or uninstall the service.\n");
+        else
+            fprintf (stderr, "OpenSCManager failed: %ld\n", GetLastError ());
+        return 1;
+    }
+
+    hService = CreateServiceA (
+        hSCManager,
+        REMOTEFS_SERVICE_NAME,
+        "Cooledit RemoteFS",
+        SERVICE_ALL_ACCESS,
+        SERVICE_WIN32_OWN_PROCESS,
+        SERVICE_AUTO_START,
+        SERVICE_ERROR_NORMAL,
+        szCmd,
+        NULL, NULL, NULL, NULL, NULL);
+
+    if (!hService) {
+        if (GetLastError () == ERROR_SERVICE_EXISTS) {
+            fprintf (stderr, "RemoteFS service already installed. Use --uninstall first.\n");
+            CloseServiceHandle (hSCManager);
+            return 1;
+        }
+        fprintf (stderr, "CreateService failed: %ld\n", GetLastError ());
+        CloseServiceHandle (hSCManager);
+        return 1;
+    }
+
+    fprintf (stdout, "RemoteFS service installed successfully.\n");
+    /* start the service immediately */
+    if (StartServiceA (hService, 0, NULL)) {
+        fprintf (stdout, "RemoteFS service started.\n");
+    } else if (GetLastError () == ERROR_SERVICE_ALREADY_RUNNING) {
+        fprintf (stdout, "RemoteFS service is already running.\n");
+    } else {
+        fprintf (stderr, "StartService failed: %ld (try 'net start %s')\n",
+                 GetLastError (), REMOTEFS_SERVICE_NAME);
+    }
+    CloseServiceHandle (hService);
+
+    /* add tray helper to user startup and launch it now */
+    {
+        HKEY hKey;
+        char trayCmd[MAX_PATH * 2 + 64];
+        _snprintf (trayCmd, sizeof (trayCmd), "\"%s\" --tray", szPath);
+        if (RegCreateKeyExA (HKEY_CURRENT_USER,
+            "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+            0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKey, NULL) == ERROR_SUCCESS) {
+            RegSetValueExA (hKey, "RemoteFS Tray", 0, REG_SZ,
+                (BYTE *) trayCmd, strlen (trayCmd) + 1);
+            RegCloseKey (hKey);
+        }
+        {
+            STARTUPINFOA si;
+            PROCESS_INFORMATION pi;
+            memset (&si, 0, sizeof (si));
+            si.cb = sizeof (si);
+            if (CreateProcessA (NULL, trayCmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+                CloseHandle (pi.hProcess);
+                CloseHandle (pi.hThread);
+            }
+        }
+    }
+
+    CloseServiceHandle (hSCManager);
+    return 0;
+}
+
+static int UninstallService (void)
+{E_
+    SC_HANDLE hSCManager, hService;
+    int ret = 0;
+
+    hSCManager = OpenSCManagerA (NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (!hSCManager) {
+        if (GetLastError () == ERROR_ACCESS_DENIED)
+            fprintf (stderr, "Access denied. You must run this program as Administrator to install or uninstall the service.\n");
+        else
+            fprintf (stderr, "OpenSCManager failed: %ld\n", GetLastError ());
+        return 1;
+    }
+
+    hService = OpenServiceA (hSCManager, REMOTEFS_SERVICE_NAME, SERVICE_STOP | DELETE);
+    if (!hService) {
+        if (GetLastError () == ERROR_SERVICE_DOES_NOT_EXIST) {
+            fprintf (stderr, "RemoteFS service is not installed.\n");
+        } else {
+            fprintf (stderr, "OpenService failed: %ld\n", GetLastError ());
+            ret = 1;
+        }
+    } else {
+        SERVICE_STATUS ss;
+        /* try to stop the service first */
+        if (ControlService (hService, SERVICE_CONTROL_STOP, &ss))
+            fprintf (stdout, "RemoteFS service stopped.\n");
+        if (!DeleteService (hService)) {
+            fprintf (stderr, "DeleteService failed: %ld\n", GetLastError ());
+            ret = 1;
+        } else {
+            fprintf (stdout, "RemoteFS service uninstalled successfully.\n");
+        }
+        CloseServiceHandle (hService);
+    }
+
+    /* remove tray helper from user startup */
+    {
+        HKEY hKey;
+        if (RegOpenKeyExA (HKEY_CURRENT_USER,
+            "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+            0, KEY_SET_VALUE, &hKey) == ERROR_SUCCESS) {
+            RegDeleteValueA (hKey, "RemoteFS Tray");
+            RegCloseKey (hKey);
+        }
+    }
+
+    /* kill any running tray helper */
+    {
+        HWND hTray = FindWindowA ("RemoteFSTrayClass", "RemoteFS");
+        if (hTray)
+            PostMessageA (hTray, WM_QUIT, 0, 0);
+    }
+
+    CloseServiceHandle (hSCManager);
+    return ret;
+}
+
+/* --- system tray icon support --- */
+
+#define WM_TRAYICON  (WM_USER + 100)
+#define IDM_TRAY_START   2001
+#define IDM_TRAY_STOP    2002
+#define IDM_TRAY_UNINSTALL 2003
+
+static HWND g_tray_hwnd = NULL;
+static NOTIFYICONDATAA g_nid;
+static volatile int g_tray_running = 0;
+
+static int SvcIsRunning (void)
+{E_
+    SC_HANDLE hSCManager, hService;
+    SERVICE_STATUS ss;
+    int running = 0;
+    hSCManager = OpenSCManagerA (NULL, NULL, SC_MANAGER_CONNECT);
+    if (!hSCManager)
+        return 0;
+    hService = OpenServiceA (hSCManager, REMOTEFS_SERVICE_NAME, SERVICE_QUERY_STATUS);
+    if (hService) {
+        if (QueryServiceStatus (hService, &ss))
+            running = (ss.dwCurrentState == SERVICE_RUNNING);
+        CloseServiceHandle (hService);
+    }
+    CloseServiceHandle (hSCManager);
+    return running;
+}
+
+static void SvcStart (void)
+{E_
+    SC_HANDLE hSCManager, hService;
+    hSCManager = OpenSCManagerA (NULL, NULL, SC_MANAGER_CONNECT);
+    if (!hSCManager)
+        return;
+    hService = OpenServiceA (hSCManager, REMOTEFS_SERVICE_NAME, SERVICE_START);
+    if (hService) {
+        StartServiceA (hService, 0, NULL);
+        CloseServiceHandle (hService);
+    }
+    CloseServiceHandle (hSCManager);
+}
+
+static void SvcStop (void)
+{E_
+    SC_HANDLE hSCManager, hService;
+    SERVICE_STATUS ss;
+    hSCManager = OpenSCManagerA (NULL, NULL, SC_MANAGER_CONNECT);
+    if (!hSCManager)
+        return;
+    hService = OpenServiceA (hSCManager, REMOTEFS_SERVICE_NAME, SERVICE_STOP);
+    if (hService) {
+        ControlService (hService, SERVICE_CONTROL_STOP, &ss);
+        CloseServiceHandle (hService);
+    }
+    CloseServiceHandle (hSCManager);
+}
+
+static LRESULT CALLBACK TrayWndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{E_
+    switch (msg) {
+    case WM_TRAYICON:
+        if (lParam == WM_RBUTTONUP || lParam == WM_CONTEXTMENU) {
+            POINT pt;
+            HMENU hMenu;
+            int running;
+            GetCursorPos (&pt);
+            hMenu = CreatePopupMenu ();
+            running = SvcIsRunning ();
+            if (running)
+                AppendMenuA (hMenu, MF_STRING, IDM_TRAY_STOP, "S&top RemoteFS Service");
+            else
+                AppendMenuA (hMenu, MF_STRING, IDM_TRAY_START, "&Start RemoteFS Service");
+            AppendMenuA (hMenu, MF_SEPARATOR, 0, NULL);
+            AppendMenuA (hMenu, MF_STRING, IDM_TRAY_UNINSTALL, "&Uninstall RemoteFS Service");
+            SetForegroundWindow (hwnd);
+            TrackPopupMenu (hMenu, TPM_RIGHTBUTTON | TPM_RIGHTALIGN, pt.x, pt.y, 0, hwnd, NULL);
+            DestroyMenu (hMenu);
+        }
+        break;
+    case WM_COMMAND:
+        if (LOWORD (wParam) == IDM_TRAY_START)
+            SvcStart ();
+        else if (LOWORD (wParam) == IDM_TRAY_STOP)
+            SvcStop ();
+        else if (LOWORD (wParam) == IDM_TRAY_UNINSTALL)
+            UninstallService ();
+        break;
+    case WM_DESTROY:
+        Shell_NotifyIconA (NIM_DELETE, &g_nid);
+        PostQuitMessage (0);
+        break;
+    default:
+        return DefWindowProcA (hwnd, msg, wParam, lParam);
+    }
+    return 0;
+}
+
+static DWORD WINAPI TrayIconThread (LPVOID lpParam)
+{E_
+    WNDCLASSA wc;
+    MSG msg;
+    HINSTANCE hInst;
+    HICON hIcon;
+
+    hInst = GetModuleHandleA (NULL);
+
+    memset (&wc, 0, sizeof (wc));
+    wc.lpfnWndProc = TrayWndProc;
+    wc.hInstance = hInst;
+    wc.lpszClassName = "RemoteFSTrayClass";
+    if (!RegisterClassA (&wc))
+        return 1;
+
+    g_tray_hwnd = CreateWindowA ("RemoteFSTrayClass", "RemoteFS",
+                                 WS_OVERLAPPEDWINDOW,
+                                 CW_USEDEFAULT, CW_USEDEFAULT,
+                                 CW_USEDEFAULT, CW_USEDEFAULT,
+                                 NULL, NULL, hInst, NULL);
+    if (!g_tray_hwnd)
+        return 1;
+
+    hIcon = LoadIconA (hInst, "REMOTEFS_ICON");
+    if (!hIcon)
+        hIcon = LoadIconA (NULL, IDI_APPLICATION);
+
+    memset (&g_nid, 0, sizeof (g_nid));
+    g_nid.cbSize = sizeof (g_nid);
+    g_nid.hWnd = g_tray_hwnd;
+    g_nid.uID = 1;
+    g_nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+    g_nid.uCallbackMessage = WM_TRAYICON;
+    g_nid.hIcon = hIcon;
+    strncpy (g_nid.szTip, "Cooledit RemoteFS Server", sizeof (g_nid.szTip) - 1);
+    g_nid.szTip[sizeof (g_nid.szTip) - 1] = '\0';
+
+    Shell_NotifyIconA (NIM_ADD, &g_nid);
+
+    g_tray_running = 1;
+
+    while (GetMessageA (&msg, NULL, 0, 0)) {
+        TranslateMessage (&msg);
+        DispatchMessageA (&msg);
+    }
+
+    g_tray_running = 0;
+    return 0;
+}
+
+static void StartTrayIcon (void)
+{E_
+    if (g_tray_running)
+        return;
+    CreateThread (NULL, 0, TrayIconThread, NULL, 0, NULL);
+}
+
+static void StopTrayIcon (void)
+{E_
+    if (g_tray_hwnd) {
+        Shell_NotifyIconA (NIM_DELETE, &g_nid);
+        PostMessageA (g_tray_hwnd, WM_QUIT, 0, 0);
+        g_tray_hwnd = NULL;
+    }
+    g_tray_running = 0;
+}
+
+#endif /* MSWIN */
+
+#ifdef MSWIN
 INT WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
 #else
 int main (int argc, char **argv)
@@ -8146,13 +8621,50 @@ int main (int argc, char **argv)
     }
 #endif
 
+    int console_mode = 0;
+    int install_mode = 0;
+    int uninstall_mode = 0;
+    int tray_mode = 0;
+    char *install_addr = NULL;
+    char *install_range = NULL;
     (void) strerrorsocket;
+
+#ifdef MSWIN
+    {
+        char exe_dir[MAX_PATH];
+        char *bs;
+        if (GetModuleFileNameA (NULL, exe_dir, sizeof (exe_dir))) {
+            bs = strrchr (exe_dir, '\\');
+            if (bs)
+                *bs = '\0';
+            SetCurrentDirectoryA (exe_dir);
+        }
+    }
+#endif
 
     for (i = 1; i < argc; i++) {
         const char *p;
         p = wchar_to_char (argv[i]);
         if (!strcmp (p, "-h")) {
             goto usage;
+#ifdef MSWIN
+        } else if (!strcmp (p, "--install")) {
+            install_mode = 1;
+            i++;
+            if (i >= argc)
+                goto usage;
+            install_addr = wchar_to_char (argv[i]);
+            i++;
+            if (i >= argc)
+                goto usage;
+            install_range = wchar_to_char (argv[i]);
+        } else if (!strcmp (p, "--uninstall")) {
+            uninstall_mode = 1;
+        } else if (!strcmp (p, "--console")) {
+            console_mode = 1;
+        } else if (!strcmp (p, "--tray")) {
+            tray_mode = 1;
+#endif
         } else if (!strcmp (p, "--home-dir")) {
             i++;
             if (i >= argc)
@@ -8184,13 +8696,28 @@ int main (int argc, char **argv)
 
     if (!keyfile) {
         FILE *f;
+#ifdef MSWIN
+        {
+            char progdata[MAX_PATH];
+            static char keyfile_buf[MAX_PATH];
+            if (GetEnvironmentVariableA ("PROGRAMDATA", progdata, sizeof (progdata))) {
+                _snprintf (keyfile_buf, sizeof (keyfile_buf), "%s\\Cooledit", progdata);
+                CreateDirectoryA (keyfile_buf, NULL);
+                _snprintf (keyfile_buf, sizeof (keyfile_buf), "%s\\Cooledit\\AESKEYFILE", progdata);
+                keyfile = keyfile_buf;
+            } else {
+                keyfile = "AESKEYFILE";
+            }
+        }
+#else
         keyfile = "AESKEYFILE";
+#endif
         f = fopen (keyfile, "rb");
         if (f) {
             fclose (f);
         } else if (!f && errno == ENOENT) {
             /* ok, doesn't exist yet*/
-            printf ("creating keyfile AESKEYFILE\n");
+            printf ("creating keyfile %s\n", keyfile);
             create_aes_key (keyfile);
         } else if (!f) {
             perror (keyfile);
@@ -8199,6 +8726,28 @@ int main (int argc, char **argv)
     }
 
     read_keyfile (keyfile);
+
+#ifdef MSWIN
+    restrict_keyfile_to_system (keyfile);
+
+    if (install_mode) {
+        char *homedir = NULL;
+        if (option_home_dir)
+            homedir = option_home_dir;
+        if (!homedir || !*homedir) {
+            homedir = getenv ("HOMEPATH");
+            if (homedir && *homedir)
+                homedir = windows_path_to_unix (homedir);
+        }
+        return InstallService (install_addr, install_range, keyfile, homedir);
+    }
+    if (uninstall_mode)
+        return UninstallService ();
+    if (tray_mode) {
+        TrayIconThread (NULL);
+        return 0;
+    }
+#endif
 
 #ifdef SHELL_SUPPORT
 #ifndef MSWIN
@@ -8231,14 +8780,29 @@ int main (int argc, char **argv)
         printf ("\n");
         printf ("Usage: [<OPTIONS>] <listenaddress> <iprange>\n");
         printf ("Usage: [-h]\n");
+#ifdef MSWIN
+        printf ("Usage: --install <listenaddress> <iprange>\n");
+        printf ("Usage: --uninstall\n");
+        printf ("Usage: --console [<OPTIONS>] <listenaddress> <iprange>\n");
+#endif
         printf ("\n");
         printf ("OPTIONS:\n");
         printf ("  --no-crypto                          Turn off encryption.\n");
         printf ("  --force-crypto                       Require encryption, or reject transaction.\n");
+#ifdef MSWIN
+        printf ("  -k <file>, --key-file <file>         Read AES key from <file>.\n");
+        printf ("                                       Default: %%PROGRAMDATA%%\\Cooledit\\AESKEYFILE\n");
+#else
         printf ("  -k <file>, --key-file <file>         Read AES key from <file>. Default: AESKEYFILE\n");
-        printf ("                                       If not specified, AESKEYFILE will be created\n");
+#endif
+        printf ("                                       If not specified, the keyfile will be created\n");
         printf ("                                       and populated with a strong random key.\n");
-        printf ("                                       If AESKEYFILE exists it will be read.\n");
+        printf ("                                       If the keyfile exists it will be read.\n");
+#ifdef MSWIN
+        printf ("  --install <addr> <range>             Install as Windows service (auto-start).\n");
+        printf ("  --uninstall                          Uninstall the Windows service.\n");
+        printf ("  --console                            Run as console application (not as service).\n");
+#endif
         printf ("  -h                                   Print help and exit.\n");
         printf ("\n");
 #ifdef __clang_version__
@@ -8268,7 +8832,30 @@ int main (int argc, char **argv)
     }
 #endif
 
-    remotefs_serverize (wchar_to_char (argv[1]), wchar_to_char (argv[2]));
+#ifdef MSWIN
+    option_listen_address = wchar_to_char (argv[1]);
+    option_ip_range = wchar_to_char (argv[2]);
+    if (console_mode) {
+        remotefs_serverize ();
+        return 0;
+    }
+    SERVICE_TABLE_ENTRYA svcTable[] = {
+        { REMOTEFS_SERVICE_NAME, ServiceMain },
+        { NULL, NULL }
+    };
+    if (!StartServiceCtrlDispatcherA (svcTable)) {
+        if (GetLastError () == ERROR_FAILED_SERVICE_CONTROLLER_CONNECT) {
+            fprintf (stderr, "RemoteFS: not running as a service. Use --console to run interactively.\n");
+        } else {
+            fprintf (stderr, "StartServiceCtrlDispatcher failed: %ld\n", GetLastError ());
+        }
+        return 1;
+    }
+#else
+    option_listen_address = argv[1];
+    option_ip_range = argv[2];
+    remotefs_serverize ();
+#endif
 
     return 0;
 }

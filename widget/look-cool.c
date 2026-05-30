@@ -21,6 +21,7 @@
 #include "app_glob.c"
 #include "coollocal.h"
 #include "remotefs.h"
+#include "remotefspassword.h"
 
 
 extern struct look *look;
@@ -527,9 +528,13 @@ static Window draw_file_browser (const char *identifier, Window parent, int x, i
         (CDrawTextInputP (catstrs (identifier, ".host", NULL), win, x, y2,
 		        FONT_MEAN_WIDTH * 24, AUTO_HEIGHT, 255, host))->position |= POSITION_BOTTOM;
         CGetHintPos (&x, 0);
+        (CDrawButton (catstrs (identifier, ".forget", NULL), win, x, y2,
+                        AUTO_SIZE, _ (" Forget ")))->position |= POSITION_BOTTOM;
+        CGetHintPos (&x, 0);
 /* Toolhint */
         CSetToolHint (catstrs (identifier, ".hstx", NULL), _("IP address of remote host running remotefs export tool, or " REMOTEFS_LOCAL));
         CSetToolHint (catstrs (identifier, ".host", NULL), _("IP address of remote host running remotefs export tool, or " REMOTEFS_LOCAL));
+        CSetToolHint (catstrs (identifier, ".forget", NULL), _("Drop the host IP address and saved key"));
     }
 
 /* Label for file filter input line. For example, to list files matching '*.c' */
@@ -674,6 +679,7 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
     CWidget *textinput = CIdent (catstrs (identifier, ".finp", NULL));
     CWidget *filterinput = CIdent (catstrs (identifier, ".filt", NULL));
     CWidget *ipinput = NULL;
+    CWidget *forget = NULL;
     static char last_filterinput[256 + 1] = "";
     static char last_ipinput[256 + 1] = "";
     static Window last_focus = 0;
@@ -691,7 +697,20 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
 
     if ((options & GETFILE_WITH_REMOTE)) {
         ipinput = CIdent (catstrs (identifier, ".host", NULL));
-        strcpy (host, HOST);
+        forget = CIdent (catstrs (identifier, ".forget", NULL));
+        if (ipinput && forget && !strcmp (cwevent->ident, forget->ident)) {
+            if (strcmp (ipinput->text.data, REMOTEFS_LOCAL)) {
+                password_load ();
+                password_forget (ipinput->text.data);
+                remotefs_drop (ipinput->text.data);
+                CStr_free(&ipinput->text);
+                ipinput->text = CStr_dup (REMOTEFS_LOCAL);
+	        CExpose (ipinput->ident);
+                reread_filelist = 1;
+            }
+        } else {
+            strcpy (host, HOST);
+        }
     }
 
     CSetDndDirectory (directory->text.data);
@@ -1124,6 +1143,7 @@ void look_cool_draw_browser (const char *ident, Window parent, int x, int y,
     CAddCallback (catstrs (ident, ".fbox", NULL), cb_browser);
     CAddCallback (catstrs (ident, ".finp", NULL), cb_browser);
     CAddCallback (catstrs (ident, ".host", NULL), cb_browser);
+    CAddCallback (catstrs (ident, ".forget", NULL), cb_browser);
     CAddCallback (catstrs (ident, ".filt", NULL), cb_browser);
     CAddCallback (catstrs (ident, ".ok", NULL), cb_browser);
     CAddCallback (catstrs (ident, ".cancel", NULL), cb_browser);

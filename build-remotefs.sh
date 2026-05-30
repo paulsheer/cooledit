@@ -18,7 +18,9 @@ echo 'building remotefs-test'
 gcc  -DREMOTEFS_DOTEST  -static -o remotefs-test $warn $opt $def $inc $src           || { echo error2 ; exit 1 ; } 
 
 echo 'building winrand.obj'
-/usr/bin/x86_64-w64-mingw32-gcc -Wall -c -o winrand.obj -I/usr/share/mingw-w64/include/ widget/winrand.c || { echo error3 ; exit 1 ; } 
+/usr/bin/x86_64-w64-mingw32-gcc -Wall -c -o winrand.obj -I/usr/share/mingw-w64/include/ widget/winrand.c || { echo error3 ; exit 1 ; }
+echo 'building remotefs_res.obj'
+/usr/bin/x86_64-w64-mingw32-windres remotefs.rc -o remotefs_res.obj || { echo error4 ; exit 1 ; }
 echo 'building REMOTEFS.EXE'
-/usr/bin/x86_64-w64-mingw32-gcc -o REMOTEFS.EXE  $warn $opt     $def $inc $src winrand.obj c2exe.obj -lws2_32  || { echo error1 ; exit 1 ; } 
+/usr/bin/x86_64-w64-mingw32-gcc -o REMOTEFS.EXE  $warn $opt     $def $inc $src winrand.obj remotefs_res.obj c2exe.obj -lws2_32  || { echo error1 ; exit 1 ; }
 

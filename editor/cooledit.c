@@ -2376,7 +2376,7 @@ int main (int argc, char **argv)
     process_command_line (argc, argv);
 
     if (option_server && *option_server) {
-        remotefs_serverize ("0.0.0.0", option_server);
+        remotefs_cooledit_main_serverize (option_server);
         exit (0);
     }
 

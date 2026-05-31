@@ -102,6 +102,8 @@ static char *option_home_dir = NULL;
 static char *option_listen_address = NULL;
 static char *option_ip_range = NULL;
 static char *option_keyfile_path = NULL;
+static int option_console_mode = 0;
+
 
 char *pathdup_ (const char *p, const char *home_dir);
 
@@ -8064,6 +8066,12 @@ void remotefs_cooledit_main_serverize (char *range)
     remotefs_serverize ();
 }
 
+
+#ifdef MSWIN
+static SERVICE_STATUS g_svc_status;
+#endif
+
+
 void remotefs_serverize (void)
 {E_
     struct service serv;
@@ -8090,9 +8098,21 @@ void remotefs_serverize (void)
 
     log_fmt (0, "running\n");
 
+#ifdef MSWIN
+    if (option_console_mode) {
+        while (!kill_received) {
+            run_service (&serv);
+        }
+    } else {
+        while (g_svc_status.dwCurrentState == SERVICE_RUNNING) {
+            run_service (&serv);
+        }
+    }
+#else
     while (!kill_received) {
         run_service (&serv);
     }
+#endif
 
     free_service (&serv);
 #ifndef MSWIN
@@ -8284,7 +8304,6 @@ static void ShowStatusWindow (void);
 
 #define REMOTEFS_SERVICE_NAME  "RemoteFS"
 
-static SERVICE_STATUS        g_svc_status;
 static SERVICE_STATUS_HANDLE g_svc_handle;
 
 static void StartTrayIcon (void);
@@ -8389,7 +8408,7 @@ static VOID WINAPI ServiceCtrlHandler (DWORD dwControl)
             g_svc_status.dwCheckPoint = 0;
             g_svc_status.dwWaitHint = 5000;
             SetServiceStatus (g_svc_handle, &g_svc_status);
-            exit (0);
+            return;
         }
         break;
     default:
@@ -8555,8 +8574,6 @@ static int UninstallService (void)
         if (!DeleteService (hService)) {
             log_fmt (1, "DeleteService failed: %ld\n", GetLastError ());
             ret = 1;
-        } else {
-            log_fmt (0, "RemoteFS service uninstalled successfully.\n");
         }
         CloseServiceHandle (hService);
     }
@@ -8896,7 +8913,6 @@ int main (int argc, char **argv)
     }
 #endif
 
-    int console_mode = 0;
     int install_mode = 0;
     int uninstall_mode = 0;
     int tray_mode = 0;
@@ -8936,7 +8952,7 @@ int main (int argc, char **argv)
         } else if (!strcmp (p, "--uninstall")) {
             uninstall_mode = 1;
         } else if (!strcmp (p, "--console")) {
-            console_mode = 1;
+            option_console_mode = 1;
         } else if (!strcmp (p, "--tray")) {
             tray_mode = 1;
 #endif
@@ -9109,7 +9125,7 @@ int main (int argc, char **argv)
 #ifdef MSWIN
     option_listen_address = wchar_to_char (argv[1]);
     option_ip_range = wchar_to_char (argv[2]);
-    if (console_mode) {
+    if (option_console_mode) {
         remotefs_serverize ();
         return 0;
     }

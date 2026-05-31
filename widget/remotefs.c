@@ -1676,6 +1676,59 @@ struct reader_data {
     int written;
 };
 
+/* bigint has the first 4 bits ξ to mean the total number 
+ * of encoded bytes on the wire.
+ * The bits are interpreted as bytes = (5 + (1 << ξ)).
+ * This means that if ξ is 0000b then bytes = (5 + (1 << 0)) = 6.
+ * This means that if ξ is 0000b then decode_ubigint()
+ * and decode_uint48() do the same thing provided
+ * the value is less than 1^44.
+ * And this means that for values less than 1^44 the
+ * use of encode_ubigint() is backwardly compatible with
+ * encode_uint48().
+ * Python tables: for i in range(0,16): print(hex(i), ((5 + (1<<i)) * 8) - 4, (5 + (1<<i)))
+ */
+static int decode_ubigint_len (unsigned char prefix)
+{
+    return (1 << (prefix >> 4)) + 5;
+}
+
+static void decode_ubigint (const unsigned char *p, unsigned long long *i_)
+{
+    int l, j;
+    unsigned long long i;
+
+    l = decode_ubigint_len (p[0]);
+    i = p[0] & 0xf;
+    for (j = 1; j < l; j++) {
+        i <<= 8;
+        i |= p[j];
+    }
+
+    *i_ = i;
+}
+
+static int encode_ubigint (unsigned char *p, unsigned long long i)
+{
+    int j, r = 0;
+    unsigned long long max;
+    max = 1ULL << (((5 + (1 << 0)) * 8) - 4);  // 1^44
+    for (j = 0; j < 16; j++) {
+        if (!max || i < max) {
+            int out;
+            r = out = (5 + (1 << j));
+            while (--out > 0) {
+                p[out] = (i & 0xff);
+                i >>= 8;
+            }
+            p[0] = (j << 4) | (i & 0xf);
+            return r;
+        }
+        max <<= 8;
+    }
+    return 0;
+}
+
 static void decode_uint48 (const unsigned char *p, unsigned long long *i_)
 {E_
     unsigned long long i;
@@ -4661,6 +4714,7 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
     CStr s, msg;
     unsigned char *q;
     unsigned long long filelen, remaining;
+    int c;
     struct reader_data d;
     unsigned char buf[READER_CHUNK];
     unsigned char t[256];
@@ -4686,7 +4740,7 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
     free (msg.data);
     msg.data = NULL;
 
-    if (reader (&d, t, 6, &reader_error)) {
+    if (reader (&d, t, 2, &reader_error)) {
         set_sockerrmsg_to_errno (errmsg, errno, reader_error);
         return -1;
     }
@@ -4694,20 +4748,26 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
 /* If the server's response to REMOTEFS_ACTION_READFILE was an error opening
    the file, then it would have sent a struct cooledit_remote_msg_header
    followed by an encode_error(). Therefore we need to detect this case.
-   This means file sizes are limited to 114 terabytes because anything more
+   For old remotefs server code that uses encode_uint48 this means
+   that file sizes are limited to 114 terabytes because anything more
    matches the magic number. This code follows the pattern of
    MARSHAL_END_REMOTE: */
-    if (t[0] == ((FILE_PROTO_MAGIC >> 8) & 0xff)  &&
+    if (t[0] == ((FILE_PROTO_MAGIC >> 8) & 0xff)  &&             /* see note (3) under tests */
         t[1] == ((FILE_PROTO_MAGIC >> 0) & 0xff)) {
         const unsigned char *p = t + 12;
         int force_shutdown = 0;
-        reader_timeout (&d, t + 6, sizeof (t) - 6, WAITFORREAD_NOIO, &reader_error, 0);
+        reader_timeout (&d, t + 2, sizeof (t) - 2, WAITFORREAD_NOIO, &reader_error, 0);
         if (decode_error (&p, t + sizeof (t), NULL, errmsg, &force_shutdown) || force_shutdown)
             SHUTSOCK (rfs->remotefs_private->sock_data);
         return -1;
     }
 
-    decode_uint48 (t, &filelen);
+    c = decode_ubigint_len (t[0]);
+    if (reader (&d, t + 2, c - 2, &reader_error)) {
+        set_sockerrmsg_to_errno (errmsg, errno, reader_error);
+        return -1;
+    }
+    decode_ubigint (t, &filelen);
     remaining = filelen;
 
 /* even if the remote has an error we continue reading the full network
@@ -6663,12 +6723,13 @@ struct server_reader_info {
 static int remote_chunk_startreader_cb (void *hook, long long filelen, char *errmsg)
 {E_
     struct server_reader_info *info;
-    unsigned char p[6];
+    unsigned char p[32];
+    int c;
 
     info = (struct server_reader_info *) hook;
 
-    encode_uint48 (p, filelen);
-    if (writer (info->sd->reader_data->sock_data, p, 6)) {
+    c = encode_ubigint (p, filelen);
+    if (writer (info->sd->reader_data->sock_data, p, c)) {
         info->progress = -1LL;
         set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
         return -1;
@@ -9261,6 +9322,7 @@ int main (int argc, char **argv)
     union float_conv f;
 
     (void) option_keyfile_path;
+    (void) option_console_mode;
 
     memset (buf, '\0', sizeof (buf));
 
@@ -9590,6 +9652,69 @@ int main (int argc, char **argv)
     r = decode_uint (&q, end, &v);
     assert (!r);
     assert (v == 0xdfd207fd99fae816ULL);
+
+    /* verify bigint */
+    memset (buf, 0, sizeof(buf));
+    encode_ubigint (buf, 0xffffffffffffffffULL);
+    decode_ubigint (buf, &v);
+    assert (v == 0xffffffffffffffffULL);
+
+    memset (buf, 0, sizeof(buf));
+    encode_ubigint (buf, 0x1234567890ABCDEFULL);
+    decode_ubigint (buf, &v);
+    assert (v == 0x1234567890ABCDEFULL);
+
+    /* verify bigint */
+    {
+        unsigned long long v = 0;
+        int j;
+        for (i = 0; i < 64; i++) {
+            unsigned long long decoded;
+            int l;
+            v |= 1;
+            memset (buf, 0, sizeof(buf));
+            l = encode_ubigint (buf, v);
+            assert (buf[0] != ((FILE_PROTO_MAGIC >> 8) & 0xff)); /* see note (3) in code */
+            assert (strlen ((const char *) buf + 5) + 5 == l);
+            assert (decode_ubigint_len (buf[0]) == l);
+            decode_ubigint (buf, &decoded);
+            assert (decoded == v);
+            v <<= 1;
+        }
+        for (i = 0; i < 100; i++) {
+            unsigned long long decoded;
+            for (j = 0; j <= 16; j++) {
+                v = (1ULL << i) - 8ULL + (unsigned long long) j;
+                if (v < (1ULL << 48)) {
+                    memset (buf, 0, sizeof(buf));
+                    encode_uint48 (buf, v);
+                    assert (buf[0] != ((FILE_PROTO_MAGIC >> 8) & 0xff)); /* see note (3) in code */
+                    decode_uint48 (buf, &decoded);
+                    assert (decoded == v);
+                }
+                if (v < (1ULL << 44)) {
+                    memset (buf, 0, sizeof(buf));
+                    encode_ubigint (buf, v);
+                    assert (buf[0] != ((FILE_PROTO_MAGIC >> 8) & 0xff)); /* see note (3) in code */
+                    decode_uint48 (buf, &decoded);
+                    assert (decoded == v);
+
+                    memset (buf, 0, sizeof(buf));
+                    encode_uint48 (buf, v);
+                    assert (buf[0] != ((FILE_PROTO_MAGIC >> 8) & 0xff)); /* see note (3) in code */
+                    decode_ubigint (buf, &decoded);
+                    assert (decoded == v);
+                }
+                if (1) {
+                    memset (buf, 0, sizeof(buf));
+                    encode_ubigint (buf, v);
+                    assert (buf[0] != ((FILE_PROTO_MAGIC >> 8) & 0xff)); /* see note (3) in code */
+                    decode_ubigint (buf, &decoded);
+                    assert (decoded == v);
+                }
+            }
+        }
+    }
 
     printf ("Success\n");
 }

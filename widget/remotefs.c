@@ -9,6 +9,8 @@
 #include <config-mswin.h>
 #include <winsock2.h>
 #include <ws2ipdef.h>
+#include <aclapi.h>
+#include <sddl.h>
 #include <error.h>
 #else
 #include <config.h>
@@ -24,6 +26,7 @@
 #endif
 #include <my_string.h>
 #include "stringtools.h"
+#include "hashtable.h"
 
 #ifdef HAVE_PWD_H
 #include <pwd.h>
@@ -95,7 +98,11 @@
 int option_remote_timeout = 2000;
 int option_no_crypto = 0;
 int option_force_crypto = 0;
-char *option_home_dir = NULL;
+static char *option_home_dir = NULL;
+static char *option_listen_address = NULL;
+static char *option_ip_range = NULL;
+static char *option_keyfile_path = NULL;
+static int option_console_mode = 0;
 
 
 char *pathdup_ (const char *p, const char *home_dir);
@@ -606,9 +613,41 @@ static int portable_stat (int link, const char *fname, struct portable_stat *p, 
 #define ERROR_EINTR()           (WSAGetLastError () == WSAEINTR)
 #define ERROR_EAGAIN()          (WSAGetLastError () == WSAEWOULDBLOCK || WSAGetLastError () == WSAEINPROGRESS)
 
+struct tray_icon_shared_data_s;
+struct tray_icon_shared_data_s *tray_icon_shared_data = NULL;
+
+void write_to_tray_status_canvas (const char *s);
+
+static void log_date (char *s)
+{
+    struct timeval tv;
+    time_t now;
+    char t[20];
+    gettimeofday (&tv, NULL);
+    now = tv.tv_sec;
+    strftime (t, sizeof (t), "%Y%m%d-%H%M%S", localtime (&now));
+    snprintf (s, 20, "%s.%03d", t, (int) tv.tv_usec / 1000);
+}
+
+static void log_fmt (int error, const char *fmt, ...)
+{
+    char s[256];
+    va_list ap;
+    va_start (ap, fmt);
+    if (tray_icon_shared_data) {
+        log_date (s);
+        strcat (s, ": ");
+        vsnprintf (s + strlen (s), sizeof (s) - strlen (s), fmt, ap);
+        write_to_tray_status_canvas (s);
+    } else {
+        vfprintf (stderr, fmt, ap);
+    }
+    va_end (ap);
+}
+
 static void exitmsg (int c)
 {E_
-    printf ("exitting %d\n", c);
+    log_fmt (0, "exitting %d\n", c);
     exit (c);
 }
 
@@ -621,7 +660,7 @@ static const char *strerrorsocket (void)
 
 static void perrorsocket (const char *msg)
 {E_
-    fprintf (stderr, "%s: %s\n", msg, strerrorsocket ());
+    log_fmt (1, "%s: %s\n", msg, strerrorsocket ());
 }
 
 #else
@@ -670,9 +709,24 @@ static const char *strerrorsocket (void)
     return strerror (errno);
 }
 
+static void log_fmt (int error, const char *fmt, ...)
+{
+    char s[256];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf (s, sizeof (s), fmt, ap);
+    if (error) {
+        fprintf(stderr, "%s", s);
+        fflush (stderr);
+    } else {
+        printf("%s", s);
+    }
+    va_end(ap);
+}
+
 static void perrorsocket (const char *msg)
 {E_
-    perror (msg);
+    log_fmt (1, "%s: [%s]\n", strerror (errno));
 }
 
 #endif
@@ -1408,6 +1462,8 @@ struct sock_data {
 struct remotefs_private {
     struct sock_data *sock_data;
     char remote[256];
+    struct hash_table *cache;
+    unsigned long cache_epoch;
 };
 
 struct sock_data *remotefs_get_sock_data (struct remotefs *rfs)
@@ -1479,7 +1535,8 @@ const char *error_code_descr[RFSERR_LAST_INTERNAL_ERROR + 1] = {
     "pathname too long",                        /* 9   RFSERR_PATHNAME_TOO_LONG                     */
     "non-crypto op attempted",                  /* 10  RFSERR_NON_CRYPTO_OP_ATTEMPTED               */
     "server closed shell died",                 /* 11  RFSERR_SERVER_CLOSED_SHELL_DIED              */
-    "last internal error",                      /* 12  RFSERR_LAST_INTERNAL_ERROR                   */
+    "server graceful exit",                     /* 12  RFSERR_SERVER_GRACEFUL_EXIT                  */
+    "last internal error",                      /* 13  RFSERR_LAST_INTERNAL_ERROR                   */
 };
 
 
@@ -1555,7 +1612,7 @@ int remotefs_reader_util (struct remotefs_terminalio *io, const int no_io)
             if (die_on_error && (p = strstr (errmsg, "exit code")) && sscanf (p, "exit code %d", &exit_code) == 1)     /* hack: scan for exit code. see (*5*) */
                 die_exit_code = exit_code;
             else
-                printf("terminal read => %s\n", errmsg);
+                log_fmt (0, "terminal read => %s\n", errmsg);
             return -1;
         }
     }
@@ -1618,6 +1675,59 @@ struct reader_data {
     int avail;
     int written;
 };
+
+/* bigint has the first 4 bits ξ to mean the total number 
+ * of encoded bytes on the wire.
+ * The bits are interpreted as bytes = (5 + (1 << ξ)).
+ * This means that if ξ is 0000b then bytes = (5 + (1 << 0)) = 6.
+ * This means that if ξ is 0000b then decode_ubigint()
+ * and decode_uint48() do the same thing provided
+ * the value is less than 1^44.
+ * And this means that for values less than 1^44 the
+ * use of encode_ubigint() is backwardly compatible with
+ * encode_uint48().
+ * Python tables: for i in range(0,16): print(hex(i), ((5 + (1<<i)) * 8) - 4, (5 + (1<<i)))
+ */
+static int decode_ubigint_len (unsigned char prefix)
+{
+    return (1 << (prefix >> 4)) + 5;
+}
+
+static void decode_ubigint (const unsigned char *p, unsigned long long *i_)
+{
+    int l, j;
+    unsigned long long i;
+
+    l = decode_ubigint_len (p[0]);
+    i = p[0] & 0xf;
+    for (j = 1; j < l; j++) {
+        i <<= 8;
+        i |= p[j];
+    }
+
+    *i_ = i;
+}
+
+static int encode_ubigint (unsigned char *p, unsigned long long i)
+{
+    int j, r = 0;
+    unsigned long long max;
+    max = 1ULL << (((5 + (1 << 0)) * 8) - 4);  // 1^44
+    for (j = 0; j < 16; j++) {
+        if (!max || i < max) {
+            int out;
+            r = out = (5 + (1 << j));
+            while (--out > 0) {
+                p[out] = (i & 0xff);
+                i >>= 8;
+            }
+            p[0] = (j << 4) | (i & 0xf);
+            return r;
+        }
+        max <<= 8;
+    }
+    return 0;
+}
 
 static void decode_uint48 (const unsigned char *p, unsigned long long *i_)
 {E_
@@ -4108,12 +4218,19 @@ static void remotefs_ping_ (const char *test_msg, CStr * r)
         return -1; \
     }
 
+static int local_invalidatecache (struct remotefs *rfs, char *errmsg)
+{E_
+    return 0;
+}
 
-static int local_listdir (struct remotefs *rfs, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
+static int local_listdir (struct remotefs *rfs, int *cached, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
 {E_
     struct remotefs_listdir_view view = { options, filter };
     CStr s;
     remotefs_listdir_ (directory, 1, &view, &s);
+
+    if (*cached)
+        *cached = 0;
 
     MARSHAL_START_LOCAL;
     if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r, n)) {
@@ -4123,11 +4240,14 @@ static int local_listdir (struct remotefs *rfs, const char *directory, unsigned 
     MARSHAL_END_LOCAL(NULL);
 }
 
-static int local_listtwodirs (struct remotefs *rfs, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
+static int local_listtwodirs (struct remotefs *rfs, int *cached, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
 {E_
     struct remotefs_listdir_view view[2] = { {options1, filter1}, {options2, filter2} };
     CStr s;
     remotefs_listdir_ (directory, 2, view, &s);
+
+    if (*cached)
+        *cached = 0;
 
     MARSHAL_START_LOCAL;
     if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r1, n1)) {
@@ -4202,13 +4322,16 @@ static int local_checkordinaryfileaccess (struct remotefs *rfs, const char *file
     MARSHAL_END_LOCAL(NULL);
 }
 
-static int local_stat (struct remotefs *rfs, const char *pathname, struct portable_stat *st, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg)
+static int local_stat (struct remotefs *rfs, int *cached, const char *pathname, struct portable_stat *st, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg)
 {E_
     CStr s;
     unsigned long long just_not_there_;
     unsigned long long error_code_;
     *errmsg = '\0';
     remotefs_stat_ (pathname, just_not_there != NULL, &s);
+
+    if (cached)
+        *cached = 0;
 
     MARSHAL_START_LOCAL;
     if (decode_uint (&p, end, &just_not_there_))
@@ -4509,14 +4632,27 @@ static int encode_listtwodirs_params (unsigned char **p_, const char *directory,
 }
 
 
-static int send_recv_mesg (struct remotefs *rfs, CStr *msg, CStr *response, int action, char *errmsg, int *no_such_action);
+enum cache_behavior {
+    CACHE_BEHAVIOR_NOCACHE = 0,
+    CACHE_BEHAVIOR_ALWAYSRETURNCACHE = 1,
+    CACHE_BEHAVIOR_IFNOTEXPIRED = 3,
+    CACHE_BEHAVIOR_NOTCACHEABLE = 4,
+};
+
+static int send_recv_mesg (struct remotefs *rfs, enum cache_behavior cached_behav, int *from_cached, CStr *msg, CStr *response, int action, char *errmsg, int *no_such_action);
 static int send_mesg (struct remotefs *rfs, struct reader_data *d, CStr * msg, int action, char *errmsg);
 static int recv_mesg (struct remotefs *rfs, struct reader_data *d, CStr * response, int action, char *errmsg, int *no_such_action);
 static int recv_mesg_ (struct remotefs *rfs, struct reader_data *d, CStr * response, int action, long milliseconds, char *errmsg, int *no_such_action, enum reader_error *reader_error);
 static int reader (struct reader_data *d, void *buf_, int buflen, enum reader_error *reader_error);
 
 
-static int remote_listdir (struct remotefs *rfs, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
+static int remote_invalidatecache (struct remotefs *rfs, char *errmsg)
+{E_
+    rfs->remotefs_private->cache_epoch++;
+    return 0;
+}
+
+static int remote_listdir (struct remotefs *rfs, int *cached, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
 {E_
     CStr s, msg;
     unsigned char *q;
@@ -4527,7 +4663,7 @@ static int remote_listdir (struct remotefs *rfs, const char *directory, unsigned
     q = (unsigned char *) msg.data;
     msg.len = encode_listdir_params (&q, directory, options, filter);
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_READDIR, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, (cached && *cached) ? CACHE_BEHAVIOR_ALWAYSRETURNCACHE : CACHE_BEHAVIOR_NOCACHE, cached, &msg, &s, REMOTEFS_ACTION_READDIR, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -4541,7 +4677,7 @@ static int remote_listdir (struct remotefs *rfs, const char *directory, unsigned
     MARSHAL_END_REMOTE(NULL);
 }
 
-static int remote_listtwodirs (struct remotefs *rfs, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
+static int remote_listtwodirs (struct remotefs *rfs, int *cached, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
 {E_
     CStr s, msg;
     unsigned char *q;
@@ -4552,7 +4688,7 @@ static int remote_listtwodirs (struct remotefs *rfs, const char *directory, unsi
     q = (unsigned char *) msg.data;
     msg.len = encode_listtwodirs_params (&q, directory, options1, filter1, options2, filter2);
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_READTWODIRS, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, (cached && *cached) ? CACHE_BEHAVIOR_ALWAYSRETURNCACHE : CACHE_BEHAVIOR_NOCACHE, cached, &msg, &s, REMOTEFS_ACTION_READTWODIRS, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -4578,6 +4714,7 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
     CStr s, msg;
     unsigned char *q;
     unsigned long long filelen, remaining;
+    int c;
     struct reader_data d;
     unsigned char buf[READER_CHUNK];
     unsigned char t[256];
@@ -4603,7 +4740,7 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
     free (msg.data);
     msg.data = NULL;
 
-    if (reader (&d, t, 6, &reader_error)) {
+    if (reader (&d, t, 2, &reader_error)) {
         set_sockerrmsg_to_errno (errmsg, errno, reader_error);
         return -1;
     }
@@ -4611,20 +4748,26 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
 /* If the server's response to REMOTEFS_ACTION_READFILE was an error opening
    the file, then it would have sent a struct cooledit_remote_msg_header
    followed by an encode_error(). Therefore we need to detect this case.
-   This means file sizes are limited to 114 terabytes because anything more
+   For old remotefs server code that uses encode_uint48 this means
+   that file sizes are limited to 114 terabytes because anything more
    matches the magic number. This code follows the pattern of
    MARSHAL_END_REMOTE: */
-    if (t[0] == ((FILE_PROTO_MAGIC >> 8) & 0xff)  &&
+    if (t[0] == ((FILE_PROTO_MAGIC >> 8) & 0xff)  &&             /* see note (3) under tests */
         t[1] == ((FILE_PROTO_MAGIC >> 0) & 0xff)) {
         const unsigned char *p = t + 12;
         int force_shutdown = 0;
-        reader_timeout (&d, t + 6, sizeof (t) - 6, WAITFORREAD_NOIO, &reader_error, 0);
+        reader_timeout (&d, t + 2, sizeof (t) - 2, WAITFORREAD_NOIO, &reader_error, 0);
         if (decode_error (&p, t + sizeof (t), NULL, errmsg, &force_shutdown) || force_shutdown)
             SHUTSOCK (rfs->remotefs_private->sock_data);
         return -1;
     }
 
-    decode_uint48 (t, &filelen);
+    c = decode_ubigint_len (t[0]);
+    if (reader (&d, t + 2, c - 2, &reader_error)) {
+        set_sockerrmsg_to_errno (errmsg, errno, reader_error);
+        return -1;
+    }
+    decode_ubigint (t, &filelen);
     remaining = filelen;
 
 /* even if the remote has an error we continue reading the full network
@@ -4795,7 +4938,7 @@ static int remote_checkordinaryfileaccess (struct remotefs *rfs, const char *fil
     encode_str (&q, filename, strlen (filename));
     encode_uint (&q, sizelimit);
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_CHECKORDINARYFILEACCESS, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, NULL, &msg, &s, REMOTEFS_ACTION_CHECKORDINARYFILEACCESS, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -4809,7 +4952,7 @@ static int remote_checkordinaryfileaccess (struct remotefs *rfs, const char *fil
     MARSHAL_END_REMOTE(NULL);
 }
 
-static int remote_stat (struct remotefs *rfs, const char *pathname, struct portable_stat *st, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg)
+static int remote_stat (struct remotefs *rfs, int *cached, const char *pathname, struct portable_stat *st, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg)
 {E_
     CStr s, msg;
     unsigned char *q;
@@ -4825,7 +4968,7 @@ static int remote_stat (struct remotefs *rfs, const char *pathname, struct porta
     encode_str (&q, pathname, strlen (pathname));
     encode_uint (&q, (just_not_there != NULL));
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_STAT, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, (cached && *cached) ? CACHE_BEHAVIOR_IFNOTEXPIRED : CACHE_BEHAVIOR_NOCACHE, cached, &msg, &s, REMOTEFS_ACTION_STAT, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -4859,7 +5002,7 @@ static int remote_chdir (struct remotefs *rfs, const char *dirname, char *cwd, i
     q = (unsigned char *) msg.data;
     encode_str (&q, dirname, strlen (dirname));
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_CHDIR, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, NULL, &msg, &s, REMOTEFS_ACTION_CHDIR, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -4886,7 +5029,7 @@ static int remote_realpathize (struct remotefs *rfs, const char *path, const cha
     encode_str (&q, path, strlen (path));
     encode_str (&q, homedir, strlen (homedir));
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_REALPATHIZE, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_IFNOTEXPIRED, NULL, &msg, &s, REMOTEFS_ACTION_REALPATHIZE, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -4907,7 +5050,7 @@ static int remote_gethomedir (struct remotefs *rfs, char *out, int outlen, char 
 
     memset (&msg, '\0', sizeof (msg));
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_GETHOMEDIR, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_IFNOTEXPIRED, NULL, &msg, &s, REMOTEFS_ACTION_GETHOMEDIR, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -4937,7 +5080,7 @@ static int remote_enablecrypto (struct remotefs *rfs, const unsigned char *chall
     q = (unsigned char *) msg.data;
     encode_str (&q, (const char *) challenge_local, SYMAUTH_BLOCK_SIZE);
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_ENABLECRYPTO, errmsg, &no_such_action)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, NULL, &msg, &s, REMOTEFS_ACTION_ENABLECRYPTO, errmsg, &no_such_action)) {
         if (no_such_action)
             strcpy (errmsg, "crypto not supported by remote");
         free (msg.data);
@@ -5039,7 +5182,7 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
     for (i = 0; i < n_args; i++)
         encode_str (&q, args[i], strlen (args[i]));
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_SHELLCMD, errmsg, &no_such_action)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, NULL, &msg, &s, REMOTEFS_ACTION_SHELLCMD, errmsg, &no_such_action)) {
         if (no_such_action)
             strcpy (errmsg, "shell commands not supported by remote");
         free (msg.data);
@@ -5281,7 +5424,7 @@ static int remote_shellsignal (struct remotefs *rfs, unsigned long pid, int sign
     encode_uint (&q, pid);
     encode_uint (&q, signum);
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_SHELLSIGNAL, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, NULL, &msg, &s, REMOTEFS_ACTION_SHELLSIGNAL, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -5308,7 +5451,7 @@ static int remote_ping (struct remotefs *rfs, const char *test_msg, char *test_r
     q = (unsigned char *) msg.data;
     msg.len = encode_str (&q, test_msg, strlen (test_msg));
 
-    if (send_recv_mesg (rfs, &msg, &s, REMOTEFS_ACTION_PING, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, NULL, &msg, &s, REMOTEFS_ACTION_PING, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -5431,7 +5574,7 @@ SOCKET remotefs_listen_socket (const char *listen_address, int listen_port)
     int yes = 1;
 
     if (ipaddress_port_to_remotefs_sockaddr_t (&a, listen_address, listen_port)) {
-        fprintf (stderr, "invalid address: %s\n", listen_address);
+        log_fmt (1, "invalid address: %s\n", listen_address);
         return INVALID_SOCKET;
     }
 
@@ -5447,8 +5590,9 @@ SOCKET remotefs_listen_socket (const char *listen_address, int listen_port)
     }
 
     if (bind (s, (struct sockaddr *) &a, remotefs_sockaddr_t_sockaddrlen (&a)) == SOCKET_ERROR) {
-        fprintf(stderr, "%s:%d ", listen_address, listen_port);
-        perrorsocket ("bind");
+        char msg[256];
+        snprintf (msg, sizeof (msg), "bind(%s:%d)", listen_address, listen_port);
+        perrorsocket (msg);
         closesocket (s);
         return INVALID_SOCKET;
     }
@@ -5456,7 +5600,7 @@ SOCKET remotefs_listen_socket (const char *listen_address, int listen_port)
     return s;
 }
 
-// #define LOG(s)  printf ("line=%d %s=%ld\n", __LINE__, #s, (long) s)
+// #define LOG(s)  log_fmt (0, "line=%d %s=%ld\n", __LINE__, #s, (long) s)
 #define LOG(s)  do { } while(0)
 
 int remotefs_connection_check (const SOCKET s, int write_set)
@@ -5900,9 +6044,61 @@ static int recv_mesg (struct remotefs *rfs, struct reader_data *d, CStr * respon
     return recv_mesg_ (rfs, d, response, action, WAITFORREAD_FOREVER, errmsg, no_such_action, &reader_error);
 }
 
-static int send_recv_mesg (struct remotefs *rfs, CStr * msg, CStr * response, int action, char *errmsg, int *no_such_action)
+static CStr CStr_cpy_ (const char *s, int l)
+{E_
+    CStr r;
+    r.len = l;
+    r.data = (char *) malloc (r.len + 1);
+    memcpy (r.data, s, r.len);
+    r.data[r.len] = '\0';
+    return r;
+}
+
+static int send_recv_mesg (struct remotefs *rfs, enum cache_behavior cached_behav, int *from_cache, CStr * msg, CStr * response, int action, char *errmsg, int *no_such_action)
 {E_
     struct reader_data d;
+    CStr *cache_entry = NULL;
+    unsigned long entry_age;
+
+    if (cached_behav != CACHE_BEHAVIOR_NOTCACHEABLE)
+        cache_entry = hash_table_lookup (rfs->remotefs_private->cache, (unsigned long) action, (const unsigned char *) msg->data, msg->len, &entry_age);
+    if (cache_entry) {
+
+/* The behavior is quite subtle: if the user presses Ctrl-R in the
+browser, we want to invalidate the cache of little hereafter calls (of
+course not calls like reading and writing the contents of the file --
+which are never cached at all). Ctrl-R will also refresh the file lists
+in the browser. But browsing through the filesystem must be fast, so we
+always look for a cached entry even if it came after a previous Ctrl-R.
+*/
+
+        if (cached_behav == CACHE_BEHAVIOR_NOCACHE) {
+            /* discard */
+        } else if (cached_behav == CACHE_BEHAVIOR_ALWAYSRETURNCACHE) {
+            *response = CStr_cpy_ (cache_entry->data, cache_entry->len);
+	    if (from_cache)
+                *from_cache = 1;
+            return 0;
+        } else if (cached_behav == CACHE_BEHAVIOR_IFNOTEXPIRED) {
+            if (entry_age == rfs->remotefs_private->cache_epoch) {
+                *response = CStr_cpy_ (cache_entry->data, cache_entry->len);
+		if (from_cache)
+                    *from_cache = 1;
+                return 0;
+            } else {
+                /* discard */
+            }
+        } else {
+            assert (!"bad cached_behav value");
+        }
+
+        CStr *remove;
+        remove = (CStr *) hash_table_remove (rfs->remotefs_private->cache, (unsigned long) action, (const unsigned char *) msg->data, msg->len);
+        assert (remove == cache_entry);
+        free (cache_entry->data);
+        free (cache_entry);
+        cache_entry = NULL;
+    }
 
     memset (&d, '\0', sizeof (d));
     d.sock_data = rfs->remotefs_private->sock_data;
@@ -5913,6 +6109,20 @@ static int send_recv_mesg (struct remotefs *rfs, CStr * msg, CStr * response, in
     if (recv_mesg (rfs, &d, response, action, errmsg, no_such_action))
         return -1;
 
+    if (cached_behav != CACHE_BEHAVIOR_NOTCACHEABLE) {
+        const unsigned char *p, *end;
+        unsigned long long v;
+        end = (const unsigned char *) response->data + response->len;
+        p = (const unsigned char *) response->data;
+        if (!decode_uint (&p, end, &v) && v == REMOTEFS_SUCCESS) {
+            cache_entry = (CStr *) malloc (sizeof (*cache_entry));
+            *cache_entry = CStr_cpy_ (response->data, response->len);
+            hash_table_insert (rfs->remotefs_private->cache, (unsigned long) action, (const unsigned char *) msg->data, msg->len, (void *) cache_entry, rfs->remotefs_private->cache_epoch);
+        }
+    }
+
+    if (from_cache)
+        *from_cache = 0;
     return 0;
 }
 
@@ -5925,12 +6135,17 @@ static int remotefs_error_return (char *errmsg)
     return -1;
 }
 
-static int dummyerr_listdir (struct remotefs *rfs, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
+static int dummyerr_invalidatecache (struct remotefs *rfs, char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
 }
 
-static int dummyerr_listtwodirs (struct remotefs *rfs, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
+static int dummyerr_listdir (struct remotefs *rfs, int *cached, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
+{E_
+    return remotefs_error_return (errmsg);
+}
+
+static int dummyerr_listtwodirs (struct remotefs *rfs, int *cached, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
 }
@@ -5950,7 +6165,7 @@ static int dummyerr_checkordinaryfileaccess (struct remotefs *rfs, const char *f
     return remotefs_error_return (errmsg);
 }
 
-static int dummyerr_stat (struct remotefs *rfs, const char *path, struct portable_stat *st, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg)
+static int dummyerr_stat (struct remotefs *rfs, int *cached, const char *path, struct portable_stat *st, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
 }
@@ -6018,6 +6233,7 @@ static int dummyerr_ping (struct remotefs *rfs, const char *test_msg, char *test
 
 struct remotefs remotefs_dummyerr = {
     0,
+    dummyerr_invalidatecache,
     dummyerr_listdir,
     dummyerr_listtwodirs,
     dummyerr_readfile,
@@ -6049,6 +6265,7 @@ struct remotefs remotefs_dummyerr = {
 
 struct remotefs remotefs_local = {
     0,
+    local_invalidatecache,
     local_listdir,
     local_listtwodirs,
     local_readfile,
@@ -6080,6 +6297,7 @@ struct remotefs remotefs_local = {
 
 struct remotefs remotefs_socket = {
     0,
+    remote_invalidatecache,
     remote_listdir,
     remote_listtwodirs,
     remote_readfile,
@@ -6146,8 +6364,21 @@ static void remotefs_private_cleanup (struct remotefs_private *p)
             }
             free (p->sock_data);
         }
+        if (p->cache)
+            hash_table_destroy (p->cache);
         free (p);
     }
+}
+
+void remotefs_clean (void)
+{E_
+    struct remotefs_item *i, *next;
+    for (i = remotefs_list; i; i = next) {
+        next = i->next;
+        remotefs_private_cleanup (i->impl.remotefs_private);
+        free (i);
+    }
+    remotefs_list = NULL;
 }
 
 void remotefs_free (struct remotefs *rfs)
@@ -6155,6 +6386,16 @@ void remotefs_free (struct remotefs *rfs)
     assert (rfs->magic == REMOTEFS_ITEM_MAGIC);
     remotefs_private_cleanup (rfs->remotefs_private);
     free (rfs);
+}
+
+static void hash_table_free_value_fn (void *v)
+{
+    CStr *s;
+    s = (CStr *) v;
+    assert (s);
+    assert (s->data);
+    free (s->data);
+    free (s);
 }
 
 static int remotefs_start (struct remotefs *rfs, const char *host, char *home_dir, char *errmsg)
@@ -6167,6 +6408,7 @@ static int remotefs_start (struct remotefs *rfs, const char *host, char *home_di
         rfs->remotefs_private = (struct remotefs_private *) malloc (sizeof (struct remotefs_private));
         memset (rfs->remotefs_private, '\0', sizeof (struct remotefs_private));
         strcpy (rfs->remotefs_private->remote, host);
+        rfs->remotefs_private->cache = hash_table_create (hash_table_free_value_fn);
         rfs->remotefs_private->sock_data = (struct sock_data *) malloc (sizeof (struct sock_data));
         memset (rfs->remotefs_private->sock_data, '\0', sizeof (struct sock_data));
         rfs->remotefs_private->sock_data->sock = INVALID_SOCKET;
@@ -6180,6 +6422,38 @@ static int remotefs_start (struct remotefs *rfs, const char *host, char *home_di
         }
     }
     return 0;
+}
+
+/* return non-zero on error */
+int remotefs_drop (const char *host_)
+{E_
+    int r;
+    char host[256];
+    char addr[64];
+    int addrlen = 0;
+    struct remotefs_item *i, *prev = NULL;
+    if (!host_)
+        host_ = REMOTEFS_LOCAL;
+    if (!strcmp (host_, REMOTEFS_LOCAL)) {
+        strcpy (host, host_);
+    } else {
+        if ((r = text_to_ip (host_, NULL, addr, &addrlen)))
+            return -1;
+        ip_to_text (addr, addrlen, host);
+    }
+    for (i = remotefs_list; i; i = i->next) {
+        if (!strcmp (i->host, host)) {
+            if (prev)
+                prev->next = i->next;
+            else
+                remotefs_list = i->next;
+            remotefs_private_cleanup (i->impl.remotefs_private);
+            free (i);
+            return 0;
+        }
+        prev = i;
+    }
+    return -1;
 }
 
 struct remotefs *remotefs_lookup (const char *host_, char *last_directory)
@@ -6449,12 +6723,13 @@ struct server_reader_info {
 static int remote_chunk_startreader_cb (void *hook, long long filelen, char *errmsg)
 {E_
     struct server_reader_info *info;
-    unsigned char p[6];
+    unsigned char p[32];
+    int c;
 
     info = (struct server_reader_info *) hook;
 
-    encode_uint48 (p, filelen);
-    if (writer (info->sd->reader_data->sock_data, p, 6)) {
+    c = encode_ubigint (p, filelen);
+    if (writer (info->sd->reader_data->sock_data, p, c)) {
         info->progress = -1LL;
         set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
         return -1;
@@ -7017,7 +7292,7 @@ static void init_service (struct service *serv, const char *listen_address, cons
     serv->iprange_list = iprange_parse (option_range, &c);
     serv->option_range = option_range;
     if (!serv->iprange_list) {
-        fprintf (stderr, "ip range parse err: %s\n", option_range + c);
+        log_fmt (1, "ip range parse err: %s\n", option_range + c);
         exit (1);
     }
     if (serv->h == INVALID_SOCKET)
@@ -7080,7 +7355,7 @@ static void add_client (struct service *serv)
     }
 
     if (count_clients (serv) > 128) {
-        fprintf (stderr, "more than 128 clients, dropping\n");
+        log_fmt (1, "more than 128 clients, dropping\n");
         shutdown (sock_data->sock, 2);
         closesocket (sock_data->sock);
         return;
@@ -7092,7 +7367,7 @@ static void add_client (struct service *serv)
         char t[64];
         SHUTSOCK (sock_data);
         ip_to_text (remotefs_sockaddr_t_address (&client_address), remotefs_sockaddr_t_addresslen (&client_address), t);
-        printf ("incoming address %s not in range %s\n", t, serv->option_range);
+        log_fmt (0, "incoming address %s not in range %s\n", t, serv->option_range);
         return;
     }
 
@@ -7107,7 +7382,7 @@ static void add_client (struct service *serv)
         return;
     }
 
-    printf ("connection established\n");
+    log_fmt (0, "connection established\n");
 
     client_count++;
 
@@ -7124,7 +7399,7 @@ static void add_client (struct service *serv)
     i->next = serv->client_list;
     serv->client_list = i;
 
-    printf ("adding %u\n", i->id);
+    log_fmt (0, "adding %u\n", i->id);
 }
 
 static void process_client (struct client_item *i, int *timeout)
@@ -7145,7 +7420,7 @@ static void process_client (struct client_item *i, int *timeout)
 
 #define ERR(s,m)  \
     do { \
-        printf ("%d: Error: %s, %s, %s, %s\n", i->id, (s), (m), reader_error == READER_ERROR_NOERROR ? strerrorsocket () : "", reader_error_to_str(reader_error)); \
+        log_fmt (0, "%d: Error: %s, %s, %s, %s\n", i->id, (s), (m), reader_error == READER_ERROR_NOERROR ? strerrorsocket () : "", reader_error_to_str(reader_error)); \
         goto errout; \
     } while (0)
 
@@ -7226,7 +7501,7 @@ static void process_client (struct client_item *i, int *timeout)
     }
     i->action = action_descr[action];
     if (action_list[action].logging)
-        printf ("%u: %s%s%s: \n", i->id, i->sock_data.crypto ? (symauth_with_aesni (i->sock_data.crypto_data.symauth) ?  "(aesni) " : "(aes) ") : "", i->action, log_action);
+        log_fmt (0, "%u: %s%s%s: \n", i->id, i->sock_data.crypto ? (symauth_with_aesni (i->sock_data.crypto_data.symauth) ?  "(aesni) " : "(aes) ") : "", i->action, log_action);
     action_ret = (*action_list[action].action_fn) (&i->sd, &r, p, msglen);
     if (action_ret == ACTION_SILENT) {
         if (p)
@@ -7239,7 +7514,7 @@ static void process_client (struct client_item *i, int *timeout)
         goto errout; /* and kill hard */
     if (action_ret) {
         i->kill = KILL_SOFT;
-        printf ("Error: executing action, %s %d\n", i->action, r.len);
+        log_fmt (0, "Error: executing action, %s %d\n", i->action, r.len);
         if (!r.len)
             goto errout; /* and kill hard */
 
@@ -7323,6 +7598,15 @@ static long tv_delta (struct timeval *now, struct timeval *then)
 
 #endif
 
+static void write_shutdown_trailer (struct client_item *i, enum remotefs_error_code err)
+{
+    if (i->sock_data.sock != INVALID_HANDLE_VALUE) {
+        struct cooledit_remote_msg_ack ack;
+        memset (&ack, '\0', sizeof (ack));
+        encode_msg_ack (&ack, err, MSG_VERSION);
+        writer (&i->sock_data, &ack, sizeof (ack));
+    }
+}
 
 static void free_service (struct service *serv)
 {E_
@@ -7333,13 +7617,15 @@ static void free_service (struct service *serv)
         if (i->sd.ttyreader_data)
             close_cterminal (__LINE__, &i->sock_data, &i->sd.ttyreader_data->cterminal, 1);
 #endif
+        write_shutdown_trailer (i, RFSERR_SERVER_GRACEFUL_EXIT);
         SHUTSOCK (&i->sock_data);
         next = i->next;
         i->magic = 0;
         if (i->discard)
-            printf ("removing %u, discarding %ld bytes\n", i->id, (long) i->discard);
+            log_fmt (0, "removing %u, discarding %ld bytes\n", i->id, (long) i->discard);
         else
-            printf ("removing %u\n", i->id);
+            log_fmt (0, "removing %u\n", i->id);
+
         if (i->sock_data.crypto_data.symauth) {
             symauth_free (i->sock_data.crypto_data.symauth);
         }
@@ -7516,7 +7802,7 @@ static void run_service (struct service *serv)
     if (r == WAIT_TIMEOUT) {
         n_ms_events = 0;
     } else if (r == (WAIT_OBJECT_0 + n_ms_events)) {
-        printf("WaitForMultipleObjectsEx returned %d\n", r);
+        log_fmt (1, "WaitForMultipleObjectsEx returned %d\n", r);
         goto clear_events;
     }
 #else
@@ -7542,7 +7828,7 @@ static void run_service (struct service *serv)
     WSANETWORKEVENTS ev;
     memset (&ev, '\0', sizeof (ev));
     if (WSAEnumNetworkEvents (serv->h, accept_event, &ev)) {
-        printf ("1 WSAEnumNetworkEvents error %ld\n", (long) WSAGetLastError ());
+        log_fmt (1, "1 WSAEnumNetworkEvents error %ld\n", (long) WSAGetLastError ());
         abort ();
     }
     if ((ev.lNetworkEvents & FD_ACCEPT))
@@ -7560,7 +7846,7 @@ static void run_service (struct service *serv)
             if (FD_ISSET (xwinfwd_listen_socket (i->sd.xwinfwd_data), &rd))
                 xwinfwd_new_client (i->sd.xwinfwd_data);
             if (xwinfwd_process_sockets (&i->sock_data, i->sd.xwinfwd_data, &rd, &wr)) {
-                printf ("error writing to terminal socket: [%s]\n", strerror (errno));
+                log_fmt (0, "error writing to terminal socket: [%s]\n", strerror (errno));
                 close_cterminal (__LINE__, NULL, &i->sd.ttyreader_data->cterminal, 0);
                 i->kill = KILL_SOFT;
             }
@@ -7571,7 +7857,7 @@ static void run_service (struct service *serv)
         WSANETWORKEVENTS ev;
         memset (&ev, '\0', sizeof (ev));
         if (i->sock_data.sock != INVALID_HANDLE_VALUE && n_ms_events && WSAEnumNetworkEvents (i->sock_data.sock, i->sock_data.ms_event, &ev)) {
-            printf ("WSAEnumNetworkEvents error %ld\n", (long) WSAGetLastError ());
+            log_fmt (1, "WSAEnumNetworkEvents error %ld\n", (long) WSAGetLastError ());
             exit (1);
         }
         if ((ev.lNetworkEvents & FD_CLOSE)) {
@@ -7601,14 +7887,14 @@ static void run_service (struct service *serv)
                 if ((c = recv (i->sock_data.sock, (void *) tbuf, tavail, 0)) > 0) {
                     /* ok */
                 } else if (!c) {
-                    printf ("%d: Error: closed by remote,\n", i->id);
+                    log_fmt (0, "%d: Error: closed by remote,\n", i->id);
                     i->kill = KILL_HARD;
                     if (i->sd.ttyreader_data)
                         close_cterminal (__LINE__, NULL, &i->sd.ttyreader_data->cterminal, 0);
                 } else if (c < 0 && (ERROR_EINTR() || ERROR_EAGAIN())) {
                     /* ok */
                 } else {
-                    printf ("%d: Error: %s,\n", i->id, strerrorsocket ());
+                    log_fmt (0, "%d: Error: %s,\n", i->id, strerrorsocket ());
                 }
                 if (c > 0) {
                     (*tupdate) += c;
@@ -7721,7 +8007,7 @@ static void run_service (struct service *serv)
                     if (send_blind_message (&i->sock_data, REMOTEFS_ACTION_SHELLREAD, 0 /* multiplex */, 0 /* xfwdstatus */, (char *) (tt->rd.buf + tt->rd.written), l, NULL, 0))
 #endif
                     {
-                        printf ("error writing to terminal socket: [%s]\n", strerror (errno));
+                        log_fmt (0, "error writing to terminal socket: [%s]\n", strerror (errno));
                         close_cterminal (__LINE__, NULL, &tt->cterminal, 0);
                         i->kill = KILL_SOFT;
                     }
@@ -7763,11 +8049,7 @@ static void run_service (struct service *serv)
 #endif
 #endif
         if (now > i->last_accessed + 25 /* for firewalls that are 30s timeout */) {
-            struct cooledit_remote_msg_ack ack;
-            memset (&ack, '\0', sizeof (ack));
-            encode_msg_ack (&ack, RFSERR_SERVER_CLOSED_IDLE_CLIENT, MSG_VERSION);
-            if (i->sock_data.sock != INVALID_HANDLE_VALUE)
-                writer (&i->sock_data, &ack, sizeof (ack));
+            write_shutdown_trailer (i, RFSERR_SERVER_CLOSED_IDLE_CLIENT);
             i->kill = KILL_HARD;
         }
 
@@ -7777,9 +8059,9 @@ static void run_service (struct service *serv)
             next = i->next;
             i->magic = 0;
             if (i->discard)
-                printf ("removing %u, discarding %ld bytes\n", i->id, (long) i->discard);
+                log_fmt (0, "removing %u, discarding %ld bytes\n", i->id, (long) i->discard);
             else
-                printf ("removing %u\n", i->id);
+                log_fmt (0, "removing %u\n", i->id);
             if (i->sock_data.crypto_data.symauth) {
                 symauth_free (i->sock_data.crypto_data.symauth);
             }
@@ -7831,15 +8113,27 @@ static int kill_received = 0;
 
 static void kill_handler (int x)
 {
-    printf ("exitting\n");
-    fflush (stdout);
+    log_fmt (0, "exitting\n");
     kill_received = 1;
 }
 
 #endif
 #endif
 
-void remotefs_serverize (const char *listen_address, const char *option_range)
+void remotefs_cooledit_main_serverize (char *range)
+{E_
+    option_listen_address = "0.0.0.0";
+    option_ip_range = range;
+    remotefs_serverize ();
+}
+
+
+#ifdef MSWIN
+static SERVICE_STATUS g_svc_status;
+#endif
+
+
+void remotefs_serverize (void)
 {E_
     struct service serv;
 
@@ -7852,7 +8146,7 @@ void remotefs_serverize (const char *listen_address, const char *option_range)
 
     err = WSAStartup (wVersionRequested, &wsaData);
     if (err != 0) {
-        printf ("WSAStartup failed with error: %d\n", err);
+        log_fmt (1, "WSAStartup failed with error: %d\n", err);
         exit (1);
     }
 #else
@@ -7861,13 +8155,25 @@ void remotefs_serverize (const char *listen_address, const char *option_range)
     signal (SIGINT, kill_handler);
 #endif
 
-    init_service (&serv, listen_address, option_range);
+    init_service (&serv, option_listen_address, option_ip_range);
 
-    printf ("running\n");
+    log_fmt (0, "running\n");
 
+#ifdef MSWIN
+    if (option_console_mode) {
+        while (!kill_received) {
+            run_service (&serv);
+        }
+    } else {
+        while (g_svc_status.dwCurrentState == SERVICE_RUNNING) {
+            run_service (&serv);
+        }
+    }
+#else
     while (!kill_received) {
         run_service (&serv);
     }
+#endif
 
     free_service (&serv);
 #ifndef MSWIN
@@ -7939,6 +8245,53 @@ static unsigned char get_range_char (void)
     return digits[c];
 }
 
+#ifdef MSWIN
+static void restrict_keyfile_to_system (const char *n)
+{E_
+    SID_IDENTIFIER_AUTHORITY SIDAuthNT = SECURITY_NT_AUTHORITY;
+    EXPLICIT_ACCESSA ea[2];
+    PACL pNewDACL = NULL;
+    PSID pSystemSID = NULL;
+    PSID pAdminSID = NULL;
+    DWORD err;
+
+    if (!AllocateAndInitializeSid (&SIDAuthNT, 1, SECURITY_LOCAL_SYSTEM_RID,
+                                    0, 0, 0, 0, 0, 0, 0, &pSystemSID))
+        return;
+    if (!AllocateAndInitializeSid (&SIDAuthNT, 2, SECURITY_BUILTIN_DOMAIN_RID,
+                                    DOMAIN_ALIAS_RID_ADMINS,
+                                    0, 0, 0, 0, 0, 0, &pAdminSID)) {
+        FreeSid (pSystemSID);
+        return;
+    }
+
+    memset (ea, 0, sizeof (ea));
+    ea[0].grfAccessPermissions = GENERIC_READ | GENERIC_EXECUTE;
+    ea[0].grfAccessMode = SET_ACCESS;
+    ea[0].grfInheritance = NO_INHERITANCE;
+    ea[0].Trustee.TrusteeForm = TRUSTEE_IS_SID;
+    ea[0].Trustee.TrusteeType = TRUSTEE_IS_USER;
+    ea[0].Trustee.ptstrName = (LPSTR) pSystemSID;
+
+    ea[1].grfAccessPermissions = GENERIC_READ | GENERIC_EXECUTE;
+    ea[1].grfAccessMode = SET_ACCESS;
+    ea[1].grfInheritance = NO_INHERITANCE;
+    ea[1].Trustee.TrusteeForm = TRUSTEE_IS_SID;
+    ea[1].Trustee.TrusteeType = TRUSTEE_IS_GROUP;
+    ea[1].Trustee.ptstrName = (LPSTR) pAdminSID;
+
+    err = SetEntriesInAclA (2, ea, NULL, &pNewDACL);
+    if (err == ERROR_SUCCESS) {
+        SetNamedSecurityInfoA ((char *) n, SE_FILE_OBJECT,
+            DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
+            NULL, NULL, pNewDACL, NULL);
+        LocalFree (pNewDACL);
+    }
+    FreeSid (pSystemSID);
+    FreeSid (pAdminSID);
+}
+#endif
+
 static void create_aes_key (const char *n)
 {E_
     int i;
@@ -7976,14 +8329,14 @@ static void read_keyfile (const char *n)
 {E_
     FILE *f = NULL;
     struct stat st;
-    printf ("reading AES key from %s\n", n);
+    log_fmt (1, "reading AES key from %s\n", n);
     memset (&st, '\0', sizeof (st));
     if (stat (n, &st)) {
         perror (n);
         exit (1);
     }
     if (st.st_size <= 2) {
-        fprintf (stderr, "AES key file %s is empty\n", n);
+        log_fmt (1, "AES key file %s is empty\n", n);
         exit (1);
     }
     f = fopen (n, "rb");
@@ -7999,12 +8352,609 @@ static void read_keyfile (const char *n)
     }
     string_chomp_ ((char *) the_key);
     if (!strlen ((char *) the_key)) {
-        fprintf (stderr, "error, file %s is empty\n", n);
+        log_fmt (1, "error, file %s is empty\n", n);
         fclose (f);
         exit (1);
     }
     fclose (f);
 }
+
+#ifdef MSWIN
+
+static void ShowStatusWindow (void);
+
+#define REMOTEFS_SERVICE_NAME  "RemoteFS"
+
+static SERVICE_STATUS_HANDLE g_svc_handle;
+
+static void StartTrayIcon (void);
+static void StopTrayIcon (void);
+
+
+#define WINDOWS_CONSOLE_ROWS    40
+#define WINDOWS_CONSOLE_COLS    100
+#define WINDOWS_CONSOLE_SIZE    (WINDOWS_CONSOLE_ROWS * WINDOWS_CONSOLE_COLS)
+#define WINDOWS_CONSOLE_SHM     "Global\\RemoteFS_Console"
+
+struct tray_icon_shared_data_s {
+    int out_row;
+    char console[WINDOWS_CONSOLE_SIZE];
+};
+
+static MSWIN_HANDLE g_console_mapping = NULL;
+
+void write_to_tray_status_canvas (const char *s)
+{
+    int l;
+    l = strlen (s);
+    while (l > 0 && (unsigned char) s[l - 1] <= ' ')
+        l--;
+    if (l > WINDOWS_CONSOLE_COLS)
+        l = WINDOWS_CONSOLE_COLS;
+    memcpy (&tray_icon_shared_data->console[(tray_icon_shared_data->out_row + 0) * WINDOWS_CONSOLE_COLS], s, l);
+    memset (&tray_icon_shared_data->console[(tray_icon_shared_data->out_row + 1) * WINDOWS_CONSOLE_COLS], ' ', WINDOWS_CONSOLE_COLS);
+    tray_icon_shared_data->out_row++;
+    if (tray_icon_shared_data->out_row >= WINDOWS_CONSOLE_ROWS - 1)
+        tray_icon_shared_data->out_row = 4;
+}
+
+#define CONPR(i, fmt, arg) \
+    do { char *_p = tray_icon_shared_data->console + (i) * WINDOWS_CONSOLE_COLS; \
+         snprintf (_p, WINDOWS_CONSOLE_COLS, fmt, arg); \
+         memset (_p + strlen (_p), ' ', WINDOWS_CONSOLE_COLS - strlen (_p)); } while(0)
+
+static void windows_console_clear (void)
+{
+    int i;
+    for (i = 0; i < WINDOWS_CONSOLE_ROWS; i++)
+        CONPR (i, "%s", "");
+    tray_icon_shared_data->out_row = 4;
+}
+
+static void windows_console_init (void)
+{
+    int clear_canvas = 0;
+    if (tray_icon_shared_data)
+        return;
+    g_console_mapping = OpenFileMappingA (FILE_MAP_ALL_ACCESS, FALSE, WINDOWS_CONSOLE_SHM);
+    if (!g_console_mapping) {
+	SECURITY_ATTRIBUTES sa;
+	PSECURITY_DESCRIPTOR pSD = NULL;
+	sa.nLength = sizeof (sa);
+	sa.bInheritHandle = FALSE;
+	sa.lpSecurityDescriptor = NULL;
+	if (ConvertStringSecurityDescriptorToSecurityDescriptorA ("D:(A;OICI;GA;;;WD)", SDDL_REVISION_1, &pSD, NULL))
+	    sa.lpSecurityDescriptor = pSD;
+        g_console_mapping = CreateFileMappingA (MSWIN_INVALID_HANDLE_VALUE, &sa, PAGE_READWRITE, 0, sizeof (struct tray_icon_shared_data_s), WINDOWS_CONSOLE_SHM);
+        clear_canvas = 1;
+	if (pSD)
+	    LocalFree (pSD);
+    }
+    if (g_console_mapping)
+        tray_icon_shared_data = (struct tray_icon_shared_data_s *) MapViewOfFile (g_console_mapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof (struct tray_icon_shared_data_s));
+    if (tray_icon_shared_data && clear_canvas)
+        windows_console_clear ();
+}
+
+static void windows_console_cleanup (void)
+{
+    if (tray_icon_shared_data) {
+        UnmapViewOfFile (tray_icon_shared_data);
+        tray_icon_shared_data = NULL;
+    }
+    if (g_console_mapping) {
+        CloseHandle (g_console_mapping);
+        g_console_mapping = NULL;
+    }
+}
+
+static void windows_console_set_status (void)
+{
+    windows_console_init ();
+    CONPR (0, "listen interface: %s", option_listen_address ? option_listen_address : "<not set>");
+    CONPR (1, "allowed remote IP range: %s", option_ip_range ? option_ip_range : "<not set>");
+    CONPR (2, "AES key location: %s", option_keyfile_path ? option_keyfile_path : "<not set>");
+    CONPR (3, "%s", "");
+}
+
+
+static VOID WINAPI ServiceCtrlHandler (DWORD dwControl)
+{E_
+    switch (dwControl) {
+    case SERVICE_CONTROL_STOP:
+    case SERVICE_CONTROL_SHUTDOWN:
+        if (g_svc_status.dwCurrentState != SERVICE_STOPPED) {
+            g_svc_status.dwCurrentState = SERVICE_STOP_PENDING;
+            g_svc_status.dwWin32ExitCode = 0;
+            g_svc_status.dwCheckPoint = 0;
+            g_svc_status.dwWaitHint = 5000;
+            SetServiceStatus (g_svc_handle, &g_svc_status);
+            return;
+        }
+        break;
+    default:
+        break;
+    }
+    SetServiceStatus (g_svc_handle, &g_svc_status);
+}
+
+static VOID WINAPI ServiceMain (DWORD dwArgc, LPTSTR *lpszArgv)
+{E_
+    (void) dwArgc;
+    (void) lpszArgv;
+
+    g_svc_handle = RegisterServiceCtrlHandlerA (REMOTEFS_SERVICE_NAME, ServiceCtrlHandler);
+    if (!g_svc_handle)
+        return;
+
+    memset (&g_svc_status, 0, sizeof (g_svc_status));
+    g_svc_status.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+    g_svc_status.dwCurrentState = SERVICE_START_PENDING;
+    g_svc_status.dwControlsAccepted = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
+    g_svc_status.dwWin32ExitCode = NO_ERROR;
+    g_svc_status.dwCheckPoint = 0;
+    g_svc_status.dwWaitHint = 3000;
+    SetServiceStatus (g_svc_handle, &g_svc_status);
+
+    g_svc_status.dwCurrentState = SERVICE_RUNNING;
+    g_svc_status.dwCheckPoint = 0;
+    g_svc_status.dwWaitHint = 0;
+    SetServiceStatus (g_svc_handle, &g_svc_status);
+
+    windows_console_set_status ();
+
+    StartTrayIcon ();
+    remotefs_serverize ();
+    StopTrayIcon ();
+
+    g_svc_status.dwCurrentState = SERVICE_STOPPED;
+    SetServiceStatus (g_svc_handle, &g_svc_status);
+}
+
+static int InstallService (const char *listenaddr, const char *iprange, const char *kf, const char *homedir)
+{E_
+    SC_HANDLE hSCManager, hService;
+    char szPath[MAX_PATH];
+    char szCmd[MAX_PATH * 3 + 512];
+    char *p;
+
+    if (!GetModuleFileNameA (NULL, szPath, sizeof (szPath)))
+        return 1;
+
+    p = szCmd;
+    p += _snprintf (szCmd, sizeof (szCmd), "\"%s\"", szPath);
+
+    if (option_no_crypto)
+        p += _snprintf (p, sizeof (szCmd) - (p - szCmd), " --no-crypto");
+    if (option_force_crypto)
+        p += _snprintf (p, sizeof (szCmd) - (p - szCmd), " --force-crypto");
+    if (kf)
+        p += _snprintf (p, sizeof (szCmd) - (p - szCmd), " -k \"%s\"", kf);
+    if (homedir)
+        p += _snprintf (p, sizeof (szCmd) - (p - szCmd), " --home-dir \"%s\"", homedir);
+    _snprintf (p, sizeof (szCmd) - (p - szCmd), " %s %s", listenaddr, iprange);
+
+    hSCManager = OpenSCManagerA (NULL, NULL, SC_MANAGER_CREATE_SERVICE);
+    if (!hSCManager) {
+        if (GetLastError () == ERROR_ACCESS_DENIED)
+            fprintf (stderr, "Access denied. You must run this program as Administrator to install or uninstall the service.\n");
+        else
+            fprintf (stderr, "OpenSCManager failed: %ld\n", GetLastError ());
+        return 1;
+    }
+
+    hService = CreateServiceA (
+        hSCManager,
+        REMOTEFS_SERVICE_NAME,
+        "Cooledit RemoteFS",
+        SERVICE_ALL_ACCESS,
+        SERVICE_WIN32_OWN_PROCESS,
+        SERVICE_AUTO_START,
+        SERVICE_ERROR_NORMAL,
+        szCmd,
+        NULL, NULL, NULL, NULL, NULL);
+
+    if (!hService) {
+        if (GetLastError () == ERROR_SERVICE_EXISTS) {
+            fprintf (stderr, "RemoteFS service already installed. Use --uninstall first.\n");
+            CloseServiceHandle (hSCManager);
+            return 1;
+        }
+        fprintf (stderr, "CreateService failed: %ld\n", GetLastError ());
+        CloseServiceHandle (hSCManager);
+        return 1;
+    }
+
+    fprintf (stdout, "RemoteFS service installed successfully.\n");
+    /* start the service immediately */
+    if (StartServiceA (hService, 0, NULL)) {
+        fprintf (stdout, "RemoteFS service started.\n");
+    } else if (GetLastError () == ERROR_SERVICE_ALREADY_RUNNING) {
+        fprintf (stdout, "RemoteFS service is already running.\n");
+    } else {
+        fprintf (stderr, "StartService failed: %ld (try 'net start %s')\n",
+                 GetLastError (), REMOTEFS_SERVICE_NAME);
+    }
+    CloseServiceHandle (hService);
+
+    /* add tray helper to user startup and launch it now */
+    {
+        HKEY hKey;
+        char trayCmd[MAX_PATH * 2 + 64];
+        _snprintf (trayCmd, sizeof (trayCmd), "\"%s\" --tray", szPath);
+        if (RegCreateKeyExA (HKEY_CURRENT_USER,
+            "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+            0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKey, NULL) == ERROR_SUCCESS) {
+            RegSetValueExA (hKey, "RemoteFS Tray", 0, REG_SZ,
+                (BYTE *) trayCmd, strlen (trayCmd) + 1);
+            RegCloseKey (hKey);
+        }
+        {
+            STARTUPINFOA si;
+            PROCESS_INFORMATION pi;
+            memset (&si, 0, sizeof (si));
+            si.cb = sizeof (si);
+            if (CreateProcessA (NULL, trayCmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+                CloseHandle (pi.hProcess);
+                CloseHandle (pi.hThread);
+            }
+        }
+    }
+
+    CloseServiceHandle (hSCManager);
+    return 0;
+}
+
+static int UninstallService (void)
+{E_
+    SC_HANDLE hSCManager, hService;
+    int ret = 0;
+
+    hSCManager = OpenSCManagerA (NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (!hSCManager) {
+        if (GetLastError () == ERROR_ACCESS_DENIED)
+            log_fmt (1, "Access denied. You must run this program as Administrator to install or uninstall the service.\n");
+        else
+            log_fmt (1, "OpenSCManager failed: %ld\n", GetLastError ());
+        return 1;
+    }
+
+    hService = OpenServiceA (hSCManager, REMOTEFS_SERVICE_NAME, SERVICE_STOP | DELETE);
+    if (!hService) {
+        if (GetLastError () == ERROR_SERVICE_DOES_NOT_EXIST) {
+            log_fmt (1, "RemoteFS service is not installed.\n");
+        } else {
+            log_fmt (1, "OpenService failed: %ld\n", GetLastError ());
+            ret = 1;
+        }
+    } else {
+        SERVICE_STATUS ss;
+        /* try to stop the service first */
+        if (ControlService (hService, SERVICE_CONTROL_STOP, &ss))
+            fprintf (stdout, "RemoteFS service stopped.\n");
+        if (!DeleteService (hService)) {
+            log_fmt (1, "DeleteService failed: %ld\n", GetLastError ());
+            ret = 1;
+        }
+        CloseServiceHandle (hService);
+    }
+
+    /* remove tray helper from user startup */
+    {
+        HKEY hKey;
+        if (RegOpenKeyExA (HKEY_CURRENT_USER,
+            "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+            0, KEY_SET_VALUE, &hKey) == ERROR_SUCCESS) {
+            RegDeleteValueA (hKey, "RemoteFS Tray");
+            RegCloseKey (hKey);
+        }
+    }
+
+    /* kill any running tray helper */
+    {
+        HWND hTray = FindWindowA ("RemoteFSTrayClass", "RemoteFS");
+        if (hTray)
+            PostMessageA (hTray, WM_QUIT, 0, 0);
+    }
+
+    CloseServiceHandle (hSCManager);
+    return ret;
+}
+
+/* --- system tray icon support --- */
+
+#define WM_TRAYICON  (WM_USER + 100)
+#define IDM_TRAY_START   2001
+#define IDM_TRAY_STOP    2002
+#define IDM_TRAY_UNINSTALL 2003
+#define IDM_TRAY_STATUS   2004
+
+static HWND g_tray_hwnd = NULL;
+static NOTIFYICONDATAA g_nid;
+static volatile int g_tray_running = 0;
+
+static int SvcIsRunning (void)
+{E_
+    SC_HANDLE hSCManager, hService;
+    SERVICE_STATUS ss;
+    int running = 0;
+    hSCManager = OpenSCManagerA (NULL, NULL, SC_MANAGER_CONNECT);
+    if (!hSCManager)
+        return 0;
+    hService = OpenServiceA (hSCManager, REMOTEFS_SERVICE_NAME, SERVICE_QUERY_STATUS);
+    if (hService) {
+        if (QueryServiceStatus (hService, &ss))
+            running = (ss.dwCurrentState == SERVICE_RUNNING);
+        CloseServiceHandle (hService);
+    }
+    CloseServiceHandle (hSCManager);
+    return running;
+}
+
+static void SvcStart (void)
+{E_
+    SC_HANDLE hSCManager, hService;
+    hSCManager = OpenSCManagerA (NULL, NULL, SC_MANAGER_CONNECT);
+    if (!hSCManager)
+        return;
+    hService = OpenServiceA (hSCManager, REMOTEFS_SERVICE_NAME, SERVICE_START);
+    if (hService) {
+        StartServiceA (hService, 0, NULL);
+        CloseServiceHandle (hService);
+    }
+    CloseServiceHandle (hSCManager);
+}
+
+static void SvcStop (void)
+{E_
+    SC_HANDLE hSCManager, hService;
+    SERVICE_STATUS ss;
+    hSCManager = OpenSCManagerA (NULL, NULL, SC_MANAGER_CONNECT);
+    if (!hSCManager)
+        return;
+    hService = OpenServiceA (hSCManager, REMOTEFS_SERVICE_NAME, SERVICE_STOP);
+    if (hService) {
+        ControlService (hService, SERVICE_CONTROL_STOP, &ss);
+        CloseServiceHandle (hService);
+    }
+    CloseServiceHandle (hSCManager);
+}
+
+static LRESULT CALLBACK TrayWndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{E_
+    switch (msg) {
+    case WM_TRAYICON:
+        if (lParam == WM_RBUTTONUP || lParam == WM_CONTEXTMENU) {
+            POINT pt;
+            HMENU hMenu;
+            int running;
+            GetCursorPos (&pt);
+            hMenu = CreatePopupMenu ();
+            running = SvcIsRunning ();
+            if (running)
+                AppendMenuA (hMenu, MF_STRING, IDM_TRAY_STOP, "S&top RemoteFS Service");
+            else
+                AppendMenuA (hMenu, MF_STRING, IDM_TRAY_START, "&Start RemoteFS Service");
+            AppendMenuA (hMenu, MF_SEPARATOR, 0, NULL);
+            AppendMenuA (hMenu, MF_STRING, IDM_TRAY_UNINSTALL, "&Uninstall RemoteFS Service");
+            AppendMenuA (hMenu, MF_SEPARATOR, 0, NULL);
+            AppendMenuA (hMenu, MF_STRING, IDM_TRAY_STATUS, "&Status");
+            SetForegroundWindow (hwnd);
+            TrackPopupMenu (hMenu, TPM_RIGHTBUTTON | TPM_RIGHTALIGN, pt.x, pt.y, 0, hwnd, NULL);
+            DestroyMenu (hMenu);
+        }
+        break;
+    case WM_COMMAND:
+        if (LOWORD (wParam) == IDM_TRAY_START)
+            SvcStart ();
+        else if (LOWORD (wParam) == IDM_TRAY_STOP)
+            SvcStop ();
+        else if (LOWORD (wParam) == IDM_TRAY_UNINSTALL)
+            UninstallService ();
+        else if (LOWORD (wParam) == IDM_TRAY_STATUS)
+            ShowStatusWindow ();
+        break;
+    case WM_DESTROY:
+        Shell_NotifyIconA (NIM_DELETE, &g_nid);
+        PostQuitMessage (0);
+        break;
+    default:
+        return DefWindowProcA (hwnd, msg, wParam, lParam);
+    }
+    return 0;
+}
+
+static DWORD WINAPI TrayIconThread (LPVOID lpParam)
+{E_
+    WNDCLASSA wc;
+    MSG msg;
+    HINSTANCE hInst;
+    HICON hIcon;
+
+    hInst = GetModuleHandleA (NULL);
+
+    memset (&wc, 0, sizeof (wc));
+    wc.lpfnWndProc = TrayWndProc;
+    wc.hInstance = hInst;
+    wc.lpszClassName = "RemoteFSTrayClass";
+    if (!RegisterClassA (&wc))
+        return 1;
+
+    g_tray_hwnd = CreateWindowA ("RemoteFSTrayClass", "RemoteFS",
+                                 WS_OVERLAPPEDWINDOW,
+                                 CW_USEDEFAULT, CW_USEDEFAULT,
+                                 CW_USEDEFAULT, CW_USEDEFAULT,
+                                 NULL, NULL, hInst, NULL);
+    if (!g_tray_hwnd)
+        return 1;
+
+    hIcon = LoadIconA (hInst, "REMOTEFS_ICON");
+    if (!hIcon)
+        hIcon = LoadIconA (NULL, IDI_APPLICATION);
+
+    memset (&g_nid, 0, sizeof (g_nid));
+    g_nid.cbSize = sizeof (g_nid);
+    g_nid.hWnd = g_tray_hwnd;
+    g_nid.uID = 1;
+    g_nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+    g_nid.uCallbackMessage = WM_TRAYICON;
+    g_nid.hIcon = hIcon;
+    strncpy (g_nid.szTip, "Cooledit RemoteFS Server", sizeof (g_nid.szTip) - 1);
+    g_nid.szTip[sizeof (g_nid.szTip) - 1] = '\0';
+
+    Shell_NotifyIconA (NIM_ADD, &g_nid);
+
+    g_tray_running = 1;
+
+    while (GetMessageA (&msg, NULL, 0, 0)) {
+        TranslateMessage (&msg);
+        DispatchMessageA (&msg);
+    }
+
+    g_tray_running = 0;
+    return 0;
+}
+
+static void StartTrayIcon (void)
+{E_
+    if (g_tray_running)
+        return;
+    CreateThread (NULL, 0, TrayIconThread, NULL, 0, NULL);
+}
+
+static void StopTrayIcon (void)
+{E_
+    if (g_tray_hwnd) {
+        Shell_NotifyIconA (NIM_DELETE, &g_nid);
+        PostMessageA (g_tray_hwnd, WM_QUIT, 0, 0);
+        g_tray_hwnd = NULL;
+    }
+    g_tray_running = 0;
+}
+
+#define IDT_STATUS_REFRESH 500
+
+static HWND g_status_hwnd = NULL;
+static HFONT g_status_font = NULL;
+
+static LRESULT CALLBACK StatusWndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{E_
+    switch (msg) {
+    case WM_CREATE:
+    {
+        LOGFONTA lf;
+        HDC hdc;
+        TEXTMETRICA tm;
+        RECT rc;
+        memset (&lf, 0, sizeof (lf));
+        lf.lfHeight = 10;
+        lf.lfPitchAndFamily = FIXED_PITCH | FF_MODERN;
+        strcpy (lf.lfFaceName, "Courier");
+        g_status_font = CreateFontIndirectA (&lf);
+        hdc = GetDC (hwnd);
+        if (g_status_font)
+            SelectObject (hdc, g_status_font);
+        GetTextMetricsA (hdc, &tm);
+        ReleaseDC (hwnd, hdc);
+        rc.left = 0;
+        rc.top = 0;
+        rc.right = WINDOWS_CONSOLE_COLS * tm.tmAveCharWidth;
+        rc.bottom = WINDOWS_CONSOLE_ROWS * tm.tmHeight;
+        AdjustWindowRect (&rc, WS_POPUP | WS_CAPTION | WS_SYSMENU, FALSE);
+        SetWindowPos (hwnd, NULL, 0, 0,
+                       rc.right - rc.left, rc.bottom - rc.top,
+                       SWP_NOMOVE | SWP_NOZORDER);
+        SetTimer (hwnd, IDT_STATUS_REFRESH, 250, NULL);
+        SetCapture (hwnd);
+        return 0;
+    }
+    case WM_TIMER:
+        if (wParam == IDT_STATUS_REFRESH)
+            InvalidateRect (hwnd, NULL, FALSE);
+        return 0;
+    case WM_PAINT:
+    {
+        PAINTSTRUCT ps;
+        TEXTMETRICA tm;
+        int char_w, char_h;
+        HDC hdc = BeginPaint (hwnd, &ps);
+        HFONT oldFont = NULL;
+        int y;
+        if (g_status_font)
+            oldFont = SelectObject (hdc, g_status_font);
+        GetTextMetricsA (hdc, &tm);
+        char_w = tm.tmAveCharWidth;
+        char_h = tm.tmHeight;
+        SetBkMode (hdc, TRANSPARENT);
+        windows_console_init ();
+        for (y = 0; y < WINDOWS_CONSOLE_ROWS; y++) {
+            int x;
+            for (x = 0; x < WINDOWS_CONSOLE_COLS; x++) {
+                char ch = tray_icon_shared_data->console[y * WINDOWS_CONSOLE_COLS + x];
+                if (!ch)
+                    ch = '-';
+                TextOutA (hdc, x * char_w, y * char_h, &ch, 1);
+            }
+        }
+        if (oldFont)
+            SelectObject (hdc, oldFont);
+        EndPaint (hwnd, &ps);
+        return 0;
+    }
+    case WM_LBUTTONDOWN:
+    case WM_RBUTTONDOWN:
+    case WM_MBUTTONDOWN:
+    {
+        POINT pt;
+        RECT rc;
+        pt.x = (short) LOWORD (lParam);
+        pt.y = (short) HIWORD (lParam);
+        ClientToScreen (hwnd, &pt);
+        GetWindowRect (hwnd, &rc);
+        if (!PtInRect (&rc, pt))
+            DestroyWindow (hwnd);
+        return 0;
+    }
+    case WM_DESTROY:
+        ReleaseCapture ();
+        KillTimer (hwnd, IDT_STATUS_REFRESH);
+        if (g_status_font) {
+            DeleteObject (g_status_font);
+            g_status_font = NULL;
+        }
+        g_status_hwnd = NULL;
+        return 0;
+    }
+    return DefWindowProcA (hwnd, msg, wParam, lParam);
+}
+
+static void ShowStatusWindow (void)
+{E_
+    if (g_status_hwnd)
+        return;
+    {
+        HINSTANCE hInst = GetModuleHandleA (NULL);
+        WNDCLASSA wc, existing;
+        memset (&wc, 0, sizeof (wc));
+        wc.lpfnWndProc = StatusWndProc;
+        wc.hInstance = hInst;
+        wc.lpszClassName = "RemoteFSStatusClass";
+        if (!GetClassInfoA (hInst, "RemoteFSStatusClass", &existing))
+            RegisterClassA (&wc);
+        g_status_hwnd = CreateWindowExA (WS_EX_TOPMOST, "RemoteFSStatusClass",
+                                          "RemoteFS Status",
+                                          WS_POPUP | WS_CAPTION | WS_SYSMENU,
+                                          CW_USEDEFAULT, CW_USEDEFAULT,
+                                          CW_USEDEFAULT, CW_USEDEFAULT,
+                                          NULL, NULL, hInst, NULL);
+        if (g_status_hwnd) {
+            ShowWindow (g_status_hwnd, SW_SHOW);
+            UpdateWindow (g_status_hwnd);
+        }
+    }
+}
+
+#endif /* MSWIN */
 
 #ifdef MSWIN
 INT WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
@@ -8013,7 +8963,6 @@ int main (int argc, char **argv)
 #endif
 {E_
     int i;
-    const char *keyfile = NULL;
 #ifdef MSWIN
     wchar_t **argv;
     int argc;
@@ -8025,13 +8974,49 @@ int main (int argc, char **argv)
     }
 #endif
 
+    int install_mode = 0;
+    int uninstall_mode = 0;
+    int tray_mode = 0;
+    char *install_addr = NULL;
+    char *install_range = NULL;
     (void) strerrorsocket;
+
+#ifdef MSWIN
+    {
+        char exe_dir[MAX_PATH];
+        char *bs;
+        if (GetModuleFileNameA (NULL, exe_dir, sizeof (exe_dir))) {
+            bs = strrchr (exe_dir, '\\');
+            if (bs)
+                *bs = '\0';
+            SetCurrentDirectoryA (exe_dir);
+        }
+    }
+#endif
 
     for (i = 1; i < argc; i++) {
         const char *p;
         p = wchar_to_char (argv[i]);
         if (!strcmp (p, "-h")) {
             goto usage;
+#ifdef MSWIN
+        } else if (!strcmp (p, "--install")) {
+            install_mode = 1;
+            i++;
+            if (i >= argc)
+                goto usage;
+            install_addr = wchar_to_char (argv[i]);
+            i++;
+            if (i >= argc)
+                goto usage;
+            install_range = wchar_to_char (argv[i]);
+        } else if (!strcmp (p, "--uninstall")) {
+            uninstall_mode = 1;
+        } else if (!strcmp (p, "--console")) {
+            option_console_mode = 1;
+        } else if (!strcmp (p, "--tray")) {
+            tray_mode = 1;
+#endif
         } else if (!strcmp (p, "--home-dir")) {
             i++;
             if (i >= argc)
@@ -8042,11 +9027,10 @@ int main (int argc, char **argv)
         } else if (!strcmp (p, "--force-crypto")) {
             option_force_crypto = 1;
         } else if (!strcmp (p, "-k") || !strcmp (p, "--key-file")) {
-            keyfile = 0;
             i++;
             if (i >= argc)
                 goto usage;
-            keyfile = wchar_to_char (argv[i]);
+            option_keyfile_path = wchar_to_char (argv[i]);
         } else if (p[0] == '-') {
             goto usage;
         } else {
@@ -8055,29 +9039,66 @@ int main (int argc, char **argv)
     }
 
     if (option_no_crypto && option_force_crypto) {
-        fprintf (stderr, "You cannot specify both --force-crypto and --no-crypto.\n");
+        log_fmt (1, "You cannot specify both --force-crypto and --no-crypto.\n");
         exit (1);
     }
 
     init_random ();
 
-    if (!keyfile) {
+    if (!option_keyfile_path) {
         FILE *f;
-        keyfile = "AESKEYFILE";
-        f = fopen (keyfile, "rb");
+#ifdef MSWIN
+        {
+            char progdata[MAX_PATH];
+            static char keyfile_buf[MAX_PATH];
+            if (GetEnvironmentVariableA ("PROGRAMDATA", progdata, sizeof (progdata))) {
+                _snprintf (keyfile_buf, sizeof (keyfile_buf), "%s\\Cooledit", progdata);
+                CreateDirectoryA (keyfile_buf, NULL);
+                _snprintf (keyfile_buf, sizeof (keyfile_buf), "%s\\Cooledit\\AESKEYFILE", progdata);
+                option_keyfile_path = keyfile_buf;
+            } else {
+                option_keyfile_path = "AESKEYFILE";
+            }
+        }
+#else
+        option_keyfile_path = "AESKEYFILE";
+#endif
+        f = fopen (option_keyfile_path, "rb");
         if (f) {
             fclose (f);
         } else if (!f && errno == ENOENT) {
             /* ok, doesn't exist yet*/
-            printf ("creating keyfile AESKEYFILE\n");
-            create_aes_key (keyfile);
+            log_fmt (1, "creating keyfile %s\n", option_keyfile_path);
+            create_aes_key (option_keyfile_path);
         } else if (!f) {
-            perror (keyfile);
+            perror (option_keyfile_path);
             exit (1);
         }
     }
 
-    read_keyfile (keyfile);
+    read_keyfile (option_keyfile_path);
+
+#ifdef MSWIN
+    restrict_keyfile_to_system (option_keyfile_path);
+
+    if (install_mode) {
+        char *homedir = NULL;
+        if (option_home_dir)
+            homedir = option_home_dir;
+        if (!homedir || !*homedir) {
+            homedir = getenv ("HOMEPATH");
+            if (homedir && *homedir)
+                homedir = windows_path_to_unix (homedir);
+        }
+        return InstallService (install_addr, install_range, option_keyfile_path, homedir);
+    }
+    if (uninstall_mode)
+        return UninstallService ();
+    if (tray_mode) {
+        TrayIconThread (NULL);
+        return 0;
+    }
+#endif
 
 #ifdef SHELL_SUPPORT
 #ifndef MSWIN
@@ -8094,7 +9115,7 @@ int main (int argc, char **argv)
         password_to_key (aeskey, &aeskey_len, the_key, klen, &bits_of_complexity);
 #define MIN_COMPLEXITY           ((SYMAUTH_AES_KEY_BYTES * 8) * 3 / 4)
         if (bits_of_complexity < MIN_COMPLEXITY) {
-            fprintf (stderr, "password error: complexity %d less than %d bits\n", bits_of_complexity, MIN_COMPLEXITY);
+            log_fmt (1, "password error: complexity %d less than %d bits\n", bits_of_complexity, MIN_COMPLEXITY);
             exit (1);
         }
     }
@@ -8110,14 +9131,29 @@ int main (int argc, char **argv)
         printf ("\n");
         printf ("Usage: [<OPTIONS>] <listenaddress> <iprange>\n");
         printf ("Usage: [-h]\n");
+#ifdef MSWIN
+        printf ("Usage: --install <listenaddress> <iprange>\n");
+        printf ("Usage: --uninstall\n");
+        printf ("Usage: --console [<OPTIONS>] <listenaddress> <iprange>\n");
+#endif
         printf ("\n");
         printf ("OPTIONS:\n");
         printf ("  --no-crypto                          Turn off encryption.\n");
         printf ("  --force-crypto                       Require encryption, or reject transaction.\n");
+#ifdef MSWIN
+        printf ("  -k <file>, --key-file <file>         Read AES key from <file>.\n");
+        printf ("                                       Default: %%PROGRAMDATA%%\\Cooledit\\AESKEYFILE\n");
+#else
         printf ("  -k <file>, --key-file <file>         Read AES key from <file>. Default: AESKEYFILE\n");
-        printf ("                                       If not specified, AESKEYFILE will be created\n");
+#endif
+        printf ("                                       If not specified, the keyfile will be created\n");
         printf ("                                       and populated with a strong random key.\n");
-        printf ("                                       If AESKEYFILE exists it will be read.\n");
+        printf ("                                       If the keyfile exists it will be read.\n");
+#ifdef MSWIN
+        printf ("  --install <addr> <range>             Install as Windows service (auto-start).\n");
+        printf ("  --uninstall                          Uninstall the Windows service.\n");
+        printf ("  --console                            Run as console application (not as service).\n");
+#endif
         printf ("  -h                                   Print help and exit.\n");
         printf ("\n");
 #ifdef __clang_version__
@@ -8147,7 +9183,30 @@ int main (int argc, char **argv)
     }
 #endif
 
-    remotefs_serverize (wchar_to_char (argv[1]), wchar_to_char (argv[2]));
+#ifdef MSWIN
+    option_listen_address = wchar_to_char (argv[1]);
+    option_ip_range = wchar_to_char (argv[2]);
+    if (option_console_mode) {
+        remotefs_serverize ();
+        return 0;
+    }
+    SERVICE_TABLE_ENTRYA svcTable[] = {
+        { REMOTEFS_SERVICE_NAME, ServiceMain },
+        { NULL, NULL }
+    };
+    if (!StartServiceCtrlDispatcherA (svcTable)) {
+        if (GetLastError () == ERROR_FAILED_SERVICE_CONTROLLER_CONNECT) {
+            log_fmt (1, "RemoteFS: not running as a service. Use --console to run interactively.\n");
+        } else {
+            log_fmt (1, "StartServiceCtrlDispatcher failed: %ld\n", GetLastError ());
+        }
+        return 1;
+    }
+#else
+    option_listen_address = argv[1];
+    option_ip_range = argv[2];
+    remotefs_serverize ();
+#endif
 
     return 0;
 }
@@ -8261,6 +9320,9 @@ int main (int argc, char **argv)
     CStr y;
     double w;
     union float_conv f;
+
+    (void) option_keyfile_path;
+    (void) option_console_mode;
 
     memset (buf, '\0', sizeof (buf));
 
@@ -8590,6 +9652,69 @@ int main (int argc, char **argv)
     r = decode_uint (&q, end, &v);
     assert (!r);
     assert (v == 0xdfd207fd99fae816ULL);
+
+    /* verify bigint */
+    memset (buf, 0, sizeof(buf));
+    encode_ubigint (buf, 0xffffffffffffffffULL);
+    decode_ubigint (buf, &v);
+    assert (v == 0xffffffffffffffffULL);
+
+    memset (buf, 0, sizeof(buf));
+    encode_ubigint (buf, 0x1234567890ABCDEFULL);
+    decode_ubigint (buf, &v);
+    assert (v == 0x1234567890ABCDEFULL);
+
+    /* verify bigint */
+    {
+        unsigned long long v = 0;
+        int j;
+        for (i = 0; i < 64; i++) {
+            unsigned long long decoded;
+            int l;
+            v |= 1;
+            memset (buf, 0, sizeof(buf));
+            l = encode_ubigint (buf, v);
+            assert (buf[0] != ((FILE_PROTO_MAGIC >> 8) & 0xff)); /* see note (3) in code */
+            assert (strlen ((const char *) buf + 5) + 5 == l);
+            assert (decode_ubigint_len (buf[0]) == l);
+            decode_ubigint (buf, &decoded);
+            assert (decoded == v);
+            v <<= 1;
+        }
+        for (i = 0; i < 100; i++) {
+            unsigned long long decoded;
+            for (j = 0; j <= 16; j++) {
+                v = (1ULL << i) - 8ULL + (unsigned long long) j;
+                if (v < (1ULL << 48)) {
+                    memset (buf, 0, sizeof(buf));
+                    encode_uint48 (buf, v);
+                    assert (buf[0] != ((FILE_PROTO_MAGIC >> 8) & 0xff)); /* see note (3) in code */
+                    decode_uint48 (buf, &decoded);
+                    assert (decoded == v);
+                }
+                if (v < (1ULL << 44)) {
+                    memset (buf, 0, sizeof(buf));
+                    encode_ubigint (buf, v);
+                    assert (buf[0] != ((FILE_PROTO_MAGIC >> 8) & 0xff)); /* see note (3) in code */
+                    decode_uint48 (buf, &decoded);
+                    assert (decoded == v);
+
+                    memset (buf, 0, sizeof(buf));
+                    encode_uint48 (buf, v);
+                    assert (buf[0] != ((FILE_PROTO_MAGIC >> 8) & 0xff)); /* see note (3) in code */
+                    decode_ubigint (buf, &decoded);
+                    assert (decoded == v);
+                }
+                if (1) {
+                    memset (buf, 0, sizeof(buf));
+                    encode_ubigint (buf, v);
+                    assert (buf[0] != ((FILE_PROTO_MAGIC >> 8) & 0xff)); /* see note (3) in code */
+                    decode_ubigint (buf, &decoded);
+                    assert (decoded == v);
+                }
+            }
+        }
+    }
 
     printf ("Success\n");
 }

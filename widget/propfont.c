@@ -8,6 +8,7 @@
 #include "inspect.h"
 #include <config.h>
 #include "edit.h"
+#include "stringtools.h"
 #ifdef HAVE_WCHAR_H
 #include <wchar.h>
 #endif
@@ -840,7 +841,6 @@ static void reverse_text (cache_type * line)
 }
 
 
-#define HASH401(c)      ((((c) + 9) * ((c) + 2) * 401) >> 1)
 
 static unsigned int book_marks_calc_hash (struct _book_mark **book_marks, int n_book_marks, int undercaret_offset)
 {E_

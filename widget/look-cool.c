@@ -21,6 +21,7 @@
 #include "app_glob.c"
 #include "coollocal.h"
 #include "remotefs.h"
+#include "remotefspassword.h"
 
 
 extern struct look *look;
@@ -412,13 +413,13 @@ static char *mime_majors[3] =
 {"url", "text", 0};
 
 /* walk up through the directories until we find one that exists: */
-static int get_file_dir_entry_list_host_change (int changed_host, struct file_entry **r1, struct file_entry **r2, const char *host, char *dir, const char *filter, char *errmsg)
+static int get_file_dir_entry_list_host_change (int cached, int changed_host, struct file_entry **r1, struct file_entry **r2, const char *host, char *dir, const char *filter, char *errmsg)
 {
     int fail = 1;
     char last_dir[MAX_PATH_LEN] = "";
 
     for (;;) {
-        fail = get_file_dir_entry_list (r1, r2, host, dir, last_dir, FILELIST_FILES_ONLY, filter, FILELIST_DIRECTORIES_ONLY, "", errmsg);
+        fail = get_file_dir_entry_list (cached, r1, r2, host, dir, last_dir, FILELIST_FILES_ONLY, filter, FILELIST_DIRECTORIES_ONLY, "", errmsg);
         if (!*dir)
             Cstrlcpy (dir, last_dir, sizeof (last_dir));
         if (!changed_host)
@@ -467,7 +468,7 @@ static Window draw_file_browser (const char *identifier, Window parent, int x, i
 	win = CDrawHeadedDialog (identifier, parent, x, y, label);
     (CIdent (identifier))->options |= WINDOW_ALWAYS_RAISED;
     CHourGlass (CFirstWindow);
-    fail = get_file_dir_entry_list_host_change (1, &filelist, &directorylist, host, dir, CLastInput (catstrs (identifier, ".filt", NULL)).data, errmsg);
+    fail = get_file_dir_entry_list_host_change (1, 1, &filelist, &directorylist, host, dir, CLastInput (catstrs (identifier, ".filt", NULL)).data, errmsg);
     CUnHourGlass (CFirstWindow);
     if (fail) {
 	CErrorDialog (parent, 20, 20, _(" File browser "), "%s\n [%s] ", _(" Unable to read directory "), errmsg);
@@ -527,9 +528,13 @@ static Window draw_file_browser (const char *identifier, Window parent, int x, i
         (CDrawTextInputP (catstrs (identifier, ".host", NULL), win, x, y2,
 		        FONT_MEAN_WIDTH * 24, AUTO_HEIGHT, 255, host))->position |= POSITION_BOTTOM;
         CGetHintPos (&x, 0);
+        (CDrawButton (catstrs (identifier, ".forget", NULL), win, x, y2,
+                        AUTO_SIZE, _ (" Forget ")))->position |= POSITION_BOTTOM;
+        CGetHintPos (&x, 0);
 /* Toolhint */
         CSetToolHint (catstrs (identifier, ".hstx", NULL), _("IP address of remote host running remotefs export tool, or " REMOTEFS_LOCAL));
         CSetToolHint (catstrs (identifier, ".host", NULL), _("IP address of remote host running remotefs export tool, or " REMOTEFS_LOCAL));
+        CSetToolHint (catstrs (identifier, ".forget", NULL), _("Drop the host IP address and saved key"));
     }
 
 /* Label for file filter input line. For example, to list files matching '*.c' */
@@ -545,6 +550,11 @@ static Window draw_file_browser (const char *identifier, Window parent, int x, i
 		       PIXMAP_BUTTON_TICK))->position |= POSITION_RIGHT;
 /* Toolhint */
     CSetToolHint (catstrs (identifier, ".ok", NULL), _("Accept, Enter"));
+
+    (CDrawPixmapButton (catstrs (identifier, ".refresh", NULL), win, x3 + 5 + TICK_BUTTON_WIDTH, y3,
+                       PIXMAP_BUTTON_REFRESH))->position |= POSITION_RIGHT;
+/* Toolhint */
+    CSetToolHint (catstrs (identifier, ".refresh", NULL), _("Refresh directory listing, Ctrl-R"));
 
     (CDrawPixmapButton (catstrs (identifier, ".cancel", NULL), win, x2 - WIDGET_SPACING * 2 - TICK_BUTTON_WIDTH - 20, y3,
 		       PIXMAP_BUTTON_CROSS))->position |= POSITION_RIGHT;
@@ -669,17 +679,38 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
     CWidget *textinput = CIdent (catstrs (identifier, ".finp", NULL));
     CWidget *filterinput = CIdent (catstrs (identifier, ".filt", NULL));
     CWidget *ipinput = NULL;
+    CWidget *forget = NULL;
     static char last_filterinput[256 + 1] = "";
     static char last_ipinput[256 + 1] = "";
     static Window last_focus = 0;
     int reread_filelist = 0;
+    int force_reread_filelist = 0;
     int show_help_skipped = 0;
+
+    if (directory && filelist && directorylist && textinput && filterinput) {
+        /* all good */
+    } else {
+        return NULL;
+    }
 
 #define HOST            (ipinput ? ipinput->text.data : "")
 
     if ((options & GETFILE_WITH_REMOTE)) {
         ipinput = CIdent (catstrs (identifier, ".host", NULL));
-        strcpy (host, HOST);
+        forget = CIdent (catstrs (identifier, ".forget", NULL));
+        if (ipinput && forget && !strcmp (cwevent->ident, forget->ident)) {
+            if (strcmp (ipinput->text.data, REMOTEFS_LOCAL)) {
+                password_load ();
+                password_forget (ipinput->text.data);
+                remotefs_drop (ipinput->text.data);
+                CStr_free(&ipinput->text);
+                ipinput->text = CStr_dup (REMOTEFS_LOCAL);
+	        CExpose (ipinput->ident);
+                reread_filelist = 1;
+            }
+        } else {
+            strcpy (host, HOST);
+        }
     }
 
     CSetDndDirectory (directory->text.data);
@@ -705,10 +736,16 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
         reread_filelist = 1;
     if (ipinput && !strcmp (cwevent->ident, ipinput->ident) && cwevent->command == CK_Enter)
         reread_filelist = 1;
+    if (((cwevent->state & ControlMask) && cwevent->key == XK_r) ||
+         (!strcmp (cwevent->ident, catstrs (identifier, ".refresh", NULL)))) {
+        reread_filelist = 1;
+        force_reread_filelist = 1;
+    }
     last_focus = CGetFocus();
 
     if (reread_filelist) {
         int changed_host = 0;
+        char *host;
         char dir[MAX_PATH_LEN + 1];
 	struct file_entry *f = NULL, *g = NULL;
         int fail;
@@ -722,7 +759,9 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
             filterinput->text = CStr_dup("*");
 	    CExpose (filterinput->ident);
 	}
-        if (!strcmp (last_filterinput, filterinput->text.data) && !strcmp (last_ipinput, HOST)) {
+        if (force_reread_filelist) {
+            /* refresh ↻ button pushed */
+        } else if (!strcmp (last_filterinput, filterinput->text.data) && !strcmp (last_ipinput, HOST)) {
             r = "";
             goto out;
         }
@@ -730,13 +769,22 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
         if (strcmp (last_ipinput, HOST))
             changed_host = 1;
 
-        strcpy (last_filterinput, filterinput->text.data);
-        strcpy (last_ipinput, HOST);
+        if (!force_reread_filelist) {
+            strcpy (last_filterinput, filterinput->text.data);
+            strcpy (last_ipinput, HOST);
+        }
         if (show_help_skipped)
             show_help (identifier);
 	CHourGlass (CFirstWindow);
         Cstrlcpy (dir, directory->text.data, MAX_PATH_LEN);
-        fail = get_file_dir_entry_list_host_change (changed_host, &f, &g, ipinput ? ipinput->text.data : 0, dir, filterinput->text.data, errmsg);
+        host = ipinput ? ipinput->text.data : 0;
+        if (force_reread_filelist) {
+            struct remotefs *u;
+            u = remotefs_lookup (host, NULL);
+            if ((*u->remotefs_invalidatecache) (u, errmsg))
+                return NULL;
+        }
+        fail = get_file_dir_entry_list_host_change (!force_reread_filelist, changed_host, &f, &g, ipinput ? ipinput->text.data : 0, dir, filterinput->text.data, errmsg);
         CRedrawFilelist (idf, f, 0);
         if (!fail) {
             CRedrawText (catstrs (identifier, ".dir", NULL), "%s", dir);
@@ -916,7 +964,8 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
             r = "";
             goto out;
         }
-	if ((*u->remotefs_stat) (u, estr, &st, &just_not_there, &error_code, errmsg)) {
+        int from_cache = 1;
+	if ((*u->remotefs_stat) (u, &from_cache, estr, &st, &just_not_there, &error_code, errmsg)) {
             show_error (identifier, errmsg);
             r = "";
             goto out;
@@ -937,7 +986,7 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
 	    struct file_entry *g = 0, *f = 0;
             int fail;
 	    CHourGlass (CFirstWindow);
-            fail = get_file_dir_entry_list (&g, &f, ipinput ? ipinput->text.data : 0, estr, NULL, FILELIST_FILES_ONLY, filterinput->text.data, FILELIST_DIRECTORIES_ONLY, "", errmsg);
+            fail = get_file_dir_entry_list (1, &g, &f, ipinput ? ipinput->text.data : 0, estr, NULL, FILELIST_FILES_ONLY, filterinput->text.data, FILELIST_DIRECTORIES_ONLY, "", errmsg);
 	    CUnHourGlass (CFirstWindow);
 	    if (!fail) {
 		CRedrawFilelist (catstrs (identifier, ".fbox", NULL), g, 0);
@@ -970,6 +1019,13 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
 		r = "";
                 goto out;
 	    }
+            if (from_cache) {
+	        if ((*u->remotefs_stat) (u, NULL, estr, &st, &just_not_there, &error_code, errmsg)) {
+                    show_error (identifier, errmsg);
+                    r = "";
+                    goto out;
+	        }
+            }
 	    r = estr;	/* entry exists and is a file */
             goto out;
 	}
@@ -1087,9 +1143,11 @@ void look_cool_draw_browser (const char *ident, Window parent, int x, int y,
     CAddCallback (catstrs (ident, ".fbox", NULL), cb_browser);
     CAddCallback (catstrs (ident, ".finp", NULL), cb_browser);
     CAddCallback (catstrs (ident, ".host", NULL), cb_browser);
+    CAddCallback (catstrs (ident, ".forget", NULL), cb_browser);
     CAddCallback (catstrs (ident, ".filt", NULL), cb_browser);
     CAddCallback (catstrs (ident, ".ok", NULL), cb_browser);
     CAddCallback (catstrs (ident, ".cancel", NULL), cb_browser);
+    CAddCallback (catstrs (ident, ".refresh", NULL), cb_browser);
 
     CFocus (CIdent (catstrs (ident, ".finp", NULL)));
 }

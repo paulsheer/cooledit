@@ -353,7 +353,7 @@ int edit_check_change_on_disk (WEdit * edit, int save_mode)
     fullname = (char *) strdup(catstrs (edit->dir, edit->filename, NULL));
     u = remotefs_lookup (edit->host, NULL);
 #warning should abort on network error
-    if (!(*u->remotefs_stat) (u, fullname, &st, NULL, &error_code, errmsg)) {
+    if (!(*u->remotefs_stat) (u, NULL, fullname, &st, NULL, &error_code, errmsg)) {
         if (st.ustat.st_mtime != (save_mode == EDIT_CHANGE_ON_DISK__ON_SAVE ? edit->stat.ustat.st_mtime : edit->test_file_on_disk_for_changes_m_time)) {
             const char *p;
             p = _ (" File has been modified on disk by another program. ");
@@ -582,7 +582,7 @@ int edit_save_as_cmd (WEdit * edit)
 		different_filename = 1;
                 u = remotefs_lookup (host, NULL);
 #warning should report on network error
-                if (!(*u->remotefs_stat) (u, exp, &st, NULL, &error_code, errmsg)) {     /* the file exists */
+                if (!(*u->remotefs_stat) (u, NULL, exp, &st, NULL, &error_code, errmsg)) {     /* the file exists */
 		    if (edit_query_dialog2 (_(" Warning "), 
 		    _(" A file already exists with this name. "), 
 /* Push buttons to over-write the current file, or cancel the operation */

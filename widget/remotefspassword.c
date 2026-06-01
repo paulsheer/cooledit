@@ -68,7 +68,7 @@ static void password_get_config_file (char *out, const char *suffix)
 }
 
 /* returns -1 on error  */
-int password_load (void)
+int password_load_ (void)
 {E_
     struct password_item *last = NULL;
     char line[512];
@@ -182,6 +182,26 @@ int password_find (const char *host, int *crypto_enabled, char *pass, int pass_l
     return -1;
 }
 
+/* return non-zero on error */
+int password_forget (const char *host)
+{E_
+    struct password_item *p, *prev = NULL;
+    for (p = list_first; p; p = p->next) {
+        if (!strcmp (host, p->host)) {
+            if (prev)
+                prev->next = p->next;
+            else
+                list_first = p->next;
+            free (p->host);
+            free (p->pass);
+            free (p);
+            return password_save_ ();
+        }
+        prev = p;
+    }
+    return -1;
+}
+
 static int dummy_data;
 
 Window find_mapped_window (Window w);
@@ -276,6 +296,16 @@ static int contains_whitespace (const char *pass_)
     return 0;
 }
 
+void password_load (void)
+{E_
+    if (!password_loaded) {
+        password_loaded = 1;
+        if (password_load_ ()) {
+            CErrorDialog (0, 20, 20, "Error Loading Passwords", " Error Loading Passwords: ~%s: %s", PASSWORD_FILE, get_sys_error (""));
+        }
+    }
+}
+
 static enum remotfs_password_return password_remotfs_password_cb_ (void *user_data, int again, const char *host, int *crypto_enabled_, unsigned char *pass_, const char *user_msg, char *errmsg)
 {E_
     char pass[REMOTEFS_MAX_PASSWORD_LEN] = "";
@@ -285,12 +315,7 @@ static enum remotfs_password_return password_remotfs_password_cb_ (void *user_da
 
     *crypto_enabled_ = 1;
 
-    if (!password_loaded) {
-        password_loaded = 1;
-        if (password_load ()) {
-            CErrorDialog (0, 20, 20, "Error Loading Passwords", " Error Loading Passwords: ~%s: %s", PASSWORD_FILE, get_sys_error (""));
-        }
-    }
+    password_load ();
 
     assert (user_data == &dummy_data);
     found = !password_find (host, &crypto_enabled, (char *) pass, REMOTEFS_MAX_PASSWORD_LEN);

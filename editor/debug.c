@@ -144,7 +144,7 @@ typedef struct struct_debug {
     char *break_point_editor;
 } Debug;
 
-extern CWidget *edit[50];
+extern CWidget *edit[];
 extern int current_edit;
 extern int last_edit;
 
@@ -277,7 +277,7 @@ static void xdebug_remove_variable (Debug * d, int i)
 	if (d->variable[i].output)
 	    free (d->variable[i].output);
     }
-    Cmemmove (&d->variable[i], &d->variable[i + 1], (MAX_VARIABLES - i) * sizeof (struct _variable));
+    Cmemmove (&d->variable[i], &d->variable[i + 1], (MAX_VARIABLES - i - 1) * sizeof (struct _variable));
 }
 
 static char **xdebug_get_line (void *data, int line, int *numfields, int *tagged)
@@ -335,6 +335,10 @@ static void xdebug_display_variable (Debug * d, char *message, int action)
 	    *p = '?';
     }
     *p = '\0';
+    if (d->last_variable_displayed >= MAX_VARIABLES) {
+	d->last_variable_displayed = 0;
+	return;
+    }
     if (d->variable[d->last_variable_displayed].output) {
 	d->variable[d->last_variable_displayed].changed = strcmp (message, d->variable[d->last_variable_displayed].output);
 	free (d->variable[d->last_variable_displayed].output);
@@ -1192,7 +1196,7 @@ static int xdebug_run_program (Debug * d)
     xdebug_cursor_bookmark_flush ();
 
     u = remotefs_lookup (debug_session.host, NULL);
-    if ((*u->remotefs_stat) (u, d->progname, &s, NULL, &error_code, errmsg)) {
+    if ((*u->remotefs_stat) (u, NULL, d->progname, &s, NULL, &error_code, errmsg)) {
 	debug_error2 (d, _("Error trying to stat executable: check that the filename and \n current directory are correct"), errmsg);
 	return 1;
     }
@@ -1715,9 +1719,10 @@ void debug_shut (void)
 	free (debug_session.condition);
     if (debug_session.break_point_editor)
 	free (debug_session.break_point_editor);
-    for (i = 0; debug_session.variable[i].name && debug_session.variable[i].output; i++) {
+    for (i = 0; debug_session.variable[i].name; i++) {
 	free (debug_session.variable[i].name);
-	free (debug_session.variable[i].output);
+	if (debug_session.variable[i].output)
+	    free (debug_session.variable[i].output);
     }
     memset (&debug_session, 0, sizeof (debug_session));
 }

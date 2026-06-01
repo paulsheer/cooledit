@@ -35,7 +35,8 @@ enum remotefs_error_code {
     RFSERR_PATHNAME_TOO_LONG,                   /* 9 */
     RFSERR_NON_CRYPTO_OP_ATTEMPTED,             /* 10 */
     RFSERR_SERVER_CLOSED_SHELL_DIED,            /* 11 */
-    RFSERR_LAST_INTERNAL_ERROR,                 /* 12 */
+    RFSERR_SERVER_GRACEFUL_EXIT,                /* 12 */
+    RFSERR_LAST_INTERNAL_ERROR,                 /* 13 */
 
 /* The combined errors from: opengroup.org, Linux, FreeBSD, Solaris, HP-UX,
    and Windows _sys_errlist are listed below.  This excludes the Windows WSA
@@ -360,7 +361,9 @@ enum remotefs_error_code {
 
 #define REMOTEFS_LOCAL                          "localhost"
 
-void remotefs_serverize (const char *listen_address, const char *acceptrange);
+void remotefs_cooledit_main_serverize (char *range);
+void remotefs_serverize (void);
+void remotefs_clean (void);
 
 struct file_entry;
 struct remotefs;
@@ -369,6 +372,7 @@ void remotefs_set_display_log_for_wtmp (const char *display);
 
 void remotefs_free (struct remotefs *rfs);
 struct remotefs *remotefs_new (const char *host, char *errmsg);
+int remotefs_drop (const char *host_);
 struct remotefs *remotefs_lookup (const char *host_, char *directory);
 #define the_remotefs_local                      (remotefs_lookup (REMOTEFS_LOCAL, NULL))
 
@@ -424,12 +428,13 @@ int remotefs_shell_util (const char *host, int xwin_fd, struct remotefs_terminal
 
 struct remotefs {
     unsigned int magic;
-    int (*remotefs_listdir) (struct remotefs *rfs, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg);
-    int (*remotefs_listtwodirs) (struct remotefs *rfs, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg);
+    int (*remotefs_invalidatecache) (struct remotefs *rfs, char *errmsg);
+    int (*remotefs_listdir) (struct remotefs *rfs, int *cached, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg);
+    int (*remotefs_listtwodirs) (struct remotefs *rfs, int *cached, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg);
     int (*remotefs_readfile) (struct remotefs *rfs, struct action_callbacks *o, const char *filename, char *errmsg);
     int (*remotefs_writefile) (struct remotefs *rfs, struct action_callbacks *o, const char *filename, long long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg);
     int (*remotefs_checkordinaryfileaccess) (struct remotefs *rfs, const char *filename, unsigned long long sizelimit, struct portable_stat *st, char *errmsg);
-    int (*remotefs_stat) (struct remotefs *rfs, const char *path, struct portable_stat *st, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg);
+    int (*remotefs_stat) (struct remotefs *rfs, int *cached, const char *path, struct portable_stat *st, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg);
     int (*remotefs_chdir) (struct remotefs *rfs, const char *dirname, char *cwd, int cwdlen, char *errmsg);
     int (*remotefs_realpathize) (struct remotefs *rfs, const char *path, const char *homedir, char *out, int outlen, char *errmsg);
     int (*remotefs_gethomedir) (struct remotefs *rfs, char *out, int outlen, char *errmsg);

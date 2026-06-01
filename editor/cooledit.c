@@ -560,7 +560,7 @@ static void process_command_line (int argc, char **argv)
 /* {{{  multiple edit windows */
 
 /* maximum number of edit windows: */
-#define N_EDIT 50
+#define N_EDIT 100
 
 /* the editors (a stack of sorts) */
 CWidget *edit[N_EDIT + 1] = {0, 0};
@@ -2054,7 +2054,8 @@ static void maximise_window (char *ident)
     CSetWidgetSize (x, columns * FONT_MEAN_WIDTH + 25 + EDIT_FRAME_W + 4 + 2 + 20 + WIDGET_SPACING * 2,
 		    lines * FONT_PIX_PER_LINE + f + EDIT_FRAME_H + WIDGET_SPACING * 3 + 8 + TEXT_RELIEF * 2 + 3 + 3 + 3 + 2);
     w = CIdent (x);
-    CSetWidgetPosition (x, (wm - w->width) / 2, height_offset + (hm - height_offset - w->height) / 2);
+    if (w)
+        CSetWidgetPosition (x, (wm - w->width) / 2, height_offset + (hm - height_offset - w->height) / 2);
     CPopFont ();
 }
 
@@ -2379,7 +2380,7 @@ int main (int argc, char **argv)
     process_command_line (argc, argv);
 
     if (option_server && *option_server) {
-        remotefs_serverize ("0.0.0.0", option_server);
+        remotefs_cooledit_main_serverize (option_server);
         exit (0);
     }
 

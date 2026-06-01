@@ -9,11 +9,11 @@ libCw_la_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
 	cmdlineopt.c cmdlineopt.h scrollbar.c fieldedtextbox.c \
 	edit.c editwidget.c editdraw.c editcmd.c editmenu.c \
 	propfont.c international.c edit_key_translator.c \
-	loadfile.c stringtools.c pool.c pool.h compatable.c \
+	loadfile.c stringtools.c hashtable.c pool.c pool.h compatable.c \
 	mad.c regex.c coollocal.h coolwidget.h drawings.h \
 	imagewidget.h filelist.c compatable.h \
 	loadfile.h loadtiff.h mad.h my_string.h regex.h \
-	stringtools.h pipe.c edit.h editcmddef.h \
+	stringtools.h hashtable.h pipe.c edit.h editcmddef.h \
 	triangle.h vgagl.h config.h wordproc.c syntax.c \
 	vertchar.c cursor.c bookmark.c font.c font.h xim.c \
 	pathdup.c widechar.c unicodedialog.c aafont.c aafont.h \

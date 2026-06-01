@@ -4938,7 +4938,7 @@ static int remote_checkordinaryfileaccess (struct remotefs *rfs, const char *fil
     encode_str (&q, filename, strlen (filename));
     encode_uint (&q, sizelimit);
 
-    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_IFNOTEXPIRED, NULL, &msg, &s, REMOTEFS_ACTION_CHECKORDINARYFILEACCESS, errmsg, NULL)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, NULL, &msg, &s, REMOTEFS_ACTION_CHECKORDINARYFILEACCESS, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }

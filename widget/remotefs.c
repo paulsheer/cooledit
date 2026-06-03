@@ -5785,9 +5785,15 @@ LOG(sr);
 LOG(0);
 
     if (setsockopt (sock_data->sock, IPPROTO_TCP, TCP_NODELAY, (char *) &yes, sizeof (yes))) {
-        snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "setsockopt(TCP_NODELAY): %s", strerrorsocket ());
-        SHUTSOCK (sock_data);
-        return INVALID_SOCKET;
+/* sometimes this give 'not supported'. strange. possibly try again *shrug*: */
+        char t[REMOTEFS_ERR_MSG_LEN];
+        snprintf (t, REMOTEFS_ERR_MSG_LEN, "setsockopt(TCP_NODELAY): %s", strerrorsocket ());
+        usleep (10000);
+        if (setsockopt (sock_data->sock, IPPROTO_TCP, TCP_NODELAY, (char *) &yes, sizeof (yes))) {
+            strcpy (errmsg, t);
+            SHUTSOCK (sock_data);
+            return INVALID_SOCKET;
+        }
     }
 
     return 0;

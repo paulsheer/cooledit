@@ -449,7 +449,11 @@ void usage (void)
 	    "-verbose                                 print details of initialisation\n" \
 	    "-h, -H, -?, --help                       print this message to stdout\n" \
 	    "-V, -v, --version                        print versiom info\n" \
-	    "\n"));
+	    ""));
+
+    filetool_usage(stdout, "");
+    printf("\n");
+
 }
 
 void version (void)

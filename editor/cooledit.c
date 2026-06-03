@@ -375,8 +375,10 @@ void usage (void)
 	    _("Cooledit version %s\n" \
 	    "A user-friendly text editor for the X Window System.\n" \
 	    "Usage:\n" \
-	    "%s [-AabCEhiPsSUVv?] [options] [[+<line>] <file>] [[+<line>] <file>] ...\n"), \
-		    VERSION, PACKAGE);
+	    "cooledit [-AabCEhiPsSUVv?] [options] [[+<line>] <file>] [[+<line>] <file>] ...\n" \
+	    "cooledit [<options>] [-host <ip>] -rxvt\n" \
+            ), \
+		    VERSION);
     printf (_("-d, -display <display>                   the X server to display on\n"));
 #ifdef GUESS_VISUAL
     printf (_("-vis, --visual <visual-class>            use   cooledit -vis h   for help\n" \
@@ -440,6 +442,10 @@ void usage (void)
 	    "         when moving and deleting, default: 0-9a-z_; ,[](){} (typed out in full)\n" \
             "-server, --server <ip-range>             act as remote file-server for cooledit\n" \
             "           accepting connections from <ip-range>, eg. 10.0.0.0/24,192.168.0.0/16\n" \
+            "-rxvt                                    start a unicode xterm with X forwarding\n" \
+            "                                         support by connecting to remotefs with\n" \
+            "                                         X forwarding support\n" \
+            "-host <ip>                               remote IP address of remotefs server\n" \
 	    "-verbose                                 print details of initialisation\n" \
 	    "-h, -H, -?, --help                       print this message to stdout\n" \
 	    "-V, -v, --version                        print versiom info\n" \

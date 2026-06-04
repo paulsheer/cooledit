@@ -48,6 +48,7 @@ typedef void *WSAEVENT;
 #define REMOTEFS_ACTION_SHELLSIGNAL             15
 #define REMOTEFS_ACTION_READTWODIRS             16
 #define REMOTEFS_ACTION_PING                    17
+#define REMOTEFS_ACTION_SHELLRECONNECT          18
 
 
 #define CONNCHECK_SUCCESS       0

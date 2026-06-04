@@ -82,6 +82,14 @@ enum {
 
 struct remotefs_terminalio;
 
+enum life_cycle {
+    LIFE_CYCLE_LIVE = 0,
+    LIFE_CYCLE_SUSPENDED = 1,
+    LIFE_CYCLE_EXIT_SUCCESS = 2,
+    LIFE_CYCLE_EXIT_FAILURE = 3,
+    LIFE_CYCLE_KILLED = 4,
+};
+
 struct _rxvtlib {
 //  unsigned int num_fds ;
 
@@ -2054,7 +2062,8 @@ struct _bgPixmap_t {
     struct menu_t *BuildMenu;
 #endif
     Window parent_window;
-    int killed;
+    enum life_cycle life_cycle;
+    int killed_line;
 };
 
 enum _sstyle_t {

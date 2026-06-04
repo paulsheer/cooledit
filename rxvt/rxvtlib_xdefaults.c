@@ -397,7 +397,7 @@ void            rxvtlib_usage (rxvtlib *o, int type)
 	fprintf (stderr, "\n    -help to list options\n\n");
 	break;
     }
-    o->killed = EXIT_FAILURE | DO_EXIT;
+    o->life_cycle = LIFE_CYCLE_EXIT_FAILURE;
     /* NOTREACHED */
 }
 /*}}} */
@@ -433,11 +433,11 @@ void            rxvtlib_get_options (rxvtlib *o, int argc, char *const *argv)
 
 	if (!strcmp (opt, "help"))
 	    rxvtlib_usage (o, longopt ? 2 : 1);
-	if (o->killed)
+	if (o->life_cycle != LIFE_CYCLE_LIVE)
 	    return;
 	if (!strcmp (opt, "h"))
 	    rxvtlib_usage (o, 0);
-	if (o->killed)
+	if (o->life_cycle != LIFE_CYCLE_LIVE)
 	    return;
 
 	/* feature: always try to match long-options */

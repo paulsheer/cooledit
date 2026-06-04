@@ -159,8 +159,10 @@ RETSIGTYPE Child_signal (int unused)
 	errno = 0;
     } while ((-1 == (pid = waitpid (-1, NULL, WNOHANG)))
 	     && (errno == EINTR));
-    if ((o = match_object_to_pid (0, pid)))
-	o->killed = EXIT_SUCCESS | DO_EXIT;
+    if ((o = match_object_to_pid (0, pid))) {
+        if (!o->life_cycle) o->killed_line = __LINE__;
+	o->life_cycle = LIFE_CYCLE_EXIT_SUCCESS;
+    }
     errno = save_errno;
 #error
     signal (SIGCHLD, Child_signal);
@@ -433,7 +435,8 @@ void            rxvtlib_init_command (rxvtlib *o, const char *host, char *const 
     o->Xfd = XConnectionNumber (o->Xdisplay);
 
     if (rxvtlib_run_command (o, host, argv, do_sleep, errmsg)) {
-	o->killed = EXIT_FAILURE | DO_EXIT;
+        if (!o->life_cycle) o->killed_line = __LINE__;
+	o->life_cycle = LIFE_CYCLE_EXIT_FAILURE;
     }
 }
 /*}}} */
@@ -486,7 +489,8 @@ int            rxvtlib_tt_resize (rxvtlib *o)
     if ((*o->cterminal_io.remotefs->remotefs_shellresize) (o->cterminal_io.remotefs, o->cmd_pid, o->TermWin.ncol, o->TermWin.nrow, errmsg)) {
         printf ("error, resizing terminal, [%s]\n", errmsg);
         CRemoveWatch (o->cmd_fd, NULL, 3);
-        o->killed = EXIT_FAILURE | DO_EXIT;
+        if (!o->life_cycle) o->killed_line = __LINE__;
+        o->life_cycle = LIFE_CYCLE_EXIT_FAILURE;
         return -1;
     }
     return 0;
@@ -1100,14 +1104,14 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
     if (o->cmdbuf_ptr < o->cmdbuf_endp)
 	return (*o->cmdbuf_ptr++);
 
-    while (!o->killed) {
+    while (o->life_cycle == LIFE_CYCLE_LIVE) {
 	if (o->v_bufstr < o->v_bufptr)	/* output any pending chars */
 	    rxvtlib_tt_write (o, NULL, 0);
 
 #ifdef STANDALONE
 	while (XPending (o->Xdisplay)) {			/* process pending X events */
 	    rxvtlib_XProcessEvent (o, o->Xdisplay);
-	    if (o->killed)
+	    if (o->life_cycle != LIFE_CYCLE_LIVE)
 		return 0;
 	    /* in case button actions pushed chars to cmdbuf */
 	    if (o->cmdbuf_ptr < o->cmdbuf_endp)
@@ -1145,7 +1149,7 @@ unsigned char rxvtlib_cmd_getc (rxvtlib * o)
 	if (o->want_refresh) {
 	    rxvtlib_scr_refresh (o, o->refresh_type);
 	    rxvtlib_scrollbar_show (o, 1);
-	    if (o->killed)
+	    if (o->life_cycle != LIFE_CYCLE_LIVE)
 		return 0;
 #ifdef USE_XIM
 # ifdef STANDALONE
@@ -1207,12 +1211,11 @@ static int io_avail (int fd)
 static int rxvt_fd_read (rxvtlib *o)
 {E_
     int c;
-    c = remotefs_reader_util (&o->cterminal_io, 0);
-    if (c < 0) {
-        CRemoveWatch (o->cmd_fd, NULL, 1);
-        o->killed = EXIT_FAILURE | DO_EXIT;
-    }
-    if (c <= 0)
+    remotefs_error_code_t error_code;
+    c = remotefs_reader_util (&o->cterminal_io, 0, &error_code);
+    if (c < 0)
+        goto errout;
+    if (!c)
 	return c;
     do {
 /* if x events are pending this could mean a ^C to stop scrolling: */
@@ -1223,10 +1226,18 @@ static int rxvt_fd_read (rxvtlib *o)
                 break;
             }
         }
-    } while ((c = remotefs_reader_util (&o->cterminal_io, 1)) > 0);
-    if (c < 0) {
-        CRemoveWatch (o->cmd_fd, NULL, 1);
-        o->killed = EXIT_FAILURE | DO_EXIT;
+    } while ((c = remotefs_reader_util (&o->cterminal_io, 1, &error_code)) > 0);
+    if (c >= 0)
+        return c;
+
+  errout:
+/* if the shell under the terminal segfaults, or exits, then we get here */
+    CRemoveWatch (o->cmd_fd, NULL, 1);
+    if (error_code == RFSERR_SERVER_CLOSED_SHELL_DIED) {
+        if (!o->life_cycle) o->killed_line = __LINE__;
+        o->life_cycle = LIFE_CYCLE_EXIT_FAILURE;
+    } else {
+        o->life_cycle = LIFE_CYCLE_SUSPENDED;
     }
     return c;
 }
@@ -1246,6 +1257,14 @@ void rxvt_process_x_event (rxvtlib * o)
     {
         switch (o->xevent.type) {
         case KeyPress:
+        if (o->life_cycle == LIFE_CYCLE_SUSPENDED) {
+            char errmsg[REMOTEFS_ERR_MSG_LEN];
+            if (remotefs_shell_reconnect (o->cterminal_io.host, ConnectionNumber (o->Xdisplay), &o->cterminal_io, errmsg)) {
+                o->life_cycle = LIFE_CYCLE_KILLED;
+                return;
+            }
+            o->life_cycle = LIFE_CYCLE_LIVE;
+        }
         case ClientMessage:
         case MappingNotify:
         case VisibilityNotify:
@@ -1274,10 +1293,17 @@ void rxvt_process_x_event (rxvtlib * o)
         }
 	rxvtlib_XProcessEvent (o, o->Xdisplay);
     }
-    if (o->killed) {
+    if (o->life_cycle == LIFE_CYCLE_SUSPENDED) {
+        if (o->cmd_fd >= 0) {
+            CRemoveWatch (o->cmd_fd, NULL, 3);
+	    close (o->cmd_fd);
+            o->cmd_fd = -1;
+        }
+    } else if (o->life_cycle != LIFE_CYCLE_LIVE) {
         if (!o->shellkill_sent) {
             o->shellkill_sent = 1;
-            (*o->cterminal_io.remotefs->remotefs_shellkill) (o->cterminal_io.remotefs, o->cmd_pid);
+            if (o->cterminal_io.remotefs)
+                (*o->cterminal_io.remotefs->remotefs_shellkill) (o->cterminal_io.remotefs, o->cmd_pid);
         }
         if (o->cmd_fd >= 0) {
             CRemoveWatch (o->cmd_fd, NULL, 3);
@@ -1524,10 +1550,12 @@ static void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
 
     case ClientMessage:
 	if (ev->xclient.format == 32 && ev->xclient.data.l[0] == o->wmDeleteWindow) {
+            /* if the terminal is explicit close by user through the window manager then we get here */
 #ifndef STANDALONE
             rxvtlib_destroy_windows (o);
 #endif
-	    o->killed = EXIT_SUCCESS | DO_EXIT;
+            if (!o->life_cycle) o->killed_line = __LINE__;
+	    o->life_cycle = LIFE_CYCLE_EXIT_SUCCESS;
 	    return;
 	}
 	break;
@@ -2130,7 +2158,7 @@ void            rxvtlib_process_print_pipe (rxvtlib *o)
  * Send all input to the printer until either ESC[4i or ESC[?4i 
  * is received. 
  */
-    for (done = 0; !done && !o->killed;) {
+    for (done = 0; !done && o->life_cycle == LIFE_CYCLE_LIVE;) {
 	unsigned char   buf[8];
 	unsigned char   ch;
 	unsigned int    i, len;
@@ -2939,10 +2967,10 @@ void rxvtlib_main_loop (rxvtlib * o)
 {E_
     unsigned char ch;
 
-    while (!o->killed) {
+    while (o->life_cycle == LIFE_CYCLE_LIVE) {
 #ifdef STANDALONE
-	while ((ch = rxvtlib_cmd_getc (o)) == 0 && !o->killed);	/* wait for something */
-	if (o->killed)
+	while ((ch = rxvtlib_cmd_getc (o)) == 0 && o->life_cycle == LIFE_CYCLE_LIVE);	/* wait for something */
+	if (o->life_cycle != LIFE_CYCLE_LIVE)
 	    return;
 #else
         assert (o->cmdbuf_current <= o->cmdbuf_len);
@@ -3040,7 +3068,8 @@ void rxvt_fd_write_watch (int fd, fd_set * reading,
     if ((*o->cterminal_io.remotefs->remotefs_shellwrite) (o->cterminal_io.remotefs, &o->cterminal_io, 0, 0, &chunk, errmsg)) {
         printf ("remotefs_shellwrite returned error. errmsg = %s\n", errmsg);
 	CRemoveWatch (o->cmd_fd, NULL, 3);
-        o->killed = EXIT_FAILURE | DO_EXIT;
+        if (!o->life_cycle) o->killed_line = __LINE__;
+        o->life_cycle = LIFE_CYCLE_EXIT_FAILURE;
 	riten = 0;
     }
     o->v_bufstr += riten;

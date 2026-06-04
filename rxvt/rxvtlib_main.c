@@ -169,7 +169,7 @@ void            rxvtlib_Get_Colours (rxvtlib *o)
 		case Color_bg:
 		    /* fatal: need bg/fg color */
 		    print_error ("aborting");
-		    o->killed = EXIT_FAILURE | DO_EXIT;
+		    o->life_cycle = LIFE_CYCLE_EXIT_FAILURE;
 		    return;
 		    /* NOTREACHED */
 		    break;
@@ -288,11 +288,11 @@ void            rxvtlib_Create_Windows (rxvtlib *o, int argc, const char *const 
 
 /* grab colors before netscape does */
     rxvtlib_Get_Colours (o);
-    if (o->killed)
+    if (o->life_cycle != LIFE_CYCLE_LIVE)
 	return;
 
     rxvtlib_change_font (o, 1, NULL);
-    if (o->killed)
+    if (o->life_cycle != LIFE_CYCLE_LIVE)
 	return;
     rxvtlib_set_colorenv (o);
     rxvtlib_szhints_set (o);
@@ -1044,7 +1044,7 @@ void            rxvtlib_change_font (rxvtlib *o, int init, const char *fontname)
   Abort:
 #endif
     print_error ("aborting");	/* fatal problem */
-    o->killed = EXIT_FAILURE | DO_EXIT;
+    o->life_cycle = LIFE_CYCLE_EXIT_FAILURE;
     /* NOTREACHED */
 }
 
@@ -1150,7 +1150,7 @@ char    **rxvtlib_init_resources (rxvtlib *o, int argc, const char *const *argv)
 #endif
 
     rxvtlib_get_options (o, r_argc, r_argv);
-    if (o->killed)
+    if (o->life_cycle != LIFE_CYCLE_LIVE)
 	return 0;
 
     FREE (r_argv);
@@ -1158,7 +1158,7 @@ char    **rxvtlib_init_resources (rxvtlib *o, int argc, const char *const *argv)
 #ifdef STANDALONE
     if ((o->Xdisplay = XOpenDisplay (o->rs[Rs_display_name])) == NULL) {
 	print_error ("can't open display %s", o->rs[Rs_display_name]);
-	o->killed = EXIT_FAILURE | DO_EXIT;
+        o->life_cycle = LIFE_CYCLE_EXIT_FAILURE;
 	return 0;
     }
 #else
@@ -1328,7 +1328,7 @@ int rxvtlib_main (rxvtlib * o, const char *host, int argc, const char *const *ar
 
     rxvtlib_init_vars (o);
     cmd_argv = rxvtlib_init_resources (o, argc, (const char *const *) argv);
-    if (o->killed)
+    if (o->life_cycle != LIFE_CYCLE_LIVE)
 	return EXIT_FAILURE;
 
 #if (MENUBAR_MAX)
@@ -1337,7 +1337,7 @@ int rxvtlib_main (rxvtlib * o, const char *host, int argc, const char *const *ar
     rxvtlib_scrollbar_mapping (o, o->Options & Opt_scrollBar);
 
     rxvtlib_Create_Windows (o, argc, (const char *const *) argv);
-    if (o->killed)
+    if (o->life_cycle != LIFE_CYCLE_LIVE)
 	return EXIT_FAILURE;
 
 #ifdef STANDALONE
@@ -1377,7 +1377,7 @@ int rxvtlib_main (rxvtlib * o, const char *host, int argc, const char *const *ar
 
     rxvtlib_init_display (o);
     rxvtlib_init_command (o, host, cmd_argv, do_sleep, errmsg);
-    if (o->killed)
+    if (o->life_cycle != LIFE_CYCLE_LIVE)
 	return EXIT_FAILURE;
 
 #ifdef STANDALONE

@@ -618,7 +618,8 @@ int str_empty_space (const char *p)
 static int debug_fd_read (Debug *d)
 {
     int c, no_io = 0;
-    while ((c = remotefs_reader_util (&d->cterminal_io, no_io)) > 0)
+    remotefs_error_code_t error_code;
+    while ((c = remotefs_reader_util (&d->cterminal_io, no_io, &error_code)) > 0)
         no_io = 1;
     return c;
 }

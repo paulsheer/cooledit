@@ -34,8 +34,17 @@ int rxvt_event (XEvent * xevent)
     win = xevent->xany.window;
     for (l = rxvt_list->next, prev = rxvt_list; l; l = l->next) {
         if (!strcmp (l->rxvt->cterminal_io.host, "localhost"))
- 	    l->killed |= CChildExitted (l->rxvt->cmd_pid, 0);
-	if (l->killed || l->rxvt->killed) {
+	    l->killed |= CChildExitted (l->rxvt->cmd_pid, 0);
+	if (l->rxvt->life_cycle == LIFE_CYCLE_SUSPENDED) {
+            if (l->rxvt->cmd_fd >= 0) {
+                CRemoveWatch (l->rxvt->cmd_fd, NULL, 3);
+	        close (l->rxvt->cmd_fd);
+                l->rxvt->cmd_fd = -1;
+            }
+            if (l->rxvt->cterminal_io.remotefs)
+                remotefs_suspend_terminalio (&l->rxvt->cterminal_io);
+            assert (!l->rxvt->cterminal_io.remotefs);
+        } else if (l->killed || l->rxvt->life_cycle != LIFE_CYCLE_LIVE) {
 	    struct rxvts *next;
 	    next = l->next;
 	    CRemoveWatch (l->rxvt->cmd_fd, NULL, 3);
@@ -46,7 +55,12 @@ int rxvt_event (XEvent * xevent)
 	    memset (l, 0, sizeof (*l));
 	    free (l);
 	    l = prev;
-	} else if (win && (l->rxvt->TermWin.vt == win
+	}
+	prev = l;
+    }
+
+    for (l = rxvt_list->next, prev = rxvt_list; l; l = l->next) {
+        if (win && (l->rxvt->TermWin.vt == win
 			   || l->rxvt->TermWin.parent[0] == win
 			   || l->rxvt->TermWin.parent[1] == win
 			   || l->rxvt->TermWin.parent[2] == win
@@ -61,7 +75,13 @@ int rxvt_event (XEvent * xevent)
 		return 1;
 	    }
 	    rxvt_process_x_event (l->rxvt);
-	    if (l->rxvt->killed) {
+	    if (l->rxvt->life_cycle == LIFE_CYCLE_SUSPENDED) {
+                if (l->rxvt->cmd_fd >= 0) {
+                    CRemoveWatch (l->rxvt->cmd_fd, NULL, 3);
+	            close (l->rxvt->cmd_fd);
+                    l->rxvt->cmd_fd = -1;
+                }
+            } else if (l->rxvt->life_cycle != LIFE_CYCLE_LIVE) {
 		CRemoveWatch (l->rxvt->cmd_fd, NULL, 3);
 		return 1;
 	    }
@@ -154,7 +174,7 @@ int rxvt_alive (pid_t p)
     if (!rxvt_list)
 	return 0;
     for (l = rxvt_list->next; l; l = l->next)
-	if (l->rxvt->cmd_pid == p && !l->killed && !l->rxvt->killed)
+	if (l->rxvt->cmd_pid == p && !l->killed && l->rxvt->life_cycle == LIFE_CYCLE_LIVE)
 	    return 1;
     return 0;
 }
@@ -187,7 +207,7 @@ static rxvtlib *rxvt_allocate (const char *host, Window win, int c, char **a, in
 
     errmsg[0] = '\0';
     rxvtlib_main (rxvt, host, c, (const char *const *) a, do_sleep, errmsg);
-    if (rxvt->killed) {
+    if (rxvt->life_cycle != LIFE_CYCLE_LIVE) {
         assert (i->next == l);
         free (i->next);
         i->next = 0;

@@ -16,6 +16,7 @@ struct cterminal_config {
     int env_bg;
     int erase_char; /* return value */
     unsigned long cmd_pid; /* return value */
+    unsigned long long process_handle; /* return value */
 #define CTERMINAL_TTYDEV_SZ     64
     char ttydev[CTERMINAL_TTYDEV_SZ]; /* return value */
 };
@@ -40,6 +41,7 @@ struct cterminal {
 #endif
     struct stat ttyfd_stat;
     pid_t cmd_pid;
+    unsigned long long process_handle;
     pid_t cmd_parentpid;
     int erase_char;
 #define RXVTLIB_MAX_ENVVAR      32

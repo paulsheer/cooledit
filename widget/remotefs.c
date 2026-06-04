@@ -6724,7 +6724,7 @@ static void suspend_cterminal (int line, struct sock_data *sock_data, struct cte
 {E_
     struct suspendedshell_item *n;
 
-    log_fmt (0, "suspended shell due to network error: %lu 0x%lx\n", (unsigned long) cmd_pid, (unsigned long) process_handle);
+    log_fmt (0, "suspended shell due to network error: %lu 0x%lx\n", (unsigned long) c->cmd_pid, (unsigned long) c->process_handle);
 
 #warning do we need to delete a possibly-existing item of the same pid?
     assert (!sock_data);

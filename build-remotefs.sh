@@ -5,8 +5,12 @@ def='-DSTANDALONE -DNO_INSPECT'
 inc='-I. -Iwidget'
 
 if test "$1" = "-d" ; then
-    opt='-O0 -g3 '
-    echo 'opt -O0'
+    opt='-O0 -ggdb'
+    echo
+    echo '============================================================='
+    echo "  $opt"
+    echo '============================================================='
+    echo
 else
     opt='-O2 -s'
 fi
@@ -15,7 +19,7 @@ warn='-Wall -Wextra -Wno-sign-compare -Wno-unused-parameter'
 
 echo 'building remotefs-test'
 # gcc                     -static -o remotefs      $warn $opt $def $inc $src           || { echo error2 ; exit 1 ; } 
-gcc  -DREMOTEFS_DOTEST  -static -o remotefs-test $warn $opt $def $inc $src           || { echo error2 ; exit 1 ; } 
+gcc  -DREMOTEFS_DOTEST  -o remotefs-test $warn $opt $def $inc $src           || { echo error2 ; exit 1 ; } 
 
 echo 'building winrand.obj'
 /usr/bin/x86_64-w64-mingw32-gcc -Wall -c -o winrand.obj -I/usr/share/mingw-w64/include/ widget/winrand.c || { echo error3 ; exit 1 ; }

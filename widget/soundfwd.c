@@ -624,7 +624,7 @@ int soundfwd_process_sockets (struct sock_data *sock_data, struct soundfwd_data 
         }
         if (i->rd.avail > i->rd.written) {
             int l = i->rd.avail - i->rd.written;
-printf("send_blind_message %d\n", (int) (i->rd.avail - i->rd.written));
+// printf("send_blind_message %d\n", (int) (i->rd.avail - i->rd.written));
             if (send_blind_message (sock_data, REMOTEFS_ACTION_SHELLREAD, i->sound_client_id, SOUNDSTATUS_DATA, (char *) (i->rd.buf + i->rd.written), i->rd.avail - i->rd.written, NULL, 0))
                 return -1;
             i->rd.written += l;

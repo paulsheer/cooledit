@@ -97,6 +97,11 @@
 #include "remotefs_local.h"
 
 
+#ifdef REMOTEFS_DOTEST
+#undef SOUND_FWD
+#endif
+
+
 int option_remote_timeout = 2000;
 int option_no_crypto = 0;
 int option_no_force_crypto = 0;

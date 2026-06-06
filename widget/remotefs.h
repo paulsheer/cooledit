@@ -397,6 +397,7 @@ struct remotefs_private;
 struct portable_stat;
 struct cterminal_config;
 struct xwinclient_data;
+struct soundclient_data;
 struct remotefs_terminalio {
     int cmd_fd;
     struct reader_data *reader_data;
@@ -414,6 +415,11 @@ struct remotefs_terminalio {
 #else
     struct xwinclient_data *dummy__xwinclient_data;
 #endif
+#ifdef SOUND_FWD
+    struct soundclient_data *soundclient_data;
+#else
+    struct soundclient_data *dummy__soundclient_data;
+#endif
 };
 
 void remotefs_free_terminalio (struct remotefs_terminalio *io);
@@ -426,7 +432,7 @@ int remotefs_reader_util (struct remotefs_terminalio *io, const int no_io, remot
 void remotefs_set_die_on_error (void);
 int remotefs_get_die_exit_code (void);
 int remotefs_shell_util (const char *host, int xwin_fd, struct remotefs_terminalio *io, struct cterminal_config *c, int dumb_terminal, char *const argv[], char *errmsg);
-int remotefs_shell_reconnect (const char *host, int xwin_fd, struct remotefs_terminalio *io, char *errmsg);
+int remotefs_shell_reconnect (const char *host, struct remotefs_terminalio *io, char *errmsg);
 
 
 struct remotefs {
@@ -442,10 +448,10 @@ struct remotefs {
     int (*remotefs_realpathize) (struct remotefs *rfs, const char *path, const char *homedir, char *out, int outlen, char *errmsg);
     int (*remotefs_gethomedir) (struct remotefs *rfs, char *out, int outlen, char *errmsg);
     int (*remotefs_enablecrypto) (struct remotefs *rfs, const unsigned char *challenge_local, unsigned char *challenge_remote, char *errmsg);
-    int (*remotefs_shellcmd) (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg);
+    int (*remotefs_shellcmdnew) (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg);
     int (*remotefs_shellresize) (struct remotefs *rfs, unsigned long pid, int columns, int rows, char *errmsg);
-    int (*remotefs_shellread) (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long *multiplex, int *xfwdstatus, CStr *chunk, char *errmsg, int *time_out, int no_io, remotefs_error_code_t *error_code);
-    int (*remotefs_shellwrite) (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long multiplex, int xfwdstatus, const CStr *chunk, char *errmsg);
+    int (*remotefs_shellread) (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long *multiplex, int *gfwdstatus, CStr *chunk, char *errmsg, int *time_out, int no_io, remotefs_error_code_t *error_code);
+    int (*remotefs_shellwrite) (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long multiplex, int gfwdstatus, const CStr *chunk, char *errmsg);
     int (*remotefs_shellkill) (struct remotefs *rfs, unsigned long pid);
     int (*remotefs_shellsignal) (struct remotefs *rfs, unsigned long pid, int signum, int *killret, char *errmsg);
     int (*remotefs_ping) (struct remotefs *rfs, const char *test_msg, char *test_ret, int test_ret_len, char *errmsg);

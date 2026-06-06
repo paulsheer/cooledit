@@ -3,6 +3,8 @@
 
 struct cterminal_config {
     char display_env_var[128];
+    char sound_env_var[128];
+    char sound_env_config[128];
     char term_name[32];
     char colorterm_name[32];
     unsigned long term_win_id;
@@ -11,6 +13,7 @@ struct cterminal_config {
     int login_shell;
     int do_sleep;
     int x11_forwarding;
+    int sound_forwarding;
     int charset_8bit;
     int env_fg;
     int env_bg;

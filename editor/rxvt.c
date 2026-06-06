@@ -14,7 +14,7 @@
 #include "xim.h"
 #include "stringtools.h"
 
-struct rxvt_startup_options rxvt_startup_options = {0, 1, 0, 0, 1, ""};
+struct rxvt_startup_options rxvt_startup_options = {0, 1, 0, 0, 1, 1, ""};
 
 struct rxvts {
     rxvtlib *rxvt;
@@ -289,6 +289,8 @@ rxvtlib *rxvt_start_unicode (const char *host, Window win)
         b |= RXVT_OPTIONS_BACKSPACE_127;
     if (rxvt_startup_options.x11_forwarding)
         b |= RXVT_OPTIONS_X11_FORWARDING;
+    if (rxvt_startup_options.sound_forwarding)
+        b |= RXVT_OPTIONS_SOUND_FORWARDING;
 
     return rxvt_start (host, CRoot, 0, 0, b);
 }
@@ -303,6 +305,8 @@ rxvtlib *rxvt_start_8bit (const char *host, Window win)
         b |= RXVT_OPTIONS_BACKSPACE_127;
     if (rxvt_startup_options.x11_forwarding)
         b |= RXVT_OPTIONS_X11_FORWARDING;
+    if (rxvt_startup_options.sound_forwarding)
+        b |= RXVT_OPTIONS_SOUND_FORWARDING;
 
     return rxvt_start (host, CRoot, 0, 0, b);
 }
@@ -399,6 +403,8 @@ int rxvt_startup_dialog (const char *host, char *shell_script)
         rxvt_options |= RXVT_OPTIONS_BACKSPACE_127;
     if (rxvt_startup_options.x11_forwarding)
         rxvt_options |= RXVT_OPTIONS_X11_FORWARDING;
+    if (rxvt_startup_options.sound_forwarding)
+        rxvt_options |= RXVT_OPTIONS_SOUND_FORWARDING;
 
     if (shell_script && *shell_script) {
         char *arg[4] = {"sh", "-c", shell_script, NULL};
@@ -437,6 +443,7 @@ static int rxvt_startup_dialog_ (struct rxvt_startup_options *opt)
         gettext_noop ("Force backspace to ^H"),
         gettext_noop ("Force backspace to ^?"),
         gettext_noop ("Enable X11 forwarding"),
+        gettext_noop ("Enable pulseaudio sound forwarding"),
         0
     };
     char *check_tool_hints[10] =
@@ -446,6 +453,7 @@ static int rxvt_startup_dialog_ (struct rxvt_startup_options *opt)
         gettext_noop ("Some terminals have incorrect backspace interpretation,\nso force generation of a 0x8 code point on backspace"),
         gettext_noop ("Some terminals have incorrect backspace interpretation,\nso force generation of a 0x7F code point on backspace"),
         gettext_noop ("Will set the DISPLAY environment variable to forward\nX graphical applications back through the secure\nchannel to display locally"),
+        gettext_noop ("Will set the PULSE_SERVER environment variable to forward\npulseaudio sound back through the secure\nchannel to display locally"),
         0
     };
     int check_group[10] =
@@ -477,7 +485,8 @@ static int rxvt_startup_dialog_ (struct rxvt_startup_options *opt)
     checks_values_result[2] = &opt->backspace_ctrl_h;
     checks_values_result[3] = &opt->backspace_127;
     checks_values_result[4] = &opt->x11_forwarding;
-    checks_values_result[5] = 0;
+    checks_values_result[5] = &opt->sound_forwarding;
+    checks_values_result[6] = 0;
 
     r = CInputsWithOptions (0, 0, 0, _ (" Start Terminal "), inputs_result, input_labels, input_names, input_tool_hint, checks_values_result, check_labels, check_tool_hints, check_group, 0, 60);
     if (r)

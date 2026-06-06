@@ -40,7 +40,7 @@ typedef void *WSAEVENT;
 #define REMOTEFS_ACTION_REALPATHIZE             7
 #define REMOTEFS_ACTION_GETHOMEDIR              8
 #define REMOTEFS_ACTION_ENABLECRYPTO            9
-#define REMOTEFS_ACTION_SHELLCMD                10
+/* #define REMOTEFS_ACTION_SHELLCMD                10   */  /* defunct */
 #define REMOTEFS_ACTION_SHELLRESIZE             11
 #define REMOTEFS_ACTION_SHELLREAD               12
 #define REMOTEFS_ACTION_SHELLWRITE              13
@@ -49,6 +49,7 @@ typedef void *WSAEVENT;
 #define REMOTEFS_ACTION_READTWODIRS             16
 #define REMOTEFS_ACTION_PING                    17
 #define REMOTEFS_ACTION_SHELLRECONNECT          18
+#define REMOTEFS_ACTION_SHELLCMDNEW             19
 
 
 #define CONNCHECK_SUCCESS       0
@@ -70,10 +71,11 @@ struct sock_data;
 typedef struct remotefs_sockaddr_s_ remotefs_sockaddr_t;
 
 SOCKET remotefs_listen_socket (const char *listen_address, int listen_port);
+int ipaddress_port_to_remotefs_sockaddr_t (remotefs_sockaddr_t *a, const char *addr, int port);
 int remotefs_connection_check (const SOCKET s, int write_set);
 int remotefs_sockaddr_t_addressfamily (remotefs_sockaddr_t *a);
 int remotefs_sockaddr_t_socksz (remotefs_sockaddr_t *a);
-int send_blind_message (struct sock_data *sock_data, int action, unsigned long multiplex, int xfwdstatus, char *data1, int l1, char *data2, int l2);
+int send_blind_message (struct sock_data *sock_data, int action, unsigned long multiplex, int soundstatus, char *data1, int l1, char *data2, int l2);
 struct sock_data *remotefs_get_sock_data (struct remotefs *rfs);
 
 

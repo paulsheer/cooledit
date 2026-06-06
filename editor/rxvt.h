@@ -12,6 +12,7 @@ struct rxvt_startup_options {
     int backspace_ctrl_h;
     int backspace_127;
     int x11_forwarding;
+    int sound_forwarding;
     char host[256];
 };
 

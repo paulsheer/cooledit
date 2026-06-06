@@ -6,6 +6,8 @@
 #include <stringtools.h>
 #define XWIN_FWD
 #include <xwinfwd.h>
+#define SOUND_FWD
+#include <soundfwd.h>
 
 /*--------------------------------*-C-*---------------------------------*
  * File:	command.c
@@ -1259,7 +1261,7 @@ void rxvt_process_x_event (rxvtlib * o)
         case KeyPress:
         if (o->life_cycle == LIFE_CYCLE_SUSPENDED) {
             char errmsg[REMOTEFS_ERR_MSG_LEN];
-            if (remotefs_shell_reconnect (o->cterminal_io.host, ConnectionNumber (o->Xdisplay), &o->cterminal_io, errmsg)) {
+            if (remotefs_shell_reconnect (o->cterminal_io.host, &o->cterminal_io, errmsg)) {
                 o->life_cycle = LIFE_CYCLE_KILLED;
                 return;
             }
@@ -3580,6 +3582,7 @@ int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const ar
     memset (&c, '\0', sizeof (c));
  
     Cstrlcpy (c.display_env_var, o->rs[Rs_display_name] ? o->rs[Rs_display_name] : XDisplayString (o->Xdisplay), sizeof (c.display_env_var));
+    Cstrlcpy (c.sound_env_var, o->rs[Rs_soundenvvar_name] ? o->rs[Rs_soundenvvar_name] : "", sizeof (c.sound_env_var));
     Cstrlcpy (c.term_name, o->rs[Rs_term_name] ? o->rs[Rs_term_name] : TERMENV, sizeof (c.term_name));
     Cstrlcpy (c.colorterm_name, o->Xdepth <= 2 ? COLORTERMENV "-mono" : COLORTERMENVFULL, sizeof (c.colorterm_name));
 
@@ -3589,6 +3592,7 @@ int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const ar
     c.login_shell = !!(o->Options & Opt_loginShell);
     c.do_sleep = do_sleep;
     c.x11_forwarding = !!(o->rxvt_options & RXVT_OPTIONS_X11_FORWARDING);
+    c.sound_forwarding = !!(o->rxvt_options & RXVT_OPTIONS_SOUND_FORWARDING);
     c.charset_8bit = o->charset_8bit;
     c.env_fg = o->env_fg;
     c.env_bg = o->env_bg;
@@ -3599,6 +3603,9 @@ int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const ar
 
 #ifdef XWIN_FWD
     xwinclient_set_watch (_CAddWatch, CRemoveWatch);
+#endif
+#ifdef SOUND_FWD
+    soundclient_set_watch (_CAddWatch, CRemoveWatch);
 #endif
     if (remotefs_shell_util (host, ConnectionNumber (o->Xdisplay), &o->cterminal_io, &c, 0, argv, errmsg))
         return -1;

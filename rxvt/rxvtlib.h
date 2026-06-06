@@ -964,6 +964,7 @@ enum colour_list {
  */
 enum Rs_resource_list {
     Rs_display_name = 0,
+    Rs_soundenvvar_name,
     Rs_term_name,
     Rs_geometry,
     Rs_reverseVideo,

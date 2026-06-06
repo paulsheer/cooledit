@@ -1148,6 +1148,7 @@ char    **rxvtlib_init_resources (rxvtlib *o, int argc, const char *const *argv)
 #else
     o->rs[Rs_display_name] = getenv ("DISPLAY");
 #endif
+    o->rs[Rs_soundenvvar_name] = getenv ("PULSE_SERVER");
 
     rxvtlib_get_options (o, r_argc, r_argv);
     if (o->life_cycle != LIFE_CYCLE_LIVE)

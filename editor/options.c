@@ -235,6 +235,7 @@ static struct {
         {"options_startup_backspace_ctrl_h", &rxvt_startup_options.backspace_ctrl_h, "rxvt/xterm, Force backspace to ^H", TYPE_ON_OFF},
         {"options_startup_backspace_127", &rxvt_startup_options.backspace_127, "rxvt/xterm, Force backspace to ^?", TYPE_ON_OFF},
         {"options_startup_x11_forwarding", &rxvt_startup_options.x11_forwarding, "rxvt/xterm, Enable X11 forwarding", TYPE_ON_OFF},
+        {"options_startup_sound_forwarding", &rxvt_startup_options.sound_forwarding, "rxvt/xterm, Enable pulseaudio sound forwarding", TYPE_ON_OFF},
 
 	{0, 0}
 };

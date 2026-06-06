@@ -953,7 +953,7 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
         return -1;
     }
     if (o->cmd_pid == 0) {      /* child */
-        char envstr[100];
+        char envstr[128];
 
         /* signal (SIGHUP, Exit_signal); */
         /* signal (SIGINT, Exit_signal); */
@@ -978,7 +978,12 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
     do {  snprintf (envstr, sizeof(envstr), a, b); \
           PUTENV(envstr); } while (0)
 
-            PUTENVF ("DISPLAY=%.90s", config->display_env_var);
+            if (config->display_env_var[0])
+                PUTENVF ("DISPLAY=%.90s", config->display_env_var);
+            if (config->sound_env_var[0])
+                PUTENVF ("PULSE_SERVER=%.90s", config->sound_env_var);
+            if (config->sound_env_config[0])
+                PUTENVF ("PULSE_CLIENTCONFIG=%.90s", config->sound_env_config);
             PUTENVF ("WINDOWID=%lu", config->term_win_id);
             PUTENVF ("TERM=%s", config->term_name);
             PUTENVF ("COLORTERM=%s", config->colorterm_name);

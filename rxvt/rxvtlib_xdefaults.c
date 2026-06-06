@@ -94,6 +94,7 @@ struct _optList {
 static struct _optList optList[] = {
     STRG (Rs_display_name, NULL, "d", NULL, NULL),	
     STRG (Rs_display_name, NULL, "display", "string", "X server to contact"),
+    STRG (Rs_soundenvvar_name, NULL, "audio", "string", "pulseaudio server to contact"),
     STRG (Rs_term_name, "termName", "tn", "string",
 	  "value of the TERM environment variable"),
     STRG (Rs_geometry, NULL, "g", NULL, NULL),	

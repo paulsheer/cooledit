@@ -79,6 +79,8 @@
 #ifndef MSWIN
 #define XWIN_FWD
 #include "xwinfwd.h"
+#define SOUND_FWD
+#include "soundfwd.h"
 #endif
 
 #include "remotefs.h"
@@ -726,7 +728,7 @@ static void log_fmt (int error, const char *fmt, ...)
 
 static void perrorsocket (const char *msg)
 {E_
-    log_fmt (1, "%s: [%s]\n", strerror (errno));
+    log_fmt (1, "%s: [%s]\n", msg, strerror (errno));
 }
 
 #endif
@@ -1511,7 +1513,7 @@ const char *action_descr[] = {
     "REALPATHIZE",
     "GETHOMEDIR",
     "ENABLECRYPTO",
-    "SHELLCMD",
+    "<defunct, upgrade required>",  /* was SHELLCMD */
     "SHELLRESIZE",
     "SHELLREAD",
     "SHELLWRITE",
@@ -1520,6 +1522,7 @@ const char *action_descr[] = {
     "READTWODIRS",
     "PING",
     "SHELLRECONNECT",
+    "SHELLCMD",
 };
 
 
@@ -1549,7 +1552,7 @@ const char *error_code_descr[RFSERR_LAST_INTERNAL_ERROR + 1] = {
 #ifdef SHELL_SUPPORT
 #ifndef MSWIN
 
-int remotefs_shell_reconnect (const char *host, int xwin_fd, struct remotefs_terminalio *io, char *errmsg)
+int remotefs_shell_reconnect (const char *host, struct remotefs_terminalio *io, char *errmsg)
 {E_
     assert (io->cmd_fd == -1);
     assert (!io->remotefs);
@@ -1572,7 +1575,7 @@ int remotefs_shell_util (const char *host, int xwin_fd, struct remotefs_terminal
     io->remotefs = remotefs_new (host, errmsg);
     if (!io->remotefs)
         return -1;
-    if ((*io->remotefs->remotefs_shellcmd) (io->remotefs, io, c, dumb_terminal, argv, errmsg)) {
+    if ((*io->remotefs->remotefs_shellcmdnew) (io->remotefs, io, c, dumb_terminal, argv, errmsg)) {
         remotefs_free (io->remotefs);
         io->remotefs = NULL;
         return -1;
@@ -1586,6 +1589,9 @@ int remotefs_shell_util (const char *host, int xwin_fd, struct remotefs_terminal
     io->ttydev[sizeof (io->ttydev) - 1] = '\0';
 #ifdef XWIN_FWD
     io->xwinclient_data = xwinclient_alloc (xwin_fd);
+#endif
+#ifdef SOUND_FWD
+    io->soundclient_data = soundclient_alloc (c->sound_env_var);
 #endif
     return 0;
 }
@@ -1606,8 +1612,8 @@ int remotefs_get_die_exit_code (void)
 
 int remotefs_reader_util (struct remotefs_terminalio *io, const int no_io, remotefs_error_code_t *error_code)
 {E_
-    unsigned long multiplex = 0;
-    int xfwdstatus = 0;
+    unsigned long fwd_multiplex = 0;
+    int gfwdstatus = 0;
     struct remotefs *rfs;
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     CStr chunk;
@@ -1625,7 +1631,7 @@ int remotefs_reader_util (struct remotefs_terminalio *io, const int no_io, remot
     memset (&chunk, '\0', sizeof (chunk));
     errmsg[0] = '\0';
     timeout = 0;
-    if ((*rfs->remotefs_shellread) (rfs, io, &multiplex, &xfwdstatus, &chunk, errmsg, &timeout, no_io, error_code)) {
+    if ((*rfs->remotefs_shellread) (rfs, io, &fwd_multiplex, &gfwdstatus, &chunk, errmsg, &timeout, no_io, error_code)) {
         if (timeout) {
             return 0;
         } else {
@@ -1640,23 +1646,39 @@ int remotefs_reader_util (struct remotefs_terminalio *io, const int no_io, remot
         }
     }
 
-    if (multiplex != 0) {
+    if (fwd_multiplex != 0) {
+        if (0) {
 #ifdef XWIN_FWD
-        if (xfwdstatus == XFWDSTATUS_SHUTDOWN) {
-            xwinclient_kill (io->xwinclient_data, multiplex);
-        } else if (xfwdstatus == XFWDSTATUS_DATA) {
-            if (xwinclient_new_client (rfs, io->xwinclient_data, multiplex)) {
-                if (send_blind_message (rfs->remotefs_private->sock_data, REMOTEFS_ACTION_SHELLWRITE, multiplex, XFWDSTATUS_SHUTDOWN, "", 0, NULL, 0)) {
+        } else if (gfwdstatus == XFWDSTATUS_SHUTDOWN) {
+            xwinclient_kill (io->xwinclient_data, fwd_multiplex);
+        } else if (gfwdstatus == XFWDSTATUS_DATA) {
+            if (xwinclient_new_client (rfs, io->xwinclient_data, fwd_multiplex)) {
+                if (send_blind_message (rfs->remotefs_private->sock_data, REMOTEFS_ACTION_SHELLWRITE, fwd_multiplex, XFWDSTATUS_SHUTDOWN, "", 0, NULL, 0)) {
                     free (chunk.data);
                     snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "fail trying to write terminal data remote: [%s]", strerror (errno));
                     SHUTSOCK (rfs->remotefs_private->sock_data);
                     return -1;
                 }
             } else {
-                xwinclient_write (io->xwinclient_data, multiplex, chunk.data, chunk.len);
+                xwinclient_write (io->xwinclient_data, fwd_multiplex, chunk.data, chunk.len);
             }
-        }
 #endif
+#ifdef SOUND_FWD
+        } else if (gfwdstatus == SOUNDSTATUS_SHUTDOWN) {
+            soundclient_kill (io->soundclient_data, fwd_multiplex);
+        } else if (gfwdstatus == SOUNDSTATUS_DATA) {
+            if (soundclient_new_client (rfs, io->soundclient_data, fwd_multiplex)) {
+                if (send_blind_message (rfs->remotefs_private->sock_data, REMOTEFS_ACTION_SHELLWRITE, fwd_multiplex, SOUNDSTATUS_SHUTDOWN, "", 0, NULL, 0)) {
+                    free (chunk.data);
+                    snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "fail trying to write terminal data remote: [%s]", strerror (errno));
+                    SHUTSOCK (rfs->remotefs_private->sock_data);
+                    return -1;
+                }
+            } else {
+                soundclient_write (io->soundclient_data, fwd_multiplex, chunk.data, chunk.len);
+            }
+#endif
+        }
         free (chunk.data);
         goto again;
     }
@@ -4093,7 +4115,7 @@ static void delete_cterminal (unsigned long pid)
 
 #endif
 
-static int remotefs_shellcmd_ (struct cterminal *cterminal, struct cterminal_config *config, int dumb_terminal, const char *log_origin_host, char *const argv[], CStr * r)
+static int remotefs_shellcmdnew_ (struct cterminal *cterminal, struct cterminal_config *config, int dumb_terminal, const char *log_origin_host, char *const argv[], CStr * r)
 {E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     unsigned char *p;
@@ -4432,7 +4454,7 @@ void remotefs_set_display_log_for_wtmp (const char *display)
     display_log_for_wtmp[sizeof (display_log_for_wtmp) - 1] = '\0';
 }
 
-static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg)
+static int local_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg)
 {E_
     CStr s;
     unsigned long long cmd_pid_, process_handle_, con_handle_, cmd_fd_, erase_char_;
@@ -4444,7 +4466,7 @@ static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io,
     memset (ct, '\0', sizeof (struct cterminal_item));
     ct->cterminal.cmd_fd = -1;
 
-    if (remotefs_shellcmd_ (&ct->cterminal, config, dumb_terminal, display_log_for_wtmp, argv, &s)) {
+    if (remotefs_shellcmdnew_ (&ct->cterminal, config, dumb_terminal, display_log_for_wtmp, argv, &s)) {
         free (ct);
     } else {
         ct->next = cterminal_list;
@@ -4452,7 +4474,7 @@ static int local_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io,
     }
 
     MARSHAL_START_LOCAL;
-    /* remotefs_shellcmd_ returns non-zero if error, so no error possible here */
+    /* remotefs_shellcmdnew_ returns non-zero if error, so no error possible here */
     if (decode_uint (&p, end, &cmd_pid_))
         return -1;
     if (decode_uint (&p, end, &process_handle_))
@@ -4500,13 +4522,13 @@ static int local_shellresize (struct remotefs *rfs, unsigned long pid, int colum
     MARSHAL_END_LOCAL(NULL);
 }
 
-static int local_shellread (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long *multiplex, int *xfwdstatus, CStr *chunk, char *errmsg, int *time_out, int no_io, remotefs_error_code_t *error_code)
+static int local_shellread (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long *fwd_multiplex, int *gfwdstatus, CStr *chunk, char *errmsg, int *time_out, int no_io, remotefs_error_code_t *error_code)
 {E_
     int r;
 
     *errmsg = '\0';
-    *multiplex = 0;
-    *xfwdstatus = 0;
+    *fwd_multiplex = 0;
+    *gfwdstatus = 0;
     *error_code = 0;
 
     if (no_io) {
@@ -4556,14 +4578,14 @@ static int local_shellread (struct remotefs *rfs, struct remotefs_terminalio *io
     return 0;
 }
 
-static int local_shellwrite (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long multiplex, int xfwdstatus, const CStr *chunk, char *errmsg)
+static int local_shellwrite (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long fwd_multiplex, int gfwdstatus, const CStr *chunk, char *errmsg)
 {E_
     const char *data;
     int len;
     *errmsg = '\0';
 
-    /* discard X win data */
-    if (multiplex != 0)
+    /* discard X win data, sound data */
+    if (fwd_multiplex != 0)
         return 0;
 
     data = chunk->data;
@@ -5169,9 +5191,15 @@ void remotefs_free_terminalio (struct remotefs_terminalio *io)
         io->xwinclient_data = NULL;
     }
 #endif
+#ifdef SOUND_FWD
+    if (io->soundclient_data) {
+        soundclient_freeall (io->soundclient_data);
+        io->soundclient_data = NULL;
+    }
+#endif
 }
 
-static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const args[], char *errmsg)
+static int remote_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const args[], char *errmsg)
 {E_
     CStr s, msg;
     unsigned long long cmd_pid_, process_handle_, con_handle_, cmd_fd_, erase_char_;
@@ -5185,6 +5213,7 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
     n_args = len_args (args);
 
     msg.len = encode_str (NULL, config->display_env_var, strlen (config->display_env_var));
+    msg.len += encode_str (NULL, config->sound_env_var, strlen (config->sound_env_var));
     msg.len += encode_str (NULL, config->term_name, strlen (config->term_name));
     msg.len += encode_str (NULL, config->colorterm_name, strlen (config->colorterm_name));
     msg.len += encode_uint (NULL, config->term_win_id);
@@ -5193,6 +5222,7 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
     msg.len += encode_uint (NULL, config->login_shell);
     msg.len += encode_uint (NULL, config->do_sleep);
     msg.len += encode_uint (NULL, config->x11_forwarding);
+    msg.len += encode_uint (NULL, config->sound_forwarding);
     msg.len += encode_uint (NULL, config->charset_8bit);
     msg.len += encode_uint (NULL, config->env_fg);
     msg.len += encode_uint (NULL, config->env_bg);
@@ -5205,6 +5235,7 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
     q = (unsigned char *) msg.data;
 
     encode_str (&q, config->display_env_var, strlen (config->display_env_var));
+    encode_str (&q, config->sound_env_var, strlen (config->sound_env_var));
     encode_str (&q, config->term_name, strlen (config->term_name));
     encode_str (&q, config->colorterm_name, strlen (config->colorterm_name));
     encode_uint (&q, config->term_win_id);
@@ -5213,6 +5244,7 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
     encode_uint (&q, config->login_shell);
     encode_uint (&q, config->do_sleep);
     encode_uint (&q, config->x11_forwarding);
+    encode_uint (&q, config->sound_forwarding);
     encode_uint (&q, config->charset_8bit);
     encode_uint (&q, config->env_fg);
     encode_uint (&q, config->env_bg);
@@ -5221,7 +5253,7 @@ static int remote_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io
     for (i = 0; i < n_args; i++)
         encode_str (&q, args[i], strlen (args[i]));
 
-    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, NULL, &msg, &s, REMOTEFS_ACTION_SHELLCMD, errmsg, &no_such_action)) {
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, NULL, &msg, &s, REMOTEFS_ACTION_SHELLCMDNEW, errmsg, &no_such_action)) {
         if (no_such_action)
             strcpy (errmsg, "shell commands not supported by remote");
         free (msg.data);
@@ -5311,7 +5343,7 @@ static int remote_shellreconnect (struct remotefs *rfs, struct remotefs_terminal
 
 #endif
 
-int send_blind_message (struct sock_data *sock_data, int action, unsigned long multiplex, int xfwdstatus, char *data1, int l1, char *data2, int l2)
+int send_blind_message (struct sock_data *sock_data, int action, unsigned long fwd_multiplex, int gfwdstatus, char *data1, int l1, char *data2, int l2)
 {
     CStr v[7];
     int n = 0;
@@ -5334,12 +5366,12 @@ int send_blind_message (struct sock_data *sock_data, int action, unsigned long m
 
     p = t2data;
     v[n].data = (char *) p;
-    v[n].len = encode_uint (&p, multiplex);
+    v[n].len = encode_uint (&p, fwd_multiplex);
     tot += v[n++].len;
 
     p = t3data;
     v[n].data = (char *) p;
-    v[n].len = encode_uint (&p, xfwdstatus);
+    v[n].len = encode_uint (&p, gfwdstatus);
     tot += v[n++].len;
 
     /* see encode_cstr() */
@@ -5413,12 +5445,12 @@ static int remote_shellresize (struct remotefs *rfs, unsigned long pid, int colu
     return 0;
 }
 
-static int remote_shellread (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long *multiplex, int *xfwdstatus, CStr *chunk, char *errmsg, int *time_out, int no_io, remotefs_error_code_t *error_code)
+static int remote_shellread (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long *fwd_multiplex, int *gfwdstatus, CStr *chunk, char *errmsg, int *time_out, int no_io, remotefs_error_code_t *error_code)
 {
     CStr s;
     int no_such_action = 0;
     enum reader_error reader_error = READER_ERROR_NOERROR;
-    unsigned long long multiplex_ = 0ULL, xfwdstatus_ = 0ULL;
+    unsigned long long fwd_multiplex_ = 0ULL, gfwdstatus_ = 0ULL;
 
     *errmsg = '\0';
     *error_code = 0;
@@ -5432,11 +5464,11 @@ static int remote_shellread (struct remotefs *rfs, struct remotefs_terminalio *i
     }
 
     MARSHAL_START_REMOTE;
-    if (decode_uint (&p, end, &multiplex_)) {
+    if (decode_uint (&p, end, &fwd_multiplex_)) {
         free (s.data);
         return -1;
     }
-    if (decode_uint (&p, end, &xfwdstatus_)) {
+    if (decode_uint (&p, end, &gfwdstatus_)) {
         free (s.data);
         return -1;
     }
@@ -5444,16 +5476,16 @@ static int remote_shellread (struct remotefs *rfs, struct remotefs_terminalio *i
         free (s.data);
         return -1;
     }
-    *multiplex = (unsigned long) multiplex_;
-    *xfwdstatus = (int) xfwdstatus_;
+    *fwd_multiplex = (unsigned long) fwd_multiplex_;
+    *gfwdstatus = (int) gfwdstatus_;
     MARSHAL_END_REMOTE(error_code);
 }
 
-static int remote_shellwrite (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long multiplex, int xfwdstatus, const CStr *chunk, char *errmsg)
+static int remote_shellwrite (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long fwd_multiplex, int gfwdstatus, const CStr *chunk, char *errmsg)
 {
     *errmsg = '\0';
 
-    if (send_blind_message (rfs->remotefs_private->sock_data, REMOTEFS_ACTION_SHELLWRITE, multiplex, xfwdstatus, chunk->data, chunk->len, NULL, 0)) {
+    if (send_blind_message (rfs->remotefs_private->sock_data, REMOTEFS_ACTION_SHELLWRITE, fwd_multiplex, gfwdstatus, chunk->data, chunk->len, NULL, 0)) {
         snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "fail trying to write terminal data remote: [%s]", strerror (errno));
         SHUTSOCK (rfs->remotefs_private->sock_data);
         return -1;
@@ -5571,6 +5603,13 @@ static void *remotefs_sockaddr_t_address (remotefs_sockaddr_t * a)
         return (void *) &sa6->sin6_addr;
     }
 #endif
+#ifndef MSWIN
+    if (a->ss.ss_family == AF_UNIX) {
+        struct sockaddr_un *un;
+        un = (struct sockaddr_un *) (void *) &a->ss;
+        return (void *) un->sun_path;
+    }
+#endif
     sa4 = (struct sockaddr_in *) (void *) &a->ss;
     return (void *) &sa4->sin_addr;
 }
@@ -5581,6 +5620,10 @@ static int remotefs_sockaddr_t_sockaddrlen (remotefs_sockaddr_t *a)
     if (a->ss.ss_family == AF_INET6)
         return sizeof (struct sockaddr_storage);
 #endif
+#ifndef MSWIN
+    if (a->ss.ss_family == AF_UNIX)
+        return sizeof (struct sockaddr_un);
+#endif
     return sizeof (struct sockaddr_in);
 }
 
@@ -5589,6 +5632,13 @@ static int remotefs_sockaddr_t_addresslen (remotefs_sockaddr_t *a)
 #ifndef LEGACY_IP4_ONLY
     if (a->ss.ss_family == AF_INET6)
         return 16;
+#endif
+#ifndef MSWIN
+    if (a->ss.ss_family == AF_UNIX) {
+        struct sockaddr_un *un;
+        un = (struct sockaddr_un *) (void *) &a->ss;
+        return strlen (un->sun_path);
+    }
 #endif
     return 4;
 }
@@ -5621,13 +5671,24 @@ int remotefs_sockaddr_t_socksz (remotefs_sockaddr_t * a)
     }
 }
 
-static int ipaddress_port_to_remotefs_sockaddr_t (remotefs_sockaddr_t *a, const char *addr, int port)
+int ipaddress_port_to_remotefs_sockaddr_t (remotefs_sockaddr_t *a, const char *addr, int port)
 {E_
     struct sockaddr_in sa4;
     char s[16];
     int addr_len;
 
     memset (a, 0, sizeof (*a));
+
+#ifndef MSWIN
+    if (addr[0] == '/') {
+        struct sockaddr_un *un;
+        un = (struct sockaddr_un *) (void *) &a->ss;
+        un->sun_family = AF_UNIX;
+        strncpy (un->sun_path, addr, sizeof (un->sun_path));
+        un->sun_path[sizeof (un->sun_path) - 1] = '\0';
+        return 0;
+    }
+#endif
 
     if (text_to_ip (addr, NULL, s, &addr_len))
         return -1;
@@ -6286,7 +6347,7 @@ static int dummyerr_enablecrypto (struct remotefs *rfs, const unsigned char *cha
 
 #ifdef SHELL_SUPPORT
 
-static int dummyerr_shellcmd (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg)
+static int dummyerr_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
 }
@@ -6301,12 +6362,12 @@ static int dummyerr_shellresize (struct remotefs *rfs, unsigned long pid, int co
     return remotefs_error_return (errmsg);
 }
 
-static int dummyerr_shellread (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long *multiplex, int *xfwdstatus, CStr *chunk, char *errmsg, int *timeout, int no_io, remotefs_error_code_t *error_code)
+static int dummyerr_shellread (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long *fwd_multiplex, int *gfwdstatus, CStr *chunk, char *errmsg, int *timeout, int no_io, remotefs_error_code_t *error_code)
 {E_
     return remotefs_error_return (errmsg);
 }
 
-static int dummyerr_shellwrite (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long multplex, int xfwdstatus, const CStr *chunk, char *errmsg)
+static int dummyerr_shellwrite (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long multplex, int gfwdstatus, const CStr *chunk, char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
 }
@@ -6344,7 +6405,7 @@ struct remotefs remotefs_dummyerr = {
     dummyerr_gethomedir,
     dummyerr_enablecrypto,
 #ifdef SHELL_SUPPORT
-    dummyerr_shellcmd,
+    dummyerr_shellcmdnew,
     dummyerr_shellresize,
     dummyerr_shellread,
     dummyerr_shellwrite,
@@ -6377,7 +6438,7 @@ struct remotefs remotefs_local = {
     local_gethomedir,
     local_enablecrypto,
 #if defined(SHELL_SUPPORT) && !defined(MSWIN)
-    local_shellcmd,
+    local_shellcmdnew,
     local_shellresize,
     local_shellread,
     local_shellwrite,
@@ -6414,7 +6475,7 @@ struct remotefs remotefs_socket = {
     remote_gethomedir,
     remote_enablecrypto,
 #if defined(SHELL_SUPPORT) && !defined(MSWIN)
-    remote_shellcmd,
+    remote_shellcmdnew,
     remote_shellresize,
     remote_shellread,
     remote_shellwrite,
@@ -6687,6 +6748,9 @@ struct server_data {
 #endif
 #ifdef XWIN_FWD
     struct xwinfwd_data *xwinfwd_data;
+#endif
+#ifdef SOUND_FWD
+    struct soundfwd_data *soundfwd_data;
 #endif
 };
 
@@ -7114,7 +7178,7 @@ static void free_args (char **s)
     free (s);
 }
 
-void peer_to_text (SOCKET sock, char *peername)
+static void peer_to_text (SOCKET sock, char *peername)
 {E_
     remotefs_sockaddr_t a;
     socklen_t len;
@@ -7124,10 +7188,11 @@ void peer_to_text (SOCKET sock, char *peername)
         strcpy (peername, "unknown");
         return;
     }
+    /* will never be a unix socket */
     ip_to_text (remotefs_sockaddr_t_address (&a), remotefs_sockaddr_t_addresslen (&a), peername);
 }
 
-static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
+static int remote_action_fn_v5_shellcmdnew (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
 {E_
     const unsigned char *p, *end;
     unsigned long long v;
@@ -7150,6 +7215,8 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
 
     if (decode_str (&p, end, c.display_env_var, sizeof (c.display_env_var)))
         return -1;
+    if (decode_str (&p, end, c.sound_env_var, sizeof (c.sound_env_var)))
+        return -1;
     if (decode_str (&p, end, c.term_name, sizeof (c.term_name)))
         return -1;
     if (decode_str (&p, end, c.colorterm_name, sizeof (c.colorterm_name)))
@@ -7167,6 +7234,7 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
     D(login_shell);
     D(do_sleep);
     D(x11_forwarding);
+    D(sound_forwarding);
     D(charset_8bit);
     D(env_fg);
     D(env_bg);
@@ -7227,8 +7295,16 @@ static int remote_action_fn_v3_shellcmd (struct server_data *sd, CStr *s, const 
             snprintf (c.display_env_var, sizeof (c.display_env_var), "localhost:%d.0", xwinfwd_display_port (sd->xwinfwd_data) - 6000);
     }
 #endif
+#ifdef SOUND_FWD
+    if (c.sound_forwarding) {
+        if (!sd->soundfwd_data)
+            sd->soundfwd_data = soundfwd_alloc ();
+        if (sd->soundfwd_data)
+            soundfwd_construct_envvar (sd->soundfwd_data, c.sound_env_var, sizeof (c.sound_env_var), c.sound_env_config, sizeof (c.sound_env_config));
+    }
+#endif
 
-    if (remotefs_shellcmd_ (&t->cterminal, &c, (int) dumb_terminal_, peername, args, s)) {
+    if (remotefs_shellcmdnew_ (&t->cterminal, &c, (int) dumb_terminal_, peername, args, s)) {
         free (t);
     } else {
         sd->ttyreader_data = t;
@@ -7313,7 +7389,7 @@ static int remote_action_fn_v3_dummyaction (struct server_data *sd, CStr *s, con
 static int remote_action_fn_v3_shellwrite (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
 {E_
     unsigned long long chunklen, error_code = 0;
-    unsigned long long multiplex = 0ULL, xfwdstatus = 0ULL;
+    unsigned long long fwd_multiplex = 0ULL, gfwdstatus = 0ULL;
     const unsigned char *p, *end;
     struct ttyreader_data *tt;
     tt = sd->ttyreader_data;
@@ -7327,9 +7403,9 @@ static int remote_action_fn_v3_shellwrite (struct server_data *sd, CStr *s, cons
         return -1;
     if (error_code != REMOTEFS_SUCCESS)
         return -1;
-    if (decode_uint (&p, end, &multiplex))
+    if (decode_uint (&p, end, &fwd_multiplex))
         return -1;
-    if (decode_uint (&p, end, &xfwdstatus))
+    if (decode_uint (&p, end, &gfwdstatus))
         return -1;
     if (decode_uint (&p, end, &chunklen))
         return -1;
@@ -7346,14 +7422,21 @@ static int remote_action_fn_v3_shellwrite (struct server_data *sd, CStr *s, cons
         return -1;
 #endif
 
-    if (multiplex != 0) {
+    if (fwd_multiplex != 0) {
+        if (0) {
 #ifdef XWIN_FWD
-        if (xfwdstatus == XFWDSTATUS_SHUTDOWN) {
-            xwinfwd_kill (sd->xwinfwd_data, multiplex);
-        } else if (xfwdstatus == XFWDSTATUS_DATA) {
-            xwinfwd_write (sd->xwinfwd_data, multiplex, (const char *) p, chunklen);
-        }
+        } else if (gfwdstatus == XFWDSTATUS_SHUTDOWN) {
+            xwinfwd_kill (sd->xwinfwd_data, fwd_multiplex);
+        } else if (gfwdstatus == XFWDSTATUS_DATA) {
+            xwinfwd_write (sd->xwinfwd_data, fwd_multiplex, (const char *) p, chunklen);
 #endif
+#ifdef SOUND_FWD
+        } else if (gfwdstatus == SOUNDSTATUS_SHUTDOWN) {
+            soundfwd_kill (sd->soundfwd_data, fwd_multiplex);
+        } else if (gfwdstatus == SOUNDSTATUS_DATA) {
+            soundfwd_write (sd->soundfwd_data, fwd_multiplex, (const char *) p, chunklen);
+#endif
+        }
         return ACTION_SILENT;
     }
 
@@ -7465,15 +7548,14 @@ struct action_item action_list[] = {
     { 1, 1, remote_action_fn_v1_realpathize, },                 /* REMOTEFS_ACTION_REALPATHIZE             */
     { 1, 1, remote_action_fn_v1_gethomedir, },                  /* REMOTEFS_ACTION_GETHOMEDIR              */
     { 1, 1, remote_action_fn_v2_enablecrypto, },                /* REMOTEFS_ACTION_ENABLECRYPTO            */
+    { 1, 1, NULL, },                                            /* defunct, was REMOTEFS_ACTION_SHELLCMD   */
 #ifdef SHELL_SUPPORT
-    { 1, 1, remote_action_fn_v3_shellcmd, },                    /* REMOTEFS_ACTION_SHELLCMD                */
     { 0, 0, remote_action_fn_v3_shellresize, },                 /* REMOTEFS_ACTION_SHELLRESIZE             */
     { 1, 1, remote_action_fn_v3_dummyaction, },                 /* REMOTEFS_ACTION_SHELLREAD   (not handled by server) */
     { 0, 0, remote_action_fn_v3_shellwrite, },                  /* REMOTEFS_ACTION_SHELLWRITE              */
     { 1, 0, remote_action_fn_v3_shellkill, },                   /* REMOTEFS_ACTION_SHELLKILL               */
     { 1, 1, remote_action_fn_v3_shellsignal, },                 /* REMOTEFS_ACTION_SHELLSIGNAL             */
 #else
-    { 1, 1, NULL, },
     { 0, 0, NULL, },
     { 1, 1, NULL, },
     { 0, 0, NULL, },
@@ -7483,6 +7565,7 @@ struct action_item action_list[] = {
     { 1, 1, remote_action_fn_v4_listtwodirs, },                 /* REMOTEFS_ACTION_READTWODIRS             */
     { 1, 1, remote_action_fn_v4_ping, },                        /* REMOTEFS_ACTION_PING                    */
     { 1, 1, remote_action_fn_v5_shellreconnect, },              /* REMOTEFS_ACTION_SHELLRECONNECT          */
+    { 1, 1, remote_action_fn_v5_shellcmdnew, },                 /* REMOTEFS_ACTION_SHELLCMDNEW             */
 };
 
 static unsigned int client_count = 0L;
@@ -7849,6 +7932,10 @@ static void free_service (struct service *serv)
         if (i->sd.xwinfwd_data)
             xwinfwd_freeall (i->sd.xwinfwd_data);
 #endif
+#ifdef SOUND_FWD
+        if (i->sd.soundfwd_data)
+            soundfwd_freeall (i->sd.soundfwd_data);
+#endif
         free (i);
     }
     serv->client_list = NULL;
@@ -7934,6 +8021,14 @@ static void run_service (struct service *serv)
             FD_SET (xwinfwd_listen_socket (i->sd.xwinfwd_data), &rd);
             n = MAX (n, xwinfwd_listen_socket (i->sd.xwinfwd_data));
             xwinfwd_prep_sockets (i->sd.xwinfwd_data, &rd, &wr, &n);
+        }
+#endif
+
+#ifdef SOUND_FWD
+        if (i->sd.soundfwd_data) {
+            FD_SET (soundfwd_listen_socket (i->sd.soundfwd_data), &rd);
+            n = MAX (n, soundfwd_listen_socket (i->sd.soundfwd_data));
+            soundfwd_prep_sockets (i->sd.soundfwd_data, &rd, &wr, &n);
         }
 #endif
 
@@ -8077,6 +8172,19 @@ if (now > v1 + 5) {
             if (FD_ISSET (xwinfwd_listen_socket (i->sd.xwinfwd_data), &rd))
                 xwinfwd_new_client (i->sd.xwinfwd_data);
             if (xwinfwd_process_sockets (&i->sock_data, i->sd.xwinfwd_data, &rd, &wr)) {
+                log_fmt (0, "error writing to terminal socket: [%s]\n", strerror (errno));
+                suspend_cterminal (__LINE__, NULL, i->sd.ttyreader_data, 0);
+                i->sd.ttyreader_data = NULL;
+                i->kill = KILL_SOFT;
+            }
+        }
+#endif
+
+#ifdef SOUND_FWD
+        if (i->sd.soundfwd_data) {
+            if (FD_ISSET (soundfwd_listen_socket (i->sd.soundfwd_data), &rd))
+                soundfwd_new_client (i->sd.soundfwd_data);
+            if (soundfwd_process_sockets (&i->sock_data, i->sd.soundfwd_data, &rd, &wr)) {
                 log_fmt (0, "error writing to terminal socket: [%s]\n", strerror (errno));
                 suspend_cterminal (__LINE__, NULL, i->sd.ttyreader_data, 0);
                 i->sd.ttyreader_data = NULL;
@@ -8239,9 +8347,9 @@ if (now > v1 + 5) {
 #warning finish: this should do partial writes
 #ifdef MSWIN
                     l2 = tt->echo.avail - tt->echo.written; /* which might be something else in the future */
-                    if (send_blind_message (&i->sock_data, REMOTEFS_ACTION_SHELLREAD, 0 /* multiplex */, 0 /* xfwdstatus */, (char *) (tt->rd.buf + tt->rd.written), l, (char *) (tt->echo.buf + tt->echo.written), l2))
+                    if (send_blind_message (&i->sock_data, REMOTEFS_ACTION_SHELLREAD, 0 /* fwd_multiplex */, 0 /* gfwdstatus */, (char *) (tt->rd.buf + tt->rd.written), l, (char *) (tt->echo.buf + tt->echo.written), l2))
 #else
-                    if (send_blind_message (&i->sock_data, REMOTEFS_ACTION_SHELLREAD, 0 /* multiplex */, 0 /* xfwdstatus */, (char *) (tt->rd.buf + tt->rd.written), l, NULL, 0))
+                    if (send_blind_message (&i->sock_data, REMOTEFS_ACTION_SHELLREAD, 0 /* fwd_multiplex */, 0 /* gfwdstatus */, (char *) (tt->rd.buf + tt->rd.written), l, NULL, 0))
 #endif
                     {
                         log_fmt (0, "error writing to terminal socket: [%s]\n", strerror (errno));
@@ -8310,6 +8418,10 @@ if (now > v1 + 5) {
 #ifdef XWIN_FWD
             if (i->sd.xwinfwd_data)
                 xwinfwd_freeall (i->sd.xwinfwd_data);
+#endif
+#ifdef SOUND_FWD
+            if (i->sd.soundfwd_data)
+                soundfwd_freeall (i->sd.soundfwd_data);
 #endif
             free (i);
             *j = next;
@@ -9213,12 +9325,16 @@ int main (int argc, char **argv)
     }
 #endif
 
+#ifdef MSWIN
     int install_mode = 0;
     int uninstall_mode = 0;
     int tray_mode = 0;
     char *install_addr = NULL;
     char *install_range = NULL;
+#endif
+
     (void) strerrorsocket;
+    (void) option_console_mode;
 
 #ifdef MSWIN
     {

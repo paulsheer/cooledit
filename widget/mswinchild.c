@@ -251,11 +251,13 @@ int cterminal_run_command (struct cterminal *c, struct cterminal_config *config,
     if (option_mswin_cmd) {
         snprintf (cmdline, sizeof (cmdline), "CMD");
     } else {
+        char exe_path[MAX_PATH];
         int n;
+        GetModuleFileName(NULL, exe_path, sizeof(exe_path));
         if ((n = len_args (argv)) == 3 && !strcmp (argv[0], "sh") && !strcmp (argv[1], "-c"))
-            snprintf (cmdline, sizeof (cmdline), "\"%s\\%s\" %s -c \"%s\"", current_dir, "BUSYBOX64", "bash", argv[2]);
+            snprintf (cmdline, sizeof (cmdline), "\"%s\" %s -c \"%s\"", exe_path, "bash", argv[2]);
         else
-            snprintf (cmdline, sizeof (cmdline), "\"%s\\%s\" %s", current_dir, "BUSYBOX64", "bash");
+            snprintf (cmdline, sizeof (cmdline), "\"%s\" %s", exe_path, "bash");
     }
     PROCESS_INFORMATION piProcInfo;
     STARTUPINFOEX siStartInfo;

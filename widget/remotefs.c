@@ -9313,6 +9313,8 @@ static void ShowStatusWindow (void)
 #endif /* MSWIN */
 
 #ifdef MSWIN
+int lbb_main(char **argv);
+
 INT WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
 #else
 int main (int argc, char **argv)
@@ -9320,14 +9322,23 @@ int main (int argc, char **argv)
 {E_
     int i;
 #ifdef MSWIN
-    wchar_t **argv;
+    wchar_t **argv_w;
+    char **argv;
     int argc;
 
-    argv = CommandLineToArgvW (GetCommandLineW (), &argc);
-    if (NULL == argv) {
+    argv_w = CommandLineToArgvW (GetCommandLineW (), &argc);
+    if (NULL == argv_w) {
         wprintf (L"CommandLineToArgvW failed\n");
         return 0;
     }
+    argv = (char **) malloc (sizeof(char *) * (argc + 1));
+    for (i = 0; i < argc; i++)
+        argv[i] = wchar_to_char (argv_w[i]);
+    argv[i] = NULL;
+    if (argc > 1 && !strcmp (argv[1], "--fs"))
+        return lbb_main (argv);
+    if (argc > 1 && !strcmp (argv[1], "bash"))
+        return lbb_main (argv);
 #endif
 
 #ifdef MSWIN
@@ -9356,7 +9367,7 @@ int main (int argc, char **argv)
 
     for (i = 1; i < argc; i++) {
         const char *p;
-        p = wchar_to_char (argv[i]);
+        p = argv[i];
         if (!strcmp (p, "-h")) {
             goto usage;
 #ifdef MSWIN
@@ -9365,11 +9376,11 @@ int main (int argc, char **argv)
             i++;
             if (i >= argc)
                 goto usage;
-            install_addr = wchar_to_char (argv[i]);
+            install_addr = argv[i];
             i++;
             if (i >= argc)
                 goto usage;
-            install_range = wchar_to_char (argv[i]);
+            install_range = argv[i];
         } else if (!strcmp (p, "--uninstall")) {
             uninstall_mode = 1;
         } else if (!strcmp (p, "--console")) {
@@ -9381,7 +9392,7 @@ int main (int argc, char **argv)
             i++;
             if (i >= argc)
                 goto usage;
-            option_home_dir = wchar_to_char (argv[i]);
+            option_home_dir = argv[i];
         } else if (!strcmp (p, "--no-crypto")) {
             option_no_crypto = 1;
         } else if (!strcmp (p, "--no-force-crypto")) {
@@ -9390,7 +9401,7 @@ int main (int argc, char **argv)
             i++;
             if (i >= argc)
                 goto usage;
-            option_keyfile_path = wchar_to_char (argv[i]);
+            option_keyfile_path = argv[i];
         } else if (p[0] == '-') {
             goto usage;
         } else {
@@ -9537,17 +9548,8 @@ int main (int argc, char **argv)
         action_list[REMOTEFS_ACTION_ENABLECRYPTO].action_fn = NULL;
 
 #ifdef MSWIN
-    struct stat st;
-    if (!stat ("BUSYBOX64.EXE", &st) && st.st_size == getexesize ()) {
-        /* ok */
-    } else if (makeexe ("BUSYBOX64.EXE")) {
-        option_mswin_cmd = 1;
-    }
-#endif
-
-#ifdef MSWIN
-    option_listen_address = wchar_to_char (argv[1]);
-    option_ip_range = wchar_to_char (argv[2]);
+    option_listen_address = argv[1];
+    option_ip_range = argv[2];
     if (option_console_mode) {
         remotefs_serverize ();
         return 0;

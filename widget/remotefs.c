@@ -5260,7 +5260,7 @@ static int remote_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio 
 
     if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, NULL, &msg, &s, REMOTEFS_ACTION_SHELLCMDNEW, errmsg, &no_such_action)) {
         if (no_such_action)
-            strcpy (errmsg, "shell commands not supported by remote");
+            strcpy (errmsg, "shell commands not supported by remote - perhaps upgrade remotefs or REMOTEFS.EXE");
         free (msg.data);
         return -1;
     }

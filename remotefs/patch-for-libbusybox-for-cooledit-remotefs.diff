@@ -2720,11 +2720,54 @@ index f6d0a73f4..4ca7c5cb6 100644
  #if ENABLE_EXTRA_COMPAT
  /* Unlike getline, this one removes trailing '\n' */
  static ssize_t FAST_FUNC bb_getline(char **line_ptr, size_t *line_alloc_len, FILE *file)
+diff --git a/include/bb_rename_libc.h b/include/bb_rename_libc.h
+new file mode 100644
+index 000000000..1123fe30e
+--- /dev/null
++++ b/include/bb_rename_libc.h
+@@ -0,0 +1,26 @@
++/* vi: set sw=4 ts=4: */
++/*
++ * Rename libc-override symbols to internal names so they don't clash
++ * with MinGW system library versions. This header must be included
++ * BEFORE system headers like <dirent.h> so declarations are renamed too.
++ *
++ * External code that links libbusybox.a but does NOT include libbb.h
++ * will continue to use the system versions of these functions.
++ */
++#ifndef BB_RENAME_LIBC_H
++#define BB_RENAME_LIBC_H 1
++
++/* These functions are provided by MinGW auto-linked libs (-lmingwex,
++ * -lmsvcrt, -lkernel32). Busybox's versions override the system ones,
++ * causing crashes because busybox's errno is (*bb_errno) which is
++ * NULL unless lbb_prepare() runs. Renaming them makes busybox's
++ * internal code use the __bb_private_ versions while external
++ * consumers get the safe system versions. */
++#define opendir      __bb_private_opendir
++#define closedir     __bb_private_closedir
++#define readdir      __bb_private_readdir
++#define pipe         __bb_private_pipe
++#define sleep        __bb_private_sleep
++#define gettimeofday __bb_private_gettimeofday
++
++#endif
 diff --git a/include/libbb.h b/include/libbb.h
-index b8ab6c4bc..a909c4237 100644
+index b8ab6c4bc..d4ed23c7d 100644
 --- a/include/libbb.h
 +++ b/include/libbb.h
-@@ -636,6 +636,8 @@ char *last_char_is(const char *s, int c) FAST_FUNC;
+@@ -18,6 +18,10 @@
+ 
+ #include "platform.h"
+ 
++#if ENABLE_PLATFORM_MINGW32
++# include "bb_rename_libc.h"
++#endif
++
+ #include <ctype.h>
+ #include <dirent.h>
+ #include <errno.h>
+@@ -636,6 +640,8 @@ char *last_char_is(const char *s, int c) FAST_FUNC;
  char *last_char_is_dir_sep(const char *s) FAST_FUNC;
  const char* endofname(const char *name) FAST_FUNC;
  char *is_prefixed_with(const char *string, const char *key) FAST_FUNC;
@@ -2733,7 +2776,7 @@ index b8ab6c4bc..a909c4237 100644
  char *is_suffixed_with(const char *string, const char *key) FAST_FUNC;
  
  #if !ENABLE_PLATFORM_MINGW32
-@@ -1705,6 +1707,7 @@ extern uint8_t xfunc_error_retval;
+@@ -1705,6 +1711,7 @@ extern uint8_t xfunc_error_retval;
  extern void (*die_func)(void);
  void xfunc_die(void) NORETURN FAST_FUNC;
  void bb_show_usage(void) NORETURN FAST_FUNC;

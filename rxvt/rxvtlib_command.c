@@ -1260,9 +1260,10 @@ void rxvt_process_x_event (rxvtlib * o)
         switch (o->xevent.type) {
         case KeyPress:
         if (o->life_cycle == LIFE_CYCLE_SUSPENDED) {
-            char errmsg[REMOTEFS_ERR_MSG_LEN];
+            char errmsg[REMOTEFS_ERR_MSG_LEN] = "";
             if (remotefs_shell_reconnect (o->cterminal_io.host, &o->cterminal_io, errmsg)) {
-                o->life_cycle = LIFE_CYCLE_KILLED;
+                if (strstr (errmsg, "process not found"))
+                    o->life_cycle = LIFE_CYCLE_KILLED;
                 return;
             }
             o->life_cycle = LIFE_CYCLE_LIVE;

@@ -6868,6 +6868,7 @@ struct ttyreader_data {
 
 struct server_data {
     struct reader_data *reader_data;
+    struct service *serv;
 #ifdef SHELL_SUPPORT
     struct ttyreader_data *ttyreader_data;
 #endif
@@ -6883,6 +6884,7 @@ struct server_data {
 
 
 
+void suspend_idle_shell (struct service *serv, unsigned long cmd_pid, unsigned long long process_handle);
 
 struct suspendedshell_item {
     struct suspendedshell_item *next;
@@ -6891,10 +6893,12 @@ struct suspendedshell_item {
 
 static struct suspendedshell_item *suspendedshell_list = NULL;
 
-static struct ttyreader_data *lookup_suspendedshell (unsigned long cmd_pid, unsigned long long process_handle)
+static struct ttyreader_data *lookup_suspendedshell (struct server_data *sd, unsigned long cmd_pid, unsigned long long process_handle)
 {E_
     struct suspendedshell_item *i, **next;
     next = &suspendedshell_list;
+
+    suspend_idle_shell (sd->serv, cmd_pid, process_handle);
 
     for (i = suspendedshell_list; i; i = i->next) {
         if ((cmd_pid && i->suspendedshell->cterminal.cmd_pid == cmd_pid) ||
@@ -7479,10 +7483,12 @@ static int remote_action_fn_v5_shellreconnect (struct server_data *sd, CStr *s, 
 
     assert (sd->ttyreader_data == NULL);
 
-    if ((sd->ttyreader_data = lookup_suspendedshell (cmd_pid_, process_handle_))) {
+printf("remote_action_fn_v5_shellreconnect %d\n", (int) cmd_pid_);
+
+    if ((sd->ttyreader_data = lookup_suspendedshell (sd, cmd_pid_, process_handle_))) {
         alloc_encode_success (s);
     } else {
-        alloc_encode_error (s, RFSERR_SERVER_CLOSED_SHELL_DIED, "process not founded cached on reconnect", 1);
+        alloc_encode_error (s, RFSERR_SERVER_CLOSED_SHELL_DIED, "process not found cached on reconnect", 1);
     }
 
     return 0;
@@ -7829,6 +7835,7 @@ static void add_client (struct service *serv)
     i->client_address = client_address;
     i->d.sock_data = &i->sock_data;
     i->sd.reader_data = &i->d;
+    i->sd.serv = serv;
     time (&i->last_accessed);
 
     i->next = serv->client_list;
@@ -8093,6 +8100,23 @@ static void free_service (struct service *serv)
         serv->h = INVALID_SOCKET;
     }
 }
+
+void suspend_idle_shell (struct service *serv, unsigned long cmd_pid, unsigned long long process_handle)
+{
+    struct client_item *i;
+    for (i = serv->client_list; i; i = i->next) {
+        assert (i->magic == CLIENT_MAGIC);
+        if (!i->sd.ttyreader_data)
+            continue;
+        if ((cmd_pid && i->sd.ttyreader_data->cterminal.cmd_pid == cmd_pid) ||
+            (process_handle && (unsigned long long) i->sd.ttyreader_data->cterminal.process_handle == process_handle)) {
+            suspend_cterminal (__LINE__, NULL, i->sd.ttyreader_data, 0);
+            i->sd.ttyreader_data = NULL;
+            i->kill = KILL_HARD;
+        }
+    }
+}
+
 
 
 

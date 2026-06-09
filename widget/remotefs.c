@@ -100,6 +100,7 @@
 #include <android/log.h>
 #include <jni.h>
 #define LOG_TAG "RemoteFS"
+void android_signal_activity (void);
 #endif
 #include "remotefs_local.h"
 
@@ -3628,15 +3629,17 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
     }
 }
 
-static void remotefs_readfile_ (int (*chunk_cb) (void *, const unsigned char *, int, unsigned long long, char *), int (*start_cb) (void *, unsigned long long, char *), void *hook, const char *filename, CStr * r)
+static void remotefs_readfile_ (int (*chunk_cb) (void *, const unsigned char *, const unsigned char *, int, unsigned long long, char *), int (*start_cb) (void *, unsigned long long, char *), void *hook, const char *filename, CStr * r)
 {E_
-    unsigned char chunk[READER_CHUNK];
+    unsigned char chunk_[READER_CHUNK + 4];
+    unsigned char *chunk;
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     HANDLE fd = INVALID_HANDLE_VALUE;
     struct stat_posix_or_mswin st;
     const char *path;
     int file_len_indefinite = 0;
 
+    chunk = &chunk_[4];
     memset (&st, '\0', sizeof (st));
 
     path = translate_path_sep (filename);
@@ -3661,7 +3664,7 @@ static void remotefs_readfile_ (int (*chunk_cb) (void *, const unsigned char *, 
                 goto errout;
             }
 
-            if ((*chunk_cb) (hook, chunk, c, FILE_LEN_INDEFINITE, errmsg)) {
+            if ((*chunk_cb) (hook, chunk - 4, chunk, c, FILE_LEN_INDEFINITE, errmsg)) {
                 alloc_encode_error (r, RFSERR_OTHER_ERROR, errmsg, 0);
                 goto errout;
             }
@@ -3687,7 +3690,7 @@ static void remotefs_readfile_ (int (*chunk_cb) (void *, const unsigned char *, 
                 alloc_encode_errno_strerror (r, 0);
                 goto errout;
             }
-            if ((*chunk_cb) (hook, chunk, c, st.st_size, errmsg)) {
+            if ((*chunk_cb) (hook, NULL, chunk, c, st.st_size, errmsg)) {
                 alloc_encode_error (r, RFSERR_OTHER_ERROR, errmsg, 0);
                 goto errout;
             }
@@ -4402,7 +4405,7 @@ static int local_listtwodirs (struct remotefs *rfs, int *cached, const char *dir
     MARSHAL_END_LOCAL(NULL);
 }
 
-static int local_chunk_reader_cb (void *hook, const unsigned char *chunk, int chunklen, unsigned long long filelen, char *errmsg)
+static int local_chunk_reader_cb (void *hook, const unsigned char *chunk_minus_4, const unsigned char *chunk, int chunklen, unsigned long long filelen, char *errmsg)
 {E_
     struct action_callbacks *o;
     o = (struct action_callbacks *) hook;
@@ -7110,26 +7113,27 @@ static int remote_chunk_startreader_cb (void *hook, unsigned long long filelen, 
     return 0;
 }
 
-static int remote_chunk_reader_cb (void *hook, const unsigned char *chunk, int chunklen, unsigned long long filelen, char *errmsg)
+static int remote_chunk_reader_cb (void *hook, const unsigned char *chunk_minus_4, const unsigned char *chunk, int chunklen, unsigned long long filelen, char *errmsg)
 {E_
     struct server_reader_info *info;
 
     info = (struct server_reader_info *) hook;
 
     if (filelen == FILE_LEN_INDEFINITE) {
-        unsigned char v[4];
-        encode_uint32 (v, chunklen);
-        if (writer (info->sd->reader_data->sock_data, v, 4)) {
+        assert (chunk_minus_4 == chunk - 4);
+        encode_uint32 ((unsigned char *) chunk_minus_4, chunklen);
+        if (writer (info->sd->reader_data->sock_data, chunk_minus_4, chunklen + 4)) {
             set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
             return -1;
         }
-    }
-
-    assert (chunklen >= 0);
-    if (chunklen > 0) {
-        if (writer (info->sd->reader_data->sock_data, chunk, chunklen)) {
-            set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
-            return -1;
+    } else {
+        assert (!chunk_minus_4);
+        assert (chunklen >= 0);
+        if (chunklen > 0) {
+            if (writer (info->sd->reader_data->sock_data, chunk, chunklen)) {
+                set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
+                return -1;
+            }
         }
     }
 
@@ -7974,6 +7978,11 @@ static void process_client (struct client_item *i, int *timeout)
 
     free (p);
     p = NULL;
+
+#ifdef ANDROID
+    /* Signal activity on each successful action to keep the device awake */
+    android_signal_activity ();
+#endif
 
     encode_msg_header (&m, r.len, MSG_VERSION, action, FILE_PROTO_MAGIC);
 

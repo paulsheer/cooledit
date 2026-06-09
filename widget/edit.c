@@ -154,6 +154,23 @@ static int init_dynamic_edit_buffers_text (WEdit * edit, const char *host, const
 }
 
 
+static inline int edit_insert_ (WEdit * edit, int c)
+{
+/* add a new buffer if we've reached the end of the last one */
+    if (!(edit->curs1 & M_EDIT_BUF_SIZE))
+	edit->buffers1[edit->curs1 >> S_EDIT_BUF_SIZE] = malloc (EDIT_BUF_SIZE);
+
+/* perform the insertion */
+    edit->buffers1[edit->curs1 >> S_EDIT_BUF_SIZE][edit->curs1 & M_EDIT_BUF_SIZE] = (unsigned char) c;
+
+/* update file length */
+    edit->last_byte++;
+
+/* update cursor position */
+    edit->curs1++;
+}
+
+
 struct loader_data {
     WEdit *edit;
     long total;
@@ -162,13 +179,27 @@ struct loader_data {
     long buf2;
     unsigned char *p;
     int done;
+    int indefinite_length;
 };
 
-static int edit_sock_reader (struct action_callbacks *o, const unsigned char *buf, int buflen, long long filelen, char *errmsg)
+static int edit_sock_reader (struct action_callbacks *o, const unsigned char *buf, int buflen, unsigned long long filelen, char *errmsg)
 {E_
     struct loader_data *ld;
 
     ld = (struct loader_data *) o->hook;
+
+    if (ld->indefinite_length) {
+        int i;
+        for (i = 0; i < buflen; i++) {
+            if (ld->edit->last_byte >= SIZE_LIMIT) {
+                strcpy (errmsg, "File too large");
+	        return -1;
+            }
+            edit_insert_ (ld->edit, buf[i]);
+            ld->total++;
+        }
+        return 0;
+    }
 
     if (ld->done) {
         strcpy (errmsg, "File size changed while loading");
@@ -199,7 +230,9 @@ static int edit_sock_reader (struct action_callbacks *o, const unsigned char *bu
     return 0;
 }
 
-static int init_dynamic_edit_buffers_file (WEdit * edit, const char *host, const char *filename)
+static void edit_cursor_to_top_ (WEdit * edit);
+
+static int init_dynamic_edit_buffers_file (WEdit * edit, const char *host, const char *filename, int indefinite_length)
 {E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     struct loader_data ld;
@@ -209,15 +242,24 @@ static int init_dynamic_edit_buffers_file (WEdit * edit, const char *host, const
     memset (&ld, '\0', sizeof (ld));
     memset (&o, '\0', sizeof (o));
 
-    edit->curs2 = edit->last_byte;
-
     ld.edit = edit;
-    ld.buf2 = edit->curs2 >> S_EDIT_BUF_SIZE;
-    ld.buf = ld.buf2;
 
-    edit->buffers2[ld.buf] = CMalloc (EDIT_BUF_SIZE);
+    if (indefinite_length) {
+        ld.indefinite_length = 1;
 
-    ld.p = edit->buffers2[ld.buf2] + EDIT_BUF_SIZE - (edit->curs2 & M_EDIT_BUF_SIZE);
+        edit->last_byte = 0;
+        edit->curs1 = edit->curs2 = edit->last_byte = 0;
+        edit->buffers2[0] = CMalloc (EDIT_BUF_SIZE);
+    } else {
+        edit->curs2 = edit->last_byte;
+
+        ld.buf2 = edit->curs2 >> S_EDIT_BUF_SIZE;
+        ld.buf = ld.buf2;
+
+        edit->buffers2[ld.buf] = CMalloc (EDIT_BUF_SIZE);
+
+        ld.p = edit->buffers2[ld.buf2] + EDIT_BUF_SIZE - (edit->curs2 & M_EDIT_BUF_SIZE);
+    }
 
     o.hook = (void *) &ld;
     o.sock_reader = edit_sock_reader;
@@ -233,7 +275,11 @@ static int init_dynamic_edit_buffers_file (WEdit * edit, const char *host, const
         return 1;
     }
 
-    edit->curs1 = 0;
+    if (indefinite_length) {
+        edit_cursor_to_top_ (edit);
+    } else {
+        edit->curs1 = 0;
+    }
     return 0;
 }
 
@@ -247,7 +293,7 @@ static int init_dynamic_edit_buffers (WEdit * edit, const char *host, const char
     }
 
     if (filename)
-        return init_dynamic_edit_buffers_file (edit, host, filename);
+        return init_dynamic_edit_buffers_file (edit, host, filename, remotefs_check_indefinite_length (filename));
     return init_dynamic_edit_buffers_text (edit, host, text);
 }
 
@@ -866,18 +912,7 @@ void edit_insert (WEdit * edit, int c)
     edit->mark1 += (edit->mark1 > edit->curs1);
     edit->mark2 += (edit->mark2 > edit->curs1);
 
-/* add a new buffer if we've reached the end of the last one */
-    if (!(edit->curs1 & M_EDIT_BUF_SIZE))
-	edit->buffers1[edit->curs1 >> S_EDIT_BUF_SIZE] = malloc (EDIT_BUF_SIZE);
-
-/* perfprm the insertion */
-    edit->buffers1[edit->curs1 >> S_EDIT_BUF_SIZE][edit->curs1 & M_EDIT_BUF_SIZE] = (unsigned char) c;
-
-/* update file length */
-    edit->last_byte++;
-
-/* update cursor position */
-    edit->curs1++;
+    edit_insert_ (edit, c);
 }
 
 
@@ -1077,6 +1112,24 @@ void edit_wide_char_align_left (WEdit * edit)
 	edit_cursor_move (edit, -1);
 }
 
+
+static void edit_cursor_to_top_ (WEdit * edit)
+{
+    int c;
+    while (edit->curs1 > 0) {
+        c = edit_get_byte (edit, edit->curs1 - 1);
+        if (!((edit->curs2 + 1) & M_EDIT_BUF_SIZE))
+            edit->buffers2[(edit->curs2 + 1) >> S_EDIT_BUF_SIZE] = malloc (EDIT_BUF_SIZE);
+        edit->buffers2[edit->curs2 >> S_EDIT_BUF_SIZE][EDIT_BUF_SIZE - (edit->curs2 & M_EDIT_BUF_SIZE) - 1] = c;
+        edit->curs2++;
+        c = edit->buffers1[(edit->curs1 - 1) >> S_EDIT_BUF_SIZE][(edit->curs1 - 1) & M_EDIT_BUF_SIZE];
+        if (!((edit->curs1 - 1) & M_EDIT_BUF_SIZE)) {
+            free (edit->buffers1[edit->curs1 >> S_EDIT_BUF_SIZE]);
+            edit->buffers1[edit->curs1 >> S_EDIT_BUF_SIZE] = NULL;
+        }
+        edit->curs1--;
+    }
+}
 
 /* moves the cursor right or left: increment positive or negative respectively */
 int edit_cursor_move (WEdit * edit, long increment)

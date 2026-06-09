@@ -12,6 +12,8 @@
 #include <aclapi.h>
 #include <sddl.h>
 #include <error.h>
+#elif defined(ANDROID)
+/* Android: config.h not used, defines provided via compiler flags */
 #else
 #include <config.h>
 #endif
@@ -94,6 +96,11 @@
 #include "cterminal.h"
 #endif
 #include "childhandler.h"
+#ifdef ANDROID
+#include <android/log.h>
+#include <jni.h>
+#define LOG_TAG "RemoteFS"
+#endif
 #include "remotefs_local.h"
 
 
@@ -106,9 +113,9 @@ int option_remote_timeout = 2000;
 int option_no_crypto = 0;
 int option_no_force_crypto = 0;
 static char *option_home_dir = NULL;
-static char *option_listen_address = NULL;
-static char *option_ip_range = NULL;
-static char *option_keyfile_path = NULL;
+char *option_listen_address = NULL;
+char *option_ip_range = NULL;
+char *option_keyfile_path = NULL;
 static int option_console_mode = 0;
 
 
@@ -121,6 +128,11 @@ static int translate_unix_errno (int err);
 int getexesize (void);
 int makeexe (const char *fname);
 int option_mswin_cmd = 0;
+
+int remotefs_check_indefinite_length (const char *path)
+{
+    return 0;
+}
 
 static int windows_rename (const char *a, const char *b)
 {E_
@@ -676,6 +688,11 @@ static void perrorsocket (const char *msg)
 
 #define translate_path_sep(s)   (s)
 
+int remotefs_check_indefinite_length (const char *path)
+{
+    return !strncmp (path, "/proc/", 6) || !strncmp (path, "/sys/", 5);
+}
+
 static int portable_stat (int link, const char *fname, struct portable_stat *p, int *just_not_there, enum remotefs_error_code *remotefs_error_code_, char *errmsg)
 {E_
     int r;
@@ -716,6 +733,26 @@ static const char *strerrorsocket (void)
     return strerror (errno);
 }
 
+#ifdef ANDROID
+
+static void log_fmt (int error, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    if (error)
+        __android_log_vprint (ANDROID_LOG_ERROR, LOG_TAG, fmt, ap);
+    else
+        __android_log_vprint (ANDROID_LOG_INFO, LOG_TAG, fmt, ap);
+    va_end(ap);
+}
+
+static void perrorsocket (const char *msg)
+{E_
+    log_fmt (1, "%s: [%s]\n", msg, strerror (errno));
+}
+
+#else
+
 static void log_fmt (int error, const char *fmt, ...)
 {
     char s[256];
@@ -736,7 +773,9 @@ static void perrorsocket (const char *msg)
     log_fmt (1, "%s: [%s]\n", msg, strerror (errno));
 }
 
-#endif
+#endif  /* !ANDROID */
+
+#endif  /* !MSWIN */
 
 /*
 
@@ -1972,6 +2011,15 @@ static void get_next_iv (unsigned char *iv);
 
 unsigned char the_key[REMOTEFS_MAX_PASSWORD_LEN] = "";
 
+void remotefs_init_random (void)
+{E_
+    static int init_random_done = 0;
+    if (!init_random_done) {
+        init_random_done = 1;
+        init_random ();
+    }
+}
+
 
 static int log_base (unsigned long long v)
 {E_
@@ -2047,14 +2095,10 @@ static int configure_crypto_data (int server, struct crypto_data *c, const unsig
     sha256_context_t sha256;
     unsigned char aeskey1[SYMAUTH_SHA256_SIZE];
     unsigned char aeskey2[SYMAUTH_SHA256_SIZE];
-    static int init_random_done = 0;
     struct timeval now;
     int i;
 
-    if (!init_random_done) {
-        init_random ();
-        init_random_done = 1;
-    }
+    remotefs_init_random ();
 
     sha256_reset (&sha256);
     sha256_update (&sha256, password, password_len);
@@ -3584,46 +3628,71 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
     }
 }
 
-static void remotefs_readfile_ (int (*chunk_cb) (void *, const unsigned char *, int, long long, char *), int (*start_cb) (void *, long long, char *), void *hook, const char *filename, CStr * r)
+static void remotefs_readfile_ (int (*chunk_cb) (void *, const unsigned char *, int, unsigned long long, char *), int (*start_cb) (void *, unsigned long long, char *), void *hook, const char *filename, CStr * r)
 {E_
     unsigned char chunk[READER_CHUNK];
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     HANDLE fd = INVALID_HANDLE_VALUE;
     struct stat_posix_or_mswin st;
-    unsigned long long progress = 0ULL;
+    const char *path;
+    int file_len_indefinite = 0;
 
     memset (&st, '\0', sizeof (st));
 
-    fd = open (translate_path_sep (filename), O_RDONLY | _O_BINARY);
+    path = translate_path_sep (filename);
+    file_len_indefinite = remotefs_check_indefinite_length (path);
+
+    fd = open (path, O_RDONLY | _O_BINARY);
     if (fd == INVALID_HANDLE_VALUE || my_fstat (fd, &st)) {
         alloc_encode_errno_strerror (r, 0);
         return;
     }
 
-    if (start_cb && (*start_cb) (hook, st.st_size, errmsg)) {
-        alloc_encode_error (r, RFSERR_OTHER_ERROR, errmsg, 0);
-        goto errout;
-    }
-
-    for (;;) {
-        int c;
-        if (progress >= (unsigned long long) st.st_size)
-            break;
-        c = read (fd, chunk, READER_CHUNK);
-        if (!c) {
-            alloc_encode_error (r, RFSERR_ENDOFFILE, "System call read() returned zero", 0);
-            goto errout;
-        }
-        if (c < 0) {
-            alloc_encode_errno_strerror (r, 0);
-            goto errout;
-        }
-
-        if ((*chunk_cb) (hook, chunk, c, st.st_size, errmsg)) {
+    if (file_len_indefinite) {
+        if (start_cb && (*start_cb) (hook, FILE_LEN_INDEFINITE, errmsg)) {
             alloc_encode_error (r, RFSERR_OTHER_ERROR, errmsg, 0);
             goto errout;
         }
-        progress += c;
+        for (;;) {
+            int c;
+            c = read (fd, chunk, READER_CHUNK);
+            if (c < 0) {
+                alloc_encode_errno_strerror (r, 0);
+                goto errout;
+            }
+
+            if ((*chunk_cb) (hook, chunk, c, FILE_LEN_INDEFINITE, errmsg)) {
+                alloc_encode_error (r, RFSERR_OTHER_ERROR, errmsg, 0);
+                goto errout;
+            }
+            if (!c)
+                break;
+        }
+    } else {
+        unsigned long long progress = 0ULL;
+        if (start_cb && (*start_cb) (hook, st.st_size, errmsg)) {
+            alloc_encode_error (r, RFSERR_OTHER_ERROR, errmsg, 0);
+            goto errout;
+        }
+        for (;;) {
+            int c;
+            if (progress >= (unsigned long long) st.st_size)
+                break;
+            c = read (fd, chunk, READER_CHUNK);
+            if (!c) {
+                alloc_encode_error (r, RFSERR_ENDOFFILE, "System call read() returned zero", 0);
+                goto errout;
+            }
+            if (c < 0) {
+                alloc_encode_errno_strerror (r, 0);
+                goto errout;
+            }
+            if ((*chunk_cb) (hook, chunk, c, st.st_size, errmsg)) {
+                alloc_encode_error (r, RFSERR_OTHER_ERROR, errmsg, 0);
+                goto errout;
+            }
+            progress += c;
+        }
     }
 
     close (fd);
@@ -3662,6 +3731,27 @@ static void init_random (void)
         perror ("Windows Crypto provider");
         exit (1);
     }
+    scramble_random ();
+}
+#elif defined(ANDROID)
+static void init_random (void)
+{E_
+    sha256_context_t sha256;
+    unsigned char buf[1024];
+    int c;
+    FILE *f;
+    f = fopen ("/dev/urandom", "rb");
+    if (!f)
+        f = fopen ("/dev/random", "rb");
+    if (!f) {
+        log_fmt (1, "could not open /dev/urandom or /dev/random\n");
+        exit (1);
+    }
+    sha256_reset (&sha256);
+    if (fread (buf, 1, sizeof (buf), f) > 0)
+        sha256_update (&sha256, buf, sizeof (buf));
+    sha256_finish (&sha256, random_seed);
+    fclose (f);
     scramble_random ();
 }
 #else
@@ -4312,7 +4402,7 @@ static int local_listtwodirs (struct remotefs *rfs, int *cached, const char *dir
     MARSHAL_END_LOCAL(NULL);
 }
 
-static int local_chunk_reader_cb (void *hook, const unsigned char *chunk, int chunklen, long long filelen, char *errmsg)
+static int local_chunk_reader_cb (void *hook, const unsigned char *chunk, int chunklen, unsigned long long filelen, char *errmsg)
 {E_
     struct action_callbacks *o;
     o = (struct action_callbacks *) hook;
@@ -4770,7 +4860,7 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
     char throw_away[REMOTEFS_ERR_MSG_LEN];
     CStr s, msg;
     unsigned char *q;
-    unsigned long long filelen, remaining;
+    unsigned long long filelen;
     int c;
     struct reader_data d;
     unsigned char buf[READER_CHUNK];
@@ -4825,21 +4915,47 @@ static int remote_readfile (struct remotefs *rfs, struct action_callbacks *o, co
         return -1;
     }
     decode_ubigint (t, &filelen);
-    remaining = filelen;
+    if (filelen == FILE_LEN_INDEFINITE) {
+        for (;;) {
+            unsigned char u[4];
+            unsigned long chunk_sz;
+            if (reader (&d, u, 4, &reader_error)) {
+                set_sockerrmsg_to_errno (errmsg, errno, reader_error);
+                return -1;
+            }
+            decode_uint32 (u, &chunk_sz);
+            if (!chunk_sz)
+                break;
+            if (chunk_sz > READER_CHUNK) {
+                strcpy (errmsg, "invalid chunk size reading file of indefinite length");
+                return -1;
+            }
+            if (reader (&d, buf, chunk_sz, &reader_error)) {
+                set_sockerrmsg_to_errno (errmsg, errno, reader_error);
+                return -1;
+            }
+            if (!err)
+                if ((*o->sock_reader) (o, buf, chunk_sz, filelen, errmsg))
+                    err = 1;
+        }
+    } else {
+        unsigned long long remaining;
+        remaining = filelen;
 
 /* even if the remote has an error we continue reading the full network
    transaction to preserve continuity of the connection: */
-    while (remaining > 0) {
-        int c;
-        c = (MIN ((unsigned long long) READER_CHUNK, remaining));
-        if (reader (&d, buf, c, &reader_error)) {
-            set_sockerrmsg_to_errno (errmsg, errno, reader_error);
-            return -1;
+        while (remaining > 0) {
+            int c;
+            c = (MIN ((unsigned long long) READER_CHUNK, remaining));
+            if (reader (&d, buf, c, &reader_error)) {
+                set_sockerrmsg_to_errno (errmsg, errno, reader_error);
+                return -1;
+            }
+            if (!err)
+                if ((*o->sock_reader) (o, buf, c, filelen, errmsg))
+                    err = 1;
+            remaining -= c;
         }
-        if (!err)
-            if ((*o->sock_reader) (o, buf, c, filelen, errmsg))
-                err = 1;
-        remaining -= c;
     }
 
     if (recv_mesg (rfs, &d, &s, REMOTEFS_ACTION_READFILE, err ? throw_away : errmsg, NULL))
@@ -6425,7 +6541,11 @@ struct remotefs remotefs_dummyerr = {
     NULL,
 #endif
     dummyerr_ping,
+#ifdef SHELL_SUPPORT
     dummyerr_shellreconnect,
+#else
+    NULL,
+#endif
     NULL,
 };
 
@@ -6968,7 +7088,7 @@ struct server_reader_info {
     long long filelen;
 };
 
-static int remote_chunk_startreader_cb (void *hook, long long filelen, char *errmsg)
+static int remote_chunk_startreader_cb (void *hook, unsigned long long filelen, char *errmsg)
 {E_
     struct server_reader_info *info;
     unsigned char p[32];
@@ -6986,15 +7106,27 @@ static int remote_chunk_startreader_cb (void *hook, long long filelen, char *err
     return 0;
 }
 
-static int remote_chunk_reader_cb (void *hook, const unsigned char *chunk, int chunklen, long long filelen, char *errmsg)
+static int remote_chunk_reader_cb (void *hook, const unsigned char *chunk, int chunklen, unsigned long long filelen, char *errmsg)
 {E_
     struct server_reader_info *info;
 
     info = (struct server_reader_info *) hook;
 
-    if (writer (info->sd->reader_data->sock_data, chunk, chunklen)) {
-        set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
-        return -1;
+    if (filelen == FILE_LEN_INDEFINITE) {
+        unsigned char v[4];
+        encode_uint32 (v, chunklen);
+        if (writer (info->sd->reader_data->sock_data, v, 4)) {
+            set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
+            return -1;
+        }
+    }
+
+    assert (chunklen >= 0);
+    if (chunklen > 0) {
+        if (writer (info->sd->reader_data->sock_data, chunk, chunklen)) {
+            set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
+            return -1;
+        }
     }
 
     info->filelen = filelen;
@@ -7018,7 +7150,7 @@ static int remote_action_fn_v1_readfile (struct server_data *sd, CStr * s, const
         return -1;
 
     remotefs_readfile_ (remote_chunk_reader_cb, remote_chunk_startreader_cb, (void *) &info, filename, s);
-    if (info.progress != info.filelen)
+    if (info.filelen != FILE_LEN_INDEFINITE && info.progress != info.filelen)
         return -1;
     return 0;
 }
@@ -7569,8 +7701,13 @@ struct action_item action_list[] = {
 #endif
     { 1, 1, remote_action_fn_v4_listtwodirs, },                 /* REMOTEFS_ACTION_READTWODIRS             */
     { 1, 1, remote_action_fn_v4_ping, },                        /* REMOTEFS_ACTION_PING                    */
+#ifdef SHELL_SUPPORT
     { 1, 1, remote_action_fn_v5_shellreconnect, },              /* REMOTEFS_ACTION_SHELLRECONNECT          */
     { 1, 1, remote_action_fn_v5_shellcmdnew, },                 /* REMOTEFS_ACTION_SHELLCMDNEW             */
+#else
+    { 0, 0, NULL, },
+    { 0, 0, NULL, },
+#endif
 };
 
 static unsigned int client_count = 0L;
@@ -8236,10 +8373,12 @@ if (now > v1 + 5) {
                 } else if (!c) {
                     log_fmt (0, "%d: Error: closed by remote,\n", i->id);
                     i->kill = KILL_HARD;
+#ifdef SHELL_SUPPORT
                     if (i->sd.ttyreader_data) {
                         suspend_cterminal (__LINE__, NULL, i->sd.ttyreader_data, 0);
                         i->sd.ttyreader_data = NULL;
                     }
+#endif
                 } else if (c < 0 && (ERROR_EINTR() || ERROR_EAGAIN())) {
                     /* ok */
                 } else {
@@ -8250,11 +8389,13 @@ if (now > v1 + 5) {
                     for (;;) {
                         int timeout = 0;
                         process_client (i, &timeout);
+#ifdef SHELL_SUPPORT
                         if (i->kill && i->sd.ttyreader_data) {
                             suspend_cterminal (__LINE__, NULL, i->sd.ttyreader_data, 0);
                             i->sd.ttyreader_data = NULL;
                             break;
                         }
+#endif
                         if (timeout)
                             break;
                         time (&i->last_accessed);
@@ -8462,6 +8603,10 @@ if (now > v1 + 5) {
 #endif
 
 static int kill_received = 0;
+void remotefs_set_kill_received (int v)
+{
+    kill_received = v;
+}
 
 #ifdef SHELL_SUPPORT
 #ifndef MSWIN
@@ -8504,6 +8649,12 @@ void remotefs_serverize (void)
         log_fmt (1, "WSAStartup failed with error: %d\n", err);
         exit (1);
     }
+#elif defined(ANDROID)
+    /* Android: Linux sockets, no fork/signals */
+    signal (SIGPIPE, SIG_IGN);
+    extern int android_server_running;
+    android_server_running = 1;
+    option_listen_address = "0.0.0.0";
 #else
     set_child_handler ();
     signal (SIGPIPE, SIG_IGN);
@@ -8524,19 +8675,29 @@ void remotefs_serverize (void)
             run_service (&serv);
         }
     }
+#elif defined(ANDROID)
+    {
+        extern int android_server_running;
+        while (!kill_received && android_server_running) {
+            run_service (&serv);
+        }
+    }
 #else
     while (!kill_received) {
         run_service (&serv);
     }
 #endif
 
+#ifdef SHELL_SUPPORT
     delete_all_suspendedshell ();
+#endif
     free_service (&serv);
 #ifndef MSWIN
+#ifndef ANDROID
     clean_child_handler ();
 #endif
+#endif
 }
-
 
 
 
@@ -8648,10 +8809,13 @@ static void restrict_keyfile_to_system (const char *n)
 }
 #endif
 
-static void create_aes_key (const char *n)
+void remotefs_create_aes_key (const char *n)
 {E_
     int i;
     FILE *f = NULL;
+
+    remotefs_init_random ();
+
     f = fopen (n, "wb");
     if (!f)
         goto err;
@@ -8681,7 +8845,7 @@ static void create_aes_key (const char *n)
     exit (1);
 }
 
-static void read_keyfile (const char *n)
+void remotefs_read_keyfile (const char *n)
 {E_
     FILE *f = NULL;
     struct stat st;
@@ -9412,7 +9576,7 @@ int main (int argc, char **argv)
     if (option_no_crypto)
         option_no_force_crypto = 1;
 
-    init_random ();
+    remotefs_init_random ();
 
     if (!option_keyfile_path) {
 #ifdef MSWIN
@@ -9441,7 +9605,7 @@ int main (int argc, char **argv)
         } else if (!f && errno == ENOENT) {
             /* ok, doesn't exist yet*/
             log_fmt (1, "creating keyfile %s\n", option_keyfile_path);
-            create_aes_key (option_keyfile_path);
+            remotefs_create_aes_key (option_keyfile_path);
 #ifdef MSWIN
             restrict_keyfile_to_system (option_keyfile_path);
 #endif
@@ -9451,7 +9615,7 @@ int main (int argc, char **argv)
         }
     }
 
-    read_keyfile (option_keyfile_path);
+    remotefs_read_keyfile (option_keyfile_path);
 
 #ifdef MSWIN
     if (install_mode) {

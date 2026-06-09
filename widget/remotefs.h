@@ -374,11 +374,14 @@ void remotefs_free (struct remotefs *rfs);
 struct remotefs *remotefs_new (const char *host, char *errmsg);
 int remotefs_drop (const char *host_);
 struct remotefs *remotefs_lookup (const char *host_, char *directory);
+int remotefs_check_indefinite_length (const char *path);
 #define the_remotefs_local                      (remotefs_lookup (REMOTEFS_LOCAL, NULL))
+
+#define FILE_LEN_INDEFINITE    0xffffffffffffffffULL
 
 struct action_callbacks {
     void *hook;
-    int (*sock_reader) (struct action_callbacks *o, const unsigned char *chunk, int chunklen, long long filelen, char *errmsg);
+    int (*sock_reader) (struct action_callbacks *o, const unsigned char *chunk, int chunklen, unsigned long long filelen, char *errmsg);
     int (*sock_writer) (struct action_callbacks *o, unsigned char *chunk, int *chunklen, char *errmsg);
 };
 

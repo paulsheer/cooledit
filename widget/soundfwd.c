@@ -183,14 +183,12 @@ struct soundclient_data *soundclient_alloc (const char *sound_env_var)
 {E_
     struct soundclient_data *r;
     char host[256];
-    socklen_t l;
     const char *addr;
     int port;
 
     r = (struct soundclient_data *) malloc (sizeof (*r));
     memset (r, '\0', sizeof (*r));
 
-    l = sizeof (r->sound_peer);
     memset (&r->sound_peer, '\0', sizeof (r->sound_peer));
 
     addr = NULL;

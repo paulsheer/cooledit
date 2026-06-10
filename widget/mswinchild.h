@@ -22,6 +22,8 @@ struct cterminal_config {
     int env_bg;
     int erase_char; /* return value */
     unsigned long cmd_pid; /* return value */
+    unsigned long host_pid; /* return value */
+    unsigned long long start_time; /* return value */
     MSWIN_HANDLE process_handle;
     MSWIN_HANDLE con_handle;
 #define CTERMINAL_TTYDEV_SZ     64

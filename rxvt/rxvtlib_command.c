@@ -1306,7 +1306,7 @@ void rxvt_process_x_event (rxvtlib * o)
         if (!o->shellkill_sent) {
             o->shellkill_sent = 1;
             if (o->cterminal_io.remotefs)
-                (*o->cterminal_io.remotefs->remotefs_shellkill) (o->cterminal_io.remotefs, o->cmd_pid);
+                (*o->cterminal_io.remotefs->remotefs_shellkill) (o->cterminal_io.remotefs, &o->cterminal_io);
         }
         if (o->cmd_fd >= 0) {
             CRemoveWatch (o->cmd_fd, NULL, 3);

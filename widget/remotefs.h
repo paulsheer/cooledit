@@ -407,6 +407,7 @@ struct remotefs_terminalio {
     struct remotefs *remotefs;
     unsigned long cmd_pid;
     unsigned long long process_handle;
+    char save_terminal_path[576];
     unsigned char *base;
     char ttydev[64]; /* fixme: make CTERMINAL_TTYDEV_SZ */
     char host[256];
@@ -455,7 +456,7 @@ struct remotefs {
     int (*remotefs_shellresize) (struct remotefs *rfs, unsigned long pid, int columns, int rows, char *errmsg);
     int (*remotefs_shellread) (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long *multiplex, int *gfwdstatus, CStr *chunk, char *errmsg, int *time_out, int no_io, remotefs_error_code_t *error_code);
     int (*remotefs_shellwrite) (struct remotefs *rfs, struct remotefs_terminalio *io, unsigned long multiplex, int gfwdstatus, const CStr *chunk, char *errmsg);
-    int (*remotefs_shellkill) (struct remotefs *rfs, unsigned long pid);
+    int (*remotefs_shellkill) (struct remotefs *rfs, struct remotefs_terminalio *io);
     int (*remotefs_shellsignal) (struct remotefs *rfs, unsigned long pid, int signum, int *killret, char *errmsg);
     int (*remotefs_ping) (struct remotefs *rfs, const char *test_msg, char *test_ret, int test_ret_len, char *errmsg);
     int (*remotefs_shellreconnect) (struct remotefs *rfs, struct remotefs_terminalio *io, char *errmsg);

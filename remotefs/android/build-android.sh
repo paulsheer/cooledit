@@ -22,7 +22,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     APK="$SCRIPT_DIR/app/build/outputs/apk/debug/app-debug.apk"
 else
     /opt/gradle-7.5.1/bin/gradle assembleRelease 2>&1
-    APK="$SCRIPT_DIR/app/build/outputs/apk/release/app-release-unsigned.apk"
+    APK="$SCRIPT_DIR/app/build/outputs/apk/release/app-release.apk"
     cp $APK $SCRIPT_DIR/../../remotefs.apk
 fi
 

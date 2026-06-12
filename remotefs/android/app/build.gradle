@@ -1,9 +1,26 @@
 apply plugin: 'com.android.application'
 
+def keystoreProperties = new Properties()
+def keystorePropsFile = file('/cooledit-android-keystore/keystore.properties')
+if (keystorePropsFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropsFile))
+}
+
 android {
     namespace "com.cooledit.remotefs"
     compileSdk 34
     buildToolsVersion "30.0.3"
+
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                storeFile file('/cooledit-android-keystore/remotefs.keystore')
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
 
     defaultConfig {
         applicationId "com.cooledit.remotefs"
@@ -24,6 +41,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+            signingConfig signingConfigs.release
         }
         debug {
             debuggable true

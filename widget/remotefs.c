@@ -1630,7 +1630,6 @@ int remotefs_shell_util (const char *host, int xwin_fd, struct remotefs_terminal
         return -1;
     }
     io->cmd_pid = c->cmd_pid;
-    io->process_handle = c->process_handle;
 
     strncpy (io->host, host, sizeof (io->host));
     io->host[sizeof (io->host) - 1] = '\0';
@@ -5575,8 +5574,6 @@ static int remote_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio 
 #ifdef MSWIN
     config->process_handle = (MSWIN_HANDLE) process_handle_;
     config->con_handle = (MSWIN_HANDLE) con_handle_;
-#else
-    config->process_handle = (unsigned long long) process_handle_;
 #endif
     config->erase_char = (int) erase_char_;
     config->host_pid = (unsigned long) host_pid_;
@@ -5609,11 +5606,9 @@ static int remote_shellreconnect (struct remotefs *rfs, struct remotefs_terminal
     rfs->remotefs_private->sock_data->setsockopt_rcvbuf = TERMINAL_TCP_BUF_SIZE;
 
     msg.len = encode_uint (NULL, io->cmd_pid);
-    msg.len += encode_uint (NULL, io->process_handle);
     msg.data = (char *) malloc (msg.len);
     q = (unsigned char *) msg.data;
     encode_uint (&q, io->cmd_pid);
-    encode_uint (&q, io->process_handle);
 
     if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, NULL, &msg, &s, REMOTEFS_ACTION_SHELLRECONNECT, errmsg, &no_such_action)) {
         if (no_such_action)
@@ -7055,7 +7050,7 @@ struct server_data {
 
 
 
-void suspend_idle_shell (struct service *serv, unsigned long cmd_pid, unsigned long long process_handle);
+void suspend_idle_shell (struct service *serv, unsigned long cmd_pid);
 static void free_ttyreader_data (struct ttyreader_data *p);
 
 struct suspendedshell_item {
@@ -7065,17 +7060,16 @@ struct suspendedshell_item {
 
 static struct suspendedshell_item *suspendedshell_list = NULL;
 
-static struct ttyreader_data *lookup_suspendedshell (struct server_data *sd, unsigned long cmd_pid, unsigned long long process_handle)
+static struct ttyreader_data *lookup_suspendedshell (struct server_data *sd, unsigned long cmd_pid)
 {E_
     struct suspendedshell_item *i, **next;
     next = &suspendedshell_list;
 
-    suspend_idle_shell (sd->serv, cmd_pid, process_handle);
+    suspend_idle_shell (sd->serv, cmd_pid);
 
     for (i = suspendedshell_list; i; i = i->next) {
-        if ((cmd_pid && i->suspendedshell->cterminal.cmd_pid == cmd_pid) ||
-            (process_handle && (unsigned long long) i->suspendedshell->cterminal.process_handle == process_handle)) {
-            log_fmt (0, "found suspended shell: %lu 0x%08x%08x\n", (unsigned long) cmd_pid, (unsigned int) (process_handle >> 32), (unsigned int) (process_handle & 0xFFFFFFFF));
+        if (i->suspendedshell->cterminal.cmd_pid == cmd_pid) {
+            log_fmt (0, "found suspended shell: %lu\n", (unsigned long) cmd_pid);
             struct ttyreader_data *r = i->suspendedshell;
             *next = i->next;
             free (i);
@@ -7090,7 +7084,7 @@ static void delete_suspendedshell (struct server_data *sd, unsigned long cmd_pid
 {
     if (remotefs_host_pid == host_pid && remotefs_start_time == start_time) {
         struct ttyreader_data *r;
-        r = lookup_suspendedshell (sd, cmd_pid, 0);
+        r = lookup_suspendedshell (sd, cmd_pid);
         if (r)
             free_ttyreader_data (r);
         return;
@@ -7114,11 +7108,9 @@ static void suspend_cterminal (int line, struct sock_data *sock_data, struct tty
 {E_
     struct suspendedshell_item *n;
 
-    log_fmt (0, "%d: suspended shell due to network error: %lu 0x%08x%08x\n",
+    log_fmt (0, "%d: suspended shell due to network error: %lu\n",
         line,
-        (unsigned long) tt->cterminal.cmd_pid,
-        (unsigned int) ((unsigned long long) tt->cterminal.process_handle >> 32),
-        (unsigned int) ((unsigned long long) tt->cterminal.process_handle & 0xFFFFFFFFULL));
+        (unsigned long) tt->cterminal.cmd_pid);
 
 #warning do we need to delete a possibly-existing item of the same pid?
     assert (!sock_data);
@@ -7663,7 +7655,6 @@ static int remote_action_fn_v5_shellreconnect (struct server_data *sd, CStr *s, 
 {E_
     const unsigned char *p, *end;
     unsigned long long cmd_pid_;
-    unsigned long long process_handle_;
     int sock_sndbuf_size = TERMINAL_TCP_BUF_SIZE;
 
 /* we want ^C to kill the output fast */
@@ -7675,14 +7666,9 @@ static int remote_action_fn_v5_shellreconnect (struct server_data *sd, CStr *s, 
     if (decode_uint (&p, end, &cmd_pid_))
         return -1;
 
-    if (decode_uint (&p, end, &process_handle_))
-        return -1;
-
     assert (sd->ttyreader_data == NULL);
 
-printf("remote_action_fn_v5_shellreconnect %d\n", (int) cmd_pid_);
-
-    if ((sd->ttyreader_data = lookup_suspendedshell (sd, cmd_pid_, process_handle_))) {
+    if ((sd->ttyreader_data = lookup_suspendedshell (sd, cmd_pid_))) {
         alloc_encode_success (s);
     } else {
         alloc_encode_error (s, RFSERR_SERVER_CLOSED_SHELL_DIED, "process not found cached on reconnect", 1);
@@ -8305,15 +8291,14 @@ static void free_service (struct service *serv)
 
 #ifdef SHELL_SUPPORT
 
-void suspend_idle_shell (struct service *serv, unsigned long cmd_pid, unsigned long long process_handle)
+void suspend_idle_shell (struct service *serv, unsigned long cmd_pid)
 {
     struct client_item *i;
     for (i = serv->client_list; i; i = i->next) {
         assert (i->magic == CLIENT_MAGIC);
         if (!i->sd.ttyreader_data)
             continue;
-        if ((cmd_pid && i->sd.ttyreader_data->cterminal.cmd_pid == cmd_pid) ||
-            (process_handle && (unsigned long long) i->sd.ttyreader_data->cterminal.process_handle == process_handle)) {
+        if (i->sd.ttyreader_data->cterminal.cmd_pid == cmd_pid) {
             suspend_cterminal (__LINE__, NULL, i->sd.ttyreader_data, 0);
             i->sd.ttyreader_data = NULL;
             i->kill = KILL_HARD;

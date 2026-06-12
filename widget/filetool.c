@@ -32,16 +32,11 @@ struct loader_data {
     const char *fname;
 };
 
-static int filetool_sock_reader (struct action_callbacks *o, const unsigned char *buf, int buflen, long long filelen, char *errmsg)
+static int filetool_sock_reader (struct action_callbacks *o, const unsigned char *buf, int buflen, unsigned long long filelen, char *errmsg)
 {E_
     struct loader_data *ld;
 
     ld = (struct loader_data *) o->hook;
-
-    if (ld->done) {
-        strcpy (errmsg, "File size changed while loading");
-        return -1;
-    }
 
     if (fwrite (buf, 1, buflen, ld->f) != buflen || fflush (ld->f)) {
         snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "%s: Error writing to file: %s\n", ld->fname, get_sys_error (""));
@@ -73,12 +68,16 @@ int filetool_copy_remote_to_local (const char *host, const char *remote_filename
 
     u = remotefs_lookup (host, NULL);
     if ((*u->remotefs_readfile) (u, &o, remote_filename, errmsg)) {
+        fclose (ld.f);
+        unlink (local_filename);
         fprintf (stderr, "%s: Failed trying to open file for reading: %s\n", remote_filename, errmsg);
         return 1;
     }
 
-    if (fclose (ld.f))
+    if (fclose (ld.f)) {
+        unlink (local_filename);
         fprintf (stderr, "%s: Error closing file: %s\n", local_filename, get_sys_error (""));
+    }
 
     return 0;
 }

@@ -406,7 +406,6 @@ struct remotefs_terminalio {
     struct reader_data *reader_data;
     struct remotefs *remotefs;
     unsigned long cmd_pid;
-    unsigned long long process_handle;
     char undead_path[576];
     int undead_lock_fd;
     unsigned char *base;

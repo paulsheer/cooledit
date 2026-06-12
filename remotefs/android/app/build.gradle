@@ -1,0 +1,52 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace "com.cooledit.remotefs"
+    compileSdk 34
+    buildToolsVersion "30.0.3"
+
+    defaultConfig {
+        applicationId "com.cooledit.remotefs"
+        minSdkVersion 23
+        targetSdkVersion 34
+        versionCode 1
+        versionName "1.0"
+
+        externalNativeBuild {
+            cmake {
+                cFlags "-DSTANDALONE -DANDROID -DHAVE_STDLIB_H -DHAVE_STDIO_H -DHAVE_PWD_H -DHAVE_SYS_SELECT_H -DHAVE_SYS_IOCTL_H -DHAVE_FCNTL_H -DHAVE_SYS_STAT_H -DHAVE_UNISTD_H -DHAVE_STRING_H -DNDEBUG"
+                abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+        }
+        debug {
+            debuggable true
+            jniDebuggable true
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.10.2"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    ndkVersion "21.4.7075529"
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.0.0'
+    implementation 'com.google.zxing:core:3.5.1'
+}

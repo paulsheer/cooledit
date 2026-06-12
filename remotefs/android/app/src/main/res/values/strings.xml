@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RemoteFS</string>
+    <string name="app_title">RemoteFS Server</string>
+    <string name="status_running">Server is running</string>
+    <string name="status_stopped">Server is stopped</string>
+    <string name="listen_address_label">Listen address:</string>
+    <string name="ip_range_label">Allowed IP range:</string>
+    <string name="ip_range_help">Examples: 192.168.1.0/24, 10.0.0.0/8, 0.0.0.0/0 (any)</string>
+    <string name="start_button">Start Server</string>
+    <string name="stop_button">Stop Server</string>
+    <string name="port_info">Listening on port 50095</string>
+    <string name="qr_label">AES Key QR</string>
+</resources>

@@ -3539,8 +3539,17 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
             view[k].filter = "*";
 
     if ((dir = opendir (translate_path_sep (directory))) == NULL) {
+#ifdef ANDROID
+        if (!strcmp (directory, "/")) {
+            /* let's do some magic with the root directory under Android */
+        } else {
+            alloc_encode_errno_strerror (r, 0);
+            return;
+        }
+#else
         alloc_encode_errno_strerror (r, 0);
         return;
+#endif
     }
 
     if (directory[0] == '/' && directory[1] == '\0') {
@@ -3568,7 +3577,7 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
 #endif
     }
 
-    while ((directentry = readdir (dir))) {
+    while (dir && (directentry = readdir (dir))) {
         char *dn;
         const char *q;
         dn = dname (directentry);
@@ -3600,7 +3609,75 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
         }
     }
 
-    closedir (dir);
+#ifdef ANDROID
+    if (!strcmp (directory, "/")) {
+        FILE *f;
+        f = fopen ("/proc/mounts", "r");
+        if (f) {
+            char mount_line[1024];
+            while (fgets (mount_line, sizeof (mount_line), f)) {
+                DIR *mount_dir;
+                char *p, *mount_path;
+                if (!(mount_path = strchr (mount_line, ' ')))
+                    continue;
+                mount_path++;
+                if (!(p = strchr (mount_path, ' ')))
+                    continue;
+                *p = '\0';
+                if (*mount_path != '/' || !strcmp (mount_path, "/"))
+                    continue;
+                if (!(mount_dir = opendir (mount_path)))
+                    continue;
+                closedir (mount_dir);
+                mount_path++;
+                for (k = 0; k < n_view; k++) {
+                    if (!(view[k].options & FILELIST_FILES_ONLY)) {
+                        struct file_entry_item *found;
+                        for (found = data[k].first; found; found = found->next)
+                            if (!strcmp (found->data.name, mount_path))  /* is already in the list */
+                                break;
+                        if (!found && regexp_match ((char *) view[k].filter, mount_path, match_file) == 1) {
+                            i = (struct file_entry_item *) malloc (sizeof (*i));
+                            memset (i, '\0', sizeof (*i));
+                            i->data.pstat.ustat.st_mode = S_IFDIR | 00777;
+                            strcpy (i->data.name, mount_path);
+                            i->next = data[k].first;
+                            data[k].first = i;
+                        }
+                    }
+                }
+            }
+            fclose (f);
+        }
+        {
+            char *extras[] = { "sdcard", NULL };
+            char **q;
+            char *mount_path;
+            for (q = extras; *q; q++) {
+                mount_path = *q;
+                for (k = 0; k < n_view; k++) {
+                    if (!(view[k].options & FILELIST_FILES_ONLY)) {
+                        struct file_entry_item *found;
+                        for (found = data[k].first; found; found = found->next)
+                            if (!strcmp (found->data.name, mount_path))  /* is already in the list */
+                                break;
+                        if (!found && regexp_match ((char *) view[k].filter, mount_path, match_file) == 1) {
+                            i = (struct file_entry_item *) malloc (sizeof (*i));
+                            memset (i, '\0', sizeof (*i));
+                            i->data.pstat.ustat.st_mode = S_IFDIR | 00777;
+                            strcpy (i->data.name, mount_path);
+                            i->next = data[k].first;
+                            data[k].first = i;
+                        }
+                    }
+                }
+            }
+        }
+    }
+#endif
+
+    if (dir)
+        closedir (dir);
 
     for (k = 0; k < n_view; k++) {
         if (!data[k].got_dot_dot && !(view[k].options & FILELIST_FILES_ONLY)) {

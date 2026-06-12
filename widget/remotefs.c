@@ -49,6 +49,7 @@
 #ifndef MSWIN
 #include <sys/socket.h>
 #include <sys/signal.h>
+#include <sys/file.h>
 #ifndef __FreeBSD__
 #include <sys/sysmacros.h>
 #endif
@@ -118,7 +119,8 @@ char *option_listen_address = NULL;
 char *option_ip_range = NULL;
 char *option_keyfile_path = NULL;
 static int option_console_mode = 0;
-static time_t remotefs_start_time;
+static unsigned long long remotefs_start_time;
+static long remotefs_host_pid;
 
 
 char *pathdup_ (const char *p, const char *home_dir);
@@ -1618,6 +1620,7 @@ int remotefs_shell_util (const char *host, int xwin_fd, struct remotefs_terminal
 {E_
     memset (io, '\0', sizeof (*io));
     io->cmd_fd = -1;
+    io->undead_lock_fd = -1;
     io->remotefs = remotefs_new (host, errmsg);
     if (!io->remotefs)
         return -1;
@@ -1656,6 +1659,8 @@ int remotefs_get_die_exit_code (void)
     return die_exit_code;
 }
 
+static void terminal_undead_clear (struct remotefs_terminalio *io);
+
 int remotefs_reader_util (struct remotefs_terminalio *io, const int no_io, remotefs_error_code_t *error_code)
 {E_
     unsigned long fwd_multiplex = 0;
@@ -1684,7 +1689,7 @@ int remotefs_reader_util (struct remotefs_terminalio *io, const int no_io, remot
             char *p;
             int exit_code = 0;
             if (*error_code == RFSERR_SERVER_CLOSED_SHELL_DIED)
-                unlink (io->save_terminal_path);
+                terminal_undead_clear (io);
             die_exit_code = -1;
             if (die_on_error && (p = strstr (errmsg, "exit code")) && sscanf (p, "exit code %d", &exit_code) == 1)     /* hack: scan for exit code. see (*5*) */
                 die_exit_code = exit_code;
@@ -5334,14 +5339,41 @@ void remotefs_free_terminalio (struct remotefs_terminalio *io)
 #endif
 }
 
-static int get_save_term_path (char *path, int pathsz, const char *hostip, const struct cterminal_config *config)
+
+/*
+
+We need a small database of terminals that had exited without properly
+notifying the remote. This could happen if the network goes down, and
+then cooledit exits, say with 5 open terminals. In this case remotefs
+will have 5 dangling child processes.
+
+The client can be courteous by recording into the database all terminals
+that did not close cleanly, and then sending this list to the remote
+whenever it starts a new shell. This way the remote can destroy the
+suspended shells using delete_suspendedshell.
+
+Of course it should not send any terminals in the database that are
+still live. The flock will ensure this.
+
+*/
+
+struct terminal_undead {
+    unsigned long cmd_pid;
+    unsigned long host_pid;
+    unsigned long long start_time;
+};
+
+#define GETHOME(h, return_statment) \
+        static const char *h = NULL; \
+        if (!h) \
+            h = getenv ("HOME"); \
+        if (!h || !*h) \
+            return_statment;
+
+static int terminal_undead_createpath (char *path, int pathsz, const char *hostip, const struct cterminal_config *config)
 {
     char dir[512];
-    static const char *home = NULL;
-    if (!home)
-        home = getenv ("HOME");
-    if (!home)
-        return -1;
+    GETHOME (home, return -1);
     snprintf (dir, sizeof (dir), "%s/.cedit", home);
     mkdir (dir, 0700);
     snprintf (dir, sizeof (dir), "%s/.cedit/remotes", home);
@@ -5352,15 +5384,81 @@ static int get_save_term_path (char *path, int pathsz, const char *hostip, const
     return 0;
 }
 
-static void save_live_terminal_data (struct remotefs_terminalio *io, const char *hostip, struct cterminal_config *config)
+static int terminal_undead_load (const char *hostip, struct terminal_undead *a, int max_undead)
+{
+    char dir[512];
+    DIR *d;
+    struct dirent *de;
+    int n;
+    GETHOME (home, return 0);
+    snprintf (dir, sizeof (dir), "%s/.cedit/remotes/%s", home, hostip);
+    d = opendir (dir);
+    if (!d)
+        return 0;
+    n = 0;
+    while ((de = readdir (d))) {
+        FILE *f;
+        char *name;
+        char path[640];
+        name = dname (de);
+        if (name[0] == '.')
+            continue;
+        if (n >= max_undead)
+            break;
+        snprintf (path, sizeof (path), "%s/%s", dir, name);
+        f = fopen (path, "r");
+        if (f) {
+            a[n].cmd_pid = atol (name);
+            if (fscanf (f, "%lu-%llu", &a[n].host_pid, &a[n].start_time) == 2)
+                if (flock (fileno (f), LOCK_EX | LOCK_NB) == 0)
+                    n++;
+            fclose (f);
+        }
+    }
+    closedir (d);
+    return n;
+}
+
+static void terminal_undead_purge (const char *hostip, struct terminal_undead *undead, int n_undead)
+{
+    char dir[512];
+    int i;
+    GETHOME (home, return);
+    snprintf (dir, sizeof (dir), "%s/.cedit/remotes/%s", home, hostip);
+    for (i = 0; i < n_undead; i++) {
+        char path[640];
+        snprintf (path, sizeof (path), "%s/%lu", dir, undead[i].cmd_pid);
+        unlink (path);
+    }
+}
+
+static void terminal_undead_clear (struct remotefs_terminalio *io)
+{
+    if (io->undead_lock_fd >= 0) {
+        close (io->undead_lock_fd);
+        io->undead_lock_fd = -1;
+    }
+    unlink (io->undead_path);
+}
+
+static void terminal_undead_save (struct remotefs_terminalio *io, const char *hostip, struct cterminal_config *config)
 {
     FILE *f;
-    if (get_save_term_path (io->save_terminal_path, sizeof (io->save_terminal_path), hostip, config))
+    int fd;
+    if (terminal_undead_createpath (io->undead_path, sizeof (io->undead_path), hostip, config))
         return;
-    f = fopen (io->save_terminal_path, "w");
+    f = fopen (io->undead_path, "w");
     if (f) {
         fprintf (f, "%lu-%llu\n", config->host_pid, config->start_time);
         fclose (f);
+    }
+    io->undead_lock_fd = -1;
+    fd = open (io->undead_path, O_RDWR);
+    if (fd >= 0) {
+        if (flock (fd, LOCK_EX) == 0)
+            io->undead_lock_fd = fd;
+        else
+            close (fd);
     }
 }
 
@@ -5370,9 +5468,11 @@ static int remote_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio 
     unsigned long long cmd_pid_, process_handle_, con_handle_, cmd_fd_, erase_char_, host_pid_, start_time_;
     unsigned char *q;
     int no_such_action = 0;
-    int i, n_args;
+    struct terminal_undead undead[100];
+    int i, n_args, n_undead = 0;
     *errmsg = '\0';
 
+    n_undead = terminal_undead_load (rfs->remotefs_private->remote, undead, sizeof (undead) / sizeof (undead[0]));
     rfs->remotefs_private->sock_data->setsockopt_rcvbuf = TERMINAL_TCP_BUF_SIZE;
 
     n_args = len_args (args);
@@ -5392,6 +5492,12 @@ static int remote_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio 
     msg.len += encode_uint (NULL, config->env_fg);
     msg.len += encode_uint (NULL, config->env_bg);
     msg.len += encode_uint (NULL, dumb_terminal);
+    msg.len += encode_uint (NULL, n_undead);
+    for (i = 0; i < n_undead; i++) {
+        msg.len += encode_uint (NULL, undead[i].cmd_pid);
+        msg.len += encode_uint (NULL, undead[i].host_pid);
+        msg.len += encode_uint (NULL, undead[i].start_time);
+    }
     msg.len += encode_uint (NULL, n_args);
     for (i = 0; i < n_args; i++)
         msg.len += encode_str (NULL, args[i], strlen (args[i]));
@@ -5414,6 +5520,12 @@ static int remote_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio 
     encode_uint (&q, config->env_fg);
     encode_uint (&q, config->env_bg);
     encode_uint (&q, dumb_terminal);
+    encode_uint (&q, n_undead);
+    for (i = 0; i < n_undead; i++) {
+        encode_uint (&q, undead[i].cmd_pid);
+        encode_uint (&q, undead[i].host_pid);
+        encode_uint (&q, undead[i].start_time);
+    }
     encode_uint (&q, n_args);
     for (i = 0; i < n_args; i++)
         encode_str (&q, args[i], strlen (args[i]));
@@ -5481,7 +5593,8 @@ static int remote_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio 
     io->len = 0;
     io->alloced = 8;
 
-    save_live_terminal_data (io, rfs->remotefs_private->remote, config);
+    terminal_undead_save (io, rfs->remotefs_private->remote, config);
+    terminal_undead_purge (rfs->remotefs_private->remote, undead, n_undead);
 
     MARSHAL_END_REMOTE(NULL);
 }
@@ -5688,7 +5801,7 @@ static int remote_shellkill (struct remotefs *rfs, struct remotefs_terminalio *i
         return -1;
     }
 
-    unlink (io->save_terminal_path);
+    terminal_undead_clear (io);
 
 /* The TCP stack reports the close before the trailing data, possibly
  * because the caller does not do a shutdown(). Therefore flush and
@@ -6943,6 +7056,7 @@ struct server_data {
 
 
 void suspend_idle_shell (struct service *serv, unsigned long cmd_pid, unsigned long long process_handle);
+static void free_ttyreader_data (struct ttyreader_data *p);
 
 struct suspendedshell_item {
     struct suspendedshell_item *next;
@@ -6972,7 +7086,16 @@ static struct ttyreader_data *lookup_suspendedshell (struct server_data *sd, uns
     return NULL;
 }
 
-static void free_ttyreader_data (struct ttyreader_data *p);
+static void delete_suspendedshell (struct server_data *sd, unsigned long cmd_pid, unsigned long host_pid, unsigned long long start_time)
+{
+    if (remotefs_host_pid == host_pid && remotefs_start_time == start_time) {
+        struct ttyreader_data *r;
+        r = lookup_suspendedshell (sd, cmd_pid, 0);
+        if (r)
+            free_ttyreader_data (r);
+        return;
+    }
+}
 
 static void delete_all_suspendedshell (void)
 {E_
@@ -7398,6 +7521,7 @@ static int remote_action_fn_v5_shellcmdnew (struct server_data *sd, CStr *s, con
     unsigned long long v;
     unsigned long long n_args;
     unsigned long long dumb_terminal_;
+    unsigned long long n_undead_, cmd_pid_, host_pid_, start_time_;
     char **args = NULL;
     struct cterminal_config c;
     struct ttyreader_data *t;
@@ -7443,6 +7567,17 @@ static int remote_action_fn_v5_shellcmdnew (struct server_data *sd, CStr *s, con
 
     if (decode_uint (&p, end, &dumb_terminal_))
         return -1;
+    if (decode_uint (&p, end, &n_undead_))
+        return -1;
+    for (i = 0; i < n_undead_; i++) {
+        if (decode_uint (&p, end, &cmd_pid_))
+            return -1;
+        if (decode_uint (&p, end, &host_pid_))
+            return -1;
+        if (decode_uint (&p, end, &start_time_))
+            return -1;
+        delete_suspendedshell (sd, (unsigned long) cmd_pid_, (unsigned long) host_pid_, start_time_);
+    }
     if (decode_uint (&p, end, &n_args))
         return -1;
 
@@ -7504,7 +7639,7 @@ static int remote_action_fn_v5_shellcmdnew (struct server_data *sd, CStr *s, con
     }
 #endif
 
-    c.host_pid = getpid ();
+    c.host_pid = remotefs_host_pid;
     c.start_time = remotefs_start_time;
 
     if (remotefs_shellcmdnew_ (&t->cterminal, &c, (int) dumb_terminal_, peername, args, s)) {
@@ -8168,6 +8303,8 @@ static void free_service (struct service *serv)
     }
 }
 
+#ifdef SHELL_SUPPORT
+
 void suspend_idle_shell (struct service *serv, unsigned long cmd_pid, unsigned long long process_handle)
 {
     struct client_item *i;
@@ -8184,6 +8321,7 @@ void suspend_idle_shell (struct service *serv, unsigned long cmd_pid, unsigned l
     }
 }
 
+#endif
 
 
 
@@ -8728,7 +8866,10 @@ void remotefs_serverize (void)
 {E_
     struct service serv;
 
-    time (&remotefs_start_time);
+    time_t now;
+    time (&now);
+    remotefs_start_time = now;
+    remotefs_host_pid = getpid ();
 
 #ifdef MSWIN
     WORD wVersionRequested;

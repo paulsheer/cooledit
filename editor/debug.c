@@ -1542,7 +1542,7 @@ static void debug_finish (unsigned long x)
 	pool_free (debug_session.pool);
     debug_session.pool = 0;
     if (debug_session.pid) {
-        (*debug_session.cterminal_io.remotefs->remotefs_shellkill) (debug_session.cterminal_io.remotefs, debug_session.pid);
+        (*debug_session.cterminal_io.remotefs->remotefs_shellkill) (debug_session.cterminal_io.remotefs, &debug_session.cterminal_io);
 	debug_session.pid = 0;
         CRemoveWatch (debug_session.inout, NULL, WATCH_READING | WATCH_WRITING);
 	close (debug_session.inout);

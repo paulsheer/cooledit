@@ -336,7 +336,7 @@ void rxvt_kill (pid_t p)
     for (l = rxvt_list->next; l; l = l->next)
 	if (l->rxvt->cmd_pid == p)
             if (l->rxvt->cterminal_io.remotefs)
-                (*l->rxvt->cterminal_io.remotefs->remotefs_shellkill) (l->rxvt->cterminal_io.remotefs, p);
+                (*l->rxvt->cterminal_io.remotefs->remotefs_shellkill) (l->rxvt->cterminal_io.remotefs, &l->rxvt->cterminal_io);
 }
 
 void rxvt_get_tty_name (rxvtlib * rxvt, char *p)

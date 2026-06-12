@@ -1,5 +1,33 @@
 
-#ifdef MSWIN
+#ifdef ANDROID
+
+/* Android uses standard Linux socket APIs but no fork/popen */
+#undef WSAEVENT
+
+#define _O_BINARY               0
+#define SOCKET                  int
+#define INVALID_SOCKET          (-1)
+#define SOCKET_ERROR            (-1)
+#define HANDLE                  int
+#define INVALID_HANDLE_VALUE    (-1)
+#define ioctlsocket(a,b,c)      ioctl(a,b,c)
+#define closesocket(s)          close(s)
+#undef socklen_t
+
+/* Bionic libc lacks these legacy BSD/POSIX functions */
+#define bcopy(src, dst, n)      memmove((dst), (src), (n))
+#define rindex(str, c)          strrchr((str), (c))
+
+/* No child processes on Android; childhandler is a no-op */
+#undef childhandler_
+#define childhandler_()         do { } while(0)
+
+/* disable features that need fork or system-specific integration */
+#undef SHELL_SUPPORT
+#undef XWIN_FWD
+#undef SOUND_FWD
+
+#elif defined(MSWIN)
 
 #undef WSAEVENT
 typedef void *WSAEVENT;

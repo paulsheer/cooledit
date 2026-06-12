@@ -407,7 +407,8 @@ struct remotefs_terminalio {
     struct remotefs *remotefs;
     unsigned long cmd_pid;
     unsigned long long process_handle;
-    char save_terminal_path[576];
+    char undead_path[576];
+    int undead_lock_fd;
     unsigned char *base;
     char ttydev[64]; /* fixme: make CTERMINAL_TTYDEV_SZ */
     char host[256];

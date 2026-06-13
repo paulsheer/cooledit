@@ -1897,14 +1897,6 @@ NULL,
     if (edit_load_syntax (edit, 0, 0))
         exit (1);
 
-
-    edit->syntax_invalidate = 1;
-        fg = -1;
-        bg = -1;
-        edit->text = (unsigned char *) strdup ("$<<>>");
-        edit->last_byte = strlen ((char *) edit->text);
-        edit_get_syntax_color (edit, 4, &fg, &bg);
-
     TEST("A$()A",0,1,22);
     TEST("A$()A",1,4,18);
     TEST("A$()A",4,5,22);

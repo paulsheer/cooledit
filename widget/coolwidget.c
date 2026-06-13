@@ -8,6 +8,8 @@
 
 #include "inspect.h"
 #include <X11/Xatom.h>
+#include "remotefs.h"
+#include "remotefspassword.h"
 #include "coolwidget.h"
 #include "coollocal.h"
 #include "stringtools.h"
@@ -1201,6 +1203,7 @@ void CShutdown (void)
     free_selections ();
     mouse_shut ();
     remotefs_clean ();
+    password_clean ();
     CFreeAllFonts ();
     utf_tmp_buf_free ();
     XChar2b_tmp_buf_free ();

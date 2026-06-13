@@ -369,6 +369,18 @@ static enum remotfs_password_return password_remotfs_password_cb (void *user_dat
     return r;
 }
 
+void password_clean (void)
+{E_
+    struct password_item *p, *next;
+    for (p = list_first; p; p = next) {
+        next = p->next;
+        free (p->host);
+        free (p->pass);
+        free (p);
+    }
+    list_first = NULL;
+}
+
 void password_init (void)
 {E_
     remotefs_set_password_cb (password_remotfs_password_cb, &dummy_data);

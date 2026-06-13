@@ -449,6 +449,8 @@ struct remotefs {
     int (*remotefs_checkordinaryfileaccess) (struct remotefs *rfs, const char *filename, unsigned long long sizelimit, struct portable_stat *st, char *errmsg);
     int (*remotefs_stat) (struct remotefs *rfs, int *cached, const char *path, struct portable_stat *st, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg);
     int (*remotefs_chdir) (struct remotefs *rfs, const char *dirname, char *cwd, int cwdlen, char *errmsg);
+    int (*remotefs_mkdir) (struct remotefs *rfs, const char *pathname, unsigned int mode, char *errmsg);
+    int (*remotefs_symlink) (struct remotefs *rfs, const char *target, const char *linkpath, char *errmsg);
     int (*remotefs_realpathize) (struct remotefs *rfs, const char *path, const char *homedir, char *out, int outlen, char *errmsg);
     int (*remotefs_gethomedir) (struct remotefs *rfs, char *out, int outlen, char *errmsg);
     int (*remotefs_enablecrypto) (struct remotefs *rfs, const unsigned char *challenge_local, unsigned char *challenge_remote, char *errmsg);

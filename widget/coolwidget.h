@@ -390,7 +390,7 @@ struct cool_widget {
 #define FILELIST_SORT_CDATE		(1<<14)
 /* #define FILELIST_FILES_ONLY		(1<<15) See dirtools.h */
 /* #define FILELIST_DIRECTORIES_ONLY	(1<<16) See dirtools.h */
-#define FILELIST_ALL_FILES		(FILELIST_DIRECTORIES_ONLY|FILELIST_FILES_ONLY)
+/* #define FILELIST_ALL_FILES		See dirtools.h */
 
 /* these musn't be within the first 8 bits (see bitmapbutton.c) */ 
 #define RADIO_INVERT_GROUP		(1<<8)

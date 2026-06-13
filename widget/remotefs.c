@@ -4169,6 +4169,36 @@ static void remotefs_chdir_ (const char *dirname, CStr * r)
     encode_str (&p, current_dir, strlen (current_dir));
 }
 
+static void remotefs_mkdir_ (const char *pathname, unsigned int mode, CStr * r)
+{E_
+    unsigned char *p;
+
+    if (mkdir (translate_path_sep (pathname), mode) < 0) {
+        alloc_encode_errno_strerror (r, 0);
+        return;
+    }
+
+    r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
+    r->data = (char *) malloc (r->len);
+    p = (unsigned char *) r->data;
+    encode_uint (&p, REMOTEFS_SUCCESS);
+}
+
+static void remotefs_symlink_ (const char *target, const char *linkpath, CStr * r)
+{E_
+    unsigned char *p;
+
+    if (symlink (translate_path_sep (target), translate_path_sep (linkpath)) < 0) {
+        alloc_encode_errno_strerror (r, 0);
+        return;
+    }
+
+    r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
+    r->data = (char *) malloc (r->len);
+    p = (unsigned char *) r->data;
+    encode_uint (&p, REMOTEFS_SUCCESS);
+}
+
 static void remotefs_realpathize_ (const char *path, const char *homedir, CStr * r)
 {E_
     unsigned char *p;
@@ -4596,6 +4626,26 @@ static int local_chdir (struct remotefs *rfs, const char *dirname, char *cwd, in
         free (s.data);
         return -1;
     }
+    MARSHAL_END_LOCAL(NULL);
+}
+
+static int local_mkdir (struct remotefs *rfs, const char *pathname, unsigned int mode, char *errmsg)
+{E_
+    CStr s;
+    *errmsg = '\0';
+    remotefs_mkdir_ (pathname, mode, &s);
+
+    MARSHAL_START_LOCAL;
+    MARSHAL_END_LOCAL(NULL);
+}
+
+static int local_symlink (struct remotefs *rfs, const char *target, const char *linkpath, char *errmsg)
+{E_
+    CStr s;
+    *errmsg = '\0';
+    remotefs_symlink_ (target, linkpath, &s);
+
+    MARSHAL_START_LOCAL;
     MARSHAL_END_LOCAL(NULL);
 }
 
@@ -5281,6 +5331,52 @@ static int remote_chdir (struct remotefs *rfs, const char *dirname, char *cwd, i
         free (s.data);
         return -1;
     }
+    MARSHAL_END_REMOTE(NULL);
+}
+
+static int remote_mkdir (struct remotefs *rfs, const char *pathname, unsigned int mode, char *errmsg)
+{E_
+    CStr s, msg;
+    unsigned char *q;
+    *errmsg = '\0';
+
+    msg.len = encode_str (NULL, pathname, strlen (pathname));
+    msg.len += encode_uint (NULL, mode);
+    msg.data = (char *) malloc (msg.len);
+    q = (unsigned char *) msg.data;
+    encode_str (&q, pathname, strlen (pathname));
+    encode_uint (&q, mode);
+
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, NULL, &msg, &s, REMOTEFS_ACTION_MKDIR, errmsg, NULL)) {
+        free (msg.data);
+        return -1;
+    }
+    free (msg.data);
+
+    MARSHAL_START_REMOTE;
+    MARSHAL_END_REMOTE(NULL);
+}
+
+static int remote_symlink (struct remotefs *rfs, const char *target, const char *linkpath, char *errmsg)
+{E_
+    CStr s, msg;
+    unsigned char *q;
+    *errmsg = '\0';
+
+    msg.len = encode_str (NULL, target, strlen (target));
+    msg.len += encode_str (NULL, linkpath, strlen (linkpath));
+    msg.data = (char *) malloc (msg.len);
+    q = (unsigned char *) msg.data;
+    encode_str (&q, target, strlen (target));
+    encode_str (&q, linkpath, strlen (linkpath));
+
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, NULL, &msg, &s, REMOTEFS_ACTION_SYMLINK, errmsg, NULL)) {
+        free (msg.data);
+        return -1;
+    }
+    free (msg.data);
+
+    MARSHAL_START_REMOTE;
     MARSHAL_END_REMOTE(NULL);
 }
 
@@ -6694,6 +6790,16 @@ static int dummyerr_chdir (struct remotefs *rfs, const char *dirname, char *cwd,
     return remotefs_error_return (errmsg);
 }
 
+static int dummyerr_mkdir (struct remotefs *rfs, const char *pathname, unsigned int mode, char *errmsg)
+{E_
+    return remotefs_error_return (errmsg);
+}
+
+static int dummyerr_symlink (struct remotefs *rfs, const char *target, const char *linkpath, char *errmsg)
+{E_
+    return remotefs_error_return (errmsg);
+}
+
 static int dummyerr_realpathize (struct remotefs *rfs, const char *path, const char *homedir, char *out, int outlen, char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
@@ -6765,6 +6871,8 @@ struct remotefs remotefs_dummyerr = {
     dummyerr_checkordinaryfileaccess,
     dummyerr_stat,
     dummyerr_chdir,
+    dummyerr_mkdir,
+    dummyerr_symlink,
     dummyerr_realpathize,
     dummyerr_gethomedir,
     dummyerr_enablecrypto,
@@ -6802,6 +6910,8 @@ struct remotefs remotefs_local = {
     local_checkordinaryfileaccess,
     local_stat,
     local_chdir,
+    local_mkdir,
+    local_symlink,
     local_realpathize,
     local_gethomedir,
     local_enablecrypto,
@@ -6839,6 +6949,8 @@ struct remotefs remotefs_socket = {
     remote_checkordinaryfileaccess,
     remote_stat,
     remote_chdir,
+    remote_mkdir,
+    remote_symlink,
     remote_realpathize,
     remote_gethomedir,
     remote_enablecrypto,
@@ -7519,6 +7631,36 @@ static int remote_action_fn_v1_chdir (struct server_data *sd, CStr *s, const uns
     return 0;
 }
 
+static int remote_action_fn_v5_mkdir (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
+{E_
+    const unsigned char *p, *end;
+    char pathname[MAX_PATH_LEN];
+    unsigned long long mode = 0777;
+    p = in;
+    end = in + inlen;
+    if (decode_str (&p, end, pathname, sizeof (pathname)))
+        return -1;
+    if (decode_uint (&p, end, &mode))
+        return -1;
+    remotefs_mkdir_ (pathname, (unsigned int) mode, s);
+    return 0;
+}
+
+static int remote_action_fn_v5_symlink (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
+{E_
+    const unsigned char *p, *end;
+    char target[MAX_PATH_LEN];
+    char linkpath[MAX_PATH_LEN];
+    p = in;
+    end = in + inlen;
+    if (decode_str (&p, end, target, sizeof (target)))
+        return -1;
+    if (decode_str (&p, end, linkpath, sizeof (linkpath)))
+        return -1;
+    remotefs_symlink_ (target, linkpath, s);
+    return 0;
+}
+
 static int remote_action_fn_v1_realpathize (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
 {E_
     const unsigned char *p, *end;
@@ -7974,6 +8116,8 @@ struct action_item action_list[] = {
     { 0, 0, NULL, },
     { 0, 0, NULL, },
 #endif
+    { 1, 1, remote_action_fn_v5_mkdir, },                       /* REMOTEFS_ACTION_MKDIR                   */
+    { 1, 1, remote_action_fn_v5_symlink, },                     /* REMOTEFS_ACTION_SYMLINK                 */
 };
 
 static unsigned int client_count = 0L;

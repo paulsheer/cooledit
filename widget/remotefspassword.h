@@ -9,4 +9,5 @@ int password_save (const char *host, int crypto_enabled_, const char *pass);
 int password_find (const char *host, int *crypto_enabled_, char *pass, int pass_len);
 int password_forget (const char *host);
 void password_init (void);
+void password_clean (void);
 

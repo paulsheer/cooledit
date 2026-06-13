@@ -2380,8 +2380,9 @@ int main (int argc, char **argv)
 
     n = sizeof (example_fonts) / sizeof (char *);
 
-    if (!filetool_process_args (argc, argv))
-        exit (0);
+    if (!filetool_process_args (argc, argv)) {
+        abort (); /* not reached */
+    }
 
     process_command_line (argc, argv);
 

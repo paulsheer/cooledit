@@ -19,6 +19,7 @@
 struct syntax_rule {
     unsigned short keyword;
     unsigned char brace_depth;
+    unsigned char context_brace_depth;
     unsigned char end;
     unsigned char context;
     unsigned char _context;
@@ -124,6 +125,7 @@ struct context_rule {
     char *right;
     char *right_e;
     unsigned char first_right;
+    char bracematch;
     char line_start_left;
     char line_start_right;
     int between_delimiters;

@@ -25,7 +25,10 @@ context default
     keyword whole define\[\] brightcyan
 
     keyword whole spellcheck\[\] yellow
+    keyword whole keyword\[\t\s\]bracematch yellow
     keyword whole keyword\[\] yellow
+    keyword whole context\[\t\s\]bracematch brightred
+    keyword whole context\[\t\s\]exclusive\[\t\s\]bracematch brightred
     keyword whole context\[\t\s\]exclusive brightred
     keyword whole context\[\t\s\]default brightred
     keyword whole context\[\] brightred

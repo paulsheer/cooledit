@@ -4,9 +4,12 @@ define mycolor  yellow/23
 define greenish green/6
 define more     some
 
+
 context default
     keyword whole for mycolor
     keyword whole A yellow/22
+    keyword $( yellow/18
+    keyword ) yellow/18
 
 context exclusive ` ` white/26 black/0
     keyword " green/5
@@ -28,4 +31,12 @@ context whole BB BB green/7
 context CC CC green/8
     keyword CCCC yellow/17
     keyword # yellow/16
+
+context exclusive bracematch $( ) green/8
+    keyword \\( yellow/17
+    keyword \\) yellow/17
+
+context bracematch $< > green/9
+    keyword \\< yellow/17
+    keyword \\> yellow/17
 

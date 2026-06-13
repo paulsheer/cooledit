@@ -1,7 +1,7 @@
 
 .PHONY: test clean all
 
-CFLAGS = -Wall -O0 -g3  -I../.. -I.. -DUNIT_TEST
+CFLAGS = -Wall -O0 -g3 -ggdb  -I../.. -I.. -DUNIT_TEST
 
 SRC     = syntax.c stringtools.c regex.c
 OBJ     = $(SRC:.c=.o)

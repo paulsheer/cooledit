@@ -238,6 +238,20 @@ static inline const char *xx_strchr (const WEdit * edit, const unsigned char *s,
     return (const char *) s;
 }
 
+#define COUNT_CONTEXT_BRACE \
+    do { \
+        if (r->bracematch) { \
+            if (r->first_right == ')' && c == '(') \
+                _rule.context_brace_depth++; \
+            else if (r->first_right == '}' && c == '{') \
+                _rule.context_brace_depth++; \
+            else if (r->first_right == ']' && c == '[') \
+                _rule.context_brace_depth++; \
+            else if (r->first_right == '>' && c == '<') \
+                _rule.context_brace_depth++; \
+        } \
+    } while(0)
+
 static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_rule rule)
 {E_
     struct context_rule *r = NULL;
@@ -264,7 +278,8 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
 	long e;
 	r = edit->rules[_rule.context];
 	if (r->first_right == c && !(rule.border & RULE_ON_RIGHT_BORDER)
-	    && (e = compare_word_to_right (edit, i, r->right, r->whole_word_chars_left, r->whole_word_chars_right, r->line_start_right, 0)) > 0) {
+	    && (e = compare_word_to_right (edit, i, r->right, r->whole_word_chars_left, r->whole_word_chars_right, r->line_start_right, 0)) > 0
+            && (_rule.context_brace_depth <= 1 ? 1 : (_rule.context_brace_depth--, 0))) {
 	    _rule.end = e;
 	    found_right = 1;
 	    _rule.border = RULE_ON_RIGHT_BORDER;
@@ -287,7 +302,7 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
     if (!_rule.keyword && !((_rule.border & RULE_ON_LEFT_BORDER) != 0 && _rule._context != _rule.context)) {
 	const char *p;
         r = edit->rules[_rule.context];
-	p = r->keyword_first_chars;
+        p = r->keyword_first_chars;
 	if (p != NULL)
 	    while (*(p = xx_strchr (edit, (const unsigned char *) p + 1, c)) != '\0') {
 	        struct key_word *k;
@@ -332,6 +347,7 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
 		    _rule.context = _rule._context;
 		    contextchanged = 1;
 		    _rule.keyword = 0;
+                    _rule.context_brace_depth = 0;
 		    if (r->first_right == c) {
 		        long e;
                         e = compare_word_to_right (edit, i, r->right, r->whole_word_chars_left, r->whole_word_chars_right, r->line_start_right, 0);
@@ -342,6 +358,9 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
 			    _rule.context = 0;
                         }
 		    }
+                    if (_rule.context) {
+                        COUNT_CONTEXT_BRACE;
+                    }
 		}
 	    }
 	}
@@ -361,6 +380,7 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
 			_rule._context = count;
 			if (!r->between_delimiters && _rule.keyword == 0) {
 			    _rule.context = count;
+                            _rule.context_brace_depth = 0;
 			    contextchanged = 1;
 			}
 			break;
@@ -388,6 +408,9 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
 		break;
 	    }
 	}
+    }
+    if (!_rule.keyword && _rule.context) {
+        COUNT_CONTEXT_BRACE;
     }
     edit->rule = _rule;
 }
@@ -832,6 +855,11 @@ static int edit_read_syntax_rules (WEdit * edit, FILE * f)
 		} else if (!strcmp (*a, "wholeright")) {
 		    a++;
 		    c->whole_word_chars_right = (char *) strdup (whole_right);
+		}
+		check_a;
+		if (!strcmp (*a, "bracematch")) {
+		    a++;
+		    c->bracematch = 1;
 		}
 		check_a;
 		if (!strcmp (*a, "linestart")) {
@@ -1453,7 +1481,7 @@ void edit_free_syntax_rules (WEdit * edit)
     syntax_free (edit->rules);
 }
 
-#define CURRENT_SYNTAX_RULES_VERSION "84"
+#define CURRENT_SYNTAX_RULES_VERSION "85"
 
 #ifndef UNIT_TEST
 
@@ -1868,6 +1896,43 @@ NULL,
     edit->filename = "test.unit";
     if (edit_load_syntax (edit, 0, 0))
         exit (1);
+
+
+    edit->syntax_invalidate = 1;
+        fg = -1;
+        bg = -1;
+        edit->text = (unsigned char *) strdup ("$<<>>");
+        edit->last_byte = strlen ((char *) edit->text);
+        edit_get_syntax_color (edit, 4, &fg, &bg);
+
+    TEST("A$()A",0,1,22);
+    TEST("A$()A",1,4,18);
+    TEST("A$()A",4,5,22);
+    TEST("A$(())A",1,3,18);
+    TEST("A$(())A",3,5,8);
+    TEST("A$(())A",5,6,18);
+    TEST("A$(())A",6,7,22);
+
+    TEST("A$((\\)))A",0,1,22);
+    TEST("A$((\\)))A",1,3,18);
+    TEST("A$((\\)))A",3,4,8);
+    TEST("A$((\\)))A",4,6,17);
+    TEST("A$((\\)))A",6,7,8);
+    TEST("A$((\\)))A",7,8,18);
+    TEST("A$((\\)))A",8,9,22);
+
+    TEST("A$<>A",0,1,22);
+    TEST("A$<>A",4,5,22);
+    TEST("A$<>A",1,4,9);
+    TEST("A$<<>>A",0,1,22);
+    TEST("A$<<>>A",1,6,9);
+    TEST("A$<<>>A",6,7,22);
+
+    TEST("A$<<\\>>>A",0,1,22);
+    TEST("A$<<\\>>>A",1,4,9);
+    TEST("A$<<\\>>>A",4,6,17);
+    TEST("A$<<\\>>>A",6,8,9);
+    TEST("A$<<\\>>>A",8,9,22);
 
     TEST("AA$AA",0,5,6);
     TEST("AA#AA",0,2,6);

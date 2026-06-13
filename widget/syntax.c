@@ -238,34 +238,6 @@ static inline const char *xx_strchr (const WEdit * edit, const unsigned char *s,
     return (const char *) s;
 }
 
-#define COUNT_CONTEXT_BRACE \
-    do { \
-        if (r->bracematch) { \
-            if (r->first_right == ')' && c == '(') \
-                _rule.context_brace_depth++; \
-            else if (r->first_right == '}' && c == '{') \
-                _rule.context_brace_depth++; \
-            else if (r->first_right == ']' && c == '[') \
-                _rule.context_brace_depth++; \
-            else if (r->first_right == '>' && c == '<') \
-                _rule.context_brace_depth++; \
-        } \
-    } while(0)
-
-#define COUNT_CONTEXT_BRACE2 \
-    do { \
-        if (r->bracematch) { \
-            if (r->first_right == ')' && c == '(') \
-                rule.context_brace_depth++; \
-            else if (r->first_right == '}' && c == '{') \
-                rule.context_brace_depth++; \
-            else if (r->first_right == ']' && c == '[') \
-                rule.context_brace_depth++; \
-            else if (r->first_right == '>' && c == '<') \
-                rule.context_brace_depth++; \
-        } \
-    } while(0)
-
 #define WAIT(c) \
         rule.state = __LINE__; \
         edit->rule = rule; \
@@ -359,7 +331,16 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
                     }
                 }
                 for (;;) {
-                    COUNT_CONTEXT_BRACE2;
+                    if (r->bracematch) {
+                        if (r->first_right == ')' && c == '(')
+                            rule.context_brace_depth++;
+                        else if (r->first_right == '}' && c == '{')
+                            rule.context_brace_depth++;
+                        else if (r->first_right == ']' && c == '[')
+                            rule.context_brace_depth++;
+                        else if (r->first_right == '>' && c == '<')
+                            rule.context_brace_depth++;
+                    }
                     if (r->first_right == c && (ec = compare_word_to_right (edit, i, r->right, r->whole_word_chars_left, r->whole_word_chars_right, r->line_start_right, 0)) > 0) {
                         if (rule.context_brace_depth) {
                             rule.context_brace_depth--;
@@ -435,6 +416,20 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
 }
 
 #else
+
+#define COUNT_CONTEXT_BRACE \
+    do { \
+        if (r->bracematch) { \
+            if (r->first_right == ')' && c == '(') \
+                _rule.context_brace_depth++; \
+            else if (r->first_right == '}' && c == '{') \
+                _rule.context_brace_depth++; \
+            else if (r->first_right == ']' && c == '[') \
+                _rule.context_brace_depth++; \
+            else if (r->first_right == '>' && c == '<') \
+                _rule.context_brace_depth++; \
+        } \
+    } while(0)
 
 static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_rule rule)
 {E_

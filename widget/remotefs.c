@@ -4173,10 +4173,17 @@ static void remotefs_mkdir_ (const char *pathname, unsigned int mode, CStr * r)
 {E_
     unsigned char *p;
 
+#ifdef MSWIN
+    if (mkdir (translate_path_sep (pathname)) < 0) {
+        alloc_encode_errno_strerror (r, 0);
+        return;
+    }
+#else
     if (mkdir (translate_path_sep (pathname), mode) < 0) {
         alloc_encode_errno_strerror (r, 0);
         return;
     }
+#endif
 
     r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
     r->data = (char *) malloc (r->len);
@@ -4188,10 +4195,15 @@ static void remotefs_symlink_ (const char *target, const char *linkpath, CStr * 
 {E_
     unsigned char *p;
 
+#ifdef MSWIN
+    alloc_encode_error (r, RFSERR_OTHER_ERROR, "symlink not supported", 0);
+    return;
+#else
     if (symlink (translate_path_sep (target), translate_path_sep (linkpath)) < 0) {
         alloc_encode_errno_strerror (r, 0);
         return;
     }
+#endif
 
     r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
     r->data = (char *) malloc (r->len);

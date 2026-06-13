@@ -1128,8 +1128,8 @@ context exclusive ` ` lightgray black
     keyword " green
     keyword \\` green
     keyword ; brightcyan
-    keyword $(*) brightgreen
-    keyword ${*} brightgreen
+    keyword bracematch $(*) brightgreen
+    keyword bracematch ${*} brightgreen
     keyword { brightcyan
     keyword } brightcyan
 

@@ -279,7 +279,7 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
 	r = edit->rules[_rule.context];
 	if (r->first_right == c && !(rule.border & RULE_ON_RIGHT_BORDER)
 	    && (e = compare_word_to_right (edit, i, r->right, r->whole_word_chars_left, r->whole_word_chars_right, r->line_start_right, 0)) > 0
-            && (_rule.context_brace_depth <= 1 ? 1 : (_rule.context_brace_depth--, 0))) {
+            && ((_rule.context_brace_depth <= !r->between_delimiters) ? 1 : (_rule.context_brace_depth--, 0))) {
 	    _rule.end = e;
 	    found_right = 1;
 	    _rule.border = RULE_ON_RIGHT_BORDER;
@@ -358,9 +358,6 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
 			    _rule.context = 0;
                         }
 		    }
-                    if (_rule.context) {
-                        COUNT_CONTEXT_BRACE;
-                    }
 		}
 	    }
 	}
@@ -1897,9 +1894,26 @@ NULL,
     if (edit_load_syntax (edit, 0, 0))
         exit (1);
 
+#if 0
+    edit->syntax_invalidate = 1;
+        fg = -1;
+        bg = -1;
+        edit->text = (unsigned char *) strdup ("$<>A");
+        edit->last_byte = strlen ((char *) edit->text);
+        edit_get_syntax_color (edit, edit->last_byte - 1, &fg, &bg);
+#endif
+
+
+    TEST("A$(a()a)A",0,1,22);
+    TEST("A$(a()a)A",1,3,18);
+    TEST("A$(a()a)A",3,7,8);
+    TEST("A$(a()a)A",7,8,18);
+    TEST("A$(a()a)A",8,9,22);
+
     TEST("A$()A",0,1,22);
     TEST("A$()A",1,4,18);
     TEST("A$()A",4,5,22);
+    TEST("A$(())A",0,1,22);
     TEST("A$(())A",1,3,18);
     TEST("A$(())A",3,5,8);
     TEST("A$(())A",5,6,18);
@@ -1914,8 +1928,8 @@ NULL,
     TEST("A$((\\)))A",8,9,22);
 
     TEST("A$<>A",0,1,22);
-    TEST("A$<>A",4,5,22);
     TEST("A$<>A",1,4,9);
+    TEST("A$<>A",4,5,22);
     TEST("A$<<>>A",0,1,22);
     TEST("A$<<>>A",1,6,9);
     TEST("A$<<>>A",6,7,22);

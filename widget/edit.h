@@ -269,10 +269,11 @@ struct _mb_marker {
 #define wc_isspace(c) ((unsigned long) c < 0x100UL && isspace(c & 0xFF))
 
 struct syntax_rule {
+    unsigned long end;
     unsigned short keyword;
+    unsigned short state;
     unsigned char brace_depth;
     unsigned char context_brace_depth;
-    unsigned char end;
     unsigned char context;
     unsigned char _context;
 #define RULE_ON_LEFT_BORDER 1

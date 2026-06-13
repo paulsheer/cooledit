@@ -252,6 +252,190 @@ static inline const char *xx_strchr (const WEdit * edit, const unsigned char *s,
         } \
     } while(0)
 
+#define COUNT_CONTEXT_BRACE2 \
+    do { \
+        if (r->bracematch) { \
+            if (r->first_right == ')' && c == '(') \
+                rule.context_brace_depth++; \
+            else if (r->first_right == '}' && c == '{') \
+                rule.context_brace_depth++; \
+            else if (r->first_right == ']' && c == '[') \
+                rule.context_brace_depth++; \
+            else if (r->first_right == '>' && c == '<') \
+                rule.context_brace_depth++; \
+        } \
+    } while(0)
+
+#define WAIT(c) \
+        rule.state = __LINE__; \
+        edit->rule = rule; \
+        return; \
+    case __LINE__: \
+        rules = edit->rules; \
+        r = rules[rule.context];
+
+static inline int match_keyword (WEdit * edit, struct context_rule *r, int c, long i, int *j_, long *ek_)
+{
+    const char *p;
+    if ((p = r->keyword_first_chars) != NULL) {
+        while (*(p = xx_strchr (edit, (const unsigned char *) p + 1, c)) != '\0') {
+            long ek;
+            int j;
+            struct key_word *k;
+            j = ((unsigned long) p - (unsigned long) r->keyword_first_chars);
+            k = r->keyword[j];
+            ek = compare_word_to_right (edit, i, k->keyword, k->whole_word_chars_left, k->whole_word_chars_right, k->line_start, k->brace_match);
+            if (ek > 0) {
+                *ek_ = ek;
+                *j_ = j;
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+static inline int match_context_start (WEdit * edit, struct context_rule **rules, struct context_rule *r, int c, long i, int *count_, long *ec_)
+{
+    int count;
+    for (count = 1; rules[count]; count++) {
+        long ec;
+        rules = edit->rules;
+        r = rules[count];
+        if (r->first_left == c && (ec = compare_word_to_right (edit, i, r->left, r->whole_word_chars_left, r->whole_word_chars_right, r->line_start_left, 0)) > 0) {
+            *count_ = count;
+            *ec_ = ec;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+#if 1
+
+#define NOW_FIXED
+
+static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_rule rule)
+{E_
+    struct context_rule **rules;
+    struct context_rule *r = NULL;
+    int c;
+
+    rules = edit->rules;
+    r = rules[rule.context];
+    if (!(c = edit_get_lowercase_byte (edit, i)))
+        return;
+
+    switch(rule.state) {
+    case 0:
+        for (;;) {
+            long ec, ek;
+            int j;
+            int count;
+            if (match_context_start (edit, rules, r, c, i, &count, &ec)) {
+                rule.end = ec;
+                rule._context = count;
+                if (rules[rule._context]->between_delimiters) {
+                    if (match_keyword (edit, r, c, i, &j, &ek) && ec == ek) {
+                        rule.keyword = j;
+                        while (rule.end != i) {
+                            WAIT (c);
+	                    if (edit_get_byte (edit, i - 1) == '\n')
+	                        break;
+                        }
+                        rule.keyword = 0;
+                    } else {
+                        while (rule.end != i) {
+                            WAIT (c);
+                        }
+                    }
+                    rule.context = rule._context;
+                    r = rules[rule.context];
+                } else {
+                    rule.context = rule._context;
+                    r = rules[rule.context];
+                    while (rule.end != i) {
+                        WAIT (c);
+                    }
+                }
+                for (;;) {
+                    COUNT_CONTEXT_BRACE2;
+                    if (r->first_right == c && (ec = compare_word_to_right (edit, i, r->right, r->whole_word_chars_left, r->whole_word_chars_right, r->line_start_right, 0)) > 0) {
+                        if (rule.context_brace_depth) {
+                            rule.context_brace_depth--;
+                        } else {
+                            if (match_keyword (edit, r, c, i, &j, &ek) && ek > ec) { /* keyword can prevent the ending of a context */
+                                rule.keyword = j;
+                                rule.end = ek;
+                                while (rule.end != i) {
+                                    WAIT (c);
+	                            if (edit_get_byte (edit, i - 1) == '\n')
+	                                break;
+                                }
+                                rule.end = 0;
+                                rule.keyword = 0;
+                                continue;
+                            }
+                            rule.end = ec;
+                            if (r->between_delimiters) {
+                                rule.context = 0;
+                                r = rules[rule.context];
+                                if (match_keyword (edit, r, c, i, &j, &ek)) {
+                                    rule.keyword = j;
+                                    while (rule.end != i) {
+                                        WAIT (c);
+	                                if (edit_get_byte (edit, i - 1) == '\n')
+	                                    break;
+                                    }
+                                    rule.keyword = 0;
+                                } else {
+                                    WAIT (c);
+                                }
+                            } else {
+                                while (rule.end != i) {
+                                    WAIT (c);
+                                }
+                                rule.context = 0;
+                                r = rules[rule.context];
+                            }
+                            break;
+                        }
+                    }
+                    if (match_keyword (edit, r, c, i, &j, &ek)) {
+                        rule.keyword = j;
+                        rule.end = ek;
+                        while (rule.end != i) {
+                            WAIT (c);
+                            if (edit_get_byte (edit, i - 1) == '\n')
+                                break;
+                        }
+                        rule.end = 0;
+                        rule.keyword = 0;
+                        continue;
+                    }
+                    WAIT (c);
+                }
+                continue;
+            }
+            if (match_keyword (edit, r, c, i, &j, &ek)) {
+                rule.keyword = j;
+                rule.end = ek;
+                while (rule.end != i) {
+                    WAIT (c);
+                    if (edit_get_byte (edit, i - 1) == '\n')
+                        break;
+                }
+                rule.end = 0;
+                rule.keyword = 0;
+                continue;
+            }
+            WAIT (c);
+        } /* main loop */
+    }
+}
+
+#else
+
 static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_rule rule)
 {E_
     struct context_rule *r = NULL;
@@ -411,6 +595,8 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
     }
     edit->rule = _rule;
 }
+
+#endif
 
 static struct syntax_rule edit_get_rule (WEdit * edit, long byte_index)
 {E_
@@ -1478,7 +1664,7 @@ void edit_free_syntax_rules (WEdit * edit)
     syntax_free (edit->rules);
 }
 
-#define CURRENT_SYNTAX_RULES_VERSION "85"
+#define CURRENT_SYNTAX_RULES_VERSION "86"
 
 #ifndef UNIT_TEST
 
@@ -1838,7 +2024,7 @@ NULL,
         edit->last_byte = strlen ((char *) edit->text); \
         edit_get_syntax_color (edit, i, &fg, &bg); \
         if (fg != FG) { \
-            printf ("error, got color %d (expected %d), line %d, i=%d\n", fg, FG, __LINE__, i); \
+            printf ("error, got color %d (expected %d), line %d, i=%d  %s\n", fg, FG, __LINE__, i, #T); \
             exit (1); \
         } \
     }
@@ -1850,6 +2036,8 @@ NULL,
 
     edit->filename = "test.uyit";
     edit_load_syntax (edit, 0, 0);
+
+#if 1
 
     TEST("${{}}",0,5,15);
     TEST("${{{}}}",0,7,15);
@@ -1886,6 +2074,8 @@ NULL,
     TEST("dog",0,3,20);
 #endif
 
+#endif
+
     memset (edit, '\0', sizeof (*edit));
     edit->last_get_rule = -1;
     edit->syntax_invalidate = 1;
@@ -1894,15 +2084,7 @@ NULL,
     if (edit_load_syntax (edit, 0, 0))
         exit (1);
 
-#if 0
-    edit->syntax_invalidate = 1;
-        fg = -1;
-        bg = -1;
-        edit->text = (unsigned char *) strdup ("$<>A");
-        edit->last_byte = strlen ((char *) edit->text);
-        edit_get_syntax_color (edit, edit->last_byte - 1, &fg, &bg);
-#endif
-
+    TEST("A$(a()a)A",3,7,8);
 
     TEST("A$(a()a)A",0,1,22);
     TEST("A$(a()a)A",1,3,18);
@@ -1952,9 +2134,12 @@ NULL,
     TEST("AA#A#AA",4,5,18);
     TEST("AA#A#AA",5,7,6);
 
-    TEST("BB#BB.",3,5,17);
-#if 0 /* fails - but ok, no one should be doing this: */
+#ifdef NOW_FIXED
+    TEST("BB#BB.",3,5,7);
     TEST("BB#BB.",5,6,NO_COLOR);
+#else
+    TEST("BB#BB.",3,5,17);
+//     TEST("BB#BB.",5,6,NO_COLOR); // <== fails
 #endif
 
     TEST("CC#C#CCCC#C#CC.",5,9,17);

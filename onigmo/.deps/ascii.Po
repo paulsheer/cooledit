@@ -1,0 +1,12 @@
+ascii.o: enc/ascii.c /usr/include/stdc-predef.h regenc.h ../config.h \
+ onigmo.h /usr/lib/gcc/x86_64-linux-gnu/9/include/stddef.h
+
+/usr/include/stdc-predef.h:
+
+regenc.h:
+
+../config.h:
+
+onigmo.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/9/include/stddef.h:

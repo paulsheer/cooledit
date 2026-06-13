@@ -1,0 +1,15 @@
+utf_32be.o: enc/utf_32be.c /usr/include/stdc-predef.h regenc.h \
+ ../config.h onigmo.h /usr/lib/gcc/x86_64-linux-gnu/9/include/stddef.h \
+ enc/iso_8859.h
+
+/usr/include/stdc-predef.h:
+
+regenc.h:
+
+../config.h:
+
+onigmo.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/9/include/stddef.h:
+
+enc/iso_8859.h:

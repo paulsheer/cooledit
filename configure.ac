@@ -132,6 +132,9 @@ AC_CHECK_SIZEOF(int, 4)
 AC_CHECK_SIZEOF(long, 4)
 AC_CHECK_SIZEOF(long long, 8)
 AC_CHECK_SIZEOF(int *, 4)
+AC_CHECK_SIZEOF(void *, 8)
+dnl Onigmo st.h needs SIZEOF_VOIDP (without underscore)
+AC_DEFINE_UNQUOTED([SIZEOF_VOIDP], [$ac_cv_sizeof_void_p], [Define to size of void pointer, for Onigmo])
 dnl# ugly
 if test x$cross_compiling = xyes; then
     AC_MSG_WARN(Define typedefs in src/rsizes.h manually if necessary)
@@ -352,7 +355,7 @@ LIBS="$withval $LIBS"
 ], AC_MSG_RESULT(no))
 
 dnl internationalization macros
-AC_OUTPUT([Makefile rxvt/Makefile widget/Makefile remotefs/Makefile editor/Makefile \
+AC_OUTPUT([Makefile onigmo/Makefile rxvt/Makefile widget/Makefile remotefs/Makefile editor/Makefile \
 	pixmap/Makefile lib/Makefile syntax/Makefile man/Makefile notosans/Makefile])
 
 echo ""

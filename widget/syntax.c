@@ -779,18 +779,21 @@ static char *strdup_convert (char *s)
 
 static void get_args (char *l, char **args, int *argc)
 {E_
+    int done = 0;
     *argc = 0;
-    l--;
-    for (;;) {
+    while (!done) {
 	char *p;
-	for (p = l + 1; *p && whiteness (*p); p++);
+	for (p = l; *p && whiteness (*p); p++);
 	if (!*p)
 	    break;
-	for (l = p + 1; *l && !whiteness (*l); l++);
+	for (l = p; *l && !whiteness (*l); l++);
+        if (!*l)
+            done = 1;
 	*l = '\0';
 	*args = strdup_convert (p);
 	(*argc)++;
 	args++;
+        l++;
     }
     *args = 0;
 }

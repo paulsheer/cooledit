@@ -321,6 +321,12 @@
 /* The size of `short', as computed by sizeof. */
 #undef SIZEOF_SHORT
 
+/* Define to size of void pointer, for Onigmo */
+#undef SIZEOF_VOIDP
+
+/* The size of `void *', as computed by sizeof. */
+#undef SIZEOF_VOID_P
+
 /* If using the C implementation of alloca, define if you know the
    direction of stack growth for your system; otherwise it will be
    automatically deduced at runtime.

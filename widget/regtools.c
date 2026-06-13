@@ -10,11 +10,10 @@
 #include <my_string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "stringtools.h"
-#include "regex.h"
 #include "fnmatch.h"
-
 
 /* 1 if string matches
    0 if string doesn't match
@@ -29,3 +28,4 @@ int glob_match (char *pattern, char *string)
 	return 0;
     return -1;
 }
+

@@ -1,6 +1,6 @@
 noinst_LIBRARIES = libCw.a
 
-AM_CPPFLAGS = -I. -I$(top_srcdir) -I$(top_srcdir)/intl
+AM_CPPFLAGS = -I. -I$(top_srcdir) -I$(top_srcdir)/intl -I$(top_srcdir)/onigmo
 
 libCw_a_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
 	filebrowser.c coolnext.c bitmapbutton.c pixmap.c \

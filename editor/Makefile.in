@@ -113,7 +113,8 @@ am_cooledit_OBJECTS = cooledit.$(OBJEXT) find.$(OBJEXT) \
 	percentsubs.$(OBJEXT) _coolpython.$(OBJEXT) \
 	postscript.$(OBJEXT) print.$(OBJEXT) rxvt.$(OBJEXT)
 cooledit_OBJECTS = $(am_cooledit_OBJECTS)
-cooledit_DEPENDENCIES = ../rxvt/librxvt.a ../widget/libCw.la
+cooledit_DEPENDENCIES = ../rxvt/librxvt.a ../widget/libCw.a \
+	../onigmo/libonigmo.a
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -121,10 +122,10 @@ am__v_lt_1 =
 am_coolman_OBJECTS = coolman.$(OBJEXT) manpage.$(OBJEXT) \
 	trivoptions.$(OBJEXT)
 coolman_OBJECTS = $(am_coolman_OBJECTS)
-coolman_DEPENDENCIES = ../widget/libCw.la
+coolman_DEPENDENCIES = ../widget/libCw.a ../onigmo/libonigmo.a
 am_smalledit_OBJECTS = smalledit.$(OBJEXT) trivoptions.$(OBJEXT)
 smalledit_OBJECTS = $(am_smalledit_OBJECTS)
-smalledit_DEPENDENCIES = ../widget/libCw.la
+smalledit_DEPENDENCIES = ../widget/libCw.a ../onigmo/libonigmo.a
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -385,9 +386,9 @@ cooledit_SOURCES = cooledit.c find.c editoptions.c mancmd.c options.c \
 
 smalledit_SOURCES = smalledit.c copyright.h trivoptions.c
 coolman_SOURCES = coolman.c manpage.c trivoptions.c
-cooledit_LDADD = ../rxvt/librxvt.a ../widget/libCw.la @FREETYPE_LIBS@ @X_LIBS@ -lX11 @X_EXTRA_LIBS@
-smalledit_LDADD = ../widget/libCw.la @FREETYPE_LIBS@ @X_LIBS@ -lX11 @X_EXTRA_LIBS@
-coolman_LDADD = ../widget/libCw.la @FREETYPE_LIBS@ @X_LIBS@ -lX11 @X_EXTRA_LIBS@
+cooledit_LDADD = ../rxvt/librxvt.a ../widget/libCw.a ../onigmo/libonigmo.a @FREETYPE_LIBS@ @X_LIBS@ -lX11 @X_EXTRA_LIBS@
+smalledit_LDADD = ../widget/libCw.a ../onigmo/libonigmo.a @FREETYPE_LIBS@ @X_LIBS@ -lX11 @X_EXTRA_LIBS@
+coolman_LDADD = ../widget/libCw.a ../onigmo/libonigmo.a @FREETYPE_LIBS@ @X_LIBS@ -lX11 @X_EXTRA_LIBS@
 all: all-am
 
 .SUFFIXES:

@@ -917,8 +917,8 @@ short CKeySymMod (XEvent * e);
 /* get the current state of the keyboard and mouse */
 unsigned int CGetKeyBoardState (void);
 
-/* match regular expressions */
-int regexp_match (char *pattern, char *string, int match_type);
+/* match glob expressions */
+int glob_match (char *pattern, char *string);
 
 /* gets a widgets position relative to some ancestor widget */
 void CGetWindowPosition (Window win, Window ancestor, int *x_return, int *y_return);

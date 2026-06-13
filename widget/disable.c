@@ -17,10 +17,8 @@
 #include "app_glob.c"
 
 #include "coollocal.h"
-#include "regex.h"
 
 
-extern char *regtools_old_pattern;
 
 
 void CSetDisable (const char *ident, int disable)
@@ -29,7 +27,7 @@ void CSetDisable (const char *ident, int disable)
     if (strcmp (ident, "*")) {
 	while (--i)
 	    if (CIndex (i))
-		switch (regexp_match ((char *) ident, CIndex (i)->ident, match_file)) {
+		switch (glob_match ((char *) ident, CIndex (i)->ident)) {
 		case 1:
 		    CIndex (i)->disabled = disable;
 		    break;
@@ -48,10 +46,6 @@ void CSetDisable (const char *ident, int disable)
 void CDisable (const char *ident)
 {E_
     if (!ident) {
-	if (regtools_old_pattern) {
-	    free (regtools_old_pattern);
-	    regtools_old_pattern = 0;
-	}
     } else
 	CSetDisable (ident, 1);
 }

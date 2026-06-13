@@ -15,10 +15,10 @@ set(SOURCES
     ${WIDGET_DIR}/sha256.c
     ${WIDGET_DIR}/symauth.c
     ${WIDGET_DIR}/hashtable.c
-    ${WIDGET_DIR}/regex.c
     ${WIDGET_DIR}/regtools.c
     ${WIDGET_DIR}/pathdup.c
     ${WIDGET_DIR}/ipv6scan.c
+    ${WIDGET_DIR}/fnmatch.c
     ${REMOTEFS_DIR}/android.c
 )
 

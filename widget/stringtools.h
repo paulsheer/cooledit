@@ -80,8 +80,7 @@ enum {
     match_file, match_normal
 };
 extern int easy_patterns;
-char *convert_pattern (char *pattern, int match_type, int do_group);
-int regexp_match (char *pattern, char *string, int match_type);
+int glob_match (char *pattern, char *string);
 char *name_trunc (const char *txt, int trunc_len);
 char *pathdup_debug (const char *cfile, int cline, const char *host, const char *p, char *errmsg);
 #define pathdup(host,p,errmsg)         pathdup_debug(__FILE__, __LINE__,(host),(p),(errmsg))

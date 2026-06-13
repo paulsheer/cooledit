@@ -1571,6 +1571,8 @@ const char *action_descr[] = {
     "PING",
     "SHELLRECONNECT",
     "SHELLCMD",
+    "MKDIR",
+    "SYMLINK",
 };
 
 
@@ -3596,7 +3598,7 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
                     data[k].got_dot_dot = 1;
                 if ((S_ISDIR (stats.ustat.st_mode) && (view[k].options & FILELIST_DIRECTORIES_ONLY)) ||
                     (!S_ISDIR (stats.ustat.st_mode) && (view[k].options & FILELIST_FILES_ONLY))) {
-                    if (regexp_match ((char *) view[k].filter, dn, match_file) == 1) {
+                    if (glob_match ((char *) view[k].filter, dn) == 1) {
                         i = (struct file_entry_item *) malloc (sizeof (*i));
                         memset (i, '\0', sizeof (*i));
                         portable_stat (1, q, &i->data.pstat, NULL, NULL, NULL);
@@ -3636,7 +3638,7 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
                         for (found = data[k].first; found; found = found->next)
                             if (!strcmp (found->data.name, mount_path))  /* is already in the list */
                                 break;
-                        if (!found && regexp_match ((char *) view[k].filter, mount_path, match_file) == 1) {
+                        if (!found && glob_match ((char *) view[k].filter, mount_path) == 1) {
                             i = (struct file_entry_item *) malloc (sizeof (*i));
                             memset (i, '\0', sizeof (*i));
                             i->data.pstat.ustat.st_mode = S_IFDIR | 00777;
@@ -3661,7 +3663,7 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
                         for (found = data[k].first; found; found = found->next)
                             if (!strcmp (found->data.name, mount_path))  /* is already in the list */
                                 break;
-                        if (!found && regexp_match ((char *) view[k].filter, mount_path, match_file) == 1) {
+                        if (!found && glob_match ((char *) view[k].filter, mount_path) == 1) {
                             i = (struct file_entry_item *) malloc (sizeof (*i));
                             memset (i, '\0', sizeof (*i));
                             i->data.pstat.ustat.st_mode = S_IFDIR | 00777;

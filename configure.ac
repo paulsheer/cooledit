@@ -18,7 +18,7 @@ echo
 
 AC_AIX
 
-LT_INIT
+LT_INIT([disable-shared])
 AC_CONFIG_MACRO_DIRS([m4])
 
 dnl For shared libraries

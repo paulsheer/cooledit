@@ -1,15 +1,15 @@
-lib_LTLIBRARIES = libCw.la
+noinst_LIBRARIES = libCw.a
 
 AM_CPPFLAGS = -I. -I$(top_srcdir) -I$(top_srcdir)/intl
 
-libCw_la_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
+libCw_a_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
 	filebrowser.c coolnext.c bitmapbutton.c pixmap.c \
 	dialog.c disable.c focus.c xdnd.c ClientWin.c textwidget.c \
 	hintpos.c inputwidget.c mousemark.c mousemark.h \
 	cmdlineopt.c cmdlineopt.h scrollbar.c fieldedtextbox.c \
 	edit.c editwidget.c editdraw.c editcmd.c editmenu.c \
 	propfont.c international.c edit_key_translator.c \
-	loadfile.c stringtools.c pool.c pool.h compatable.c \
+	loadfile.c stringtools.c hashtable.c pool.c pool.h compatable.c \
 	mad.c regex.c coollocal.h coolwidget.h drawings.h \
 	imagewidget.h filelist.c compatable.h \
 	loadfile.h loadtiff.h mad.h my_string.h regex.h \
@@ -23,8 +23,6 @@ libCw_la_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
 	symauth.c symauth.h inspect.c cterminal.c cterminal.h \
 	childhandler.c childhandler.h xwinfwd.c xwinfwd.h soundfwd.c soundfwd.h \
 	filetool.c filetool.h fnmatch.c fnmatch.h
-
-libCw_la_LDFLAGS = -version-info 1:0:0
 
 DEFS = @X_CFLAGS@ -DLOCALEDIR=\"$(localedir)\" -DLIBDIR=\"${exec_prefix}/share/cooledit\" @DEFS@ 
 

@@ -102,59 +102,39 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
-am__vpath_adj = case $$p in \
-    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
-    *) f=$$p;; \
-  esac;
-am__strip_dir = f=`echo $$p | sed -e 's|^.*/||'`;
-am__install_max = 40
-am__nobase_strip_setup = \
-  srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*|]/\\\\&/g'`
-am__nobase_strip = \
-  for p in $$list; do echo "$$p"; done | sed -e "s|$$srcdirstrip/||"
-am__nobase_list = $(am__nobase_strip_setup); \
-  for p in $$list; do echo "$$p $$p"; done | \
-  sed "s| $$srcdirstrip/| |;"' / .*\//!s/ .*/ ./; s,\( .*\)/[^/]*$$,\1,' | \
-  $(AWK) 'BEGIN { files["."] = "" } { files[$$2] = files[$$2] " " $$1; \
-    if (++n[$$2] == $(am__install_max)) \
-      { print $$2, files[$$2]; n[$$2] = 0; files[$$2] = "" } } \
-    END { for (dir in files) print dir, files[dir] }'
-am__base_list = \
-  sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
-  sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
-am__uninstall_files_from_dir = { \
-  test -z "$$files" \
-    || { test ! -d "$$dir" && test ! -f "$$dir" && test ! -r "$$dir"; } \
-    || { echo " ( cd '$$dir' && rm -f" $$files ")"; \
-         $(am__cd) "$$dir" && rm -f $$files; }; \
-  }
-am__installdirs = "$(DESTDIR)$(libdir)"
-LTLIBRARIES = $(lib_LTLIBRARIES)
-libCw_la_LIBADD =
-am_libCw_la_OBJECTS = initapp.lo coolwidget.lo dirtools.lo menu.lo \
-	mathfuncs.lo filebrowser.lo coolnext.lo bitmapbutton.lo \
-	pixmap.lo dialog.lo disable.lo focus.lo xdnd.lo ClientWin.lo \
-	textwidget.lo hintpos.lo inputwidget.lo mousemark.lo \
-	cmdlineopt.lo scrollbar.lo fieldedtextbox.lo edit.lo \
-	editwidget.lo editdraw.lo editcmd.lo editmenu.lo propfont.lo \
-	international.lo edit_key_translator.lo loadfile.lo \
-	stringtools.lo pool.lo compatable.lo mad.lo regex.lo \
-	filelist.lo pipe.lo wordproc.lo syntax.lo vertchar.lo \
-	cursor.lo bookmark.lo font.lo xim.lo pathdup.lo widechar.lo \
-	unicodedialog.lo aafont.lo look-cool.lo look-gtk.lo \
-	look-next.lo redblack.lo regtools.lo remotefs.lo ipv6scan.lo \
-	aes.lo sha256.lo remotefspassword.lo symauth.lo inspect.lo \
-	cterminal.lo childhandler.lo xwinfwd.lo soundfwd.lo \
-	filetool.lo fnmatch.lo
-libCw_la_OBJECTS = $(am_libCw_la_OBJECTS)
-AM_V_lt = $(am__v_lt_@AM_V@)
-am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
-am__v_lt_0 = --silent
-am__v_lt_1 = 
-libCw_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
-	$(libCw_la_LDFLAGS) $(LDFLAGS) -o $@
+LIBRARIES = $(noinst_LIBRARIES)
+ARFLAGS = cru
+AM_V_AR = $(am__v_AR_@AM_V@)
+am__v_AR_ = $(am__v_AR_@AM_DEFAULT_V@)
+am__v_AR_0 = @echo "  AR      " $@;
+am__v_AR_1 = 
+libCw_a_AR = $(AR) $(ARFLAGS)
+libCw_a_LIBADD =
+am_libCw_a_OBJECTS = initapp.$(OBJEXT) coolwidget.$(OBJEXT) \
+	dirtools.$(OBJEXT) menu.$(OBJEXT) mathfuncs.$(OBJEXT) \
+	filebrowser.$(OBJEXT) coolnext.$(OBJEXT) \
+	bitmapbutton.$(OBJEXT) pixmap.$(OBJEXT) dialog.$(OBJEXT) \
+	disable.$(OBJEXT) focus.$(OBJEXT) xdnd.$(OBJEXT) \
+	ClientWin.$(OBJEXT) textwidget.$(OBJEXT) hintpos.$(OBJEXT) \
+	inputwidget.$(OBJEXT) mousemark.$(OBJEXT) cmdlineopt.$(OBJEXT) \
+	scrollbar.$(OBJEXT) fieldedtextbox.$(OBJEXT) edit.$(OBJEXT) \
+	editwidget.$(OBJEXT) editdraw.$(OBJEXT) editcmd.$(OBJEXT) \
+	editmenu.$(OBJEXT) propfont.$(OBJEXT) international.$(OBJEXT) \
+	edit_key_translator.$(OBJEXT) loadfile.$(OBJEXT) \
+	stringtools.$(OBJEXT) hashtable.$(OBJEXT) pool.$(OBJEXT) \
+	compatable.$(OBJEXT) mad.$(OBJEXT) regex.$(OBJEXT) \
+	filelist.$(OBJEXT) pipe.$(OBJEXT) wordproc.$(OBJEXT) \
+	syntax.$(OBJEXT) vertchar.$(OBJEXT) cursor.$(OBJEXT) \
+	bookmark.$(OBJEXT) font.$(OBJEXT) xim.$(OBJEXT) \
+	pathdup.$(OBJEXT) widechar.$(OBJEXT) unicodedialog.$(OBJEXT) \
+	aafont.$(OBJEXT) look-cool.$(OBJEXT) look-gtk.$(OBJEXT) \
+	look-next.$(OBJEXT) redblack.$(OBJEXT) regtools.$(OBJEXT) \
+	remotefs.$(OBJEXT) ipv6scan.$(OBJEXT) aes.$(OBJEXT) \
+	sha256.$(OBJEXT) remotefspassword.$(OBJEXT) symauth.$(OBJEXT) \
+	inspect.$(OBJEXT) cterminal.$(OBJEXT) childhandler.$(OBJEXT) \
+	xwinfwd.$(OBJEXT) soundfwd.$(OBJEXT) filetool.$(OBJEXT) \
+	fnmatch.$(OBJEXT)
+libCw_a_OBJECTS = $(am_libCw_a_OBJECTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -170,42 +150,46 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/ClientWin.Plo ./$(DEPDIR)/aafont.Plo \
-	./$(DEPDIR)/aes.Plo ./$(DEPDIR)/bitmapbutton.Plo \
-	./$(DEPDIR)/bookmark.Plo ./$(DEPDIR)/childhandler.Plo \
-	./$(DEPDIR)/cmdlineopt.Plo ./$(DEPDIR)/compatable.Plo \
-	./$(DEPDIR)/coolnext.Plo ./$(DEPDIR)/coolwidget.Plo \
-	./$(DEPDIR)/cterminal.Plo ./$(DEPDIR)/cursor.Plo \
-	./$(DEPDIR)/dialog.Plo ./$(DEPDIR)/dirtools.Plo \
-	./$(DEPDIR)/disable.Plo ./$(DEPDIR)/edit.Plo \
-	./$(DEPDIR)/edit_key_translator.Plo ./$(DEPDIR)/editcmd.Plo \
-	./$(DEPDIR)/editdraw.Plo ./$(DEPDIR)/editmenu.Plo \
-	./$(DEPDIR)/editwidget.Plo ./$(DEPDIR)/fieldedtextbox.Plo \
-	./$(DEPDIR)/filebrowser.Plo ./$(DEPDIR)/filelist.Plo \
-	./$(DEPDIR)/filetool.Plo ./$(DEPDIR)/fnmatch.Plo \
-	./$(DEPDIR)/focus.Plo ./$(DEPDIR)/font.Plo \
-	./$(DEPDIR)/hintpos.Plo ./$(DEPDIR)/initapp.Plo \
-	./$(DEPDIR)/inputwidget.Plo ./$(DEPDIR)/inspect.Plo \
-	./$(DEPDIR)/international.Plo ./$(DEPDIR)/ipv6scan.Plo \
-	./$(DEPDIR)/loadfile.Plo ./$(DEPDIR)/look-cool.Plo \
-	./$(DEPDIR)/look-gtk.Plo ./$(DEPDIR)/look-next.Plo \
-	./$(DEPDIR)/mad.Plo ./$(DEPDIR)/mathfuncs.Plo \
-	./$(DEPDIR)/menu.Plo ./$(DEPDIR)/mousemark.Plo \
-	./$(DEPDIR)/pathdup.Plo ./$(DEPDIR)/pipe.Plo \
-	./$(DEPDIR)/pixmap.Plo ./$(DEPDIR)/pool.Plo \
-	./$(DEPDIR)/propfont.Plo ./$(DEPDIR)/redblack.Plo \
-	./$(DEPDIR)/regex.Plo ./$(DEPDIR)/regtools.Plo \
-	./$(DEPDIR)/remotefs.Plo ./$(DEPDIR)/remotefspassword.Plo \
-	./$(DEPDIR)/scrollbar.Plo ./$(DEPDIR)/sha256.Plo \
-	./$(DEPDIR)/soundfwd.Plo ./$(DEPDIR)/stringtools.Plo \
-	./$(DEPDIR)/symauth.Plo ./$(DEPDIR)/syntax.Plo \
-	./$(DEPDIR)/textwidget.Plo ./$(DEPDIR)/unicodedialog.Plo \
-	./$(DEPDIR)/vertchar.Plo ./$(DEPDIR)/widechar.Plo \
-	./$(DEPDIR)/wordproc.Plo ./$(DEPDIR)/xdnd.Plo \
-	./$(DEPDIR)/xim.Plo ./$(DEPDIR)/xwinfwd.Plo
+am__depfiles_remade = ./$(DEPDIR)/ClientWin.Po ./$(DEPDIR)/aafont.Po \
+	./$(DEPDIR)/aes.Po ./$(DEPDIR)/bitmapbutton.Po \
+	./$(DEPDIR)/bookmark.Po ./$(DEPDIR)/childhandler.Po \
+	./$(DEPDIR)/cmdlineopt.Po ./$(DEPDIR)/compatable.Po \
+	./$(DEPDIR)/coolnext.Po ./$(DEPDIR)/coolwidget.Po \
+	./$(DEPDIR)/cterminal.Po ./$(DEPDIR)/cursor.Po \
+	./$(DEPDIR)/dialog.Po ./$(DEPDIR)/dirtools.Po \
+	./$(DEPDIR)/disable.Po ./$(DEPDIR)/edit.Po \
+	./$(DEPDIR)/edit_key_translator.Po ./$(DEPDIR)/editcmd.Po \
+	./$(DEPDIR)/editdraw.Po ./$(DEPDIR)/editmenu.Po \
+	./$(DEPDIR)/editwidget.Po ./$(DEPDIR)/fieldedtextbox.Po \
+	./$(DEPDIR)/filebrowser.Po ./$(DEPDIR)/filelist.Po \
+	./$(DEPDIR)/filetool.Po ./$(DEPDIR)/fnmatch.Po \
+	./$(DEPDIR)/focus.Po ./$(DEPDIR)/font.Po \
+	./$(DEPDIR)/hashtable.Po ./$(DEPDIR)/hintpos.Po \
+	./$(DEPDIR)/initapp.Po ./$(DEPDIR)/inputwidget.Po \
+	./$(DEPDIR)/inspect.Po ./$(DEPDIR)/international.Po \
+	./$(DEPDIR)/ipv6scan.Po ./$(DEPDIR)/loadfile.Po \
+	./$(DEPDIR)/look-cool.Po ./$(DEPDIR)/look-gtk.Po \
+	./$(DEPDIR)/look-next.Po ./$(DEPDIR)/mad.Po \
+	./$(DEPDIR)/mathfuncs.Po ./$(DEPDIR)/menu.Po \
+	./$(DEPDIR)/mousemark.Po ./$(DEPDIR)/pathdup.Po \
+	./$(DEPDIR)/pipe.Po ./$(DEPDIR)/pixmap.Po ./$(DEPDIR)/pool.Po \
+	./$(DEPDIR)/propfont.Po ./$(DEPDIR)/redblack.Po \
+	./$(DEPDIR)/regex.Po ./$(DEPDIR)/regtools.Po \
+	./$(DEPDIR)/remotefs.Po ./$(DEPDIR)/remotefspassword.Po \
+	./$(DEPDIR)/scrollbar.Po ./$(DEPDIR)/sha256.Po \
+	./$(DEPDIR)/soundfwd.Po ./$(DEPDIR)/stringtools.Po \
+	./$(DEPDIR)/symauth.Po ./$(DEPDIR)/syntax.Po \
+	./$(DEPDIR)/textwidget.Po ./$(DEPDIR)/unicodedialog.Po \
+	./$(DEPDIR)/vertchar.Po ./$(DEPDIR)/widechar.Po \
+	./$(DEPDIR)/wordproc.Po ./$(DEPDIR)/xdnd.Po ./$(DEPDIR)/xim.Po \
+	./$(DEPDIR)/xwinfwd.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+AM_V_lt = $(am__v_lt_@AM_V@)
+am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
+am__v_lt_0 = --silent
+am__v_lt_1 = 
 LTCOMPILE = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) \
 	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
@@ -222,8 +206,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libCw_la_SOURCES)
-DIST_SOURCES = $(libCw_la_SOURCES)
+SOURCES = $(libCw_a_SOURCES)
+DIST_SOURCES = $(libCw_a_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -401,16 +385,16 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-lib_LTLIBRARIES = libCw.la
+noinst_LIBRARIES = libCw.a
 AM_CPPFLAGS = -I. -I$(top_srcdir) -I$(top_srcdir)/intl
-libCw_la_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
+libCw_a_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
 	filebrowser.c coolnext.c bitmapbutton.c pixmap.c \
 	dialog.c disable.c focus.c xdnd.c ClientWin.c textwidget.c \
 	hintpos.c inputwidget.c mousemark.c mousemark.h \
 	cmdlineopt.c cmdlineopt.h scrollbar.c fieldedtextbox.c \
 	edit.c editwidget.c editdraw.c editcmd.c editmenu.c \
 	propfont.c international.c edit_key_translator.c \
-	loadfile.c stringtools.c pool.c pool.h compatable.c \
+	loadfile.c stringtools.c hashtable.c pool.c pool.h compatable.c \
 	mad.c regex.c coollocal.h coolwidget.h drawings.h \
 	imagewidget.h filelist.c compatable.h \
 	loadfile.h loadtiff.h mad.h my_string.h regex.h \
@@ -425,7 +409,6 @@ libCw_la_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
 	childhandler.c childhandler.h xwinfwd.c xwinfwd.h soundfwd.c soundfwd.h \
 	filetool.c filetool.h fnmatch.c fnmatch.h
 
-libCw_la_LDFLAGS = -version-info 1:0:0
 all: all-am
 
 .SUFFIXES:
@@ -460,43 +443,13 @@ $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
 
-install-libLTLIBRARIES: $(lib_LTLIBRARIES)
-	@$(NORMAL_INSTALL)
-	@list='$(lib_LTLIBRARIES)'; test -n "$(libdir)" || list=; \
-	list2=; for p in $$list; do \
-	  if test -f $$p; then \
-	    list2="$$list2 $$p"; \
-	  else :; fi; \
-	done; \
-	test -z "$$list2" || { \
-	  echo " $(MKDIR_P) '$(DESTDIR)$(libdir)'"; \
-	  $(MKDIR_P) "$(DESTDIR)$(libdir)" || exit 1; \
-	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 '$(DESTDIR)$(libdir)'"; \
-	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 "$(DESTDIR)$(libdir)"; \
-	}
+clean-noinstLIBRARIES:
+	-test -z "$(noinst_LIBRARIES)" || rm -f $(noinst_LIBRARIES)
 
-uninstall-libLTLIBRARIES:
-	@$(NORMAL_UNINSTALL)
-	@list='$(lib_LTLIBRARIES)'; test -n "$(libdir)" || list=; \
-	for p in $$list; do \
-	  $(am__strip_dir) \
-	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f '$(DESTDIR)$(libdir)/$$f'"; \
-	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f "$(DESTDIR)$(libdir)/$$f"; \
-	done
-
-clean-libLTLIBRARIES:
-	-test -z "$(lib_LTLIBRARIES)" || rm -f $(lib_LTLIBRARIES)
-	@list='$(lib_LTLIBRARIES)'; \
-	locs=`for p in $$list; do echo $$p; done | \
-	      sed 's|^[^/]*$$|.|; s|/[^/]*$$||; s|$$|/so_locations|' | \
-	      sort -u`; \
-	test -z "$$locs" || { \
-	  echo rm -f $${locs}; \
-	  rm -f $${locs}; \
-	}
-
-libCw.la: $(libCw_la_OBJECTS) $(libCw_la_DEPENDENCIES) $(EXTRA_libCw_la_DEPENDENCIES) 
-	$(AM_V_CCLD)$(libCw_la_LINK) -rpath $(libdir) $(libCw_la_OBJECTS) $(libCw_la_LIBADD) $(LIBS)
+libCw.a: $(libCw_a_OBJECTS) $(libCw_a_DEPENDENCIES) $(EXTRA_libCw_a_DEPENDENCIES) 
+	$(AM_V_at)-rm -f libCw.a
+	$(AM_V_AR)$(libCw_a_AR) libCw.a $(libCw_a_OBJECTS) $(libCw_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libCw.a
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -504,72 +457,73 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ClientWin.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/aafont.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/aes.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bitmapbutton.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bookmark.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/childhandler.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cmdlineopt.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/compatable.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/coolnext.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/coolwidget.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cterminal.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cursor.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dialog.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dirtools.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/disable.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/edit.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/edit_key_translator.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/editcmd.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/editdraw.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/editmenu.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/editwidget.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fieldedtextbox.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/filebrowser.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/filelist.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/filetool.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fnmatch.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/focus.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/font.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hintpos.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/initapp.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/inputwidget.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/inspect.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/international.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipv6scan.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/loadfile.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/look-cool.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/look-gtk.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/look-next.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mad.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mathfuncs.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mousemark.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pathdup.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pipe.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pixmap.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pool.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/propfont.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/redblack.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/regex.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/regtools.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/remotefs.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/remotefspassword.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/scrollbar.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sha256.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/soundfwd.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stringtools.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/symauth.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syntax.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/textwidget.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unicodedialog.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vertchar.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/widechar.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wordproc.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xdnd.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xim.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xwinfwd.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ClientWin.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/aafont.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/aes.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bitmapbutton.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bookmark.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/childhandler.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cmdlineopt.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/compatable.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/coolnext.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/coolwidget.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cterminal.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cursor.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dialog.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dirtools.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/disable.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/edit.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/edit_key_translator.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/editcmd.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/editdraw.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/editmenu.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/editwidget.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fieldedtextbox.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/filebrowser.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/filelist.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/filetool.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fnmatch.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/focus.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/font.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hashtable.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hintpos.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/initapp.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/inputwidget.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/inspect.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/international.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipv6scan.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/loadfile.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/look-cool.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/look-gtk.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/look-next.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mad.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mathfuncs.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menu.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mousemark.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pathdup.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pipe.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pixmap.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pool.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/propfont.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/redblack.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/regex.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/regtools.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/remotefs.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/remotefspassword.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/scrollbar.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sha256.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/soundfwd.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stringtools.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/symauth.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syntax.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/textwidget.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unicodedialog.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vertchar.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/widechar.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wordproc.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xdnd.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xim.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xwinfwd.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -691,11 +645,8 @@ distdir-am: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile $(LTLIBRARIES)
+all-am: Makefile $(LIBRARIES)
 installdirs:
-	for dir in "$(DESTDIR)$(libdir)"; do \
-	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
-	done
 install: install-am
 install-exec: install-exec-am
 install-data: install-data-am
@@ -728,76 +679,77 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-libLTLIBRARIES clean-libtool \
+clean-am: clean-generic clean-libtool clean-noinstLIBRARIES \
 	mostlyclean-am
 
 distclean: distclean-am
-		-rm -f ./$(DEPDIR)/ClientWin.Plo
-	-rm -f ./$(DEPDIR)/aafont.Plo
-	-rm -f ./$(DEPDIR)/aes.Plo
-	-rm -f ./$(DEPDIR)/bitmapbutton.Plo
-	-rm -f ./$(DEPDIR)/bookmark.Plo
-	-rm -f ./$(DEPDIR)/childhandler.Plo
-	-rm -f ./$(DEPDIR)/cmdlineopt.Plo
-	-rm -f ./$(DEPDIR)/compatable.Plo
-	-rm -f ./$(DEPDIR)/coolnext.Plo
-	-rm -f ./$(DEPDIR)/coolwidget.Plo
-	-rm -f ./$(DEPDIR)/cterminal.Plo
-	-rm -f ./$(DEPDIR)/cursor.Plo
-	-rm -f ./$(DEPDIR)/dialog.Plo
-	-rm -f ./$(DEPDIR)/dirtools.Plo
-	-rm -f ./$(DEPDIR)/disable.Plo
-	-rm -f ./$(DEPDIR)/edit.Plo
-	-rm -f ./$(DEPDIR)/edit_key_translator.Plo
-	-rm -f ./$(DEPDIR)/editcmd.Plo
-	-rm -f ./$(DEPDIR)/editdraw.Plo
-	-rm -f ./$(DEPDIR)/editmenu.Plo
-	-rm -f ./$(DEPDIR)/editwidget.Plo
-	-rm -f ./$(DEPDIR)/fieldedtextbox.Plo
-	-rm -f ./$(DEPDIR)/filebrowser.Plo
-	-rm -f ./$(DEPDIR)/filelist.Plo
-	-rm -f ./$(DEPDIR)/filetool.Plo
-	-rm -f ./$(DEPDIR)/fnmatch.Plo
-	-rm -f ./$(DEPDIR)/focus.Plo
-	-rm -f ./$(DEPDIR)/font.Plo
-	-rm -f ./$(DEPDIR)/hintpos.Plo
-	-rm -f ./$(DEPDIR)/initapp.Plo
-	-rm -f ./$(DEPDIR)/inputwidget.Plo
-	-rm -f ./$(DEPDIR)/inspect.Plo
-	-rm -f ./$(DEPDIR)/international.Plo
-	-rm -f ./$(DEPDIR)/ipv6scan.Plo
-	-rm -f ./$(DEPDIR)/loadfile.Plo
-	-rm -f ./$(DEPDIR)/look-cool.Plo
-	-rm -f ./$(DEPDIR)/look-gtk.Plo
-	-rm -f ./$(DEPDIR)/look-next.Plo
-	-rm -f ./$(DEPDIR)/mad.Plo
-	-rm -f ./$(DEPDIR)/mathfuncs.Plo
-	-rm -f ./$(DEPDIR)/menu.Plo
-	-rm -f ./$(DEPDIR)/mousemark.Plo
-	-rm -f ./$(DEPDIR)/pathdup.Plo
-	-rm -f ./$(DEPDIR)/pipe.Plo
-	-rm -f ./$(DEPDIR)/pixmap.Plo
-	-rm -f ./$(DEPDIR)/pool.Plo
-	-rm -f ./$(DEPDIR)/propfont.Plo
-	-rm -f ./$(DEPDIR)/redblack.Plo
-	-rm -f ./$(DEPDIR)/regex.Plo
-	-rm -f ./$(DEPDIR)/regtools.Plo
-	-rm -f ./$(DEPDIR)/remotefs.Plo
-	-rm -f ./$(DEPDIR)/remotefspassword.Plo
-	-rm -f ./$(DEPDIR)/scrollbar.Plo
-	-rm -f ./$(DEPDIR)/sha256.Plo
-	-rm -f ./$(DEPDIR)/soundfwd.Plo
-	-rm -f ./$(DEPDIR)/stringtools.Plo
-	-rm -f ./$(DEPDIR)/symauth.Plo
-	-rm -f ./$(DEPDIR)/syntax.Plo
-	-rm -f ./$(DEPDIR)/textwidget.Plo
-	-rm -f ./$(DEPDIR)/unicodedialog.Plo
-	-rm -f ./$(DEPDIR)/vertchar.Plo
-	-rm -f ./$(DEPDIR)/widechar.Plo
-	-rm -f ./$(DEPDIR)/wordproc.Plo
-	-rm -f ./$(DEPDIR)/xdnd.Plo
-	-rm -f ./$(DEPDIR)/xim.Plo
-	-rm -f ./$(DEPDIR)/xwinfwd.Plo
+		-rm -f ./$(DEPDIR)/ClientWin.Po
+	-rm -f ./$(DEPDIR)/aafont.Po
+	-rm -f ./$(DEPDIR)/aes.Po
+	-rm -f ./$(DEPDIR)/bitmapbutton.Po
+	-rm -f ./$(DEPDIR)/bookmark.Po
+	-rm -f ./$(DEPDIR)/childhandler.Po
+	-rm -f ./$(DEPDIR)/cmdlineopt.Po
+	-rm -f ./$(DEPDIR)/compatable.Po
+	-rm -f ./$(DEPDIR)/coolnext.Po
+	-rm -f ./$(DEPDIR)/coolwidget.Po
+	-rm -f ./$(DEPDIR)/cterminal.Po
+	-rm -f ./$(DEPDIR)/cursor.Po
+	-rm -f ./$(DEPDIR)/dialog.Po
+	-rm -f ./$(DEPDIR)/dirtools.Po
+	-rm -f ./$(DEPDIR)/disable.Po
+	-rm -f ./$(DEPDIR)/edit.Po
+	-rm -f ./$(DEPDIR)/edit_key_translator.Po
+	-rm -f ./$(DEPDIR)/editcmd.Po
+	-rm -f ./$(DEPDIR)/editdraw.Po
+	-rm -f ./$(DEPDIR)/editmenu.Po
+	-rm -f ./$(DEPDIR)/editwidget.Po
+	-rm -f ./$(DEPDIR)/fieldedtextbox.Po
+	-rm -f ./$(DEPDIR)/filebrowser.Po
+	-rm -f ./$(DEPDIR)/filelist.Po
+	-rm -f ./$(DEPDIR)/filetool.Po
+	-rm -f ./$(DEPDIR)/fnmatch.Po
+	-rm -f ./$(DEPDIR)/focus.Po
+	-rm -f ./$(DEPDIR)/font.Po
+	-rm -f ./$(DEPDIR)/hashtable.Po
+	-rm -f ./$(DEPDIR)/hintpos.Po
+	-rm -f ./$(DEPDIR)/initapp.Po
+	-rm -f ./$(DEPDIR)/inputwidget.Po
+	-rm -f ./$(DEPDIR)/inspect.Po
+	-rm -f ./$(DEPDIR)/international.Po
+	-rm -f ./$(DEPDIR)/ipv6scan.Po
+	-rm -f ./$(DEPDIR)/loadfile.Po
+	-rm -f ./$(DEPDIR)/look-cool.Po
+	-rm -f ./$(DEPDIR)/look-gtk.Po
+	-rm -f ./$(DEPDIR)/look-next.Po
+	-rm -f ./$(DEPDIR)/mad.Po
+	-rm -f ./$(DEPDIR)/mathfuncs.Po
+	-rm -f ./$(DEPDIR)/menu.Po
+	-rm -f ./$(DEPDIR)/mousemark.Po
+	-rm -f ./$(DEPDIR)/pathdup.Po
+	-rm -f ./$(DEPDIR)/pipe.Po
+	-rm -f ./$(DEPDIR)/pixmap.Po
+	-rm -f ./$(DEPDIR)/pool.Po
+	-rm -f ./$(DEPDIR)/propfont.Po
+	-rm -f ./$(DEPDIR)/redblack.Po
+	-rm -f ./$(DEPDIR)/regex.Po
+	-rm -f ./$(DEPDIR)/regtools.Po
+	-rm -f ./$(DEPDIR)/remotefs.Po
+	-rm -f ./$(DEPDIR)/remotefspassword.Po
+	-rm -f ./$(DEPDIR)/scrollbar.Po
+	-rm -f ./$(DEPDIR)/sha256.Po
+	-rm -f ./$(DEPDIR)/soundfwd.Po
+	-rm -f ./$(DEPDIR)/stringtools.Po
+	-rm -f ./$(DEPDIR)/symauth.Po
+	-rm -f ./$(DEPDIR)/syntax.Po
+	-rm -f ./$(DEPDIR)/textwidget.Po
+	-rm -f ./$(DEPDIR)/unicodedialog.Po
+	-rm -f ./$(DEPDIR)/vertchar.Po
+	-rm -f ./$(DEPDIR)/widechar.Po
+	-rm -f ./$(DEPDIR)/wordproc.Po
+	-rm -f ./$(DEPDIR)/xdnd.Po
+	-rm -f ./$(DEPDIR)/xim.Po
+	-rm -f ./$(DEPDIR)/xwinfwd.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -820,7 +772,7 @@ install-dvi: install-dvi-am
 
 install-dvi-am:
 
-install-exec-am: install-libLTLIBRARIES
+install-exec-am:
 
 install-html: install-html-am
 
@@ -843,72 +795,73 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-		-rm -f ./$(DEPDIR)/ClientWin.Plo
-	-rm -f ./$(DEPDIR)/aafont.Plo
-	-rm -f ./$(DEPDIR)/aes.Plo
-	-rm -f ./$(DEPDIR)/bitmapbutton.Plo
-	-rm -f ./$(DEPDIR)/bookmark.Plo
-	-rm -f ./$(DEPDIR)/childhandler.Plo
-	-rm -f ./$(DEPDIR)/cmdlineopt.Plo
-	-rm -f ./$(DEPDIR)/compatable.Plo
-	-rm -f ./$(DEPDIR)/coolnext.Plo
-	-rm -f ./$(DEPDIR)/coolwidget.Plo
-	-rm -f ./$(DEPDIR)/cterminal.Plo
-	-rm -f ./$(DEPDIR)/cursor.Plo
-	-rm -f ./$(DEPDIR)/dialog.Plo
-	-rm -f ./$(DEPDIR)/dirtools.Plo
-	-rm -f ./$(DEPDIR)/disable.Plo
-	-rm -f ./$(DEPDIR)/edit.Plo
-	-rm -f ./$(DEPDIR)/edit_key_translator.Plo
-	-rm -f ./$(DEPDIR)/editcmd.Plo
-	-rm -f ./$(DEPDIR)/editdraw.Plo
-	-rm -f ./$(DEPDIR)/editmenu.Plo
-	-rm -f ./$(DEPDIR)/editwidget.Plo
-	-rm -f ./$(DEPDIR)/fieldedtextbox.Plo
-	-rm -f ./$(DEPDIR)/filebrowser.Plo
-	-rm -f ./$(DEPDIR)/filelist.Plo
-	-rm -f ./$(DEPDIR)/filetool.Plo
-	-rm -f ./$(DEPDIR)/fnmatch.Plo
-	-rm -f ./$(DEPDIR)/focus.Plo
-	-rm -f ./$(DEPDIR)/font.Plo
-	-rm -f ./$(DEPDIR)/hintpos.Plo
-	-rm -f ./$(DEPDIR)/initapp.Plo
-	-rm -f ./$(DEPDIR)/inputwidget.Plo
-	-rm -f ./$(DEPDIR)/inspect.Plo
-	-rm -f ./$(DEPDIR)/international.Plo
-	-rm -f ./$(DEPDIR)/ipv6scan.Plo
-	-rm -f ./$(DEPDIR)/loadfile.Plo
-	-rm -f ./$(DEPDIR)/look-cool.Plo
-	-rm -f ./$(DEPDIR)/look-gtk.Plo
-	-rm -f ./$(DEPDIR)/look-next.Plo
-	-rm -f ./$(DEPDIR)/mad.Plo
-	-rm -f ./$(DEPDIR)/mathfuncs.Plo
-	-rm -f ./$(DEPDIR)/menu.Plo
-	-rm -f ./$(DEPDIR)/mousemark.Plo
-	-rm -f ./$(DEPDIR)/pathdup.Plo
-	-rm -f ./$(DEPDIR)/pipe.Plo
-	-rm -f ./$(DEPDIR)/pixmap.Plo
-	-rm -f ./$(DEPDIR)/pool.Plo
-	-rm -f ./$(DEPDIR)/propfont.Plo
-	-rm -f ./$(DEPDIR)/redblack.Plo
-	-rm -f ./$(DEPDIR)/regex.Plo
-	-rm -f ./$(DEPDIR)/regtools.Plo
-	-rm -f ./$(DEPDIR)/remotefs.Plo
-	-rm -f ./$(DEPDIR)/remotefspassword.Plo
-	-rm -f ./$(DEPDIR)/scrollbar.Plo
-	-rm -f ./$(DEPDIR)/sha256.Plo
-	-rm -f ./$(DEPDIR)/soundfwd.Plo
-	-rm -f ./$(DEPDIR)/stringtools.Plo
-	-rm -f ./$(DEPDIR)/symauth.Plo
-	-rm -f ./$(DEPDIR)/syntax.Plo
-	-rm -f ./$(DEPDIR)/textwidget.Plo
-	-rm -f ./$(DEPDIR)/unicodedialog.Plo
-	-rm -f ./$(DEPDIR)/vertchar.Plo
-	-rm -f ./$(DEPDIR)/widechar.Plo
-	-rm -f ./$(DEPDIR)/wordproc.Plo
-	-rm -f ./$(DEPDIR)/xdnd.Plo
-	-rm -f ./$(DEPDIR)/xim.Plo
-	-rm -f ./$(DEPDIR)/xwinfwd.Plo
+		-rm -f ./$(DEPDIR)/ClientWin.Po
+	-rm -f ./$(DEPDIR)/aafont.Po
+	-rm -f ./$(DEPDIR)/aes.Po
+	-rm -f ./$(DEPDIR)/bitmapbutton.Po
+	-rm -f ./$(DEPDIR)/bookmark.Po
+	-rm -f ./$(DEPDIR)/childhandler.Po
+	-rm -f ./$(DEPDIR)/cmdlineopt.Po
+	-rm -f ./$(DEPDIR)/compatable.Po
+	-rm -f ./$(DEPDIR)/coolnext.Po
+	-rm -f ./$(DEPDIR)/coolwidget.Po
+	-rm -f ./$(DEPDIR)/cterminal.Po
+	-rm -f ./$(DEPDIR)/cursor.Po
+	-rm -f ./$(DEPDIR)/dialog.Po
+	-rm -f ./$(DEPDIR)/dirtools.Po
+	-rm -f ./$(DEPDIR)/disable.Po
+	-rm -f ./$(DEPDIR)/edit.Po
+	-rm -f ./$(DEPDIR)/edit_key_translator.Po
+	-rm -f ./$(DEPDIR)/editcmd.Po
+	-rm -f ./$(DEPDIR)/editdraw.Po
+	-rm -f ./$(DEPDIR)/editmenu.Po
+	-rm -f ./$(DEPDIR)/editwidget.Po
+	-rm -f ./$(DEPDIR)/fieldedtextbox.Po
+	-rm -f ./$(DEPDIR)/filebrowser.Po
+	-rm -f ./$(DEPDIR)/filelist.Po
+	-rm -f ./$(DEPDIR)/filetool.Po
+	-rm -f ./$(DEPDIR)/fnmatch.Po
+	-rm -f ./$(DEPDIR)/focus.Po
+	-rm -f ./$(DEPDIR)/font.Po
+	-rm -f ./$(DEPDIR)/hashtable.Po
+	-rm -f ./$(DEPDIR)/hintpos.Po
+	-rm -f ./$(DEPDIR)/initapp.Po
+	-rm -f ./$(DEPDIR)/inputwidget.Po
+	-rm -f ./$(DEPDIR)/inspect.Po
+	-rm -f ./$(DEPDIR)/international.Po
+	-rm -f ./$(DEPDIR)/ipv6scan.Po
+	-rm -f ./$(DEPDIR)/loadfile.Po
+	-rm -f ./$(DEPDIR)/look-cool.Po
+	-rm -f ./$(DEPDIR)/look-gtk.Po
+	-rm -f ./$(DEPDIR)/look-next.Po
+	-rm -f ./$(DEPDIR)/mad.Po
+	-rm -f ./$(DEPDIR)/mathfuncs.Po
+	-rm -f ./$(DEPDIR)/menu.Po
+	-rm -f ./$(DEPDIR)/mousemark.Po
+	-rm -f ./$(DEPDIR)/pathdup.Po
+	-rm -f ./$(DEPDIR)/pipe.Po
+	-rm -f ./$(DEPDIR)/pixmap.Po
+	-rm -f ./$(DEPDIR)/pool.Po
+	-rm -f ./$(DEPDIR)/propfont.Po
+	-rm -f ./$(DEPDIR)/redblack.Po
+	-rm -f ./$(DEPDIR)/regex.Po
+	-rm -f ./$(DEPDIR)/regtools.Po
+	-rm -f ./$(DEPDIR)/remotefs.Po
+	-rm -f ./$(DEPDIR)/remotefspassword.Po
+	-rm -f ./$(DEPDIR)/scrollbar.Po
+	-rm -f ./$(DEPDIR)/sha256.Po
+	-rm -f ./$(DEPDIR)/soundfwd.Po
+	-rm -f ./$(DEPDIR)/stringtools.Po
+	-rm -f ./$(DEPDIR)/symauth.Po
+	-rm -f ./$(DEPDIR)/syntax.Po
+	-rm -f ./$(DEPDIR)/textwidget.Po
+	-rm -f ./$(DEPDIR)/unicodedialog.Po
+	-rm -f ./$(DEPDIR)/vertchar.Po
+	-rm -f ./$(DEPDIR)/widechar.Po
+	-rm -f ./$(DEPDIR)/wordproc.Po
+	-rm -f ./$(DEPDIR)/xdnd.Po
+	-rm -f ./$(DEPDIR)/xim.Po
+	-rm -f ./$(DEPDIR)/xwinfwd.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -925,23 +878,23 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-libLTLIBRARIES
+uninstall-am:
 
 .MAKE: install-am install-strip
 
 .PHONY: CTAGS GTAGS TAGS all all-am am--depfiles check check-am clean \
-	clean-generic clean-libLTLIBRARIES clean-libtool cscopelist-am \
-	ctags ctags-am distclean distclean-compile distclean-generic \
-	distclean-libtool distclean-tags distdir dvi dvi-am html \
-	html-am info info-am install install-am install-data \
-	install-data-am install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-libLTLIBRARIES install-man install-pdf \
+	clean-generic clean-libtool clean-noinstLIBRARIES \
+	cscopelist-am ctags ctags-am distclean distclean-compile \
+	distclean-generic distclean-libtool distclean-tags distdir dvi \
+	dvi-am html html-am info info-am install install-am \
+	install-data install-data-am install-dvi install-dvi-am \
+	install-exec install-exec-am install-html install-html-am \
+	install-info install-info-am install-man install-pdf \
 	install-pdf-am install-ps install-ps-am install-strip \
 	installcheck installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags tags-am uninstall uninstall-am uninstall-libLTLIBRARIES
+	tags tags-am uninstall uninstall-am
 
 .PRECIOUS: Makefile
 

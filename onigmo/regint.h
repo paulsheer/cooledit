@@ -153,12 +153,21 @@
 /* #define USE_COMBINATION_EXPLOSION_CHECK */     /* (X*)* */
 
 
-#ifndef xmalloc
-# define xmalloc     malloc
-# define xrealloc    realloc
-# define xcalloc     calloc
-# define xfree       free
-#endif
+void *dbg_malloc(long n);
+void *dbg_realloc(void *v, long n);
+void dbg_free(void *v);
+
+/* Paul Sheer. This Onigma library has valgrind errors reading/writing past the end of the block */
+#undef xmalloc
+#define xmalloc     dbg_malloc
+#undef xrealloc
+#define xrealloc    dbg_realloc
+#undef xcalloc
+#define xcalloc     callocerror
+#undef calloc
+#define calloc      callocerror
+#undef xfree
+#define xfree       dbg_free
 
 #ifdef RUBY
 

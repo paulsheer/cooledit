@@ -5,6 +5,7 @@ CFLAGS = -Wall -O0 -g3 -ggdb  -I../.. -I.. -DUNIT_TEST
 
 SRC     = syntax.c stringtools.c regex.c
 OBJ     = $(SRC:.c=.o)
+LINKLIB = ../../onigmo/libonigmo.a
 
 
 all: ../syntax-top.c test
@@ -28,10 +29,10 @@ regex.o: regex.c
 	gcc $(CFLAGS) -c $<
 
 syntax-test: $(OBJ)
-	gcc -no-pie -o syntax-test $(OBJ)
+	gcc -no-pie -o syntax-test $(OBJ) $(LINKLIB)
 
 syntax-test-colors: syntax-colors.o $(OBJ)
-	gcc -no-pie -o syntax-test-colors $(OBJ)
+	gcc -no-pie -o syntax-test-colors $(OBJ) $(LINKLIB)
 
 clean:
 	rm -f *.o syntax-test

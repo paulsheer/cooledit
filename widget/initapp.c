@@ -65,6 +65,7 @@
 #include "aafont.h"
 #include "childhandler.h"
 #include "remotefs.h"
+#include "regex.h"
 
 #include <signal.h>
 #include <sys/types.h>
@@ -1529,6 +1530,8 @@ void get_dummy_gc (void);
 void CInitialise (CInitData * config_start)
 {E_
     get_endian ();
+
+    onig_set_gnu_mode ();
 
 /*test_xx_strchr ();
 */

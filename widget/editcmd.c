@@ -1711,6 +1711,10 @@ struct sargs_s sargs_;
 		     sargs[argord[8]], sargs[argord[9]], sargs[argord[10]], sargs[argord[11]], \
 		     sargs[argord[12]], sargs[argord[13]], sargs[argord[14]], sargs[argord[15]]
 
+int edit_get_max_numrepl (void)
+{
+    return NUM_REPL_ARGS;
+}
 
 /* This function is a modification of mc-3.2.10/src/view.c:regexp_view_search() */
 /* returns -3 on error in pattern, -1 on not found, found_len = 0 if either */

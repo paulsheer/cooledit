@@ -1531,7 +1531,7 @@ void CInitialise (CInitData * config_start)
 {E_
     get_endian ();
 
-    onig_set_gnu_mode ();
+    onig_set_cooledit_mode ();
 
 /*test_xx_strchr ();
 */

@@ -117,7 +117,7 @@ am_libonigmo_a_OBJECTS = regcomp.$(OBJEXT) regenc.$(OBJEXT) \
 	regversion.$(OBJEXT) st.$(OBJEXT) ascii.$(OBJEXT) \
 	unicode.$(OBJEXT) us_ascii.$(OBJEXT) utf_8.$(OBJEXT) \
 	utf_16be.$(OBJEXT) utf_16le.$(OBJEXT) utf_32be.$(OBJEXT) \
-	utf_32le.$(OBJEXT)
+	utf_32le.$(OBJEXT) mem.$(OBJEXT)
 libonigmo_a_OBJECTS = $(am_libonigmo_a_OBJECTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -134,17 +134,17 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/ascii.Po ./$(DEPDIR)/regcomp.Po \
-	./$(DEPDIR)/regenc.Po ./$(DEPDIR)/regerror.Po \
-	./$(DEPDIR)/regexec.Po ./$(DEPDIR)/regext.Po \
-	./$(DEPDIR)/reggnu.Po ./$(DEPDIR)/regparse.Po \
-	./$(DEPDIR)/regposerr.Po ./$(DEPDIR)/regposix.Po \
-	./$(DEPDIR)/regsyntax.Po ./$(DEPDIR)/regtrav.Po \
-	./$(DEPDIR)/regversion.Po ./$(DEPDIR)/st.Po \
-	./$(DEPDIR)/unicode.Po ./$(DEPDIR)/us_ascii.Po \
-	./$(DEPDIR)/utf_16be.Po ./$(DEPDIR)/utf_16le.Po \
-	./$(DEPDIR)/utf_32be.Po ./$(DEPDIR)/utf_32le.Po \
-	./$(DEPDIR)/utf_8.Po
+am__depfiles_remade = ./$(DEPDIR)/ascii.Po ./$(DEPDIR)/mem.Po \
+	./$(DEPDIR)/regcomp.Po ./$(DEPDIR)/regenc.Po \
+	./$(DEPDIR)/regerror.Po ./$(DEPDIR)/regexec.Po \
+	./$(DEPDIR)/regext.Po ./$(DEPDIR)/reggnu.Po \
+	./$(DEPDIR)/regparse.Po ./$(DEPDIR)/regposerr.Po \
+	./$(DEPDIR)/regposix.Po ./$(DEPDIR)/regsyntax.Po \
+	./$(DEPDIR)/regtrav.Po ./$(DEPDIR)/regversion.Po \
+	./$(DEPDIR)/st.Po ./$(DEPDIR)/unicode.Po \
+	./$(DEPDIR)/us_ascii.Po ./$(DEPDIR)/utf_16be.Po \
+	./$(DEPDIR)/utf_16le.Po ./$(DEPDIR)/utf_32be.Po \
+	./$(DEPDIR)/utf_32le.Po ./$(DEPDIR)/utf_8.Po
 am__mv = mv -f
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -353,7 +353,8 @@ libonigmo_a_SOURCES = regcomp.c regenc.c regerror.c regexec.c regext.c reggnu.c 
 	regparse.c regposerr.c regposix.c regsyntax.c regtrav.c regversion.c st.c \
 	onigmo.h onigmognu.h onigmoposix.h regenc.h regint.h regparse.h st.h \
 	enc/ascii.c enc/unicode.c enc/us_ascii.c enc/utf_8.c \
-	enc/utf_16be.c enc/utf_16le.c enc/utf_32be.c enc/utf_32le.c
+	enc/utf_16be.c enc/utf_16le.c enc/utf_32be.c enc/utf_32le.c \
+	mem.c
 
 all: all-am
 
@@ -404,6 +405,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ascii.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mem.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/regcomp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/regenc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/regerror.Po@am__quote@ # am--include-marker
@@ -696,6 +698,7 @@ clean-am: clean-generic clean-libtool clean-noinstLIBRARIES \
 
 distclean: distclean-am
 		-rm -f ./$(DEPDIR)/ascii.Po
+	-rm -f ./$(DEPDIR)/mem.Po
 	-rm -f ./$(DEPDIR)/regcomp.Po
 	-rm -f ./$(DEPDIR)/regenc.Po
 	-rm -f ./$(DEPDIR)/regerror.Po
@@ -762,6 +765,7 @@ installcheck-am:
 
 maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/ascii.Po
+	-rm -f ./$(DEPDIR)/mem.Po
 	-rm -f ./$(DEPDIR)/regcomp.Po
 	-rm -f ./$(DEPDIR)/regenc.Po
 	-rm -f ./$(DEPDIR)/regerror.Po

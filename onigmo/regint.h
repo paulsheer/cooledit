@@ -138,11 +138,18 @@
 /* #define USE_COMBINATION_EXPLOSION_CHECK */     /* (X*)* */
 
 
+void *dbg_malloc(long n);
+void *dbg_realloc(void *v, long n);
+void dbg_free(void *v);
+
 #ifndef xmalloc
-# define xmalloc     malloc
-# define xrealloc    realloc
-# define xcalloc     calloc
-# define xfree       free
+/* Paul Sheer. This library has valgrind errors writing past the end of the block */
+# define xmalloc     dbg_malloc
+# define xrealloc    dbg_realloc
+# undef xcalloc
+# undef calloc
+# define calloc      callocerror
+# define xfree       dbg_free
 #endif
 
 #ifdef RUBY

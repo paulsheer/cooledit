@@ -3,8 +3,9 @@
 
 #define size_t  long
 
-#define FUDGE   32
+#define FUDGE   64
 
+/* Paul Sheer. This Onigma library has valgrind errors reading/writing past the end of the block */
 void *dbg_malloc (size_t n)
 {
     size_t *p, l;
@@ -18,6 +19,8 @@ void *dbg_malloc (size_t n)
 void *dbg_realloc (void *v, size_t n)
 {
     size_t *p, l_old, l_new;
+    if (!v)
+        return dbg_malloc (n);
     p = (size_t *) v;
     p--;
     l_old = *p;
@@ -25,12 +28,15 @@ void *dbg_realloc (void *v, size_t n)
     p = realloc(p, l_new);
     if (l_new > l_old)
         memset ((char *) p + l_old, '\0', l_new - l_old);
+    *p = l_new;
     return p + 1;
 }
 
 void dbg_free (void *v)
 {
     size_t *p;
+    if (!v)
+        return;
     p = (size_t *) v;
     p--;
     free (p);

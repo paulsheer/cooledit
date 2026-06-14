@@ -69,6 +69,7 @@ extern "C" {
 RUBY_SYMBOL_EXPORT_BEGIN
 
 #include <stddef.h>		/* for size_t */
+#include <stdint.h>		/* for uint64_t */
 
 /* PART: character encoding */
 
@@ -203,16 +204,11 @@ ONIG_EXTERN const OnigEncodingType OnigEncodingUTF_16BE;
 ONIG_EXTERN const OnigEncodingType OnigEncodingUTF_16LE;
 ONIG_EXTERN const OnigEncodingType OnigEncodingUTF_32BE;
 ONIG_EXTERN const OnigEncodingType OnigEncodingUTF_32LE;
-#if 0 /* Paul Sheer */
 ONIG_EXTERN const OnigEncodingType OnigEncodingEUC_JP;
-#endif
 ONIG_EXTERN const OnigEncodingType OnigEncodingEUC_TW;
 ONIG_EXTERN const OnigEncodingType OnigEncodingEUC_KR;
 ONIG_EXTERN const OnigEncodingType OnigEncodingEUC_CN;
-
-#if 0 /* Paul Sheer */
 ONIG_EXTERN const OnigEncodingType OnigEncodingShift_JIS;
-#endif
 ONIG_EXTERN const OnigEncodingType OnigEncodingWindows_31J;
 /* ONIG_EXTERN const OnigEncodingType OnigEncodingKOI8; */
 ONIG_EXTERN const OnigEncodingType OnigEncodingKOI8_R;
@@ -361,9 +357,9 @@ int onigenc_ascii_only_case_map(OnigCaseFoldType* flagP, const OnigUChar** pp, c
 #define ONIGENC_PRECISE_MBC_ENC_LEN(enc,p,e)   (enc)->precise_mbc_enc_len(p,e,enc)
 
 ONIG_EXTERN
-int onigenc_mbclen_approximate(const OnigUChar* p,const OnigUChar* e, const struct OnigEncodingTypeST* enc);
+int onigenc_mbclen(const OnigUChar* p,const OnigUChar* e, const struct OnigEncodingTypeST* enc);
 
-#define ONIGENC_MBC_ENC_LEN(enc,p,e)           onigenc_mbclen_approximate(p,e,enc)
+#define ONIGENC_MBC_ENC_LEN(enc,p,e)           onigenc_mbclen(p,e,enc)
 #define ONIGENC_MBC_MAXLEN(enc)               ((enc)->max_enc_len)
 #define ONIGENC_MBC_MAXLEN_DIST(enc)           ONIGENC_MBC_MAXLEN(enc)
 #define ONIGENC_MBC_MINLEN(enc)               ((enc)->min_enc_len)
@@ -641,6 +637,7 @@ ONIG_EXTERN const OnigSyntaxType*   OnigDefaultSyntax;
 #define ONIGERR_PARSE_DEPTH_LIMIT_OVER                        -16
 #define ONIGERR_DEFAULT_ENCODING_IS_NOT_SET                   -21
 #define ONIGERR_SPECIFIED_ENCODING_CANT_CONVERT_TO_WIDE_CHAR  -22
+#define ONIGERR_TIMEOUT                                       -23
 /* general error */
 #define ONIGERR_INVALID_ARGUMENT                              -30
 /* syntax error */
@@ -691,6 +688,8 @@ ONIG_EXTERN const OnigSyntaxType*   OnigDefaultSyntax;
 #define ONIGERR_NEVER_ENDING_RECURSION                       -221
 #define ONIGERR_GROUP_NUMBER_OVER_FOR_CAPTURE_HISTORY        -222
 #define ONIGERR_INVALID_CHAR_PROPERTY_NAME                   -223
+#define ONIGERR_TOO_MANY_RANGE_REPEAT                        -224
+#define ONIGERR_TOO_MANY_NULL_CHECK                          -225
 #define ONIGERR_INVALID_CODE_POINT_VALUE                     -400
 #define ONIGERR_INVALID_WIDE_CHAR_VALUE                      -400
 #define ONIGERR_TOO_BIG_WIDE_CHAR_VALUE                      -401
@@ -798,6 +797,13 @@ typedef struct re_pattern_buffer {
   OnigDistance   dmin;                      /* min-distance of exact or map */
   OnigDistance   dmax;                      /* max-distance of exact or map */
 
+  /* rb_hrtime_t from hrtime.h */
+#ifdef MY_RUBY_BUILD_MAY_TIME_TRAVEL
+  int128_t timelimit;
+#else
+  uint64_t timelimit;
+#endif
+
   /* regex_t link chain */
   struct re_pattern_buffer* chain;  /* escape compile-conflict */
 } OnigRegexType;
@@ -842,6 +848,8 @@ void onig_free(OnigRegex);
 ONIG_EXTERN
 void onig_free_body(OnigRegex);
 ONIG_EXTERN
+int onig_reg_copy(OnigRegex* reg, OnigRegex orig_reg);
+ONIG_EXTERN
 OnigPosition onig_scan(OnigRegex reg, const OnigUChar* str, const OnigUChar* end, OnigRegion* region, OnigOptionType option, int (*scan_callback)(OnigPosition, OnigPosition, OnigRegion*, void*), void* callback_arg);
 ONIG_EXTERN
 OnigPosition onig_search(OnigRegex, const OnigUChar* str, const OnigUChar* end, const OnigUChar* start, const OnigUChar* range, OnigRegion* region, OnigOptionType option);
@@ -849,6 +857,8 @@ ONIG_EXTERN
 OnigPosition onig_search_gpos(OnigRegex, const OnigUChar* str, const OnigUChar* end, const OnigUChar* global_pos, const OnigUChar* start, const OnigUChar* range, OnigRegion* region, OnigOptionType option);
 ONIG_EXTERN
 OnigPosition onig_match(OnigRegex, const OnigUChar* str, const OnigUChar* end, const OnigUChar* at, OnigRegion* region, OnigOptionType option);
+ONIG_EXTERN
+int onig_check_linear_time(OnigRegex reg);
 ONIG_EXTERN
 OnigRegion* onig_region_new(void);
 ONIG_EXTERN

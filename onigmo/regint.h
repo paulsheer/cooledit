@@ -35,11 +35,15 @@
 /* #define ONIG_DEBUG_COMPILE */
 /* #define ONIG_DEBUG_SEARCH */
 /* #define ONIG_DEBUG_MATCH */
+/* #define ONIG_DEBUG_MATCH_CACHE */
 /* #define ONIG_DEBUG_MEMLEAK */
 /* #define ONIG_DONT_OPTIMIZE */
 
 /* for byte-code statistical data. */
 /* #define ONIG_DEBUG_STATISTICS */
+
+/* enable the match optimization by using a cache. */
+#define USE_MATCH_CACHE
 
 #if defined(ONIG_DEBUG_PARSE_TREE) || defined(ONIG_DEBUG_MATCH) || \
     defined(ONIG_DEBUG_SEARCH) || defined(ONIG_DEBUG_COMPILE) || \
@@ -49,10 +53,11 @@
 # endif
 #endif
 
+/* __POWERPC__ added to accommodate Darwin case. */
 #ifndef UNALIGNED_WORD_ACCESS
 # if defined(__i386) || defined(__i386__) || defined(_M_IX86) || \
      defined(__x86_64) || defined(__x86_64__) || defined(_M_AMD64) || \
-     defined(__powerpc64__) || \
+     defined(__powerpc64__) || defined(__POWERPC__) || defined(__aarch64__) || \
      defined(__mc68020__)
 #  define UNALIGNED_WORD_ACCESS 1
 # else
@@ -119,6 +124,16 @@
 # endif
 #endif /* RUBY */
 
+#ifndef RB_GNUC_EXTENSION
+# ifdef __GNUC__
+#  define RB_GNUC_EXTENSION        __extension__
+#  define RB_GNUC_EXTENSION_BLOCK(x) __extension__ ({ x; })
+# else
+#  define RB_GNUC_EXTENSION
+#  define RB_GNUC_EXTENSION_BLOCK(x) (x)
+# endif
+#endif
+
 #include <stdarg.h>
 
 /* */
@@ -138,23 +153,25 @@
 /* #define USE_COMBINATION_EXPLOSION_CHECK */     /* (X*)* */
 
 
-void *dbg_malloc(long n);
-void *dbg_realloc(void *v, long n);
-void dbg_free(void *v);
-
 #ifndef xmalloc
-/* Paul Sheer. This library has valgrind errors writing past the end of the block */
-# define xmalloc     dbg_malloc
-# define xrealloc    dbg_realloc
-# undef xcalloc
-# undef calloc
-# define calloc      callocerror
-# define xfree       dbg_free
+# define xmalloc     malloc
+# define xrealloc    realloc
+# define xcalloc     calloc
+# define xfree       free
 #endif
 
 #ifdef RUBY
 
-# define CHECK_INTERRUPT_IN_MATCH_AT rb_thread_check_ints()
+# define CHECK_INTERRUPT_IN_MATCH_AT do { \
+  msa->counter++; \
+  if (msa->counter >= 128) { \
+    msa->counter = 0; \
+    if (rb_reg_timeout_p(reg, &msa->end_time)) { \
+      goto timeout; \
+    } \
+    rb_thread_check_ints(); \
+  } \
+} while(0)
 # define onig_st_init_table                  st_init_table
 # define onig_st_init_table_with_size        st_init_table_with_size
 # define onig_st_init_numtable               st_init_numtable
@@ -199,14 +216,6 @@ void dbg_free(void *v);
 /* */
 # define onig_st_is_member              st_is_member
 
-# ifdef __GNUC__
-#  define RB_GNUC_EXTENSION __extension__
-#  define RB_GNUC_EXTENSION_BLOCK(x) __extension__ ({ x; })
-# else
-#  define RB_GNUC_EXTENSION
-#  define RB_GNUC_EXTENSION_BLOCK(x) (x)
-# endif
-
 #endif /* RUBY */
 
 #define STATE_CHECK_STRING_THRESHOLD_LEN             7
@@ -216,9 +225,7 @@ void dbg_free(void *v);
 #define xmemcpy     memcpy
 #define xmemmove    memmove
 
-#if ((defined(RUBY_MSVCRT_VERSION) && RUBY_MSVCRT_VERSION >= 90) \
-        || (!defined(RUBY_MSVCRT_VERSION) && defined(_WIN32))) \
-    && !defined(__GNUC__)
+#if defined(_WIN32) && !defined(__GNUC__)
 # define xalloca     _alloca
 # define xvsnprintf(buf,size,fmt,args)  _vsnprintf_s(buf,size,_TRUNCATE,fmt,args)
 # define xsnprintf   sprintf_s
@@ -267,19 +274,6 @@ void dbg_free(void *v);
 # include <stdio.h>
 #endif
 
-#ifdef _WIN32
-# if defined(_MSC_VER) && (_MSC_VER < 1300)
-#  ifndef _INTPTR_T_DEFINED
-#   define _INTPTR_T_DEFINED
-typedef int intptr_t;
-#  endif
-#  ifndef _UINTPTR_T_DEFINED
-#   define _UINTPTR_T_DEFINED
-typedef unsigned int uintptr_t;
-#  endif
-# endif
-#endif /* _WIN32 */
-
 #ifndef PRIdPTR
 # ifdef _WIN64
 #  define PRIdPTR	"I64d"
@@ -317,9 +311,13 @@ RUBY_SYMBOL_EXPORT_BEGIN
 
 #define ONIG_LAST_CODE_POINT    (~((OnigCodePoint )0))
 
+#define PLATFORM_GET_INC_ARGUMENTS_ASSERT(val, type) \
+  ((void)sizeof(char[2 * (sizeof(val) == sizeof(type)) - 1]))
+
 #ifdef PLATFORM_UNALIGNED_WORD_ACCESS
 
 # define PLATFORM_GET_INC(val,p,type) do{\
+  PLATFORM_GET_INC_ARGUMENTS_ASSERT(val, type);\
   val  = *(type* )p;\
   (p) += sizeof(type);\
 } while(0)
@@ -327,7 +325,10 @@ RUBY_SYMBOL_EXPORT_BEGIN
 #else
 
 # define PLATFORM_GET_INC(val,p,type) do{\
-  xmemcpy(&val, (p), sizeof(type));\
+  PLATFORM_GET_INC_ARGUMENTS_ASSERT(val, type);\
+  type platform_get_value;\
+  xmemcpy(&platform_get_value, (p), sizeof(type));\
+  val = platform_get_value;\
   (p) += sizeof(type);\
 } while(0)
 
@@ -385,6 +386,7 @@ typedef unsigned int  BitStatusType;
 
 
 #define INT_MAX_LIMIT           ((1UL << (SIZEOF_INT * 8 - 1)) - 1)
+#define LONG_MAX_LIMIT           ((1UL << (SIZEOF_LONG * 8 - 1)) - 1)
 
 #define DIGITVAL(code)    ((code) - '0')
 #define ODIGITVAL(code)   DIGITVAL(code)
@@ -826,6 +828,7 @@ typedef intptr_t OnigStackIndex;
 
 typedef struct _OnigStackType {
   unsigned int type;
+  OnigStackIndex null_check;
   union {
     struct {
       UChar *pcode;      /* byte code position */
@@ -866,8 +869,26 @@ typedef struct _OnigStackType {
       UChar *abs_pstr;        /* absent start position */
       const UChar *end_pstr;  /* end position */
     } absent_pos;
+#ifdef USE_MATCH_CACHE
+    struct {
+      long    index;      /* index of the match cache buffer */
+      uint8_t mask;       /* bit-mask for the match cache buffer */
+    } match_cache_point;
+#endif
   } u;
 } OnigStackType;
+
+#ifdef USE_MATCH_CACHE
+typedef struct {
+  UChar *addr;
+  long cache_point;
+  int outer_repeat_mem;
+  long num_cache_points_at_outer_repeat;
+  long num_cache_points_in_outer_repeat;
+  int lookaround_nesting;
+  UChar *match_addr;
+} OnigCacheOpcode;
+#endif
 
 typedef struct {
   void* stack_p;
@@ -884,8 +905,30 @@ typedef struct {
   void* state_check_buff;
   int   state_check_buff_size;
 #endif
+  int counter;
+  /* rb_hrtime_t from hrtime.h */
+#ifdef MY_RUBY_BUILD_MAY_TIME_TRAVEL
+  int128_t end_time;
+#else
+  uint64_t end_time;
+#endif
+#ifdef USE_MATCH_CACHE
+  int              match_cache_status;
+  long             num_fails;
+  long             num_cache_opcodes;
+  OnigCacheOpcode* cache_opcodes;
+  long             num_cache_points;
+  uint8_t*         match_cache_buf;
+#endif
 } OnigMatchArg;
 
+#define NUM_CACHE_OPCODES_UNINIT      1
+#define NUM_CACHE_OPCODES_IMPOSSIBLE -1
+
+#define MATCH_CACHE_STATUS_UNINIT    1
+#define MATCH_CACHE_STATUS_INIT      2
+#define MATCH_CACHE_STATUS_DISABLED -1
+#define MATCH_CACHE_STATUS_ENABLED   0
 
 #define IS_CODE_SB_WORD(enc,code) \
   (ONIGENC_IS_CODE_ASCII(code) && ONIGENC_IS_CODE_WORD(enc,code))
@@ -917,9 +960,13 @@ extern void onig_print_statistics(FILE* f);
 # endif
 #endif
 
+#ifndef PRINTF_ARGS
+#define PRINTF_ARGS(func, fmt, vargs) func
+#endif
+
 extern UChar* onig_error_code_to_format(OnigPosition code);
-extern void onig_vsnprintf_with_pattern(UChar buf[], int bufsize, OnigEncoding enc, UChar* pat, UChar* pat_end, const UChar *fmt, va_list args);
-extern void onig_snprintf_with_pattern(UChar buf[], int bufsize, OnigEncoding enc, UChar* pat, UChar* pat_end, const UChar *fmt, ...);
+PRINTF_ARGS(extern void onig_vsnprintf_with_pattern(UChar buf[], int bufsize, OnigEncoding enc, UChar* pat, UChar* pat_end, const char *fmt, va_list args), 6, 0);
+PRINTF_ARGS(extern void onig_snprintf_with_pattern(UChar buf[], int bufsize, OnigEncoding enc, UChar* pat, UChar* pat_end, const char *fmt, ...), 6, 7);
 extern int  onig_bbuf_init(BBuf* buf, OnigDistance size);
 extern int  onig_compile(regex_t* reg, const UChar* pattern, const UChar* pattern_end, OnigErrorInfo* einfo);
 #ifdef RUBY
@@ -945,6 +992,7 @@ extern int onig_st_insert_strend(hash_table_type* table, const UChar* str_key, c
 #ifdef RUBY
 extern size_t onig_memsize(const regex_t *reg);
 extern size_t onig_region_memsize(const struct re_registers *regs);
+bool rb_reg_timeout_p(regex_t *reg, void *end_time);
 #endif
 
 RUBY_SYMBOL_EXPORT_END

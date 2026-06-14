@@ -179,6 +179,10 @@ onig_error_code_to_format(OnigPosition code)
 #endif
   case ONIGERR_INVALID_CHAR_PROPERTY_NAME:
     p = "invalid character property name {%n}"; break;
+  case ONIGERR_TOO_MANY_RANGE_REPEAT:
+    p = "too many range repeat"; break;
+  case ONIGERR_TOO_MANY_NULL_CHECK:
+    p = "too many null check"; break;
   case ONIGERR_TOO_MANY_CAPTURE_GROUPS:
     p = "too many capture groups are specified"; break;
   case ONIGERR_INVALID_CODE_POINT_VALUE:
@@ -208,7 +212,7 @@ static void sprint_byte_with_x(char* s, unsigned int v)
 }
 
 static int to_ascii(OnigEncoding enc, UChar *s, UChar *end,
-		    UChar buf[], int buf_size, int *is_over)
+                    UChar buf[], int buf_size, int *is_over)
 {
   int len;
   UChar *p;
@@ -220,24 +224,24 @@ static int to_ascii(OnigEncoding enc, UChar *s, UChar *end,
     while (p < end) {
       code = ONIGENC_MBC_TO_CODE(enc, p, end);
       if (code >= 0x80) {
-	if (code > 0xffff && len + 10 <= buf_size) {
-	  sprint_byte_with_x((char*)(&(buf[len])), (unsigned int)(code >> 24));
-	  sprint_byte((char*)(&(buf[len+4])),      (unsigned int)(code >> 16));
-	  sprint_byte((char*)(&(buf[len+6])),      (unsigned int)(code >>  8));
-	  sprint_byte((char*)(&(buf[len+8])),      (unsigned int)code);
-	  len += 10;
-	}
-	else if (len + 6 <= buf_size) {
-	  sprint_byte_with_x((char*)(&(buf[len])), (unsigned int)(code >> 8));
-	  sprint_byte((char*)(&(buf[len+4])),      (unsigned int)code);
-	  len += 6;
-	}
-	else {
-	  break;
-	}
+        if (code > 0xffff && len + 10 <= buf_size) {
+          sprint_byte_with_x((char*)(&(buf[len])), (unsigned int)(code >> 24));
+          sprint_byte((char*)(&(buf[len+4])),      (unsigned int)(code >> 16));
+          sprint_byte((char*)(&(buf[len+6])),      (unsigned int)(code >>  8));
+          sprint_byte((char*)(&(buf[len+8])),      (unsigned int)code);
+          len += 10;
+        }
+        else if (len + 6 <= buf_size) {
+          sprint_byte_with_x((char*)(&(buf[len])), (unsigned int)(code >> 8));
+          sprint_byte((char*)(&(buf[len+4])),      (unsigned int)code);
+          len += 6;
+        }
+        else {
+          break;
+        }
       }
       else {
-	buf[len++] = (UChar )code;
+        buf[len++] = (UChar )code;
       }
 
       p += enclen(enc, p, end);
@@ -281,27 +285,27 @@ onig_error_code_to_str(UChar* s, OnigPosition code, ...)
   case ONIGERR_INVALID_CHAR_PROPERTY_NAME:
     einfo = va_arg(vargs, OnigErrorInfo*);
     len = to_ascii(einfo->enc, einfo->par, einfo->par_end,
-		   parbuf, MAX_ERROR_PAR_LEN - 3, &is_over);
+                   parbuf, MAX_ERROR_PAR_LEN - 3, &is_over);
     q = onig_error_code_to_format(code);
     p = s;
     while (*q != '\0') {
       if (*q == '%') {
-	q++;
-	if (*q == 'n') { /* '%n': name */
-	  xmemcpy(p, parbuf, len);
-	  p += len;
-	  if (is_over != 0) {
-	    xmemcpy(p, "...", 3);
-	    p += 3;
-	  }
-	  q++;
-	}
-	else
-	  goto normal_char;
+        q++;
+        if (*q == 'n') { /* '%n': name */
+          xmemcpy(p, parbuf, len);
+          p += len;
+          if (is_over != 0) {
+            xmemcpy(p, "...", 3);
+            p += 3;
+          }
+          q++;
+        }
+        else
+          goto normal_char;
       }
       else {
       normal_char:
-	*p++ = *q++;
+        *p++ = *q++;
       }
     }
     *p = '\0';
@@ -313,7 +317,8 @@ onig_error_code_to_str(UChar* s, OnigPosition code, ...)
     if (q) {
       len = onigenc_str_bytelen_null(ONIG_ENCODING_ASCII, q);
       xmemcpy(s, q, len);
-    } else {
+    }
+    else {
       len = 0;
     }
     s[len] = '\0';
@@ -326,7 +331,7 @@ onig_error_code_to_str(UChar* s, OnigPosition code, ...)
 
 void
 onig_vsnprintf_with_pattern(UChar buf[], int bufsize, OnigEncoding enc,
-                           UChar* pat, UChar* pat_end, const UChar *fmt, va_list args)
+                           UChar* pat, UChar* pat_end, const char *fmt, va_list args)
 {
   size_t need;
   int n, len;
@@ -361,24 +366,24 @@ onig_vsnprintf_with_pattern(UChar buf[], int bufsize, OnigEncoding enc,
         }
       }
       else if (*p == '\\') {
-	*s++ = *p++;
-	len = enclen(enc, p, pat_end);
-	while (len-- > 0) *s++ = *p++;
+        *s++ = *p++;
+        len = enclen(enc, p, pat_end);
+        while (len-- > 0) *s++ = *p++;
       }
       else if (*p == '/') {
-	*s++ = (unsigned char )'\\';
-	*s++ = *p++;
+        *s++ = (unsigned char )'\\';
+        *s++ = *p++;
       }
       else if (!ONIGENC_IS_CODE_PRINT(enc, *p) &&
-	       (!ONIGENC_IS_CODE_SPACE(enc, *p) ||
+               (!ONIGENC_IS_CODE_SPACE(enc, *p) ||
                 ONIGENC_IS_CODE_CNTRL(enc, *p))) {
-	sprint_byte_with_x((char* )bs, (unsigned int )(*p++));
-	len = onigenc_str_bytelen_null(ONIG_ENCODING_ASCII, bs);
+        sprint_byte_with_x((char* )bs, (unsigned int )(*p++));
+        len = onigenc_str_bytelen_null(ONIG_ENCODING_ASCII, bs);
         bp = bs;
-	while (len-- > 0) *s++ = *bp++;
+        while (len-- > 0) *s++ = *bp++;
       }
       else {
-	*s++ = *p++;
+        *s++ = *p++;
       }
     }
 
@@ -390,12 +395,12 @@ onig_vsnprintf_with_pattern(UChar buf[], int bufsize, OnigEncoding enc,
 #if 0 /* unused */
 void
 onig_snprintf_with_pattern(UChar buf[], int bufsize, OnigEncoding enc,
-                           UChar* pat, UChar* pat_end, const UChar *fmt, ...)
+                           UChar* pat, UChar* pat_end, const char *fmt, ...)
 {
   va_list args;
   va_start(args, fmt);
   onig_vsnprintf_with_pattern(buf, bufsize, enc,
-	  pat, pat_end, fmt, args);
+          pat, pat_end, fmt, args);
   va_end(args);
 }
 #endif

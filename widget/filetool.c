@@ -32,6 +32,7 @@ extern char *option_backup_ext;
 static void parse_remote_path (const char *arg, char *ip, int ip_len, char *path, int path_len)
 {
     const char *colon;
+    int len;
     ip[0] = '\0';
     colon = strchr (arg, ':');
     if (colon) {
@@ -45,6 +46,10 @@ static void parse_remote_path (const char *arg, char *ip, int ip_len, char *path
         strncpy (path, arg, path_len - 1);
         path[path_len - 1] = '\0';
     }
+    /* strip trailing slashes (Windows APIs reject them) */
+    len = strlen (path);
+    while (len > 1 && path[len - 1] == '/')
+        path[--len] = '\0';
 }
 
 static int path_stat (const char *arg, struct portable_stat *st, int *is_dir, int *exists, char *errmsg)
@@ -70,6 +75,15 @@ static int path_stat (const char *arg, struct portable_stat *st, int *is_dir, in
     *exists = 1;
     *is_dir = S_ISDIR (st->ustat.st_mode);
     return 0;
+}
+
+static int path_readlink (const char *arg, char *target, int target_len, char *errmsg)
+{
+    char ip[256], path[MAX_PATH_LEN];
+    struct remotefs *rfs;
+    parse_remote_path (arg, ip, sizeof (ip), path, sizeof (path));
+    rfs = ip[0] ? remotefs_lookup (ip, NULL) : the_remotefs_local;
+    return (*rfs->remotefs_readlink) (rfs, path, target, target_len, errmsg);
 }
 
 static const char *my_basename (const char *path)
@@ -385,8 +399,20 @@ static int copy_dir_local_to_remote (const char *local_dir, const char *host, co
         } else if (S_ISREG (list[i].pstat.ustat.st_mode)) {
             if (filetool_copy_local_to_remote (sub_local, host, sub_remote))
                 return 1;
+        } else if (S_ISLNK (list[i].pstat.ustat.st_mode)) {
+            char link_target[MAX_PATH_LEN];
+            ssize_t nlink;
+            nlink = readlink (sub_local, link_target, sizeof (link_target) - 1);
+            if (nlink < 0) {
+                fprintf (stderr, "Error reading symlink %s: %s\n", sub_local, strerror (errno));
+                return 1;
+            }
+            link_target[nlink] = '\0';
+            if ((*rfs->remotefs_symlink) (rfs, link_target, sub_remote, errmsg)) {
+                fprintf (stderr, "Error creating remote symlink %s: %s\n", sub_remote, errmsg);
+                return 1;
+            }
         }
-        /* symlinks and other special files are skipped */
     }
 
     free (list);
@@ -429,8 +455,17 @@ static int copy_dir_remote_to_local (const char *host, const char *remote_dir, c
         } else if (S_ISREG (list[i].pstat.ustat.st_mode)) {
             if (filetool_copy_remote_to_local (host, sub_remote, sub_local))
                 return 1;
+        } else if (S_ISLNK (list[i].pstat.ustat.st_mode)) {
+            char link_target[MAX_PATH_LEN];
+            if ((*rfs->remotefs_readlink) (rfs, sub_remote, link_target, sizeof (link_target), errmsg)) {
+                fprintf (stderr, "Error reading remote symlink %s: %s\n", sub_remote, errmsg);
+                return 1;
+            }
+            if ((*the_remotefs_local->remotefs_symlink) (the_remotefs_local, link_target, sub_local, errmsg)) {
+                fprintf (stderr, "Error creating symlink %s: %s\n", sub_local, errmsg);
+                return 1;
+            }
         }
-        /* symlinks and other special files are skipped */
     }
 
     free (list);
@@ -474,14 +509,43 @@ static int handle_single_source (const char *src, const char *dst)
         fprintf (stderr, "Error stating source %s: %s\n", src, errmsg);
         return 1;
     }
-    if (!src_exists) {
-        fprintf (stderr, "Error: source %s does not exist\n", src);
-        return 1;
-    }
 
     /* stat destination */
     if (path_stat (dst, &dst_st, &dst_is_dir, &dst_exists, errmsg)) {
         fprintf (stderr, "Error stating destination %s: %s\n", dst, errmsg);
+        return 1;
+    }
+
+    /* Check if source is a symlink — symlinks are reproduced, not followed */
+    {
+        char link_target[MAX_PATH_LEN];
+        if (!path_readlink (src, link_target, sizeof (link_target), errmsg)) {
+            if (dst_exists && dst_is_dir)
+                target = target_path, path_join (dst_path, my_basename (src_path), target_path, sizeof (target_path));
+            else
+                target = dst_path;
+            if (dst_exists && !dst_is_dir) {
+                if (!confirm_overwrite (dst))
+                    return 0;
+            }
+            if (dst_is_remote) {
+                struct remotefs *rfs = remotefs_lookup (dst_ip, NULL);
+                if ((*rfs->remotefs_symlink) (rfs, link_target, target, errmsg)) {
+                    fprintf (stderr, "Error creating remote symlink %s: %s\n", target, errmsg);
+                    return 1;
+                }
+            } else {
+                if ((*the_remotefs_local->remotefs_symlink) (the_remotefs_local, link_target, target, errmsg)) {
+                    fprintf (stderr, "Error creating symlink %s: %s\n", target, errmsg);
+                    return 1;
+                }
+            }
+            return 0;
+        }
+    }
+
+    if (!src_exists) {
+        fprintf (stderr, "Error: source %s does not exist\n", src);
         return 1;
     }
 

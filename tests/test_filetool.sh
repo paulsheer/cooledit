@@ -98,6 +98,24 @@ assert_success() {
     fi
 }
 
+# Verify that symlinks in srcdir are reproduced in dstdir with matching targets
+assert_symlinks_match() {
+    local srcdir="$1" dstdir="$2" desc="$3"
+    local ok=1 src_target dst_target relpath dstlink
+    while IFS= read -r link; do
+        relpath="${link#$srcdir/}"
+        dstlink="$dstdir/$relpath"
+        dst_target=$(readlink "$dstlink" 2>/dev/null) || {
+            fail "$desc: $relpath missing or not a symlink at dst"; ok=0; continue; }
+        src_target=$(readlink "$link")
+        if [ "$src_target" != "$dst_target" ]; then
+            fail "$desc: $relpath target '$dst_target' != '$src_target'"
+            ok=0
+        fi
+    done < <(find "$srcdir" -type l 2>/dev/null | sort)
+    [ "$ok" -eq 1 ] && pass "$desc"
+}
+
 # Run cooledit --filetool under valgrind. Returns cooledit exit code.
 # Use "yes n |" prefix to answer overwrite prompts with "no".
 run_filetool() {
@@ -258,6 +276,10 @@ for i in 1 2 3 4; do
     createtext "$WORKDIR/remote-src/deep-tree/sub1/b${i}.txt" "level1-file-${i}"
     createtext "$WORKDIR/remote-src/deep-tree/sub1/sub2/c${i}.txt" "level2-file-${i}"
 done
+ln -s "a1.txt" "$WORKDIR/remote-src/deep-tree/link-a1"
+ln -s "sub1" "$WORKDIR/remote-src/deep-tree/link-sub1"
+ln -s "sub2" "$WORKDIR/remote-src/deep-tree/sub1/link-deep"
+ln -s "../b1.txt" "$WORKDIR/remote-src/deep-tree/sub1/sub2/link-up"
 
 # Local directories for destination tests
 mkdir -p "$WORKDIR/local-dst/existing-dir"
@@ -271,6 +293,21 @@ createtext "$WORKDIR/remote-src/subdir/nested.txt" "Remote nested"
 
 mkdir -p "$WORKDIR/remote-dst/existing-dir"
 createtext "$WORKDIR/remote-dst/existing-file.txt" "pre-existing remote file"
+
+# Symlink test data (local side)
+mkdir -p "$WORKDIR/local-symlinks/subdir"
+createtext "$WORKDIR/local-symlinks/regular.txt" "regular file for symlink target"
+createtext "$WORKDIR/local-symlinks/subdir/nested.txt" "nested file for symlink target"
+ln -s "regular.txt" "$WORKDIR/local-symlinks/link-to-file"
+ln -s "subdir" "$WORKDIR/local-symlinks/link-to-dir"
+ln -s "/etc/hosts" "$WORKDIR/local-symlinks/link-absolute"
+
+# Symlink test data (remote side)
+mkdir -p "$WORKDIR/remote-symlinks/subdir"
+createtext "$WORKDIR/remote-symlinks/rfile.txt" "remote symlink target"
+createtext "$WORKDIR/remote-symlinks/subdir/rnested.txt" "remote nested target"
+ln -s "rfile.txt" "$WORKDIR/remote-symlinks/rlink-to-file"
+ln -s "subdir" "$WORKDIR/remote-symlinks/rlink-to-dir"
 
 # Start the server
 start_server
@@ -385,6 +422,8 @@ if diff -r "$WORKDIR/remote-src/deep-tree" "$WORKDIR/local-dst/deep-tree" >/dev/
 else
     fail "deep tree remote->local: diff -r shows differences"
 fi
+assert_symlinks_match "$WORKDIR/remote-src/deep-tree" "$WORKDIR/local-dst/deep-tree" \
+    "deep tree remote->local: symlinks preserved"
 
 # ============================================================
 # Cases 8-10: remote directory -> local
@@ -534,6 +573,101 @@ run_filetool --force "$WORKDIR/local-src/force-test2.txt" \
 assert_file_eq "$WORKDIR/local-src/force-test2.txt" \
     "$WORKDIR/remote-dst/force-test2.txt" \
     "--force flag overwrites without prompting"
+
+# ============================================================
+# Symlink reproduction tests
+# ============================================================
+echo ""
+echo "--- Symlinks: local dir -> remote, verify targets preserved ---"
+rm -rf "$WORKDIR/remote-dst/symlinks"
+run_filetool "$WORKDIR/local-symlinks" "${REMOTE}${WORKDIR}/remote-dst/symlinks"
+assert_symlinks_match "$WORKDIR/local-symlinks" "$WORKDIR/remote-dst/symlinks" \
+    "local symlinks -> remote: targets match"
+
+echo ""
+echo "--- Symlinks: remote dir -> local, verify targets preserved ---"
+rm -rf "$WORKDIR/local-dst/remote-symlinks"
+run_filetool "${REMOTE}${WORKDIR}/remote-symlinks" "$WORKDIR/local-dst/remote-symlinks"
+assert_symlinks_match "$WORKDIR/remote-symlinks" "$WORKDIR/local-dst/remote-symlinks" \
+    "remote symlinks -> local: targets match"
+
+echo ""
+echo "--- Symlinks: local -> remote -> local roundtrip ---"
+rm -rf "$WORKDIR/local-dst/symlinks-rt"
+run_filetool "${REMOTE}${WORKDIR}/remote-dst/symlinks" "$WORKDIR/local-dst/symlinks-rt"
+assert_symlinks_match "$WORKDIR/local-symlinks" "$WORKDIR/local-dst/symlinks-rt" \
+    "symlinks local->remote->local roundtrip: targets match"
+# Also diff -r to verify regular file contents intact
+if diff -r "$WORKDIR/local-symlinks" "$WORKDIR/local-dst/symlinks-rt" >/dev/null 2>&1; then
+    pass "symlinks roundtrip: diff -r matches (files intact)"
+else
+    fail "symlinks roundtrip: diff -r shows differences"
+fi
+
+echo ""
+echo "--- Symlinks: single local symlink -> remote, verify target preserved ---"
+# Standalone (non-directory) symlink copy: symlink with existing target
+ln -sf "hosts-target" "$WORKDIR/standalone-link"
+createtext "$WORKDIR/hosts-target" "hosts target content"
+rm -rf "$WORKDIR/remote-dst/standalone-link"
+run_filetool "$WORKDIR/standalone-link" "${REMOTE}${WORKDIR}/remote-dst/"
+ret=$?
+if [ $ret -eq 0 ]; then
+    dst_target=$(readlink "$WORKDIR/remote-dst/standalone-link" 2>/dev/null)
+    if [ "$dst_target" = "hosts-target" ]; then
+        pass "single local symlink -> remote: target preserved as symlink"
+    elif [ -z "$dst_target" ]; then
+        fail "single local symlink -> remote: NOT a symlink (symlink reproduction missing for single-file copy)"
+    else
+        fail "single local symlink -> remote: wrong target '$dst_target' expected 'hosts-target'"
+    fi
+else
+    fail "single local symlink -> remote: copy failed (exit $ret)"
+fi
+
+echo ""
+echo "--- Symlinks: single remote symlink -> local, verify target preserved ---"
+# Ensure a symlink exists on the remote side to copy back as standalone
+rm -rf "$WORKDIR/remote-dst/remote-standalone-link"
+ln -sf "rfile-target" "$WORKDIR/remote-symlinks/remote-standalone-link"
+createtext "$WORKDIR/remote-symlinks/rfile-target" "remote standalone target"
+run_filetool "$WORKDIR/remote-symlinks/remote-standalone-link" "${REMOTE}${WORKDIR}/remote-dst/"
+# Now copy that remote symlink as a standalone source back to local
+rm -rf "$WORKDIR/local-dst/remote-standalone-link"
+run_filetool "${REMOTE}${WORKDIR}/remote-dst/remote-standalone-link" "$WORKDIR/local-dst/"
+ret=$?
+if [ $ret -eq 0 ]; then
+    dst_target=$(readlink "$WORKDIR/local-dst/remote-standalone-link" 2>/dev/null)
+    if [ "$dst_target" = "rfile-target" ]; then
+        pass "single remote symlink -> local: target preserved as symlink"
+    elif [ -z "$dst_target" ]; then
+        fail "single remote symlink -> local: NOT a symlink (symlink reproduction missing for single-file copy)"
+    else
+        fail "single remote symlink -> local: wrong target '$dst_target' expected 'rfile-target'"
+    fi
+else
+    fail "single remote symlink -> local: copy failed (exit $ret)"
+fi
+
+echo ""
+echo "--- Symlinks: single local symlink (broken target) -> remote ---"
+# Symlink whose target does not exist (dangling symlink) should still copy as symlink
+ln -sf "/nonexistent/target/path" "$WORKDIR/broken-link"
+rm -rf "$WORKDIR/remote-dst/broken-link"
+run_filetool "$WORKDIR/broken-link" "${REMOTE}${WORKDIR}/remote-dst/"
+ret=$?
+if [ $ret -eq 0 ]; then
+    dst_target=$(readlink "$WORKDIR/remote-dst/broken-link" 2>/dev/null)
+    if [ "$dst_target" = "/nonexistent/target/path" ]; then
+        pass "single local broken symlink -> remote: target preserved as symlink"
+    elif [ -z "$dst_target" ]; then
+        fail "single local broken symlink -> remote: NOT a symlink (broken symlink not copied)"
+    else
+        fail "single local broken symlink -> remote: wrong target '$dst_target' expected '/nonexistent/target/path'"
+    fi
+else
+    fail "single local broken symlink -> remote: copy failed — broken symlinks should be copyable (exit $ret)"
+fi
 
 # ============================================================
 # Non-existent source error

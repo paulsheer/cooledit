@@ -39,6 +39,7 @@ typedef void *WSAEVENT;
 #undef INVALID_HANDLE_VALUE
 #define HANDLE                  int
 #define INVALID_HANDLE_VALUE    (-1)
+#define INVALID_HANDLE_VALUE_64BIT  ((void *) -1LL)
 
 #define socklen_t               int
 
@@ -80,6 +81,7 @@ typedef void *WSAEVENT;
 #define REMOTEFS_ACTION_SHELLCMDNEW             19
 #define REMOTEFS_ACTION_MKDIR                   20
 #define REMOTEFS_ACTION_SYMLINK                 21
+#define REMOTEFS_ACTION_READLINK                22
 
 
 #define CONNCHECK_SUCCESS       0

@@ -6,11 +6,16 @@
 #include "inspect.h"
 #include "global.h"
 #ifdef MSWIN
+
+#define _WIN32_WINNT    0x0A01
+
 #include <config-mswin.h>
 #include <winsock2.h>
 #include <ws2ipdef.h>
 #include <aclapi.h>
 #include <sddl.h>
+#include <winioctl.h>
+#include <ntdef.h>
 #include <error.h>
 #elif defined(ANDROID)
 /* Android: config.h not used, defines provided via compiler flags */
@@ -565,6 +570,15 @@ static const char *mswin_error_to_text (long error)
     return r;
 }
 
+static void alloc_encode_error (CStr * r, remotefs_error_code_t error_code, const char *errstr, const int force_shutdown);
+
+static void mswin_alloc_encode_errno_strerror (CStr * r, const int force_shutdown)
+{E_
+    int errval;
+    errval = GetLastError ();
+    alloc_encode_error (r, translate_mswin_lasterror (errval), mswin_error_to_text (errval), force_shutdown);
+}
+
 static int portable_stat (int link, const char *fname, struct portable_stat *p, int *just_not_there, enum remotefs_error_code *remotefs_error_code_, char *errmsg)
 {E_
     WIN32_FILE_ATTRIBUTE_DATA a;
@@ -629,6 +643,9 @@ static int portable_stat (int link, const char *fname, struct portable_stat *p, 
             *remotefs_error_code_ = translate_unix_errno (errno);
         return r;
     }
+
+    if (link && (a.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT))
+        p->ustat.st_mode = (p->ustat.st_mode & ~S_IFMT) | S_IFLNK;
 
     return 0;
 }
@@ -1573,6 +1590,7 @@ const char *action_descr[] = {
     "SHELLCMD",
     "MKDIR",
     "SYMLINK",
+    "READLINK",
 };
 
 
@@ -2623,6 +2641,10 @@ static void encode_msg_ack (struct cooledit_remote_msg_ack *m, remotefs_error_co
 
 #define FIELD_TYPE_EXTENDED__FIRST_TYPE 16
 
+#define N_SHELLCMDNEW_REQ_FIELDS        17
+#define N_SHELLCMDNEW_RESP_FIELDS       8
+#define N_UNDEAD_FIELDS                 3
+
 #define MAX_PATH_DEPTH                  100
 
 #define SET_FIELD_TYPE(f, i, t) \
@@ -2958,6 +2980,131 @@ static int decode_stat (const unsigned char **p, const unsigned char *end, struc
 
     s->ustat.st_rdev = makedev (user_data.rdev_major, user_data.rdev_minor);
 
+    return 0;
+}
+
+struct shellcmdnew_resp_data {
+    unsigned long long cmd_pid;
+    unsigned long long process_handle;
+    unsigned long long con_handle;
+    char ttydev[CTERMINAL_TTYDEV_SZ];
+    unsigned long long cmd_fd;
+    unsigned long long erase_char;
+    unsigned long long host_pid;
+    unsigned long long start_time;
+};
+
+static int shellcmdnew_resp_store_uint (void *user_data_, const unsigned short *path, const int depth, unsigned long long v)
+{
+    struct shellcmdnew_resp_data *d = (struct shellcmdnew_resp_data *) user_data_;
+    if (depth != 1)
+        return 0;
+    switch (path[0]) {
+        case 0: d->cmd_pid = v; break;
+        case 1: d->process_handle = v; break;
+        case 2: d->con_handle = v; break;
+        case 4: d->cmd_fd = v; break;
+        case 5: d->erase_char = v; break;
+        case 6: d->host_pid = v; break;
+        case 7: d->start_time = v; break;
+        default: break;
+    }
+    return 0;
+}
+
+static int shellcmdnew_resp_store_str (void *user_data_, const unsigned short *path, const int depth, char **storage, int *storage_len)
+{
+    struct shellcmdnew_resp_data *d = (struct shellcmdnew_resp_data *) user_data_;
+    if (depth != 1 || path[0] != 3)
+        return 0;
+    *storage = d->ttydev;
+    *storage_len = sizeof (d->ttydev);
+    return 0;
+}
+
+#define MAX_ARG_LEN                     4096
+
+struct terminal_undead {
+    unsigned long cmd_pid;
+    unsigned long host_pid;
+    unsigned long long start_time;
+};
+
+struct shellcmdnew_req_data {
+    struct cterminal_config c;
+    unsigned long long dumb_terminal;
+    int n_undead;
+    int undead_idx;
+    struct terminal_undead undead[100];
+    int n_args;
+    int args_idx;
+    char **args;
+};
+
+static int shellcmdnew_req_store_uint (void *user_data_, const unsigned short *path, const int depth, unsigned long long v)
+{
+    struct shellcmdnew_req_data *d = (struct shellcmdnew_req_data *) user_data_;
+    if (depth == 1) {
+        switch (path[0]) {
+            case 4: d->c.term_win_id = (unsigned long) v; break;
+            case 5: d->c.col = (int) v; break;
+            case 6: d->c.row = (int) v; break;
+            case 7: d->c.login_shell = (int) v; break;
+            case 8: d->c.do_sleep = (int) v; break;
+            case 9: d->c.x11_forwarding = (int) v; break;
+            case 10: d->c.sound_forwarding = (int) v; break;
+            case 11: d->c.charset_8bit = (int) v; break;
+            case 12: d->c.env_fg = (int) v; break;
+            case 13: d->c.env_bg = (int) v; break;
+            case 14: d->dumb_terminal = v; break;
+            default: break;
+        }
+    } else if (depth == 2 && path[0] == 15) {
+        if (path[1] == 0)
+            d->undead_idx++;
+        switch (path[1]) {
+            case 0: d->undead[d->undead_idx].cmd_pid = (unsigned long) v; break;
+            case 1: d->undead[d->undead_idx].host_pid = (unsigned long) v; break;
+            case 2: d->undead[d->undead_idx].start_time = v; break;
+            default: break;
+        }
+    }
+    return 0;
+}
+
+static int shellcmdnew_req_store_str (void *user_data_, const unsigned short *path, const int depth, char **storage, int *storage_len)
+{
+    struct shellcmdnew_req_data *d = (struct shellcmdnew_req_data *) user_data_;
+    if (depth == 1) {
+        switch (path[0]) {
+            case 0: *storage = d->c.display_env_var; *storage_len = sizeof (d->c.display_env_var); break;
+            case 1: *storage = d->c.sound_env_var; *storage_len = sizeof (d->c.sound_env_var); break;
+            case 2: *storage = d->c.term_name; *storage_len = sizeof (d->c.term_name); break;
+            case 3: *storage = d->c.colorterm_name; *storage_len = sizeof (d->c.colorterm_name); break;
+            case 16: /* arg string */
+                if (d->args_idx >= d->n_args)
+                    return -1;
+                d->args[d->args_idx] = (char *) malloc (MAX_ARG_LEN);
+                *storage = d->args[d->args_idx];
+                *storage_len = MAX_ARG_LEN;
+                d->args_idx++;
+                break;
+            default: break;
+        }
+    }
+    return 0;
+}
+
+static int shellcmdnew_req_store_vector (void *user_data_, const unsigned short *path, const int depth, const unsigned long long the_type, long n)
+{
+    struct shellcmdnew_req_data *d = (struct shellcmdnew_req_data *) user_data_;
+    if (depth != 1)
+        return 0;
+    switch (path[0]) {
+        case 15: d->n_undead = (int) n; d->undead_idx = -1; break;
+        case 16: d->n_args = (int) n; d->args = (char **) calloc (n + 1, sizeof (char *)); d->args_idx = 0; break;
+        default: break;
+    }
     return 0;
 }
 
@@ -4198,8 +4345,14 @@ static void remotefs_symlink_ (const char *target, const char *linkpath, CStr * 
     unsigned char *p;
 
 #ifdef MSWIN
-    alloc_encode_error (r, RFSERR_OTHER_ERROR, "symlink not supported", 0);
-    return;
+    DWORD attrs, flags = 0;
+    attrs = GetFileAttributesA (translate_path_sep (target));
+    if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY))
+        flags = SYMBOLIC_LINK_FLAG_DIRECTORY;
+    if (!CreateSymbolicLinkA (translate_path_sep (linkpath), translate_path_sep (target), flags)) {
+        mswin_alloc_encode_errno_strerror (r, 0);
+        return;
+    }
 #else
     if (symlink (translate_path_sep (target), translate_path_sep (linkpath)) < 0) {
         alloc_encode_errno_strerror (r, 0);
@@ -4211,6 +4364,82 @@ static void remotefs_symlink_ (const char *target, const char *linkpath, CStr * 
     r->data = (char *) malloc (r->len);
     p = (unsigned char *) r->data;
     encode_uint (&p, REMOTEFS_SUCCESS);
+}
+
+static void remotefs_readlink_ (const char *linkpath, CStr * r)
+{E_
+    unsigned char *p;
+    char target[MAX_PATH_LEN];
+
+#ifdef MSWIN
+    {
+        MSWIN_HANDLE h;
+        char rdbuf[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+        REPARSE_DATA_BUFFER *rdb = (REPARSE_DATA_BUFFER *) rdbuf;
+        DWORD bytes_returned;
+        wchar_t *w_target;
+        int w_len, target_len;
+
+        h = CreateFileA (translate_path_sep (linkpath), GENERIC_READ,
+                         FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                         NULL, OPEN_EXISTING,
+                         FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
+                         NULL);
+        if (h == INVALID_HANDLE_VALUE_64BIT) {
+            mswin_alloc_encode_errno_strerror (r, 0);
+            return;
+        }
+
+        if (!DeviceIoControl (h, FSCTL_GET_REPARSE_POINT, NULL, 0,
+                              rdb, sizeof (rdbuf), &bytes_returned, NULL)) {
+            CloseHandle (h);
+            mswin_alloc_encode_errno_strerror (r, 0);
+            return;
+        }
+        CloseHandle (h);
+
+        if (rdb->ReparseTag != IO_REPARSE_TAG_SYMLINK) {
+            mswin_alloc_encode_errno_strerror (r, 0);
+            return;
+        }
+
+        w_target = (wchar_t *) ((char *) rdb->SymbolicLinkReparseBuffer.PathBuffer
+                                + rdb->SymbolicLinkReparseBuffer.PrintNameOffset);
+        w_len = rdb->SymbolicLinkReparseBuffer.PrintNameLength / sizeof (wchar_t);
+        target_len = WideCharToMultiByte (CP_UTF8, 0, w_target, w_len,
+                                          target, sizeof (target) - 1, NULL, NULL);
+        if (target_len <= 0) {
+            mswin_alloc_encode_errno_strerror (r, 0);
+            return;
+        }
+        target[target_len] = '\0';
+        {
+            char *unix_target = windows_path_to_unix (target);
+            if (unix_target) {
+                strncpy (target, unix_target, sizeof (target) - 1);
+                target[sizeof (target) - 1] = '\0';
+                free (unix_target);
+            }
+        }
+    }
+#else
+    {
+        ssize_t n;
+        n = readlink (translate_path_sep (linkpath), target, sizeof (target) - 1);
+        if (n < 0) {
+            alloc_encode_errno_strerror (r, 0);
+            return;
+        }
+        target[n] = '\0';
+    }
+#endif
+
+    r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
+    r->len += encode_str (NULL, target, strlen (target));
+    r->data = (char *) malloc (r->len);
+    p = (unsigned char *) r->data;
+    encode_uint (&p, REMOTEFS_SUCCESS);
+    encode_str (&p, target, strlen (target));
 }
 
 static void remotefs_realpathize_ (const char *path, const char *homedir, CStr * r)
@@ -4345,6 +4574,10 @@ static int remotefs_shellcmdnew_ (struct cterminal *cterminal, struct cterminal_
 {E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     unsigned char *p;
+    unsigned char fields[(N_SHELLCMDNEW_RESP_FIELDS + 1 + 1) / 2];
+    unsigned long long process_handle, con_handle, cmd_fd_, erase_char_;
+    const char *ttydev;
+    int ttydev_len;
 
     assert (CTERMINAL_ERR_MSG_LEN == REMOTEFS_ERR_MSG_LEN);
 
@@ -4355,49 +4588,55 @@ static int remotefs_shellcmdnew_ (struct cterminal *cterminal, struct cterminal_
     assert (cterminal->cmd_pid > 1);
 
 #ifdef MSWIN
-    const char *faketty = "/dev/wintty";
-    r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
-    r->len += encode_uint (NULL, cterminal->cmd_pid);
-    r->len += encode_uint (NULL, (unsigned long long) cterminal->process_handle);
-    r->len += encode_uint (NULL, (unsigned long long) cterminal->con_handle);
-    r->len += encode_str (NULL, faketty, strlen (faketty));
-    r->len += encode_uint (NULL, (__int64) cterminal->cmd_fd_stdin);
-    r->len += encode_uint (NULL, 0);
-    r->len += encode_uint (NULL, config->host_pid);
-    r->len += encode_uint (NULL, config->start_time);
-    r->data = (char *) malloc (r->len);
-    p = (unsigned char *) r->data;
-    encode_uint (&p, REMOTEFS_SUCCESS);
-    encode_uint (&p, cterminal->cmd_pid);
-    encode_uint (&p, (unsigned long long) cterminal->process_handle);
-    encode_uint (&p, (unsigned long long) cterminal->con_handle);
-    encode_str (&p, faketty, strlen (faketty));
-    encode_uint (&p, (__int64) cterminal->cmd_fd_stdin);
-    encode_uint (&p, 0);
-    encode_uint (&p, config->host_pid);
-    encode_uint (&p, config->start_time);
+    process_handle = (unsigned long long) cterminal->process_handle;
+    con_handle = (unsigned long long) cterminal->con_handle;
+    ttydev = "/dev/wintty";
+    ttydev_len = strlen (ttydev);
+    cmd_fd_ = (__int64) cterminal->cmd_fd_stdin;
+    erase_char_ = 0ULL;
 #else
+    process_handle = 0ULL;
+    con_handle = 0ULL;
+    ttydev = cterminal->ttydev;
+    ttydev_len = strlen (ttydev);
+    cmd_fd_ = cterminal->cmd_fd;
+    erase_char_ = config->erase_char;
+#endif
+
+    memset (fields, '\0', sizeof (fields));
+    SET_FIELD_TYPE (fields, 0, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 1, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 2, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 3, FIELD_TYPE_STRING);
+    SET_FIELD_TYPE (fields, 4, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 5, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 6, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 7, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, N_SHELLCMDNEW_RESP_FIELDS, FIELD_TYPE_END);
+
     r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
+    r->len += encode_str (NULL, (const char *) fields, sizeof (fields));
     r->len += encode_uint (NULL, cterminal->cmd_pid);
-    r->len += encode_uint (NULL, 0ULL); /* process_handle */
-    r->len += encode_uint (NULL, 0ULL); /* con_handle */
-    r->len += encode_str (NULL, cterminal->ttydev, strlen (cterminal->ttydev));
-    r->len += encode_uint (NULL, cterminal->cmd_fd);
-    r->len += encode_uint (NULL, config->erase_char);
+    r->len += encode_uint (NULL, process_handle);
+    r->len += encode_uint (NULL, con_handle);
+    r->len += encode_str (NULL, ttydev, ttydev_len);
+    r->len += encode_uint (NULL, cmd_fd_);
+    r->len += encode_uint (NULL, erase_char_);
     r->len += encode_uint (NULL, config->host_pid);
     r->len += encode_uint (NULL, config->start_time);
+
     r->data = (char *) malloc (r->len);
     p = (unsigned char *) r->data;
     encode_uint (&p, REMOTEFS_SUCCESS);
+    encode_str (&p, (const char *) fields, sizeof (fields));
     encode_uint (&p, cterminal->cmd_pid);
-    encode_uint (&p, 0ULL); /* process_handle */
-    encode_uint (&p, 0ULL); /* con_handle */
-    encode_str (&p, cterminal->ttydev, strlen (cterminal->ttydev));
-    encode_uint (&p, cterminal->cmd_fd);
-    encode_uint (&p, config->erase_char);
+    encode_uint (&p, process_handle);
+    encode_uint (&p, con_handle);
+    encode_str (&p, ttydev, ttydev_len);
+    encode_uint (&p, cmd_fd_);
+    encode_uint (&p, erase_char_);
     encode_uint (&p, config->host_pid);
     encode_uint (&p, config->start_time);
-#endif
 
     return 0;
 }
@@ -4663,6 +4902,20 @@ static int local_symlink (struct remotefs *rfs, const char *target, const char *
     MARSHAL_END_LOCAL(NULL);
 }
 
+static int local_readlink (struct remotefs *rfs, const char *linkpath, char *target, int target_len, char *errmsg)
+{E_
+    CStr s;
+    *errmsg = '\0';
+    remotefs_readlink_ (linkpath, &s);
+
+    MARSHAL_START_LOCAL;
+    if (decode_str (&p, end, target, target_len)) {
+        free (s.data);
+        return -1;
+    }
+    MARSHAL_END_LOCAL(NULL);
+}
+
 static int local_realpathize (struct remotefs *rfs, const char *path, const char *homedir, char *out, int outlen, char *errmsg)
 {E_
     CStr s;
@@ -4711,8 +4964,9 @@ void remotefs_set_display_log_for_wtmp (const char *display)
 static int local_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const argv[], char *errmsg)
 {E_
     CStr s;
-    unsigned long long cmd_pid_, process_handle_, con_handle_, cmd_fd_, erase_char_;
     struct cterminal_item *ct;
+    struct storage_hook hook;
+    struct shellcmdnew_resp_data resp;
 
     *errmsg = '\0';
 
@@ -4729,23 +4983,17 @@ static int local_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio *
 
     MARSHAL_START_LOCAL;
     /* remotefs_shellcmdnew_ returns non-zero if error, so no error possible here */
-    if (decode_uint (&p, end, &cmd_pid_))
+    memset (&resp, '\0', sizeof (resp));
+    memset (&hook, '\0', sizeof (hook));
+    hook.user_data = &resp;
+    hook.store_uint = shellcmdnew_resp_store_uint;
+    hook.store_str = shellcmdnew_resp_store_str;
+    if (decode_struct (&p, end, &hook, 0))
         return -1;
-    if (decode_uint (&p, end, &process_handle_))
-        return -1;
-    if (decode_uint (&p, end, &con_handle_))
-        return -1;
-    if (decode_str (&p, end, config->ttydev, sizeof (config->ttydev)))
-        return -1;
-    if (decode_uint (&p, end, &cmd_fd_))
-        return -1;
-    if (decode_uint (&p, end, &erase_char_))
-        return -1;
-    (void) process_handle_; /* windows only */
-    (void) con_handle_; /* windows only */
-    config->cmd_pid = (unsigned long) cmd_pid_;
-    config->erase_char = (int) erase_char_;
-    io->cmd_fd = (int) cmd_fd_;
+    config->cmd_pid = (unsigned long) resp.cmd_pid;
+    config->erase_char = (int) resp.erase_char;
+    strcpy (config->ttydev, resp.ttydev);
+    io->cmd_fd = (int) resp.cmd_fd;
     io->reader_data = NULL;
 
     /* this grows automatically, start off small for testing */
@@ -5394,6 +5642,31 @@ static int remote_symlink (struct remotefs *rfs, const char *target, const char 
     MARSHAL_END_REMOTE(NULL);
 }
 
+static int remote_readlink (struct remotefs *rfs, const char *linkpath, char *target, int target_len, char *errmsg)
+{E_
+    CStr s, msg;
+    unsigned char *q;
+    *errmsg = '\0';
+
+    msg.len = encode_str (NULL, linkpath, strlen (linkpath));
+    msg.data = (char *) malloc (msg.len);
+    q = (unsigned char *) msg.data;
+    encode_str (&q, linkpath, strlen (linkpath));
+
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, NULL, &msg, &s, REMOTEFS_ACTION_READLINK, errmsg, NULL)) {
+        free (msg.data);
+        return -1;
+    }
+    free (msg.data);
+
+    MARSHAL_START_REMOTE;
+    if (decode_str (&p, end, target, target_len)) {
+        free (s.data);
+        return -1;
+    }
+    MARSHAL_END_REMOTE(NULL);
+}
+
 static int remote_realpathize (struct remotefs *rfs, const char *path, const char *homedir, char *out, int outlen, char *errmsg)
 {E_
     CStr s, msg;
@@ -5543,12 +5816,6 @@ still live. The flock will ensure this.
 
 */
 
-struct terminal_undead {
-    unsigned long cmd_pid;
-    unsigned long host_pid;
-    unsigned long long start_time;
-};
-
 #define GETHOME(h, return_statment) \
         static const char *h = NULL; \
         if (!h) \
@@ -5651,11 +5918,14 @@ static void terminal_undead_save (struct remotefs_terminalio *io, const char *ho
 static int remote_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const args[], char *errmsg)
 {E_
     CStr s, msg;
-    unsigned long long cmd_pid_, process_handle_, con_handle_, cmd_fd_, erase_char_, host_pid_, start_time_;
     unsigned char *q;
+    unsigned char fields[(N_SHELLCMDNEW_REQ_FIELDS + 1 + 1) / 2];
+    unsigned char undead_fields[(N_UNDEAD_FIELDS + 1 + 1) / 2];
     int no_such_action = 0;
     struct terminal_undead undead[100];
     int i, n_args, n_undead = 0;
+    struct storage_hook hook;
+    struct shellcmdnew_resp_data resp;
     *errmsg = '\0';
 
     n_undead = terminal_undead_load (rfs->remotefs_private->remote, undead, sizeof (undead) / sizeof (undead[0]));
@@ -5663,7 +5933,36 @@ static int remote_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio 
 
     n_args = len_args (args);
 
-    msg.len = encode_str (NULL, config->display_env_var, strlen (config->display_env_var));
+    msg.len = 0;
+
+    memset (fields, '\0', sizeof (fields));
+    SET_FIELD_TYPE (fields, 0, FIELD_TYPE_STRING);
+    SET_FIELD_TYPE (fields, 1, FIELD_TYPE_STRING);
+    SET_FIELD_TYPE (fields, 2, FIELD_TYPE_STRING);
+    SET_FIELD_TYPE (fields, 3, FIELD_TYPE_STRING);
+    SET_FIELD_TYPE (fields, 4, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 5, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 6, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 7, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 8, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 9, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 10, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 11, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 12, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 13, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 14, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (fields, 15, FIELD_TYPE_VECTORSTRUCT);
+    SET_FIELD_TYPE (fields, 16, FIELD_TYPE_VECTORSTRING);
+    SET_FIELD_TYPE (fields, N_SHELLCMDNEW_REQ_FIELDS, FIELD_TYPE_END);
+
+    memset (undead_fields, '\0', sizeof (undead_fields));
+    SET_FIELD_TYPE (undead_fields, 0, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (undead_fields, 1, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (undead_fields, 2, FIELD_TYPE_UINT);
+    SET_FIELD_TYPE (undead_fields, N_UNDEAD_FIELDS, FIELD_TYPE_END);
+
+    msg.len += encode_str (NULL, (const char *) fields, sizeof (fields));
+    msg.len += encode_str (NULL, config->display_env_var, strlen (config->display_env_var));
     msg.len += encode_str (NULL, config->sound_env_var, strlen (config->sound_env_var));
     msg.len += encode_str (NULL, config->term_name, strlen (config->term_name));
     msg.len += encode_str (NULL, config->colorterm_name, strlen (config->colorterm_name));
@@ -5680,6 +5979,7 @@ static int remote_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio 
     msg.len += encode_uint (NULL, dumb_terminal);
     msg.len += encode_uint (NULL, n_undead);
     for (i = 0; i < n_undead; i++) {
+        msg.len += encode_str (NULL, (const char *) undead_fields, sizeof (undead_fields));
         msg.len += encode_uint (NULL, undead[i].cmd_pid);
         msg.len += encode_uint (NULL, undead[i].host_pid);
         msg.len += encode_uint (NULL, undead[i].start_time);
@@ -5691,6 +5991,7 @@ static int remote_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio 
     msg.data = (char *) malloc (msg.len);
     q = (unsigned char *) msg.data;
 
+    encode_str (&q, (const char *) fields, sizeof (fields));
     encode_str (&q, config->display_env_var, strlen (config->display_env_var));
     encode_str (&q, config->sound_env_var, strlen (config->sound_env_var));
     encode_str (&q, config->term_name, strlen (config->term_name));
@@ -5708,6 +6009,7 @@ static int remote_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio 
     encode_uint (&q, dumb_terminal);
     encode_uint (&q, n_undead);
     for (i = 0; i < n_undead; i++) {
+        encode_str (&q, (const char *) undead_fields, sizeof (undead_fields));
         encode_uint (&q, undead[i].cmd_pid);
         encode_uint (&q, undead[i].host_pid);
         encode_uint (&q, undead[i].start_time);
@@ -5725,46 +6027,24 @@ static int remote_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio 
     free (msg.data);
 
     MARSHAL_START_REMOTE;
-    if (decode_uint (&p, end, &cmd_pid_)) {
+    memset (&resp, '\0', sizeof (resp));
+    memset (&hook, '\0', sizeof (hook));
+    hook.user_data = &resp;
+    hook.store_uint = shellcmdnew_resp_store_uint;
+    hook.store_str = shellcmdnew_resp_store_str;
+    if (decode_struct (&p, end, &hook, 0)) {
         free (s.data);
         return -1;
     }
-    if (decode_uint (&p, end, &process_handle_)) {
-        free (s.data);
-        return -1;
-    }
-    if (decode_uint (&p, end, &con_handle_)) {
-        free (s.data);
-        return -1;
-    }
-    if (decode_str (&p, end, config->ttydev, sizeof (config->ttydev))) {
-        free (s.data);
-        return -1;
-    }
-    if (decode_uint (&p, end, &cmd_fd_)) {
-        free (s.data);
-        return -1;
-    }
-    if (decode_uint (&p, end, &erase_char_)) {
-        free (s.data);
-        return -1;
-    }
-    if (decode_uint (&p, end, &host_pid_)) {
-        free (s.data);
-        return -1;
-    }
-    if (decode_uint (&p, end, &start_time_)) {
-        free (s.data);
-        return -1;
-    }
-    config->cmd_pid = (unsigned long) cmd_pid_;
+    config->cmd_pid = (unsigned long) resp.cmd_pid;
+    config->erase_char = (int) resp.erase_char;
+    config->host_pid = (unsigned long) resp.host_pid;
+    config->start_time = (time_t) resp.start_time;
+    strcpy (config->ttydev, resp.ttydev);
 #ifdef MSWIN
-    config->process_handle = (MSWIN_HANDLE) process_handle_;
-    config->con_handle = (MSWIN_HANDLE) con_handle_;
+    config->process_handle = (MSWIN_HANDLE) resp.process_handle;
+    config->con_handle = (MSWIN_HANDLE) resp.con_handle;
 #endif
-    config->erase_char = (int) erase_char_;
-    config->host_pid = (unsigned long) host_pid_;
-    config->start_time = (time_t) start_time_;
 
     io->reader_data = (struct reader_data *) malloc (sizeof (*io->reader_data));
     memset (io->reader_data, '\0', sizeof (*io->reader_data));
@@ -6814,6 +7094,11 @@ static int dummyerr_symlink (struct remotefs *rfs, const char *target, const cha
     return remotefs_error_return (errmsg);
 }
 
+static int dummyerr_readlink (struct remotefs *rfs, const char *linkpath, char *target, int target_len, char *errmsg)
+{E_
+    return remotefs_error_return (errmsg);
+}
+
 static int dummyerr_realpathize (struct remotefs *rfs, const char *path, const char *homedir, char *out, int outlen, char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
@@ -6887,6 +7172,7 @@ struct remotefs remotefs_dummyerr = {
     dummyerr_chdir,
     dummyerr_mkdir,
     dummyerr_symlink,
+    dummyerr_readlink,
     dummyerr_realpathize,
     dummyerr_gethomedir,
     dummyerr_enablecrypto,
@@ -6926,6 +7212,7 @@ struct remotefs remotefs_local = {
     local_chdir,
     local_mkdir,
     local_symlink,
+    local_readlink,
     local_realpathize,
     local_gethomedir,
     local_enablecrypto,
@@ -6965,6 +7252,7 @@ struct remotefs remotefs_socket = {
     remote_chdir,
     remote_mkdir,
     remote_symlink,
+    remote_readlink,
     remote_realpathize,
     remote_gethomedir,
     remote_enablecrypto,
@@ -7041,6 +7329,7 @@ void remotefs_clean (void)
     for (i = remotefs_list; i; i = next) {
         next = i->next;
         remotefs_private_cleanup (i->impl.remotefs_private);
+        i->impl_.magic = 0;
         free (i);
     }
     remotefs_list = NULL;
@@ -7115,6 +7404,7 @@ int remotefs_drop (const char *host_)
             else
                 remotefs_list = i->next;
             remotefs_private_cleanup (i->impl.remotefs_private);
+            i->impl_.magic = 0;
             free (i);
             return 0;
         }
@@ -7218,6 +7508,10 @@ struct ttyreader_ {
 };
 
 struct ttyreader_data {
+#ifdef MSWIN
+    struct ttyreader_data *next;
+    time_t free_timestamp;
+#endif
     struct cterminal cterminal;
     struct ttyreader_ rd;
     struct timeval lastwrite;
@@ -7325,12 +7619,15 @@ static void suspend_cterminal (int line, struct sock_data *sock_data, struct tty
     suspendedshell_list = n;
 }
 
+#define CLOSE_CTERINAL_PROCESS_DIED     0
+#define CLOSE_CTERINAL_SERVER_DIED      1
+#define CLOSE_CTERINAL_CLIENT_DIED      2
 
-static void close_cterminal (int line, struct sock_data *sock_data, struct cterminal *c, int server_death)
+static void close_cterminal (int line, struct sock_data *sock_data, struct cterminal *c, int murder)
 {E_
     char msg[256] = "";
 #ifdef MSWIN
-    if (c->process_handle) {
+    if (c->process_handle && c->cmd_pid) {
         unsigned long wstatus = 0;
         if (kill_child_get_exit_status (c->cmd_pid, c->process_handle, &wstatus))
             snprintf (msg, sizeof (msg), "%d: process %ld died with exit code %ld", line, (long) c->cmd_pid, wstatus);
@@ -7351,16 +7648,20 @@ static void close_cterminal (int line, struct sock_data *sock_data, struct cterm
             snprintf (msg, sizeof (msg), "%d: process %ld died with exit code %d", line, (long) c->cmd_pid, (int) WEXITSTATUS (wstatus));
     }
 #endif
-    if (msg[0]) {
-        /* ok */
-    } else if (server_death) {
-        snprintf (msg, sizeof (msg), "%d: remotefs server died, process %ld abandoned ", line, (long) c->cmd_pid);
-    } else {
-        snprintf (msg, sizeof (msg), "%d: process %ld died with unknown status", line, (long) c->cmd_pid);
+    if (c->cmd_pid) {
+        if (msg[0]) {
+            /* ok */
+        } else if (murder == CLOSE_CTERINAL_SERVER_DIED) {
+            snprintf (msg, sizeof (msg), "%d: remotefs server died, process %ld abandoned ", line, (long) c->cmd_pid);
+        } else if (murder == CLOSE_CTERINAL_CLIENT_DIED) {
+            snprintf (msg, sizeof (msg), "%d: process %ld killed: client terminal died", line, (long) c->cmd_pid);
+        } else {
+            snprintf (msg, sizeof (msg), "%d: process %ld died with unknown status", line, (long) c->cmd_pid);
+        }
+        c->cmd_pid = 0;
+        if (msg[0])
+            log_fmt (0, "%s\n", msg);
     }
-    c->cmd_pid = 0;
-
-    log_fmt (0, "%s\n", msg);
 
 #ifdef MSWIN
     if (c->cmd_fd_stdin != MSWIN_INVALID_HANDLE_VALUE) {
@@ -7394,14 +7695,63 @@ static void close_cterminal (int line, struct sock_data *sock_data, struct cterm
     }
 }
 
+#ifdef MSWIN
+static struct ttyreader_data *garbage_list = NULL;
+
+static void add_to_garbage_collector (struct ttyreader_data *p, int when /* seconds in the future */)
+{
+    time (&p->free_timestamp);
+    p->free_timestamp += when;
+    p->next = garbage_list;
+    garbage_list = p;
+}
+
+static void garbage_collect (void)
+{
+    static time_t last_collect = 0;
+    time_t now;
+    struct ttyreader_data **prev, *p, *next;
+
+    time (&now);
+    if (now - last_collect < 1)
+        return;
+    last_collect = now;
+
+    prev = &garbage_list;
+    for (p = garbage_list; p; p = next) {
+        next = p->next;
+        if (p->free_timestamp <= now) {
+            *prev = next;
+            if (p->rd.buf)
+                free (p->rd.buf);
+            if (p->wr.buf)
+                free (p->wr.buf);
+            p->rd.magic = 0;
+            p->wr.magic = 0;
+            free (p);
+        } else {
+            prev = &p->next;
+        }
+    }
+}
+#endif
+
 static void free_ttyreader_data (struct ttyreader_data *p)
 {E_
+    close_cterminal (__LINE__, NULL, &p->cterminal, CLOSE_CTERINAL_CLIENT_DIED);
     cterminal_cleanup (&p->cterminal);
+#ifdef MSWIN
+    /* Windows may have overlapped IO pending */
+    add_to_garbage_collector (p, 3 /* seconds in the future */ );
+#else
     if (p->rd.buf)
         free (p->rd.buf);
     if (p->wr.buf)
         free (p->wr.buf);
+    p->rd.magic = 0;
+    p->wr.magic = 0;
     free (p);
+#endif
 }
 
 #endif
@@ -7675,6 +8025,18 @@ static int remote_action_fn_v5_symlink (struct server_data *sd, CStr *s, const u
     return 0;
 }
 
+static int remote_action_fn_v5_readlink (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
+{E_
+    const unsigned char *p, *end;
+    char linkpath[MAX_PATH_LEN];
+    p = in;
+    end = in + inlen;
+    if (decode_str (&p, end, linkpath, sizeof (linkpath)))
+        return -1;
+    remotefs_readlink_ (linkpath, s);
+    return 0;
+}
+
 static int remote_action_fn_v1_realpathize (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
 {E_
     const unsigned char *p, *end;
@@ -7743,13 +8105,9 @@ static void peer_to_text (SOCKET sock, char *peername)
 static int remote_action_fn_v5_shellcmdnew (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
 {E_
     const unsigned char *p, *end;
-    unsigned long long v;
-    unsigned long long n_args;
-    unsigned long long dumb_terminal_;
-    unsigned long long n_undead_, cmd_pid_, host_pid_, start_time_;
-    char **args = NULL;
-    struct cterminal_config c;
     struct ttyreader_data *t;
+    struct storage_hook hook;
+    struct shellcmdnew_req_data req;
     int i;
     char peername[256] = "";
     int sock_sndbuf_size = TERMINAL_TCP_BUF_SIZE;
@@ -7757,65 +8115,20 @@ static int remote_action_fn_v5_shellcmdnew (struct server_data *sd, CStr *s, con
 /* we want ^C to kill the output fast */
     setsockopt (sd->reader_data->sock_data->sock, SOL_SOCKET, SO_SNDBUF, (void *) &sock_sndbuf_size, sizeof (int));
 
-    memset (&c, '\0', sizeof (c));
-
     p = in;
     end = in + inlen;
 
-    if (decode_str (&p, end, c.display_env_var, sizeof (c.display_env_var)))
-        return -1;
-    if (decode_str (&p, end, c.sound_env_var, sizeof (c.sound_env_var)))
-        return -1;
-    if (decode_str (&p, end, c.term_name, sizeof (c.term_name)))
-        return -1;
-    if (decode_str (&p, end, c.colorterm_name, sizeof (c.colorterm_name)))
-        return -1;
-
-#undef D
-#define D(f) \
-    if (decode_uint (&p, end, &v)) \
-        return -1; \
-    c.f = v;
-
-    D(term_win_id);
-    D(col);
-    D(row);
-    D(login_shell);
-    D(do_sleep);
-    D(x11_forwarding);
-    D(sound_forwarding);
-    D(charset_8bit);
-    D(env_fg);
-    D(env_bg);
-
-#undef D
-
-    if (decode_uint (&p, end, &dumb_terminal_))
-        return -1;
-    if (decode_uint (&p, end, &n_undead_))
-        return -1;
-    for (i = 0; i < n_undead_; i++) {
-        if (decode_uint (&p, end, &cmd_pid_))
-            return -1;
-        if (decode_uint (&p, end, &host_pid_))
-            return -1;
-        if (decode_uint (&p, end, &start_time_))
-            return -1;
-        delete_suspendedshell (sd, (unsigned long) cmd_pid_, (unsigned long) host_pid_, start_time_);
-    }
-    if (decode_uint (&p, end, &n_args))
+    memset (&req, '\0', sizeof (req));
+    memset (&hook, '\0', sizeof (hook));
+    hook.user_data = &req;
+    hook.store_uint = shellcmdnew_req_store_uint;
+    hook.store_str = shellcmdnew_req_store_str;
+    hook.store_vector = shellcmdnew_req_store_vector;
+    if (decode_struct (&p, end, &hook, 0))
         return -1;
 
-    args = (char **) malloc (sizeof (char *) * (n_args + 1));
-    memset (args, '\0', sizeof (char *) * (n_args + 1));
-    for (i = 0; i < n_args; i++) {
-        CStr c;
-        if (decode_cstr (&p, end, &c)) {
-            free_args (args);
-            return -1;
-        }
-        args[i] = c.data;
-    }
+    for (i = 0; i < req.n_undead; i++)
+        delete_suspendedshell (sd, req.undead[i].cmd_pid, req.undead[i].host_pid, req.undead[i].start_time);
 
     assert (sd->ttyreader_data == NULL);
 
@@ -7848,26 +8161,26 @@ static int remote_action_fn_v5_shellcmdnew (struct server_data *sd, CStr *s, con
     peer_to_text (sd->reader_data->sock_data->sock, peername);
 
 #ifdef XWIN_FWD
-    if (c.x11_forwarding) {
+    if (req.c.x11_forwarding) {
         if (!sd->xwinfwd_data)
             sd->xwinfwd_data = xwinfwd_alloc ();
         if (sd->xwinfwd_data)
-            snprintf (c.display_env_var, sizeof (c.display_env_var), "localhost:%d.0", xwinfwd_display_port (sd->xwinfwd_data) - 6000);
+            snprintf (req.c.display_env_var, sizeof (req.c.display_env_var), "localhost:%d.0", xwinfwd_display_port (sd->xwinfwd_data) - 6000);
     }
 #endif
 #ifdef SOUND_FWD
-    if (c.sound_forwarding) {
+    if (req.c.sound_forwarding) {
         if (!sd->soundfwd_data)
             sd->soundfwd_data = soundfwd_alloc ();
         if (sd->soundfwd_data)
-            soundfwd_construct_envvar (sd->soundfwd_data, c.sound_env_var, sizeof (c.sound_env_var), c.sound_env_config, sizeof (c.sound_env_config));
+            soundfwd_construct_envvar (sd->soundfwd_data, req.c.sound_env_var, sizeof (req.c.sound_env_var), req.c.sound_env_config, sizeof (req.c.sound_env_config));
     }
 #endif
 
-    c.host_pid = remotefs_host_pid;
-    c.start_time = remotefs_start_time;
+    req.c.host_pid = remotefs_host_pid;
+    req.c.start_time = remotefs_start_time;
 
-    if (remotefs_shellcmdnew_ (&t->cterminal, &c, (int) dumb_terminal_, peername, args, s)) {
+    if (remotefs_shellcmdnew_ (&t->cterminal, &req.c, (int) req.dumb_terminal, peername, req.args, s)) {
         free (t);
     } else {
         sd->ttyreader_data = t;
@@ -7879,7 +8192,7 @@ static int remote_action_fn_v5_shellcmdnew (struct server_data *sd, CStr *s, con
     assert (t->cterminal.cmd_fd >= 0);
 #endif
 
-    free_args (args);
+    free_args (req.args);
 
     return 0;
 }
@@ -8132,6 +8445,7 @@ struct action_item action_list[] = {
 #endif
     { 1, 1, remote_action_fn_v5_mkdir, },                       /* REMOTEFS_ACTION_MKDIR                   */
     { 1, 1, remote_action_fn_v5_symlink, },                     /* REMOTEFS_ACTION_SYMLINK                 */
+    { 1, 1, remote_action_fn_v5_readlink, },                    /* REMOTEFS_ACTION_READLINK                */
 };
 
 static unsigned int client_count = 0L;
@@ -8604,6 +8918,10 @@ static void run_service (struct service *serv)
     FD_ZERO (&wr);
 #endif
 
+#ifdef MSWIN
+    garbage_collect ();
+#endif
+
     for (i = serv->client_list; i; i = i->next) {
         assert (i->magic == CLIENT_MAGIC);
 
@@ -8764,8 +9082,10 @@ if (now > v1 + 5) {
                 xwinfwd_new_client (i->sd.xwinfwd_data);
             if (xwinfwd_process_sockets (&i->sock_data, i->sd.xwinfwd_data, &rd, &wr)) {
                 log_fmt (0, "error writing to terminal socket: [%s]\n", strerror (errno));
-                suspend_cterminal (__LINE__, NULL, i->sd.ttyreader_data, 0);
-                i->sd.ttyreader_data = NULL;
+                if (i->sd.ttyreader_data && i->sd.ttyreader_data->cterminal.cmd_pid) {
+                    suspend_cterminal (__LINE__, NULL, i->sd.ttyreader_data, 0);
+                    i->sd.ttyreader_data = NULL;
+                }
                 i->kill = KILL_SOFT;
             }
         }
@@ -8777,8 +9097,10 @@ if (now > v1 + 5) {
                 soundfwd_new_client (i->sd.soundfwd_data);
             if (soundfwd_process_sockets (&i->sock_data, i->sd.soundfwd_data, &rd, &wr)) {
                 log_fmt (0, "error writing to terminal socket: [%s]\n", strerror (errno));
-                suspend_cterminal (__LINE__, NULL, i->sd.ttyreader_data, 0);
-                i->sd.ttyreader_data = NULL;
+                if (i->sd.ttyreader_data && i->sd.ttyreader_data->cterminal.cmd_pid) {
+                    suspend_cterminal (__LINE__, NULL, i->sd.ttyreader_data, 0);
+                    i->sd.ttyreader_data = NULL;
+                }
                 i->kill = KILL_SOFT;
             }
         }
@@ -8792,7 +9114,7 @@ if (now > v1 + 5) {
             exit (1);
         }
         if ((ev.lNetworkEvents & FD_CLOSE)) {
-            if (i->sd.ttyreader_data) {
+            if (i->sd.ttyreader_data && i->sd.ttyreader_data->cterminal.cmd_pid) {
                 suspend_cterminal (__LINE__, NULL, i->sd.ttyreader_data, 0);
                 i->sd.ttyreader_data = NULL;
             }
@@ -8823,7 +9145,7 @@ if (now > v1 + 5) {
                     log_fmt (0, "%d: Error: closed by remote,\n", i->id);
                     i->kill = KILL_HARD;
 #ifdef SHELL_SUPPORT
-                    if (i->sd.ttyreader_data) {
+                    if (i->sd.ttyreader_data && i->sd.ttyreader_data->cterminal.cmd_pid) {
                         suspend_cterminal (__LINE__, NULL, i->sd.ttyreader_data, 0);
                         i->sd.ttyreader_data = NULL;
                     }
@@ -8839,7 +9161,7 @@ if (now > v1 + 5) {
                         int timeout = 0;
                         process_client (i, &timeout);
 #ifdef SHELL_SUPPORT
-                        if (i->kill && i->sd.ttyreader_data) {
+                        if (i->kill && i->sd.ttyreader_data && i->sd.ttyreader_data->cterminal.cmd_pid) {
                             suspend_cterminal (__LINE__, NULL, i->sd.ttyreader_data, 0);
                             i->sd.ttyreader_data = NULL;
                             break;
@@ -8888,6 +9210,7 @@ if (now > v1 + 5) {
                 }
             }
 #endif
+
 #ifdef MSWIN
             if (child_exitted (tt->cterminal.process_handle)) {
                 close_cterminal (__LINE__, &i->sock_data, &tt->cterminal, 0);
@@ -8948,8 +9271,10 @@ if (now > v1 + 5) {
 #endif
                     {
                         log_fmt (0, "error writing to terminal socket: [%s]\n", strerror (errno));
-                        suspend_cterminal (__LINE__, NULL, i->sd.ttyreader_data, 0);
-                        i->sd.ttyreader_data = NULL;
+                        if (tt->cterminal.cmd_pid) {
+                            suspend_cterminal (__LINE__, NULL, tt, 0);
+                            i->sd.ttyreader_data = NULL;
+                        }
                         i->kill = KILL_SOFT;
                     }
 #ifdef MSWIN

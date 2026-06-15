@@ -84,9 +84,10 @@ int kill_child_get_exit_status (int pid, MSWIN_HANDLE h, unsigned long *exit_sta
 {
     int r = 0;
     if (h) {
+        TerminateProcess (h, 1);
+        WaitForSingleObject (h, 1000);
         if (GetExitCodeProcess (h, exit_status))
             r = 1;
-        TerminateProcess (h, 1);
     }
     return r;
 }

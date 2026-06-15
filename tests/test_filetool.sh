@@ -151,6 +151,40 @@ run_filetool() {
     return $ret
 }
 
+# Run cooledit --filetool and capture stderr into FILE_TOOL_STDERR.
+run_filetool_stderr() {
+    local vglog
+    VGLOG_COUNTER=$((VGLOG_COUNTER + 1))
+    vglog=$(printf "%s/client-%03d.log" "$VGLOG_DIR" "$VGLOG_COUNTER")
+    FILE_TOOL_STDERR=$(cd "$WORKDIR" && "$VALGRIND" $VALGRIND_FLAGS --log-file="$vglog" \
+        "$COOLEDIT" --filetool "$@" 2>&1 1>/dev/null)
+    local ret=$?
+    if [ "$ret" -eq 42 ]; then
+        echo "  VALGRIND: error exit code 42 for --filetool $*"
+        ((FAILED++))
+    fi
+    if grep -q "ERROR SUMMARY: [1-9]" "$vglog" 2>/dev/null; then
+        echo "  VALGRIND: errors detected for --filetool $*"
+        grep "ERROR SUMMARY" "$vglog"
+        ((FAILED++))
+    fi
+    if grep -q "definitely lost: [1-9]\|indirectly lost: [1-9]" "$vglog" 2>/dev/null; then
+        echo "  VALGRIND: memory leaks detected for --filetool $*"
+        grep "lost:" "$vglog"
+        ((FAILED++))
+    fi
+    if grep -q "in use at exit: [1-9]" "$vglog" 2>/dev/null; then
+        local inuse
+        inuse=$(grep "in use at exit:" "$vglog" | head -1 | sed 's/.*in use at exit: *//' | sed 's/ bytes.*//' | tr -d ',')
+        if [ -n "$inuse" ] && [ "$inuse" -gt 400 ] 2>/dev/null; then
+            echo "  VALGRIND: memory in use at exit ($inuse bytes) for --filetool $*"
+            grep "in use at exit" "$vglog"
+            ((FAILED++))
+        fi
+    fi
+    return $ret
+}
+
 # Start remotefs server under valgrind
 start_server() {
     SERVER_VGLOG="$VGLOG_DIR/server.log"
@@ -678,6 +712,29 @@ run_filetool "$WORKDIR/local-src/does-not-exist.txt" \
     "${REMOTE}${WORKDIR}/remote-dst/should-not-be-created" && \
     fail "non-existent source: should have errored" || \
     pass "non-existent source: correctly errors"
+
+# ============================================================
+# Trailing slash: source is not a directory
+# ============================================================
+echo ""
+echo "--- Source file with trailing slash (error) ---"
+run_filetool_stderr "$WORKDIR/local-src/file1.txt/" "${REMOTE}${WORKDIR}/remote-dst/should-not-exist"
+assert_error $? "source file with trailing slash: errors"
+if echo "$FILE_TOOL_STDERR" | grep -q "is not a directory"; then
+    pass "source file with trailing slash: error message says 'is not a directory'"
+else
+    fail "source file with trailing slash: expected 'is not a directory' in stderr, got: $FILE_TOOL_STDERR"
+fi
+
+echo ""
+echo "--- Destination file with trailing slash (error) ---"
+run_filetool_stderr "$WORKDIR/local-src" "${REMOTE}${WORKDIR}/remote-dst/existing-file.txt/"
+assert_error $? "destination file with trailing slash: errors"
+if echo "$FILE_TOOL_STDERR" | grep -q "is not a directory"; then
+    pass "destination file with trailing slash: error message says 'is not a directory'"
+else
+    fail "destination file with trailing slash: expected 'is not a directory' in stderr, got: $FILE_TOOL_STDERR"
+fi
 
 # ============================================================
 # Stop server and check results

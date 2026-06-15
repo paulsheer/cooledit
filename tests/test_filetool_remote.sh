@@ -125,6 +125,12 @@ run_filetool() {
     return $ret
 }
 
+# Run cooledit --filetool and capture stderr into FILE_TOOL_STDERR.
+run_filetool_stderr() {
+    FILE_TOOL_STDERR=$("$COOLEDIT" --filetool "$@" 2>&1 1>/dev/null)
+    return $?
+}
+
 # Run with stdin provided (for overwrite prompts).
 run_filetool_stdin() {
     local input="$1"
@@ -617,6 +623,32 @@ if [ $ret -eq 0 ]; then
     fi
 else
     fail "local dir -> remote existing dir with trailing slash: copy failed (exit $ret)"
+fi
+
+# ============================================================
+# Case 21: source file with trailing slash (not a directory)
+# ============================================================
+echo ""
+echo "--- Case 21: source file with trailing slash (error) ---"
+run_filetool_stderr "$WORKDIR/local-src/file1.txt/" "${REMOTE_TESTDIR}/dst"
+assert_error $? "source file with trailing slash: errors"
+if echo "$FILE_TOOL_STDERR" | grep -q "is not a directory"; then
+    pass "source file with trailing slash: error message says 'is not a directory'"
+else
+    fail "source file with trailing slash: expected 'is not a directory' in stderr, got: $FILE_TOOL_STDERR"
+fi
+
+# ============================================================
+# Case 22: destination file with trailing slash (not a directory)
+# ============================================================
+echo ""
+echo "--- Case 22: destination file with trailing slash (error) ---"
+run_filetool_stderr "$WORKDIR/local-src" "${REMOTE_TESTDIR}/exist.txt/"
+assert_error $? "destination file with trailing slash: errors"
+if echo "$FILE_TOOL_STDERR" | grep -q "is not a directory"; then
+    pass "destination file with trailing slash: error message says 'is not a directory'"
+else
+    fail "destination file with trailing slash: expected 'is not a directory' in stderr, got: $FILE_TOOL_STDERR"
 fi
 
 # ============================================================

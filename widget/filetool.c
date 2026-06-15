@@ -29,10 +29,14 @@ extern char *option_backup_ext;
 
 /* --- helpers for new CLI --- */
 
-static void parse_remote_path (const char *arg, char *ip, int ip_len, char *path, int path_len)
+static void parse_remote_path (const char *arg, char *ip, int ip_len, char *path, int path_len, int *last_char_is_dir)
 {
     const char *colon;
     int len;
+
+    if (last_char_is_dir)
+        *last_char_is_dir = 0;
+
     ip[0] = '\0';
     colon = strchr (arg, ':');
     if (colon) {
@@ -48,8 +52,17 @@ static void parse_remote_path (const char *arg, char *ip, int ip_len, char *path
     }
     /* strip trailing slashes (Windows APIs reject them) */
     len = strlen (path);
-    while (len > 1 && path[len - 1] == '/')
-        path[--len] = '\0';
+    if (!last_char_is_dir) {
+        /* other than the top-level, we can't get trailing / or \ */
+    } else if (len > 1 && path[len - 1] == '/') {
+        *last_char_is_dir = 1;
+        while (len > 1 && (path[len - 1] == '/'))
+            path[--len] = '\0';
+    } else if (len > 1 && path[len - 1] == '\\') {
+        *last_char_is_dir = 1;
+        while (len > 1 && (path[len - 1] == '\\'))
+            path[--len] = '\0';
+    }
 }
 
 static int path_stat (const char *arg, struct portable_stat *st, int *is_dir, int *exists, char *errmsg)
@@ -58,12 +71,13 @@ static int path_stat (const char *arg, struct portable_stat *st, int *is_dir, in
     struct remotefs *rfs;
     remotefs_error_code_t error_code;
     int just_not_there = 0;
+    int last_char_is_dir = 0;
 
     *exists = 0;
     *is_dir = 0;
     memset (st, 0, sizeof (*st));
 
-    parse_remote_path (arg, ip, sizeof (ip), path, sizeof (path));
+    parse_remote_path (arg, ip, sizeof (ip), path, sizeof (path), &last_char_is_dir);
     rfs = ip[0] ? remotefs_lookup (ip, NULL) : the_remotefs_local;
 
     if ((*rfs->remotefs_stat) (rfs, NULL, path, st, &just_not_there, &error_code, errmsg))
@@ -81,7 +95,7 @@ static int path_readlink (const char *arg, char *target, int target_len, char *e
 {
     char ip[256], path[MAX_PATH_LEN];
     struct remotefs *rfs;
-    parse_remote_path (arg, ip, sizeof (ip), path, sizeof (path));
+    parse_remote_path (arg, ip, sizeof (ip), path, sizeof (path), NULL);
     rfs = ip[0] ? remotefs_lookup (ip, NULL) : the_remotefs_local;
     return (*rfs->remotefs_readlink) (rfs, path, target, target_len, errmsg);
 }
@@ -496,10 +510,11 @@ static int handle_single_source (const char *src, const char *dst)
     char target_path[MAX_PATH_LEN];
     const char *target;
     int src_is_remote, dst_is_remote;
+    int last_src_char_is_dir = 0, last_dst_char_is_dir = 0;
 
     *errmsg = '\0';
-    parse_remote_path (src, src_ip, sizeof (src_ip), src_path, sizeof (src_path));
-    parse_remote_path (dst, dst_ip, sizeof (dst_ip), dst_path, sizeof (dst_path));
+    parse_remote_path (src, src_ip, sizeof (src_ip), src_path, sizeof (src_path), &last_src_char_is_dir);
+    parse_remote_path (dst, dst_ip, sizeof (dst_ip), dst_path, sizeof (dst_path), &last_dst_char_is_dir);
 
     src_is_remote = (src_ip[0] != '\0');
     dst_is_remote = (dst_ip[0] != '\0');
@@ -510,9 +525,19 @@ static int handle_single_source (const char *src, const char *dst)
         return 1;
     }
 
+    if (last_src_char_is_dir && !src_is_dir) {
+        fprintf (stderr, "Error %s is not a directory\n", src);
+        return 1;
+    }
+
     /* stat destination */
     if (path_stat (dst, &dst_st, &dst_is_dir, &dst_exists, errmsg)) {
         fprintf (stderr, "Error stating destination %s: %s\n", dst, errmsg);
+        return 1;
+    }
+
+    if (last_dst_char_is_dir && !dst_is_dir) {
+        fprintf (stderr, "Error %s is not a directory\n", dst);
         return 1;
     }
 
@@ -611,7 +636,7 @@ int filetool_process_args (int argc, char **argv)
 
 static int filetool_process_args_ (int argc, char **argv)
 {E_
-    int i, nsrcs;
+    int i, j, nsrcs;
     char **srcs;
     const char *dst;
     int dst_is_dir, dst_exists;
@@ -630,6 +655,10 @@ static int filetool_process_args_ (int argc, char **argv)
         }
         break;
     }
+
+    for (j = 0; j < argc; j++)
+        if (!argv[j][0])
+            usage_exit_error ();
 
     if (i >= argc)
         usage_exit_error ();

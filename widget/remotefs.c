@@ -2839,10 +2839,14 @@ static int encode_stat (unsigned char **p_, const struct portable_stat *ps)
 #ifdef MSWIN
     r += encode_uint (p_, OS_TYPE_WINDOWS);
     r += encode_uint (p_, OS_SUBTYPE_WINDOWS);
+#elif defined(ANDROID)
+    r += encode_uint (p_, OS_TYPE_POSIX);
+    r += encode_uint (p_, OS_SUBTYPE_ANDROID);
 #else
     r += encode_uint (p_, OS_TYPE_POSIX);
     r += encode_uint (p_, OS_SUBTYPE_LINUX);
 #endif
+#warning do not forget filetool with /proc/mounts
     {
         unsigned char fields[(N_STAT_FIELDS + 1 + 1) / 2];
         memset (fields, '\0', sizeof (fields));

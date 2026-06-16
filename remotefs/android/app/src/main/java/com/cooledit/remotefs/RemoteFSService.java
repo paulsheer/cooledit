@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
@@ -111,7 +112,12 @@ public class RemoteFSService extends Service {
 
         /* Show foreground notification */
         Notification notification = buildNotification("RemoteFS Server", "RemoteFS server is running");
-        startForeground(NOTIFICATION_ID, notification);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIFICATION_ID, notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        } else {
+            startForeground(NOTIFICATION_ID, notification);
+        }
     }
 
     /** Called from native code to refresh the wake lock on each client action */
@@ -167,14 +173,16 @@ public class RemoteFSService extends Service {
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID,
-                "RemoteFS Service",
-                NotificationManager.IMPORTANCE_LOW
-            );
-            channel.setDescription("Notification for RemoteFS server service");
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
+                /* Delete any pre-existing channel so importance/settings take effect */
+                manager.deleteNotificationChannel(CHANNEL_ID);
+                NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID,
+                    "RemoteFS Service",
+                    NotificationManager.IMPORTANCE_DEFAULT
+                );
+                channel.setDescription("Notification for RemoteFS server service");
                 manager.createNotificationChannel(channel);
             }
         }

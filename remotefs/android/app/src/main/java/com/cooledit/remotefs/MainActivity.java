@@ -48,6 +48,7 @@ public class MainActivity extends Activity {
     private TextView keyText;
 
     private static final int REQUEST_STORAGE = 100;
+    private static final int REQUEST_NOTIFICATIONS = 101;
 
     private SettingsStore settings;
     private boolean serviceBound = false;
@@ -91,6 +92,17 @@ public class MainActivity extends Activity {
                         Manifest.permission.WRITE_EXTERNAL_STORAGE
                     },
                     REQUEST_STORAGE
+                );
+            }
+        }
+
+        /* Request POST_NOTIFICATIONS at runtime (API 33+) */
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(
+                    new String[] { Manifest.permission.POST_NOTIFICATIONS },
+                    REQUEST_NOTIFICATIONS
                 );
             }
         }
@@ -157,6 +169,12 @@ public class MainActivity extends Activity {
             if (!granted) {
                 Toast.makeText(this,
                     "Storage permissions denied. File access may be limited.",
+                    Toast.LENGTH_LONG).show();
+            }
+        } else if (code == REQUEST_NOTIFICATIONS) {
+            if (results.length == 0 || results[0] != PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this,
+                    "Notification permission denied. Server status will not be shown.",
                     Toast.LENGTH_LONG).show();
             }
         }

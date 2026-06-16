@@ -87,7 +87,8 @@ struct file_entry {
 #define FILELIST_LAST_ENTRY		(1<<8)
 #define FILELIST_FILES_ONLY		(1<<15)
 #define FILELIST_DIRECTORIES_ONLY	(1<<16)
-#define FILELIST_ALL_FILES              (FILELIST_DIRECTORIES_ONLY|FILELIST_FILES_ONLY)
+#define FILELIST_ALL_FILES              (0)
+#define FILELIST_MASK                   (FILELIST_FILES_ONLY|FILELIST_DIRECTORIES_ONLY)
 
 void pstat_to_mode_string (struct portable_stat *ps, char *mode);
 

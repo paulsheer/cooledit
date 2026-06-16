@@ -42,7 +42,7 @@ trap cleanup EXIT
 
 tmpdir() {
     local d
-    d=$(mktemp -d "$WORKDIR/filetool-remote-test-XXXXXX")
+    d=$(mktemp -d "$WORKDIR_BASE/filetool-remote-test-XXXXXX")
     TMPDIR_CLEANUP+=("$d")
     echo "$d"
 }

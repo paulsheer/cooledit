@@ -4,7 +4,10 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include <errno.h>
+#include <sys/sysmacros.h>
 
 #include "inspect.h"
 #include <config.h>
@@ -23,19 +26,44 @@ void get_home_dir (void);
 static int password_loaded = 0;
 static int dummy_data;
 static int force_flag = 0;
+static int ls_flag = 0;
+static int ls_opt_a = 0;
+static int ls_opt_d = 0;
+static int ls_opt_l = 0;
+static int ls_opt_r = 0;
+static int ls_opt_S = 0;
+static int ls_opt_t = 0;
+static int ls_opt_1 = 0;
 
-extern int option_save_mode;
+#define SAVE_MODE       REMOTEFS_WRITEFILE_OVERWRITEMODE_SAFE
+
 extern char *option_backup_ext;
 
 /* --- helpers for new CLI --- */
 
-static void parse_remote_path (const char *arg, char *ip, int ip_len, char *path, int path_len, int *last_char_is_dir)
+static int strip_trailing_slash (char *path, int *last_char_is_dir)
+{
+    int r = 0, len;
+    /* strip trailing slashes (Windows APIs reject them) */
+    len = strlen (path);
+    if (len > 1 && path[len - 1] == '/') {
+        r = 1;
+        while (len > 1 && (path[len - 1] == '/'))
+            path[--len] = '\0';
+    } else if (len > 1 && path[len - 1] == '\\') {
+        r = 1;
+        *last_char_is_dir = 1;
+        while (len > 1 && (path[len - 1] == '\\'))
+            path[--len] = '\0';
+    }
+    if (last_char_is_dir)
+        *last_char_is_dir = r;
+}
+
+static void parse_remote_path (const char *arg, char *ip, int ip_len, char *path, int path_len)
 {
     const char *colon;
     int len;
-
-    if (last_char_is_dir)
-        *last_char_is_dir = 0;
 
     ip[0] = '\0';
     colon = strchr (arg, ':');
@@ -50,24 +78,10 @@ static void parse_remote_path (const char *arg, char *ip, int ip_len, char *path
         strncpy (path, arg, path_len - 1);
         path[path_len - 1] = '\0';
     }
-    /* strip trailing slashes (Windows APIs reject them) */
-    len = strlen (path);
-    if (!last_char_is_dir) {
-        /* other than the top-level, we can't get trailing / or \ */
-    } else if (len > 1 && path[len - 1] == '/') {
-        *last_char_is_dir = 1;
-        while (len > 1 && (path[len - 1] == '/'))
-            path[--len] = '\0';
-    } else if (len > 1 && path[len - 1] == '\\') {
-        *last_char_is_dir = 1;
-        while (len > 1 && (path[len - 1] == '\\'))
-            path[--len] = '\0';
-    }
 }
 
-static int path_stat (const char *arg, struct portable_stat *st, int *is_dir, int *exists, char *errmsg)
+static int path_stat (const char *ip, const char *path, struct portable_stat *st, int *is_dir, int *exists, char *errmsg)
 {
-    char ip[256], path[MAX_PATH_LEN];
     struct remotefs *rfs;
     remotefs_error_code_t error_code;
     int just_not_there = 0;
@@ -77,7 +91,6 @@ static int path_stat (const char *arg, struct portable_stat *st, int *is_dir, in
     *is_dir = 0;
     memset (st, 0, sizeof (*st));
 
-    parse_remote_path (arg, ip, sizeof (ip), path, sizeof (path), &last_char_is_dir);
     rfs = ip[0] ? remotefs_lookup (ip, NULL) : the_remotefs_local;
 
     if ((*rfs->remotefs_stat) (rfs, NULL, path, st, &just_not_there, &error_code, errmsg))
@@ -91,11 +104,9 @@ static int path_stat (const char *arg, struct portable_stat *st, int *is_dir, in
     return 0;
 }
 
-static int path_readlink (const char *arg, char *target, int target_len, char *errmsg)
+static int path_readlink (const char *ip, const char *path, char *target, int target_len, char *errmsg)
 {
-    char ip[256], path[MAX_PATH_LEN];
     struct remotefs *rfs;
-    parse_remote_path (arg, ip, sizeof (ip), path, sizeof (path), NULL);
     rfs = ip[0] ? remotefs_lookup (ip, NULL) : the_remotefs_local;
     return (*rfs->remotefs_readlink) (rfs, path, target, target_len, errmsg);
 }
@@ -189,8 +200,8 @@ int filetool_copy_remote_to_local (const char *host, const char *remote_filename
 struct saver_data {
     FILE *f;
     const char *remote_filename;
-    long totalwritten;
-    long filelen;
+    unsigned long long totalwritten;
+    unsigned long long filelen;
     int done;
 };
 
@@ -200,9 +211,16 @@ static int filetool_sock_writer (struct action_callbacks *o, unsigned char *chun
     int c;
     sd = (struct saver_data *) o->hook;
 
-    if (sd->done || sd->totalwritten >= sd->filelen) {
-        strcpy (errmsg, "%s: Unknown error");
-        return -1;
+    if (sd->filelen == FILE_LEN_INDEFINITE) {
+        if (sd->done) {
+            *chunklen_ = 0;
+            return 0;
+        }
+    } else {
+        if (sd->done || sd->totalwritten >= sd->filelen) {
+            strcpy (errmsg, "%s: Unknown error");
+            return -1;
+        }
     }
 
     c = fread (chunk, 1, *chunklen_, sd->f);
@@ -245,19 +263,23 @@ int filetool_copy_local_to_remote (const char *local_filename, const char *host,
 
     memset (&o, '\0', sizeof (o));
 
-    sd.filelen = local_st.st_size;
+    if (remotefs_check_indefinite_length (local_filename)) {
+        sd.filelen = FILE_LEN_INDEFINITE;
+    } else {
+        sd.filelen = local_st.st_size;
+    }
 
     o.hook = (void *) &sd;
     o.sock_writer = filetool_sock_writer;
 
     u = remotefs_lookup (host, NULL);
-    if ((*u->remotefs_writefile) (u, &o, remote_filename, local_st.st_size, option_save_mode, DEFAULT_CREATE_MODE, option_backup_ext, &st, errmsg)) {
+    if ((*u->remotefs_writefile) (u, &o, remote_filename, sd.filelen, SAVE_MODE, DEFAULT_CREATE_MODE, option_backup_ext, &st, errmsg)) {
         fprintf (stderr, "%s: Failed trying to write file: %s\n", remote_filename, errmsg);
         fclose (sd.f);
         return 1;
     }
 
-    if (sd.totalwritten != local_st.st_size) {
+    if (sd.filelen != FILE_LEN_INDEFINITE && sd.totalwritten != local_st.st_size) {
         fprintf (stderr, "%s: Error: Did not write all bytes: ", local_filename);
         fclose (sd.f);
         return 1;
@@ -267,12 +289,87 @@ int filetool_copy_local_to_remote (const char *local_filename, const char *host,
     return 0;
 }
 
+int filetool_copy_local_to_local (const char *local_src_filename, const char *local_dst_filename)
+{E_
+    FILE *fsrc, *fdst;
+    struct stat local_st;
+    unsigned long long filelen;
+    unsigned long long totalwritten = 0;
+    unsigned char buf[65536];
+    int indefinite;
+
+    fsrc = fopen (local_src_filename, "rb");
+    if (!fsrc) {
+        perror (local_src_filename);
+        return 1;
+    }
+
+    if (fstat (fileno (fsrc), &local_st)) {
+        perror (local_src_filename);
+        fclose (fsrc);
+        return 1;
+    }
+
+    indefinite = remotefs_check_indefinite_length (local_src_filename);
+    filelen = indefinite ? FILE_LEN_INDEFINITE : (unsigned long long) local_st.st_size;
+
+    fdst = fopen (local_dst_filename, "wb");
+    if (!fdst) {
+        perror (local_dst_filename);
+        fclose (fsrc);
+        return 1;
+    }
+
+    if (indefinite) {
+        for (;;) {
+            size_t c;
+            c = fread (buf, 1, sizeof (buf), fsrc);
+            if (!c)
+                break;
+            if (fwrite (buf, 1, c, fdst) != c) {
+                perror (local_dst_filename);
+                fclose (fsrc);
+                fclose (fdst);
+                return 1;
+            }
+            totalwritten += c;
+        }
+    } else {
+        while (totalwritten < filelen) {
+            size_t c;
+            c = fread (buf, 1, sizeof (buf), fsrc);
+            if (!c)
+                break;
+            if (fwrite (buf, 1, c, fdst) != c) {
+                perror (local_dst_filename);
+                fclose (fsrc);
+                fclose (fdst);
+                return 1;
+            }
+            totalwritten += c;
+        }
+        if (totalwritten != filelen) {
+            fprintf (stderr, "%s: Error: Did not write all bytes\n", local_src_filename);
+            fclose (fsrc);
+            fclose (fdst);
+            return 1;
+        }
+    }
+
+    fclose (fsrc);
+    fclose (fdst);
+    return 0;
+}
+
 void filetool_usage(FILE *out, const char *prefix)
 {
     fprintf(out, "%s\
---filetool [-f|--force] <src> [<src>...] <target>      scp-like remote copy with\n\
-                                         recursive directory copy feature. Uses\n\
-                                         remotefs as a server.\n", prefix);
+--filetool [-f|--force] [--] <src> [<src>...] <target>      scp-like remote copy\n\
+                                         with recursive directory copy feature.\n\
+                                         Uses remotefs / REMOTEFS.EXE /\n\
+                                         remotefs.apk as a server.\n\
+--filetool --ls|-ls [-adlrSt1] [<path>...]            list files in ls style\n\
+                                         with Unix-compatible options\n", prefix);
 }
 
 static void usage_ (void)
@@ -387,7 +484,7 @@ static int copy_dir_local_to_remote (const char *local_dir, const char *host, co
     /* create destination directory on remote */
     if ((*rfs->remotefs_mkdir) (rfs, remote_dir, 0777, errmsg)) {
         fprintf (stderr, "Error creating remote directory %s: %s\n", remote_dir, errmsg);
-        return 1;
+        goto err;;
     }
 
     /* list local directory */
@@ -395,7 +492,7 @@ static int copy_dir_local_to_remote (const char *local_dir, const char *host, co
         struct remotefs *local_rfs = the_remotefs_local;
         if ((*local_rfs->remotefs_listdir) (local_rfs, &cached, local_dir, FILELIST_ALL_FILES, "*", &list, &n, errmsg)) {
             fprintf (stderr, "Error listing directory %s: %s\n", local_dir, errmsg);
-            return 1;
+            goto err;;
         }
     }
 
@@ -409,31 +506,35 @@ static int copy_dir_local_to_remote (const char *local_dir, const char *host, co
 
         if (S_ISDIR (list[i].pstat.ustat.st_mode)) {
             if (copy_dir_local_to_remote (sub_local, host, sub_remote, force))
-                return 1;
+                goto err;;
         } else if (S_ISREG (list[i].pstat.ustat.st_mode)) {
             if (filetool_copy_local_to_remote (sub_local, host, sub_remote))
-                return 1;
+                goto err;;
         } else if (S_ISLNK (list[i].pstat.ustat.st_mode)) {
             char link_target[MAX_PATH_LEN];
             ssize_t nlink;
             nlink = readlink (sub_local, link_target, sizeof (link_target) - 1);
             if (nlink < 0) {
                 fprintf (stderr, "Error reading symlink %s: %s\n", sub_local, strerror (errno));
-                return 1;
+                goto err;;
             }
             link_target[nlink] = '\0';
             if ((*rfs->remotefs_symlink) (rfs, link_target, sub_remote, errmsg)) {
                 fprintf (stderr, "Error creating remote symlink %s: %s\n", sub_remote, errmsg);
-                return 1;
+                goto err;;
             }
         }
     }
 
     free (list);
     return 0;
+
+  err:
+    free (list);
+    return 1;
 }
 
-static int copy_dir_remote_to_local (const char *host, const char *remote_dir, const char *local_dir, int force)
+static int copy_dir_remote_to_local (const char *ip, const char *remote_dir, const char *local_dir, int force)
 {
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     struct file_entry *list = NULL;
@@ -441,18 +542,18 @@ static int copy_dir_remote_to_local (const char *host, const char *remote_dir, c
     struct remotefs *rfs;
     char sub_remote[MAX_PATH_LEN], sub_local[MAX_PATH_LEN];
 
-    rfs = remotefs_lookup (host, NULL);
+    rfs = ip[0] ? remotefs_lookup (ip, NULL) : the_remotefs_local;
 
     /* create destination directory locally */
     if (mkdir (local_dir, 0777) < 0 && errno != EEXIST) {
         fprintf (stderr, "Error creating directory %s: %s\n", local_dir, strerror (errno));
-        return 1;
+        goto err;
     }
 
     /* list remote directory */
     if ((*rfs->remotefs_listdir) (rfs, &cached, remote_dir, FILELIST_ALL_FILES, "*", &list, &n, errmsg)) {
         fprintf (stderr, "Error listing remote directory %s: %s\n", remote_dir, errmsg);
-        return 1;
+        goto err;
     }
 
     for (i = 0; i < n; i++) {
@@ -464,26 +565,32 @@ static int copy_dir_remote_to_local (const char *host, const char *remote_dir, c
         path_join (local_dir, list[i].name, sub_local, sizeof (sub_local));
 
         if (S_ISDIR (list[i].pstat.ustat.st_mode)) {
-            if (copy_dir_remote_to_local (host, sub_remote, sub_local, force))
-                return 1;
+            if (copy_dir_remote_to_local (ip, sub_remote, sub_local, force))
+                goto err;
         } else if (S_ISREG (list[i].pstat.ustat.st_mode)) {
-            if (filetool_copy_remote_to_local (host, sub_remote, sub_local))
-                return 1;
+            if (ip[0]
+                ? filetool_copy_remote_to_local (ip, sub_remote, sub_local)
+                : filetool_copy_local_to_local (sub_remote, sub_local))
+                goto err;
         } else if (S_ISLNK (list[i].pstat.ustat.st_mode)) {
             char link_target[MAX_PATH_LEN];
             if ((*rfs->remotefs_readlink) (rfs, sub_remote, link_target, sizeof (link_target), errmsg)) {
                 fprintf (stderr, "Error reading remote symlink %s: %s\n", sub_remote, errmsg);
-                return 1;
+                goto err;
             }
             if ((*the_remotefs_local->remotefs_symlink) (the_remotefs_local, link_target, sub_local, errmsg)) {
                 fprintf (stderr, "Error creating symlink %s: %s\n", sub_local, errmsg);
-                return 1;
+                goto err;
             }
         }
     }
 
     free (list);
     return 0;
+
+  err:
+    free (list);
+    return 1;
 }
 
 static int has_remote_prefix (const char *arg)
@@ -503,7 +610,7 @@ static int is_cross_remote (int nsrcs, char **srcs, const char *dst)
 static int handle_single_source (const char *src, const char *dst)
 {
     char errmsg[REMOTEFS_ERR_MSG_LEN];
-    char src_ip[256], src_path[MAX_PATH_LEN];
+    char src_ip[256], src_path[MAX_PATH_LEN], src_path__symlinks_resolved[MAX_PATH_LEN];
     char dst_ip[256], dst_path[MAX_PATH_LEN];
     struct portable_stat src_st, dst_st;
     int src_is_dir, src_exists, dst_is_dir, dst_exists;
@@ -513,38 +620,42 @@ static int handle_single_source (const char *src, const char *dst)
     int last_src_char_is_dir = 0, last_dst_char_is_dir = 0;
 
     *errmsg = '\0';
-    parse_remote_path (src, src_ip, sizeof (src_ip), src_path, sizeof (src_path), &last_src_char_is_dir);
-    parse_remote_path (dst, dst_ip, sizeof (dst_ip), dst_path, sizeof (dst_path), &last_dst_char_is_dir);
+
+    parse_remote_path (src, src_ip, sizeof (src_ip), src_path, sizeof (src_path));
+    strip_trailing_slash (src_path, &last_src_char_is_dir);
+
+    parse_remote_path (dst, dst_ip, sizeof (dst_ip), dst_path, sizeof (dst_path));
+    strip_trailing_slash (dst_path, &last_dst_char_is_dir);
 
     src_is_remote = (src_ip[0] != '\0');
     dst_is_remote = (dst_ip[0] != '\0');
 
     /* stat source */
-    if (path_stat (src, &src_st, &src_is_dir, &src_exists, errmsg)) {
+    if (path_stat (src_ip, src_path, &src_st, &src_is_dir, &src_exists, errmsg)) {
         fprintf (stderr, "Error stating source %s: %s\n", src, errmsg);
         return 1;
     }
 
     if (last_src_char_is_dir && !src_is_dir) {
-        fprintf (stderr, "Error %s is not a directory\n", src);
+        fprintf (stderr, "Error: %s is not a directory\n", src);
         return 1;
     }
 
     /* stat destination */
-    if (path_stat (dst, &dst_st, &dst_is_dir, &dst_exists, errmsg)) {
+    if (path_stat (dst_ip, dst_path, &dst_st, &dst_is_dir, &dst_exists, errmsg)) {
         fprintf (stderr, "Error stating destination %s: %s\n", dst, errmsg);
         return 1;
     }
 
     if (last_dst_char_is_dir && !dst_is_dir) {
-        fprintf (stderr, "Error %s is not a directory\n", dst);
+        fprintf (stderr, "Error: %s is not a directory\n", dst);
         return 1;
     }
 
     /* Check if source is a symlink — symlinks are reproduced, not followed */
     {
         char link_target[MAX_PATH_LEN];
-        if (!path_readlink (src, link_target, sizeof (link_target), errmsg)) {
+        if (!path_readlink (src_ip, src_path, link_target, sizeof (link_target), errmsg)) {
             if (dst_exists && dst_is_dir)
                 target = target_path, path_join (dst_path, my_basename (src_path), target_path, sizeof (target_path));
             else
@@ -610,9 +721,151 @@ static int handle_single_source (const char *src, const char *dst)
         } else if (dst_is_remote) {
             if (filetool_copy_local_to_remote (src_path, dst_ip, target))
                 return 1;
+        } else {
+            if (filetool_copy_local_to_local (src_path, target))
+                return 1;
         }
     }
     return 0;
+}
+
+/* --- ls helpers --- */
+
+static int ls_cmp (const void *a, const void *b)
+{
+    const struct file_entry *fa = (const struct file_entry *) a;
+    const struct file_entry *fb = (const struct file_entry *) b;
+    int r;
+    if (ls_opt_S) {
+        long long sa = (long long) fa->pstat.ustat.st_size;
+        long long sb = (long long) fb->pstat.ustat.st_size;
+        if (sa < sb) return ls_opt_r ? -1 : 1;
+        if (sa > sb) return ls_opt_r ? 1 : -1;
+    }
+    if (ls_opt_t) {
+        if (fa->pstat.ustat.st_mtime < fb->pstat.ustat.st_mtime)
+            return ls_opt_r ? -1 : 1;
+        if (fa->pstat.ustat.st_mtime > fb->pstat.ustat.st_mtime)
+            return ls_opt_r ? 1 : -1;
+    }
+    r = strcmp (fa->name, fb->name);
+    return ls_opt_r ? -r : r;
+}
+
+static void ls_print_long (struct file_entry *e)
+{
+    char mode[64];
+    char timebuf[64];
+    struct tm tm;
+    time_t t, now;
+    pstat_to_mode_string (&e->pstat, mode);
+    t = (time_t) e->pstat.ustat.st_mtime;
+    time (&now);
+    localtime_r (&t, &tm);
+    if (t < now - 180 * 24 * 3600 || t > now)
+        strftime (timebuf, sizeof (timebuf), "%b %d  %Y", &tm);
+    else
+        strftime (timebuf, sizeof (timebuf), "%b %d %H:%M", &tm);
+    if (S_ISBLK (e->pstat.ustat.st_mode) || S_ISCHR (e->pstat.ustat.st_mode))
+        printf ("%-10s %4lu %5lu %5lu %3lu, %3lu %s %s\n",
+            mode, (unsigned long) e->pstat.ustat.st_nlink,
+            (unsigned long) e->pstat.ustat.st_uid,
+            (unsigned long) e->pstat.ustat.st_gid,
+            (unsigned long) major (e->pstat.ustat.st_rdev),
+            (unsigned long) minor (e->pstat.ustat.st_rdev),
+            timebuf, e->name);
+    else
+        printf ("%-10s %4lu %5lu %5lu %8lld %s %s\n",
+            mode, (unsigned long) e->pstat.ustat.st_nlink,
+            (unsigned long) e->pstat.ustat.st_uid,
+            (unsigned long) e->pstat.ustat.st_gid,
+            (long long) e->pstat.ustat.st_size,
+            timebuf, e->name);
+}
+
+static void ls_print_entry (struct file_entry *e)
+{
+    if (ls_opt_l) ls_print_long (e);
+    else printf ("%s\n", e->name);
+}
+
+static int do_ls (const char *path_)
+{
+    char ip[256], dir_path[MAX_PATH_LEN];
+    char errmsg[REMOTEFS_ERR_MSG_LEN];
+    struct remotefs *rfs;
+    struct file_entry *list = NULL;
+    int n = 0, i, cached = 0;
+    struct portable_stat st;
+    int is_dir, exists, last_char_is_dir = 0;
+    parse_remote_path (path_, ip, sizeof (ip), dir_path, sizeof (dir_path));
+    strip_trailing_slash (dir_path, &last_char_is_dir);
+    rfs = ip[0] ? remotefs_lookup (ip, NULL) : the_remotefs_local;
+    if (path_stat (ip, dir_path, &st, &is_dir, &exists, errmsg)) {
+        fprintf (stderr, "Error stating %s: %s\n", path_, errmsg);
+        return 1;
+    }
+    if (last_char_is_dir && !is_dir) {
+        fprintf (stderr, "Error: %s is not a directory\n", path_);
+        return 1;
+    }
+    if (!exists) {
+        fprintf (stderr, "Error: %s does not exist\n", path_);
+        return 1;
+    }
+    if (ls_opt_d || !is_dir) {
+        struct file_entry e;
+        memset (&e, '\0', sizeof (e));
+        strncpy (e.name, dir_path, sizeof (e.name) - 1);
+        e.name[sizeof (e.name) - 1] = '\0';
+        e.pstat = st;
+        ls_print_entry (&e);
+        return 0;
+    }
+    if ((*rfs->remotefs_listdir) (rfs, &cached, dir_path, FILELIST_ALL_FILES, "*", &list, &n, errmsg)) {
+        fprintf (stderr, "Error listing %s: %s\n", path_, errmsg);
+        return 1;
+    }
+    qsort (list, n, sizeof (struct file_entry), ls_cmp);
+    for (i = 0; i < n; i++) {
+        if (list[i].options & FILELIST_LAST_ENTRY) break;
+        if (!ls_opt_a && list[i].name[0] == '.') continue;
+        ls_print_entry (&list[i]);
+    }
+    free (list);
+    return 0;
+}
+
+static int do_ls_multi (int npaths, char **paths)
+{
+    int i, ret = 0;
+    if (npaths == 0) return do_ls (".");
+    for (i = 0; i < npaths; i++) {
+        int show_header = 0;
+        if (npaths > 1 && !ls_opt_d) {
+            int r;
+            char ip[256], dir_path[MAX_PATH_LEN];
+            struct portable_stat st;
+            int is_dir, exists, last_char_is_dir = 0;
+            char errmsg[REMOTEFS_ERR_MSG_LEN];
+            parse_remote_path (paths[i], ip, sizeof (ip), dir_path, sizeof (dir_path));
+            strip_trailing_slash (dir_path, &last_char_is_dir);
+            r = path_stat (ip, dir_path, &st, &is_dir, &exists, errmsg);
+            if (!r && exists && is_dir)
+                show_header = 1;
+            if (r) {
+                fprintf (stderr, "Error: %s: %s\n", paths[i], errmsg);
+                ret = 1;
+            } else if (last_char_is_dir && !is_dir) {
+                fprintf (stderr, "Error: %s is not a directory\n", paths[i]);
+                ret = 1;
+            }
+        }
+        if (show_header) printf ("%s:\n", paths[i]);
+        if (do_ls (paths[i])) ret = 1;
+        if (i < npaths - 1 && show_header) printf ("\n");
+    }
+    return ret;
 }
 
 static int filetool_process_args_ (int argc, char **argv);
@@ -645,9 +898,18 @@ static int filetool_process_args_ (int argc, char **argv)
 
     /* parse options */
     for (i = 0; i < argc; i++) {
+        if (!strcmp (argv[i], "--")) {
+            i++;
+            break;
+        }
         if (!strcmp (argv[i], "-f") || !strcmp (argv[i], "--force")) {
             force_flag = 1;
             continue;
+        }
+        if (!strcmp (argv[i], "--ls") || !strcmp (argv[i], "-ls")) {
+            ls_flag = 1;
+            i++;
+            break;
         }
         if (argv[i][0] == '-') {
             fprintf (stderr, "Unknown option: %s\n", argv[i]);
@@ -656,9 +918,41 @@ static int filetool_process_args_ (int argc, char **argv)
         break;
     }
 
+    /* parse ls options after --ls / -ls */
+    while (ls_flag && i < argc && argv[i][0] == '-') {
+        const char *p = argv[i] + 1;
+        if (!*p)
+            break;
+        while (*p) {
+            switch (*p) {
+                case 'a': ls_opt_a = 1; break;
+                case 'd': ls_opt_d = 1; break;
+                case 'l': ls_opt_l = 1; break;
+                case 'r': ls_opt_r = 1; break;
+                case 'S': ls_opt_S = 1; break;
+                case 't': ls_opt_t = 1; break;
+                case '1': ls_opt_1 = 1; break;
+                default:
+                    fprintf (stderr, "Unknown ls option: %c\n", *p);
+                    usage_exit_error ();
+            }
+            p++;
+        }
+        i++;
+    }
+
     for (j = 0; j < argc; j++)
         if (!argv[j][0])
             usage_exit_error ();
+
+    if (ls_flag) {
+        int r;
+        get_home_dir ();
+        filetool_password_init ();
+        r = do_ls_multi (argc - i, argv + i);
+        filetool_clean ();
+        exit (r);
+    }
 
     if (i >= argc)
         usage_exit_error ();
@@ -678,7 +972,10 @@ static int filetool_process_args_ (int argc, char **argv)
 
     /* multi-source: destination must exist and be a directory */
     if (nsrcs > 1) {
-        if (path_stat (dst, &dst_st, &dst_is_dir, &dst_exists, errmsg)) {
+        char ip[256], dir_path[MAX_PATH_LEN];
+        parse_remote_path (dst, ip, sizeof (ip), dir_path, sizeof (dir_path));
+        strip_trailing_slash (dir_path, NULL);
+        if (path_stat (ip, dir_path, &dst_st, &dst_is_dir, &dst_exists, errmsg)) {
             fprintf (stderr, "Error stating destination %s: %s\n", dst, errmsg);
             return 1;
         }
@@ -688,9 +985,10 @@ static int filetool_process_args_ (int argc, char **argv)
         }
     }
 
-    for (i = 0; i < nsrcs; i++)
+    for (i = 0; i < nsrcs; i++) {
         if (handle_single_source (srcs[i], dst))
             return 1;
+    }
 
     return 0;
 }

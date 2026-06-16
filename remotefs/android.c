@@ -50,6 +50,9 @@ void android_signal_activity (void)
     }
 
     (*env)->CallStaticVoidMethod (env, (jclass) service_obj, refresh_wakelock_method);
+    if ((*env)->ExceptionCheck (env)) {
+        (*env)->ExceptionClear (env);
+    }
 
     if (attached)
         (*cached_jvm)->DetachCurrentThread (cached_jvm);

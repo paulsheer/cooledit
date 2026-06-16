@@ -3747,7 +3747,8 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
             for (k = 0; k < n_view; k++) {
                 if (!strcmp (dn, ".."))
                     data[k].got_dot_dot = 1;
-                if ((S_ISDIR (stats.ustat.st_mode) && (view[k].options & FILELIST_DIRECTORIES_ONLY)) ||
+                if (!(view[k].options & FILELIST_MASK) ||
+                    (S_ISDIR (stats.ustat.st_mode) && (view[k].options & FILELIST_DIRECTORIES_ONLY)) ||
                     (!S_ISDIR (stats.ustat.st_mode) && (view[k].options & FILELIST_FILES_ONLY))) {
                     if (glob_match ((char *) view[k].filter, dn) == 1) {
                         i = (struct file_entry_item *) malloc (sizeof (*i));
@@ -3782,7 +3783,8 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
                 if (!(mount_dir = opendir (mount_path)))
                     continue;
                 closedir (mount_dir);
-                mount_path++;
+                if (*mount_path == '/')
+                    mount_path++;
                 for (k = 0; k < n_view; k++) {
                     if (!(view[k].options & FILELIST_FILES_ONLY)) {
                         struct file_entry_item *found;
@@ -3793,7 +3795,8 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
                             i = (struct file_entry_item *) malloc (sizeof (*i));
                             memset (i, '\0', sizeof (*i));
                             i->data.pstat.ustat.st_mode = S_IFDIR | 00777;
-                            strcpy (i->data.name, mount_path);
+                            strncpy (i->data.name, mount_path, sizeof (i->data.name));
+                            i->data.name[sizeof (i->data.name) - 1] = '\0';
                             i->next = data[k].first;
                             data[k].first = i;
                         }
@@ -4042,7 +4045,7 @@ static void get_next_iv (unsigned char *iv)
     memcpy (iv, &r, SYMAUTH_BLOCK_SIZE);
 }
 
-static void remotefs_writefile_ (void (*intermediate_ack_cb) (void *, int), int (*chunk_cb) (void *, unsigned char *, int *, char *), void *hook, const char *filename, long long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, CStr * r)
+static void remotefs_writefile_ (void (*intermediate_ack_cb) (void *, int), int (*chunk_cb) (void *, unsigned char *, int *, char *), void *hook, const char *filename, unsigned long long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, CStr * r)
 {E_
     struct portable_stat st, st_orig;
     unsigned char *p;
@@ -4108,18 +4111,35 @@ static void remotefs_writefile_ (void (*intermediate_ack_cb) (void *, int), int 
     }
 
 
-    while (filelen > 0) {
-        int c;
-        c = READER_CHUNK;
-        if ((*chunk_cb) (hook, chunk, &c, errmsg)) {
-            alloc_encode_error (r, RFSERR_OTHER_ERROR, errmsg, FORCE_SHUTDOWN);
-            goto errout;
+    if (filelen == FILE_LEN_INDEFINITE) {
+        for (;;) {
+            int c;
+            c = READER_CHUNK;
+            if ((*chunk_cb) (hook, chunk, &c, errmsg)) {
+                alloc_encode_error (r, RFSERR_OTHER_ERROR, errmsg, FORCE_SHUTDOWN);
+                goto errout;
+            }
+            if (!c)
+                break;
+            if (write (fd, chunk, c) != c) {
+                alloc_encode_errno_strerror (r, FORCE_SHUTDOWN);
+                goto errout;
+            }
         }
-        assert (c <= filelen);
-        filelen -= c;
-        if (write (fd, chunk, c) != c) {
-            alloc_encode_errno_strerror (r, FORCE_SHUTDOWN);
-            goto errout;
+    } else {
+        while (filelen > 0) {
+            int c;
+            c = READER_CHUNK;
+            if ((*chunk_cb) (hook, chunk, &c, errmsg)) {
+                alloc_encode_error (r, RFSERR_OTHER_ERROR, errmsg, FORCE_SHUTDOWN);
+                goto errout;
+            }
+            assert (c <= filelen);
+            filelen -= c;
+            if (write (fd, chunk, c) != c) {
+                alloc_encode_errno_strerror (r, FORCE_SHUTDOWN);
+                goto errout;
+            }
         }
     }
 
@@ -4816,7 +4836,7 @@ static void local_intermediate_ack_cb (void *hook, int got_error)
     /* only used for remote connections */
 }
 
-static int local_writefile (struct remotefs *rfs, struct action_callbacks *o, const char *filename, long long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg)
+static int local_writefile (struct remotefs *rfs, struct action_callbacks *o, const char *filename, unsigned long long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg)
 {E_
     CStr s;
     *errmsg = '\0';
@@ -5417,16 +5437,19 @@ static int maybe_see_ack (struct reader_data *d, int *got_ack, int *got_stop, en
     return 0;
 }
 
-static int remote_writefile (struct remotefs *rfs, struct action_callbacks *o, const char *filename, long long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg)
+static int remote_writefile (struct remotefs *rfs, struct action_callbacks *o, const char *filename, unsigned long long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg)
 {E_
     CStr s, msg;
     unsigned char *q;
     unsigned long long remaining;
     struct reader_data d;
-    unsigned char buf[READER_CHUNK];
+    unsigned char buf_[READER_CHUNK + 4];
+    unsigned char *buf;
     int got_ack = 0;
     int got_stop = 0;
     enum reader_error reader_error = READER_ERROR_NOERROR;
+
+    buf = &buf_[4];
 
 /* Network could hang up in the middle of a write, so do "safe saves" only: */
     if (overwritemode == REMOTEFS_WRITEFILE_OVERWRITEMODE_QUICK)
@@ -5460,37 +5483,67 @@ static int remote_writefile (struct remotefs *rfs, struct action_callbacks *o, c
     free (msg.data);
     msg.data = NULL;
 
-    remaining = filelen;
-
 /* we adopt the protocol that the remote can indicate a success/failure ack at any time.
    this is primarily useful for a remote that fills up its device and returns an error
    midway */
 
-    while (remaining > 0) {
-        int c;
+    if (filelen == FILE_LEN_INDEFINITE) {
+        for (;;) {
+            int c;
 
-        if (maybe_see_ack (&d, &got_ack, &got_stop, &reader_error)) {
-            set_sockerrmsg_to_errno (errmsg, errno, reader_error);
-            return -1;
-        }
-        if (got_stop)
-            break;
-
-        c = (MIN ((unsigned long long) READER_CHUNK_LITTLE_LESS, remaining));
-        if ((*o->sock_writer) (o, buf, &c, errmsg)) {
-            SHUTSOCK (rfs->remotefs_private->sock_data);
-            strcpy (errmsg, "Ran out of data to write");
-            return -1;
-        }
-        assert (c > 0);
-
-        if (writer (d.sock_data, buf, c)) {
-            set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
-            if (!maybe_see_ack (&d, &got_ack, &got_stop, &reader_error) && got_stop)
+            if (maybe_see_ack (&d, &got_ack, &got_stop, &reader_error)) {
+                set_sockerrmsg_to_errno (errmsg, errno, reader_error);
+                return -1;
+            }
+            if (got_stop)
                 break;
-            return -1;
+
+            c = READER_CHUNK_LITTLE_LESS;
+            if ((*o->sock_writer) (o, buf, &c, errmsg)) {
+                SHUTSOCK (rfs->remotefs_private->sock_data);
+                strcpy (errmsg, "Ran out of data to write");
+                return -1;
+            }
+
+            encode_uint32 (buf_, c);
+            if (writer (d.sock_data, buf_, c + 4)) {
+                set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
+                if (!maybe_see_ack (&d, &got_ack, &got_stop, &reader_error) && got_stop)
+                    break;
+                return -1;
+            }
+            if (!c)
+                break;
         }
-        remaining -= c;
+    } else {
+        remaining = filelen;
+
+        while (remaining > 0) {
+            int c;
+    
+            if (maybe_see_ack (&d, &got_ack, &got_stop, &reader_error)) {
+                set_sockerrmsg_to_errno (errmsg, errno, reader_error);
+                return -1;
+            }
+            if (got_stop)
+                break;
+    
+            c = (MIN ((unsigned long long) READER_CHUNK_LITTLE_LESS, remaining));
+            if ((*o->sock_writer) (o, buf, &c, errmsg)) {
+                SHUTSOCK (rfs->remotefs_private->sock_data);
+                strcpy (errmsg, "Ran out of data to write");
+                return -1;
+            }
+            assert (c > 0);
+    
+            if (writer (d.sock_data, buf, c)) {
+                set_sockerrmsg_to_errno (errmsg, errno, READER_ERROR_NOERROR);
+                if (!maybe_see_ack (&d, &got_ack, &got_stop, &reader_error) && got_stop)
+                    break;
+                return -1;
+            }
+            remaining -= c;
+        }
     }
 
     if (recv_ack (&d, &got_ack, &got_stop, &reader_error)) {
@@ -5856,7 +5909,7 @@ static int terminal_undead_load (const char *hostip, struct terminal_undead *a, 
     while ((de = readdir (d))) {
         FILE *f;
         char *name;
-        char path[640];
+        char path[MAX_PATH_LEN + sizeof (dir)];
         name = dname (de);
         if (name[0] == '.')
             continue;
@@ -7068,7 +7121,7 @@ static int dummyerr_readfile (struct remotefs *rfs, struct action_callbacks *o, 
     return remotefs_error_return (errmsg);
 }
 
-static int dummyerr_writefile (struct remotefs *rfs, struct action_callbacks *o, const char *filename, long long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg)
+static int dummyerr_writefile (struct remotefs *rfs, struct action_callbacks *o, const char *filename, unsigned long long filelen, int overwritemode, unsigned int permissions, const char *backup_extension, struct portable_stat *st, char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
 }
@@ -7818,8 +7871,8 @@ static int remote_action_fn_v4_listtwodirs (struct server_data *sd, CStr *s, con
 
 struct server_reader_info {
     struct server_data *sd;
-    long long progress;
-    long long filelen;
+    unsigned long long progress;
+    unsigned long long filelen;
 };
 
 static int remote_chunk_startreader_cb (void *hook, unsigned long long filelen, char *errmsg)
@@ -7892,7 +7945,7 @@ static int remote_action_fn_v1_readfile (struct server_data *sd, CStr * s, const
 
 struct server_writer_info {
     struct server_data *sd;
-    long long remaining;
+    unsigned long long remaining;
 };
 
 static int remote_chunk_writer_cb (void *hook, unsigned char *chunk, int *chunklen, char *errmsg)
@@ -7901,6 +7954,30 @@ static int remote_chunk_writer_cb (void *hook, unsigned char *chunk, int *chunkl
     enum reader_error reader_error = READER_ERROR_NOERROR;
 
     info = (struct server_writer_info *) hook;
+
+    if (info->remaining == FILE_LEN_INDEFINITE) {
+        unsigned char size_buf[4];
+        unsigned long chunk_size;
+        if (reader (info->sd->reader_data, size_buf, 4, &reader_error)) {
+            set_sockerrmsg_to_errno (errmsg, errno, reader_error);
+            return -1;
+        }
+        decode_uint32 (size_buf, &chunk_size);
+        if (!chunk_size) {
+            *chunklen = 0;
+            return 0;
+        }
+        if (chunk_size > (unsigned long) *chunklen) {
+            strcpy (errmsg, "invalid chunk size in indefinite-length write");
+            return -1;
+        }
+        if (reader (info->sd->reader_data, chunk, chunk_size, &reader_error)) {
+            set_sockerrmsg_to_errno (errmsg, errno, reader_error);
+            return -1;
+        }
+        *chunklen = chunk_size;
+        return 0;
+    }
 
     *chunklen = MIN (info->remaining, *chunklen);
 
@@ -7952,7 +8029,7 @@ static int remote_action_fn_v1_writefile (struct server_data *sd, CStr *s, const
         return -1;
     info.remaining = filelen;
     remotefs_writefile_ (remote_intermediate_ack_cb, remote_chunk_writer_cb, (void *) &info, filename, filelen, overwritemode, permissions, backup_extension, s);
-    if (info.remaining)
+    if (filelen != FILE_LEN_INDEFINITE && info.remaining)
         return -1;
     return 0;
 }

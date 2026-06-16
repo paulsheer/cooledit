@@ -328,6 +328,12 @@ createtext "$WORKDIR/remote-src/subdir/nested.txt" "Remote nested"
 mkdir -p "$WORKDIR/remote-dst/existing-dir"
 createtext "$WORKDIR/remote-dst/existing-file.txt" "pre-existing remote file"
 
+# Dash-prefixed filenames for -- delimiter tests
+createtext "$WORKDIR/local-src/-leading-dash.txt" "file with leading dash"
+createtext "$WORKDIR/local-src/--leading-double-dash.txt" "file with leading double dash"
+createtext "$WORKDIR/remote-src/-leading-dash.txt" "remote file with leading dash"
+createtext "$WORKDIR/remote-src/--leading-double-dash.txt" "remote file with leading double dash"
+
 # Symlink test data (local side)
 mkdir -p "$WORKDIR/local-symlinks/subdir"
 createtext "$WORKDIR/local-symlinks/regular.txt" "regular file for symlink target"
@@ -609,6 +615,54 @@ assert_file_eq "$WORKDIR/local-src/force-test2.txt" \
     "--force flag overwrites without prompting"
 
 # ============================================================
+# -- end-of-options delimiter
+# ============================================================
+echo ""
+echo "--- -- delimiter: local file with leading dash -> remote dir ---"
+rm -f "$WORKDIR/remote-dst/existing-dir/-leading-dash.txt"
+run_filetool -- "$WORKDIR/local-src/-leading-dash.txt" \
+    "${REMOTE}${WORKDIR}/remote-dst/existing-dir"
+assert_file_eq "$WORKDIR/local-src/-leading-dash.txt" \
+    "$WORKDIR/remote-dst/existing-dir/-leading-dash.txt" \
+    "-- delimiter: file starting with - copied to remote"
+
+echo ""
+echo "--- -- delimiter: local file with leading double-dash -> remote dir ---"
+rm -f "$WORKDIR/remote-dst/existing-dir/--leading-double-dash.txt"
+run_filetool -- "$WORKDIR/local-src/--leading-double-dash.txt" \
+    "${REMOTE}${WORKDIR}/remote-dst/existing-dir"
+assert_file_eq "$WORKDIR/local-src/--leading-double-dash.txt" \
+    "$WORKDIR/remote-dst/existing-dir/--leading-double-dash.txt" \
+    "-- delimiter: file starting with -- copied to remote"
+
+echo ""
+echo "--- -- delimiter: remote file with leading dash -> local dir ---"
+rm -f "$WORKDIR/local-dst/existing-dir/-leading-dash.txt"
+run_filetool -- "${REMOTE}${WORKDIR}/remote-src/-leading-dash.txt" \
+    "$WORKDIR/local-dst/existing-dir"
+assert_file_eq "$WORKDIR/remote-src/-leading-dash.txt" \
+    "$WORKDIR/local-dst/existing-dir/-leading-dash.txt" \
+    "-- delimiter: remote file starting with - copied to local"
+
+echo ""
+echo "--- -- delimiter: remote file with leading double-dash -> local dir ---"
+rm -f "$WORKDIR/local-dst/existing-dir/--leading-double-dash.txt"
+run_filetool -- "${REMOTE}${WORKDIR}/remote-src/--leading-double-dash.txt" \
+    "$WORKDIR/local-dst/existing-dir"
+assert_file_eq "$WORKDIR/remote-src/--leading-double-dash.txt" \
+    "$WORKDIR/local-dst/existing-dir/--leading-double-dash.txt" \
+    "-- delimiter: remote file starting with -- copied to local"
+
+echo ""
+echo "--- -- delimiter with -f: local dash-file -> remote, force overwrite ---"
+createtext "$WORKDIR/remote-dst/existing-dir/-leading-dash.txt" "old dash file content"
+run_filetool -f -- "$WORKDIR/local-src/-leading-dash.txt" \
+    "${REMOTE}${WORKDIR}/remote-dst/existing-dir"
+assert_file_eq "$WORKDIR/local-src/-leading-dash.txt" \
+    "$WORKDIR/remote-dst/existing-dir/-leading-dash.txt" \
+    "-- delimiter with -f: overwrites dash-prefixed file"
+
+# ============================================================
 # Symlink reproduction tests
 # ============================================================
 echo ""
@@ -734,6 +788,304 @@ if echo "$FILE_TOOL_STDERR" | grep -q "is not a directory"; then
     pass "destination file with trailing slash: error message says 'is not a directory'"
 else
     fail "destination file with trailing slash: expected 'is not a directory' in stderr, got: $FILE_TOOL_STDERR"
+fi
+
+# ============================================================
+# --ls trailing slash validation
+# ============================================================
+
+echo ""
+echo "--- --ls: local file with trailing slash ---"
+run_filetool_stderr --ls "$WORKDIR/local-src/file1.txt/"
+ret=$?
+assert_error $ret "--ls local file with trailing slash: errors"
+if echo "$FILE_TOOL_STDERR" | grep -q "is not a directory"; then
+    pass "--ls local file with trailing slash: error message says 'is not a directory'"
+else
+    fail "--ls local file with trailing slash: expected 'is not a directory' in stderr, got: $FILE_TOOL_STDERR"
+fi
+
+echo ""
+echo "--- --ls: remote file with trailing slash ---"
+run_filetool_stderr --ls "${REMOTE}${WORKDIR}/remote-src/file1.txt/"
+ret=$?
+assert_error $ret "--ls remote file with trailing slash: errors"
+if echo "$FILE_TOOL_STDERR" | grep -q "is not a directory"; then
+    pass "--ls remote file with trailing slash: error message says 'is not a directory'"
+else
+    fail "--ls remote file with trailing slash: expected 'is not a directory' in stderr, got: $FILE_TOOL_STDERR"
+fi
+
+echo ""
+echo "--- --ls: local directory with trailing slash (should succeed) ---"
+run_filetool --ls "$WORKDIR/local-src/subdir/" > /dev/null
+assert_success $? "--ls local dir with trailing slash: succeeds"
+
+echo ""
+echo "--- --ls: remote directory with trailing slash (should succeed) ---"
+run_filetool --ls "${REMOTE}${WORKDIR}/remote-src/subdir/" > /dev/null
+assert_success $? "--ls remote dir with trailing slash: succeeds"
+
+echo ""
+echo "--- --ls: multi-path, local file with trailing slash ---"
+run_filetool_stderr --ls "$WORKDIR/local-src/file1.txt/" "$WORKDIR/local-src/file2.txt"
+ret=$?
+assert_error $ret "--ls multi with trailing-slash file: errors"
+if echo "$FILE_TOOL_STDERR" | grep -q "is not a directory"; then
+    pass "--ls multi with trailing-slash file: error message says 'is not a directory'"
+else
+    fail "--ls multi with trailing-slash file: expected 'is not a directory' in stderr, got: $FILE_TOOL_STDERR"
+fi
+
+echo ""
+echo "--- --ls: multi-path, remote file with trailing slash ---"
+run_filetool_stderr --ls "${REMOTE}${WORKDIR}/remote-src/file1.txt/" "$WORKDIR/local-src/file2.txt"
+ret=$?
+assert_error $ret "--ls multi with remote trailing-slash file: errors"
+if echo "$FILE_TOOL_STDERR" | grep -q "is not a directory"; then
+    pass "--ls multi with remote trailing-slash file: error message says 'is not a directory'"
+else
+    fail "--ls multi with remote trailing-slash file: expected 'is not a directory' in stderr, got: $FILE_TOOL_STDERR"
+fi
+
+# ============================================================
+# Local → Local tests (mirror all local↔remote patterns)
+# ============================================================
+
+echo ""
+echo "--- Local→Local: local file -> local directory ---"
+rm -f "$WORKDIR/local-dst/existing-dir/file1.txt"
+run_filetool "$WORKDIR/local-src/file1.txt" "$WORKDIR/local-dst/existing-dir"
+assert_file_eq "$WORKDIR/local-src/file1.txt" \
+    "$WORKDIR/local-dst/existing-dir/file1.txt" \
+    "local file -> local dir creates basename"
+
+echo ""
+echo "--- Local→Local: local file -> local non-existent path ---"
+rm -f "$WORKDIR/local-dst/new-local-file.txt"
+run_filetool "$WORKDIR/local-src/file2.txt" "$WORKDIR/local-dst/new-local-file.txt"
+assert_file_eq "$WORKDIR/local-src/file2.txt" \
+    "$WORKDIR/local-dst/new-local-file.txt" \
+    "local file -> local non-existent creates as named"
+
+echo ""
+echo "--- Local→Local: local file -> existing local file, no overwrite ---"
+cp "$WORKDIR/local-dst/existing-file.txt" "$WORKDIR/local-dst/existing-file.txt.ref"
+echo "n" | run_filetool "$WORKDIR/local-src/file1.txt" "$WORKDIR/local-dst/existing-file.txt"
+assert_file_eq "$WORKDIR/local-dst/existing-file.txt.ref" \
+    "$WORKDIR/local-dst/existing-file.txt" \
+    "local file -> existing local file: not overwritten when answering n"
+
+echo ""
+echo "--- Local→Local: local file -> existing local file with -f ---"
+run_filetool -f "$WORKDIR/local-src/file1.txt" "$WORKDIR/local-dst/existing-file.txt"
+assert_file_eq "$WORKDIR/local-src/file1.txt" \
+    "$WORKDIR/local-dst/existing-file.txt" \
+    "local file -> local file with -f overwrites"
+
+echo ""
+echo "--- Local→Local: local dir -> local existing directory ---"
+rm -rf "$WORKDIR/local-dst/existing-dir/local-src"
+run_filetool "$WORKDIR/local-src" "$WORKDIR/local-dst/existing-dir"
+assert_file_eq "$WORKDIR/local-src/file1.txt" \
+    "$WORKDIR/local-dst/existing-dir/local-src/file1.txt" \
+    "local dir -> local dir: file1 copied"
+assert_file_eq "$WORKDIR/local-src/subdir/nested.txt" \
+    "$WORKDIR/local-dst/existing-dir/local-src/subdir/nested.txt" \
+    "local dir -> local dir: nested file copied"
+assert_file_eq "$WORKDIR/local-src/subdir/deep/deep.txt" \
+    "$WORKDIR/local-dst/existing-dir/local-src/subdir/deep/deep.txt" \
+    "local dir -> local dir: deep file copied"
+[ -d "$WORKDIR/local-dst/existing-dir/local-src/emptydir" ] && \
+    pass "local dir -> local dir: empty dir present" || \
+    fail "local dir -> local dir: empty dir missing"
+
+echo ""
+echo "--- Local→Local: local dir -> local non-existent path ---"
+rm -rf "$WORKDIR/local-dst/created-local-dir"
+run_filetool "$WORKDIR/local-src" "$WORKDIR/local-dst/created-local-dir"
+assert_file_eq "$WORKDIR/local-src/file1.txt" \
+    "$WORKDIR/local-dst/created-local-dir/file1.txt" \
+    "local dir -> local non-existent: file1 copied"
+assert_file_eq "$WORKDIR/local-src/subdir/nested.txt" \
+    "$WORKDIR/local-dst/created-local-dir/subdir/nested.txt" \
+    "local dir -> local non-existent: nested file copied"
+
+echo ""
+echo "--- Local→Local: local dir -> existing local file (error) ---"
+run_filetool "$WORKDIR/local-src" "$WORKDIR/local-dst/existing-file.txt" && \
+    fail "local dir -> local file: should have errored" || \
+    pass "local dir -> local file: correctly errors"
+
+echo ""
+echo "--- Local→Local: deep tree local dir -> local dir, verify with diff -r ---"
+rm -rf "$WORKDIR/local-dst/deep-tree-local"
+run_filetool "$WORKDIR/remote-src/deep-tree" "$WORKDIR/local-dst/deep-tree-local"
+if diff -r "$WORKDIR/remote-src/deep-tree" "$WORKDIR/local-dst/deep-tree-local" >/dev/null 2>&1; then
+    pass "deep tree local->local: diff -r matches"
+else
+    fail "deep tree local->local: diff -r shows differences"
+fi
+assert_symlinks_match "$WORKDIR/remote-src/deep-tree" "$WORKDIR/local-dst/deep-tree-local" \
+    "deep tree local->local: symlinks preserved"
+
+echo ""
+echo "--- Local→Local: multi-source local files -> local dir ---"
+rm -f "$WORKDIR/local-dst/existing-dir/file1.txt" "$WORKDIR/local-dst/existing-dir/file2.txt"
+run_filetool \
+    "$WORKDIR/local-src/file1.txt" \
+    "$WORKDIR/local-src/file2.txt" \
+    "$WORKDIR/local-dst/existing-dir"
+assert_file_eq "$WORKDIR/local-src/file1.txt" \
+    "$WORKDIR/local-dst/existing-dir/file1.txt" \
+    "multi src local->local: file1 copied"
+assert_file_eq "$WORKDIR/local-src/file2.txt" \
+    "$WORKDIR/local-dst/existing-dir/file2.txt" \
+    "multi src local->local: file2 copied"
+
+echo ""
+echo "--- Local→Local: multi-source local files -> local file (error) ---"
+run_filetool \
+    "$WORKDIR/local-src/file1.txt" \
+    "$WORKDIR/local-src/file2.txt" \
+    "$WORKDIR/local-dst/existing-file.txt" && \
+    fail "multi src local->local file: should have errored" || \
+    pass "multi src local->local file: correctly errors"
+
+echo ""
+echo "--- Local→Local: multi-source local file + local dir -> local dir ---"
+rm -rf "$WORKDIR/local-dst/existing-dir/subdir" "$WORKDIR/local-dst/existing-dir/file2.txt"
+run_filetool \
+    "$WORKDIR/local-src/subdir" \
+    "$WORKDIR/local-src/file2.txt" \
+    "$WORKDIR/local-dst/existing-dir"
+assert_file_eq "$WORKDIR/local-src/file2.txt" \
+    "$WORKDIR/local-dst/existing-dir/file2.txt" \
+    "multi src local file+dir->local: file2 copied"
+assert_file_eq "$WORKDIR/local-src/subdir/nested.txt" \
+    "$WORKDIR/local-dst/existing-dir/subdir/nested.txt" \
+    "multi src local file+dir->local: nested file copied"
+
+echo ""
+echo "--- Local→Local: -- delimiter, file with leading dash -> local dir ---"
+rm -f "$WORKDIR/local-dst/existing-dir/-leading-dash.txt"
+run_filetool -- "$WORKDIR/local-src/-leading-dash.txt" \
+    "$WORKDIR/local-dst/existing-dir"
+assert_file_eq "$WORKDIR/local-src/-leading-dash.txt" \
+    "$WORKDIR/local-dst/existing-dir/-leading-dash.txt" \
+    "-- delimiter local→local: file starting with - copied"
+
+echo ""
+echo "--- Local→Local: -- delimiter, file with leading double-dash -> local dir ---"
+rm -f "$WORKDIR/local-dst/existing-dir/--leading-double-dash.txt"
+run_filetool -- "$WORKDIR/local-src/--leading-double-dash.txt" \
+    "$WORKDIR/local-dst/existing-dir"
+assert_file_eq "$WORKDIR/local-src/--leading-double-dash.txt" \
+    "$WORKDIR/local-dst/existing-dir/--leading-double-dash.txt" \
+    "-- delimiter local→local: file starting with -- copied"
+
+echo ""
+echo "--- Local→Local: symlinks dir -> local dir, verify targets preserved ---"
+rm -rf "$WORKDIR/local-dst/symlinks-local"
+run_filetool "$WORKDIR/local-symlinks" "$WORKDIR/local-dst/symlinks-local"
+assert_symlinks_match "$WORKDIR/local-symlinks" "$WORKDIR/local-dst/symlinks-local" \
+    "symlinks local->local: targets match"
+
+echo ""
+echo "--- Local→Local: single local symlink -> local dir ---"
+ln -sf "hosts-target" "$WORKDIR/standalone-link2"
+rm -rf "$WORKDIR/local-dst/standalone-link2"
+run_filetool "$WORKDIR/standalone-link2" "$WORKDIR/local-dst/"
+ret=$?
+if [ $ret -eq 0 ]; then
+    dst_target=$(readlink "$WORKDIR/local-dst/standalone-link2" 2>/dev/null)
+    if [ "$dst_target" = "hosts-target" ]; then
+        pass "single symlink local->local: target preserved as symlink"
+    elif [ -z "$dst_target" ]; then
+        fail "single symlink local->local: NOT a symlink"
+    else
+        fail "single symlink local->local: wrong target '$dst_target'"
+    fi
+else
+    fail "single symlink local->local: copy failed (exit $ret)"
+fi
+
+echo ""
+echo "--- Local→Local: single broken symlink -> local dir ---"
+ln -sf "/nonexistent/target/path" "$WORKDIR/broken-link2"
+rm -rf "$WORKDIR/local-dst/broken-link2"
+run_filetool "$WORKDIR/broken-link2" "$WORKDIR/local-dst/"
+ret=$?
+if [ $ret -eq 0 ]; then
+    dst_target=$(readlink "$WORKDIR/local-dst/broken-link2" 2>/dev/null)
+    if [ "$dst_target" = "/nonexistent/target/path" ]; then
+        pass "single broken symlink local->local: target preserved as symlink"
+    elif [ -z "$dst_target" ]; then
+        fail "single broken symlink local->local: NOT a symlink"
+    else
+        fail "single broken symlink local->local: wrong target '$dst_target'"
+    fi
+else
+    fail "single broken symlink local->local: copy failed (exit $ret)"
+fi
+
+# ============================================================
+# /proc/version copy tests (md5sum verification)
+# ============================================================
+LOCAL_PROV_VERSION_MD5=$(md5sum /proc/version | awk '{print $1}')
+
+echo ""
+echo "--- /proc/version: local -> local dir, md5sum ---"
+rm -f "$WORKDIR/local-dst/existing-dir/version"
+run_filetool /proc/version "$WORKDIR/local-dst/existing-dir"
+assert_file_eq /proc/version "$WORKDIR/local-dst/existing-dir/version" \
+    "local /proc/version -> local dir: file matches"
+
+echo ""
+echo "--- /proc/version: local -> remote dir, round-trip md5sum ---"
+rm -f "$WORKDIR/remote-dst/existing-dir/version"
+run_filetool /proc/version "${REMOTE}${WORKDIR}/remote-dst/existing-dir"
+ret=$?
+if [ $ret -ne 0 ]; then
+    fail "local /proc/version -> remote dir: copy failed (exit $ret)"
+else
+    # Copy back from remote to a different local path
+    rm -f "$WORKDIR/local-dst/version-roundtrip.txt"
+    run_filetool "${REMOTE}${WORKDIR}/remote-dst/existing-dir/version" \
+        "$WORKDIR/local-dst/version-roundtrip.txt"
+    if [ $? -ne 0 ]; then
+        fail "local /proc/version -> remote dir: round-trip copy back failed"
+    else
+        RT_MD5=$(md5sum "$WORKDIR/local-dst/version-roundtrip.txt" | awk '{print $1}')
+        assert_eq "$RT_MD5" "$LOCAL_PROV_VERSION_MD5" \
+            "local /proc/version -> remote dir: round-trip md5sum matches"
+    fi
+fi
+
+echo ""
+echo "--- /proc/version: remote -> local dir, md5sum vs local ---"
+rm -f "$WORKDIR/local-dst/existing-dir/version"
+run_filetool "${REMOTE}/proc/version" "$WORKDIR/local-dst/existing-dir"
+ret=$?
+if [ $ret -ne 0 ]; then
+    fail "remote /proc/version -> local dir: copy failed (exit $ret)"
+else
+    REMOTE_MD5=$(md5sum "$WORKDIR/local-dst/existing-dir/version" | awk '{print $1}')
+    assert_eq "$REMOTE_MD5" "$LOCAL_PROV_VERSION_MD5" \
+        "remote /proc/version -> local dir: md5sum matches local /proc/version"
+fi
+
+echo ""
+echo "--- /proc/version: remote -> local specific path, md5sum vs local ---"
+rm -f "$WORKDIR/local-dst/remote-proc-version.txt"
+run_filetool "${REMOTE}/proc/version" "$WORKDIR/local-dst/remote-proc-version.txt"
+ret=$?
+if [ $ret -ne 0 ]; then
+    fail "remote /proc/version -> local specific path: copy failed (exit $ret)"
+else
+    REMOTE2_MD5=$(md5sum "$WORKDIR/local-dst/remote-proc-version.txt" | awk '{print $1}')
+    assert_eq "$REMOTE2_MD5" "$LOCAL_PROV_VERSION_MD5" \
+        "remote /proc/version -> local specific path: md5sum matches local /proc/version"
 fi
 
 # ============================================================

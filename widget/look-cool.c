@@ -299,7 +299,7 @@ static char **get_filelist_line (void *data, const int line_number, int *num_fie
     strcpy (name, directentry[line_number].name);
     fields[0] = name;
     if (((int) m & S_IFMT) == S_IFCHR || ((int) m & S_IFMT) == S_IFBLK) {
-        sprintf (size, "\t%lu, %3lu", (unsigned long) major (s->st_rdev), (unsigned long) minor (s->st_rdev));
+        sprintf (size, "\t%lu, %3lu", ps->dev_major, ps->dev_minor);
     } else {
         sprintf (size, "\t%llu", (unsigned long long) s->st_size);
     }

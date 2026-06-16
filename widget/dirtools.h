@@ -75,6 +75,8 @@ struct portable_stat {
     int os;
     int os_sub;
     struct stat_posix_or_mswin ustat;
+    unsigned long dev_major;
+    unsigned long dev_minor;
     struct windows_file_attributes wattr;
 };
 

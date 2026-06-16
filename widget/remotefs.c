@@ -2983,6 +2983,8 @@ static int decode_stat (const unsigned char **p, const unsigned char *end, struc
         return -1;
 
     s->ustat.st_rdev = makedev (user_data.rdev_major, user_data.rdev_minor);
+    s->dev_major = user_data.rdev_major;
+    s->dev_minor = user_data.rdev_minor;
 
     return 0;
 }

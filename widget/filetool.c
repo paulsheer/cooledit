@@ -127,6 +127,20 @@ static void path_join (const char *dir, const char *name, char *out, int outlen)
     strncat (out, name, outlen - strlen (out) - 1);
 }
 
+static void warn_skipping (struct portable_stat *pst, const char *path)
+{
+    if (S_ISCHR (pst->ustat.st_mode))
+        fprintf (stderr, "Warning: skipping character device: %lu, %lu  %s\n", pst->dev_major, pst->dev_minor, path);
+    else if (S_ISBLK (pst->ustat.st_mode))
+        fprintf (stderr, "Warning: skipping block device: %lu, %lu  %s\n", pst->dev_major, pst->dev_minor, path);
+    else if (S_ISFIFO (pst->ustat.st_mode))
+        fprintf (stderr, "Warning: skipping FIFO: %s\n", path);
+    else if (S_ISSOCK (pst->ustat.st_mode))
+        fprintf (stderr, "Warning: skipping socket: %s\n", path);
+    else
+        fprintf (stderr, "Warning: skipping unknown special file: %s\n", path);
+}
+
 static int confirm_overwrite (const char *path)
 {
     char line[16];
@@ -523,6 +537,8 @@ static int copy_dir_local_to_remote (const char *local_dir, const char *host, co
                 fprintf (stderr, "Error creating remote symlink %s: %s\n", sub_remote, errmsg);
                 goto err;;
             }
+        } else {
+            warn_skipping (&list[i].pstat, sub_local);
         }
     }
 
@@ -582,6 +598,8 @@ static int copy_dir_remote_to_local (const char *ip, const char *remote_dir, con
                 fprintf (stderr, "Error creating symlink %s: %s\n", sub_local, errmsg);
                 goto err;
             }
+        } else {
+            warn_skipping (&list[i].pstat, sub_remote);
         }
     }
 
@@ -705,6 +723,10 @@ static int handle_single_source (const char *src, const char *dst)
         }
     } else {
         /* file source: cases 1-4 */
+        if (!S_ISREG (src_st.ustat.st_mode)) {
+            warn_skipping (&src_st, src);
+            return 0;
+        }
         if (dst_exists && dst_is_dir)
             target = target_path, path_join (dst_path, my_basename (src_path), target_path, sizeof (target_path));
         else

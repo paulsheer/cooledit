@@ -1089,6 +1089,91 @@ else
 fi
 
 # ============================================================
+# Special file skipping tests
+# ============================================================
+
+SPECIAL_DIR="$WORKDIR/special-files"
+mkdir -p "$SPECIAL_DIR"
+
+echo ""
+echo "--- special files: character device /dev/null -> local dir ---"
+run_filetool_stderr /dev/null "$WORKDIR/local-dst/existing-dir/"
+ret=$?
+assert_success $ret "char device /dev/null: exit code 0 (skipped)"
+if echo "$FILE_TOOL_STDERR" | grep -q "skipping character device"; then
+    pass "char device /dev/null: warning says 'skipping character device'"
+else
+    fail "char device /dev/null: expected 'skipping character device' in stderr, got: $FILE_TOOL_STDERR"
+fi
+
+echo ""
+echo "--- special files: character device /dev/null -> remote dir ---"
+run_filetool_stderr /dev/null "${REMOTE}${WORKDIR}/remote-dst/existing-dir/"
+ret=$?
+assert_success $ret "char device -> remote: exit code 0 (skipped)"
+if echo "$FILE_TOOL_STDERR" | grep -q "skipping character device"; then
+    pass "char device -> remote: warning says 'skipping character device'"
+else
+    fail "char device -> remote: expected 'skipping character device' in stderr, got: $FILE_TOOL_STDERR"
+fi
+
+mkfifo "$SPECIAL_DIR/test-fifo" 2>/dev/null
+if [ -p "$SPECIAL_DIR/test-fifo" ]; then
+    echo ""
+    echo "--- special files: FIFO -> local dir ---"
+    run_filetool_stderr "$SPECIAL_DIR/test-fifo" "$WORKDIR/local-dst/existing-dir/"
+    ret=$?
+    assert_success $ret "FIFO: exit code 0 (skipped)"
+    if echo "$FILE_TOOL_STDERR" | grep -q "skipping FIFO"; then
+        pass "FIFO: warning says 'skipping FIFO'"
+    else
+        fail "FIFO: expected 'skipping FIFO' in stderr, got: $FILE_TOOL_STDERR"
+    fi
+
+    echo ""
+    echo "--- special files: FIFO -> remote dir ---"
+    run_filetool_stderr "$SPECIAL_DIR/test-fifo" "${REMOTE}${WORKDIR}/remote-dst/existing-dir/"
+    ret=$?
+    assert_success $ret "FIFO -> remote: exit code 0 (skipped)"
+    if echo "$FILE_TOOL_STDERR" | grep -q "skipping FIFO"; then
+        pass "FIFO -> remote: warning says 'skipping FIFO'"
+    else
+        fail "FIFO -> remote: expected 'skipping FIFO' in stderr, got: $FILE_TOOL_STDERR"
+    fi
+
+    echo ""
+    echo "--- special files: directory containing FIFO -> local dir ---"
+    createtext "$SPECIAL_DIR/regular.txt" "regular file alongside special file"
+    mkfifo "$SPECIAL_DIR/dir-fifo" 2>/dev/null
+    rm -rf "$WORKDIR/local-dst/existing-dir/special-files"
+    run_filetool_stderr "$SPECIAL_DIR" "$WORKDIR/local-dst/existing-dir/"
+    ret=$?
+    assert_success $ret "dir with FIFO: exit code 0"
+    assert_file_eq "$SPECIAL_DIR/regular.txt" \
+        "$WORKDIR/local-dst/existing-dir/special-files/regular.txt" \
+        "dir with FIFO: regular file still copied"
+    if echo "$FILE_TOOL_STDERR" | grep -q "skipping FIFO"; then
+        pass "dir with FIFO: warning says 'skipping FIFO'"
+    else
+        fail "dir with FIFO: expected 'skipping FIFO' in stderr, got: $FILE_TOOL_STDERR"
+    fi
+
+    echo ""
+    echo "--- special files: directory containing FIFO -> remote dir ---"
+    run_filetool_stderr "$SPECIAL_DIR" "${REMOTE}${WORKDIR}/remote-dst/special-dst"
+    ret=$?
+    assert_success $ret "dir with FIFO -> remote: exit code 0"
+    if echo "$FILE_TOOL_STDERR" | grep -q "skipping FIFO"; then
+        pass "dir with FIFO -> remote: warning says 'skipping FIFO'"
+    else
+        fail "dir with FIFO -> remote: expected 'skipping FIFO' in stderr, got: $FILE_TOOL_STDERR"
+    fi
+else
+    echo ""
+    echo "--- special files: FIFO tests SKIPPED (filesystem does not support FIFOs) ---"
+fi
+
+# ============================================================
 # Stop server and check results
 # ============================================================
 echo ""

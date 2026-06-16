@@ -652,6 +652,28 @@ else
 fi
 
 # ============================================================
+# Case 23: /proc/version local -> remote -> local, md5sum roundtrip
+# ============================================================
+LOCAL_PROC_VERSION_MD5=$(md5sum /proc/version | awk '{print $1}')
+echo ""
+echo "--- Case 23: /proc/version roundtrip md5sum ---"
+rm -rf "$WORKDIR/roundtrip/case23"
+mkdir -p "$WORKDIR/roundtrip/case23"
+run_filetool /proc/version "${REMOTE_TESTDIR}/dst"
+ret=$?
+if [ $ret -eq 0 ]; then
+    run_filetool "${REMOTE_TESTDIR}/dst/version" "$WORKDIR/roundtrip/case23"
+    ret=$?
+fi
+if [ $ret -eq 0 ]; then
+    ROUNDTRIP_MD5=$(md5sum "$WORKDIR/roundtrip/case23/version" | awk '{print $1}')
+    assert_eq "$ROUNDTRIP_MD5" "$LOCAL_PROC_VERSION_MD5" \
+        "/proc/version -> remote -> local: roundtrip md5sum matches"
+else
+    fail "/proc/version roundtrip: copy failed (exit $ret)"
+fi
+
+# ============================================================
 # Results
 # ============================================================
 echo ""

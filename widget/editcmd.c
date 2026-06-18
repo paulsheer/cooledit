@@ -380,20 +380,28 @@ int edit_check_change_on_disk (WEdit * edit, int save_mode)
                     r = 1;
                 }
             } else if (save_mode == EDIT_CHANGE_ON_DISK__ON_SAVE) {
-                if (!edit_query_dialog2 (_(" Warning "), p, _("Open"), _("Overwrite"))) {
+                int c;
+                c = edit_query_dialog3 (_(" Warning "), p, _("Open"), _("Overwrite"), _("Cancel"));
+                if (c == 0) {
                     r = 1;
                     edit_load_cmd (edit);
-                } else {
+                } else if (c == 1) {
                     edit->test_file_on_disk_for_changes_m_time = st.ustat.st_mtime;
                     edit->stat.ustat.st_mtime = st.ustat.st_mtime;
+                } else {
+                    r = 1;
                 }
             } else if (save_mode == EDIT_CHANGE_ON_DISK__ON_KEYPRESS) {
-                if (!edit_query_dialog2 (_(" Warning "), p, _("Open"), _("Ignore"))) {
+                int c;
+                c = edit_query_dialog3 (_(" Warning "), p, _("Open"), _("Ignore"), _("Cancel"));
+                if (c == 0) {
                     r = 1;
                     edit_load_cmd (edit);
-                } else {
+                } else if (c == 1) {
                     edit->test_file_on_disk_for_changes_m_time = st.ustat.st_mtime;
                     /* edit->stat.st_mtime = st.st_mtime; ===>  [Ignore] after keypress should still result in a query on Save */
+                } else {
+                    r = 1;
                 }
             }
         }

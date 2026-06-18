@@ -173,7 +173,7 @@ static struct comp *comp_tize (const char *s)
 }
 
 #ifndef MSWIN
-static inline char *comp_readlink (struct comp *p)
+static inline char *comp_readlink (struct comp *p, char *errmsg)
 {E_
     char *s;
     int r;
@@ -185,6 +185,7 @@ static inline char *comp_readlink (struct comp *p)
 	return "";
     }
     if (r == -1) {
+	snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "%s: %s", s, strerror (errno));
 	free (s);
 	return 0;
     }
@@ -196,7 +197,7 @@ static inline char *comp_readlink (struct comp *p)
 
 #ifndef MSWIN
 /* if there is an error, this just returns as far as it got */
-static inline struct comp *resolve_symlink (struct comp *path)
+static inline struct comp *resolve_symlink (struct comp *path, char *errmsg)
 {E_
     int i;
     struct comp *t;
@@ -206,7 +207,7 @@ static inline struct comp *resolve_symlink (struct comp *path)
 	char *l;
 	if (i >= 1000)
 	    break;
-	l = comp_readlink (path);
+	l = comp_readlink (path, errmsg);
 	if (!l)
 	    break;
 	if (l[0] == '/') {
@@ -258,7 +259,7 @@ char *pathdup_debug (const char *cfile, int cline, const char *host, const char 
     return strdupextra (out);
 }
 
-char *pathdup_ (const char *p, const char *home_dir)
+char *pathdup_ (const char *p, const char *home_dir, char *errmsg)
 {E_
     char *r;
     struct comp *s;
@@ -274,7 +275,7 @@ char *pathdup_ (const char *p, const char *home_dir)
 #ifdef MSWIN
     s = comp_strip (comp_first (s));
 #else
-    s = resolve_symlink (s);
+    s = resolve_symlink (s, errmsg);
 #endif
     r = comp_combine (comp_last (s));
     comp_free (s);

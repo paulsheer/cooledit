@@ -80,7 +80,7 @@ static void parse_remote_path (const char *arg, char *ip, int ip_len, char *path
     }
 }
 
-static int path_stat (const char *ip, const char *path, struct portable_stat *st, int *is_dir, int *exists, char *errmsg)
+static int path_stat (const char *ip, const char *path, struct portable_stat *st, int *is_dir, int *exists, char *link_target, int link_target_sz, char *errmsg)
 {
     struct remotefs *rfs;
     remotefs_error_code_t error_code;
@@ -93,7 +93,7 @@ static int path_stat (const char *ip, const char *path, struct portable_stat *st
 
     rfs = ip[0] ? remotefs_lookup (ip, NULL) : the_remotefs_local;
 
-    if ((*rfs->remotefs_stat) (rfs, NULL, path, st, &just_not_there, &error_code, errmsg))
+    if ((*rfs->remotefs_stat) (rfs, NULL, path, st, link_target, link_target_sz, &just_not_there, &error_code, errmsg))
         return -1;
 
     if (just_not_there)
@@ -102,13 +102,6 @@ static int path_stat (const char *ip, const char *path, struct portable_stat *st
     *exists = 1;
     *is_dir = S_ISDIR (st->ustat.st_mode);
     return 0;
-}
-
-static int path_readlink (const char *ip, const char *path, char *target, int target_len, char *errmsg)
-{
-    struct remotefs *rfs;
-    rfs = ip[0] ? remotefs_lookup (ip, NULL) : the_remotefs_local;
-    return (*rfs->remotefs_readlink) (rfs, path, target, target_len, errmsg);
 }
 
 static const char *my_basename (const char *path)
@@ -489,7 +482,7 @@ static int copy_dir_local_to_remote (const char *local_dir, const char *host, co
 {
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     struct file_entry *list = NULL;
-    int n = 0, i, cached = 0;
+    int i, cached = 0;
     struct remotefs *rfs;
     char sub_local[MAX_PATH_LEN], sub_remote[MAX_PATH_LEN];
 
@@ -504,49 +497,40 @@ static int copy_dir_local_to_remote (const char *local_dir, const char *host, co
     /* list local directory */
     {
         struct remotefs *local_rfs = the_remotefs_local;
-        if ((*local_rfs->remotefs_listdir) (local_rfs, &cached, local_dir, FILELIST_ALL_FILES, "*", &list, &n, errmsg)) {
+        if ((*local_rfs->remotefs_listdir) (local_rfs, &cached, local_dir, FILELIST_ALL_FILES, "*", &list, errmsg)) {
             fprintf (stderr, "Error listing directory %s: %s\n", local_dir, errmsg);
             goto err;;
         }
     }
 
-    for (i = 0; i < n; i++) {
-        if (list[i].options & FILELIST_LAST_ENTRY) break;
-        if (!strcmp (list[i].name, ".") || !strcmp (list[i].name, ".."))
+    for (i = 0; i < list->dl; i++) {
+        if (!strcmp (list->d[i]->name, ".") || !strcmp (list->d[i]->name, ".."))
             continue;
 
-        path_join (local_dir, list[i].name, sub_local, sizeof (sub_local));
-        path_join (remote_dir, list[i].name, sub_remote, sizeof (sub_remote));
+        path_join (local_dir, list->d[i]->name, sub_local, sizeof (sub_local));
+        path_join (remote_dir, list->d[i]->name, sub_remote, sizeof (sub_remote));
 
-        if (S_ISDIR (list[i].pstat.ustat.st_mode)) {
+        if (S_ISDIR (list->d[i]->pstat.ustat.st_mode)) {
             if (copy_dir_local_to_remote (sub_local, host, sub_remote, force))
                 goto err;;
-        } else if (S_ISREG (list[i].pstat.ustat.st_mode)) {
+        } else if (S_ISREG (list->d[i]->pstat.ustat.st_mode)) {
             if (filetool_copy_local_to_remote (sub_local, host, sub_remote))
                 goto err;;
-        } else if (S_ISLNK (list[i].pstat.ustat.st_mode)) {
-            char link_target[MAX_PATH_LEN];
-            ssize_t nlink;
-            nlink = readlink (sub_local, link_target, sizeof (link_target) - 1);
-            if (nlink < 0) {
-                fprintf (stderr, "Error reading symlink %s: %s\n", sub_local, strerror (errno));
-                goto err;;
-            }
-            link_target[nlink] = '\0';
-            if ((*rfs->remotefs_symlink) (rfs, link_target, sub_remote, errmsg)) {
+        } else if (S_ISLNK (list->d[i]->pstat.ustat.st_mode)) {
+            if ((*rfs->remotefs_symlink) (rfs, list->d[i]->link_target, sub_remote, errmsg)) {
                 fprintf (stderr, "Error creating remote symlink %s: %s\n", sub_remote, errmsg);
                 goto err;;
             }
         } else {
-            warn_skipping (&list[i].pstat, sub_local);
+            warn_skipping (&list->d[i]->pstat, sub_local);
         }
     }
 
-    free (list);
+    file_array_free (list);
     return 0;
 
   err:
-    free (list);
+    file_array_free (list);
     return 1;
 }
 
@@ -554,7 +538,7 @@ static int copy_dir_remote_to_local (const char *ip, const char *remote_dir, con
 {
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     struct file_entry *list = NULL;
-    int n = 0, i, cached = 0;
+    int i, cached = 0;
     struct remotefs *rfs;
     char sub_remote[MAX_PATH_LEN], sub_local[MAX_PATH_LEN];
 
@@ -567,47 +551,41 @@ static int copy_dir_remote_to_local (const char *ip, const char *remote_dir, con
     }
 
     /* list remote directory */
-    if ((*rfs->remotefs_listdir) (rfs, &cached, remote_dir, FILELIST_ALL_FILES, "*", &list, &n, errmsg)) {
+    if ((*rfs->remotefs_listdir) (rfs, &cached, remote_dir, FILELIST_ALL_FILES, "*", &list, errmsg)) {
         fprintf (stderr, "Error listing remote directory %s: %s\n", remote_dir, errmsg);
         goto err;
     }
 
-    for (i = 0; i < n; i++) {
-        if (list[i].options & FILELIST_LAST_ENTRY) break;
-        if (!strcmp (list[i].name, ".") || !strcmp (list[i].name, ".."))
+    for (i = 0; i < list->dl; i++) {
+        if (!strcmp (list->d[i]->name, ".") || !strcmp (list->d[i]->name, ".."))
             continue;
 
-        path_join (remote_dir, list[i].name, sub_remote, sizeof (sub_remote));
-        path_join (local_dir, list[i].name, sub_local, sizeof (sub_local));
+        path_join (remote_dir, list->d[i]->name, sub_remote, sizeof (sub_remote));
+        path_join (local_dir, list->d[i]->name, sub_local, sizeof (sub_local));
 
-        if (S_ISDIR (list[i].pstat.ustat.st_mode)) {
+        if (S_ISDIR (list->d[i]->pstat.ustat.st_mode)) {
             if (copy_dir_remote_to_local (ip, sub_remote, sub_local, force))
                 goto err;
-        } else if (S_ISREG (list[i].pstat.ustat.st_mode)) {
+        } else if (S_ISREG (list->d[i]->pstat.ustat.st_mode)) {
             if (ip[0]
                 ? filetool_copy_remote_to_local (ip, sub_remote, sub_local)
                 : filetool_copy_local_to_local (sub_remote, sub_local))
                 goto err;
-        } else if (S_ISLNK (list[i].pstat.ustat.st_mode)) {
-            char link_target[MAX_PATH_LEN];
-            if ((*rfs->remotefs_readlink) (rfs, sub_remote, link_target, sizeof (link_target), errmsg)) {
-                fprintf (stderr, "Error reading remote symlink %s: %s\n", sub_remote, errmsg);
-                goto err;
-            }
-            if ((*the_remotefs_local->remotefs_symlink) (the_remotefs_local, link_target, sub_local, errmsg)) {
+        } else if (S_ISLNK (list->d[i]->pstat.ustat.st_mode)) {
+            if ((*the_remotefs_local->remotefs_symlink) (the_remotefs_local, list->d[i]->link_target, sub_local, errmsg)) {
                 fprintf (stderr, "Error creating symlink %s: %s\n", sub_local, errmsg);
                 goto err;
             }
         } else {
-            warn_skipping (&list[i].pstat, sub_remote);
+            warn_skipping (&list->d[i]->pstat, sub_remote);
         }
     }
 
-    free (list);
+    file_array_free (list);
     return 0;
 
   err:
-    free (list);
+    file_array_free (list);
     return 1;
 }
 
@@ -631,10 +609,10 @@ static int handle_single_source (const char *src, const char *dst)
     char src_ip[256], src_path[MAX_PATH_LEN], src_path__symlinks_resolved[MAX_PATH_LEN];
     char dst_ip[256], dst_path[MAX_PATH_LEN];
     struct portable_stat src_st, dst_st;
-    int src_is_dir, src_exists, dst_is_dir, dst_exists;
-    char target_path[MAX_PATH_LEN];
-    const char *target;
-    int src_is_remote, dst_is_remote;
+    int src_is_dir = 0, src_exists = 0, dst_is_dir = 0, dst_exists = 0;
+    char target_path[MAX_PATH_LEN] = "";
+    const char *target = NULL;
+    int src_is_remote = 0, dst_is_remote = 0;
     int last_src_char_is_dir = 0, last_dst_char_is_dir = 0;
 
     *errmsg = '\0';
@@ -649,35 +627,36 @@ static int handle_single_source (const char *src, const char *dst)
     dst_is_remote = (dst_ip[0] != '\0');
 
     /* stat source */
-    if (path_stat (src_ip, src_path, &src_st, &src_is_dir, &src_exists, errmsg)) {
-        fprintf (stderr, "Error stating source %s: %s\n", src, errmsg);
-        return 1;
-    }
-
-    if (last_src_char_is_dir && !src_is_dir) {
-        fprintf (stderr, "Error: %s is not a directory\n", src);
-        return 1;
-    }
-
-    /* stat destination */
-    if (path_stat (dst_ip, dst_path, &dst_st, &dst_is_dir, &dst_exists, errmsg)) {
-        fprintf (stderr, "Error stating destination %s: %s\n", dst, errmsg);
-        return 1;
-    }
-
-    if (last_dst_char_is_dir && !dst_is_dir) {
-        fprintf (stderr, "Error: %s is not a directory\n", dst);
-        return 1;
-    }
-
-    /* Check if source is a symlink — symlinks are reproduced, not followed */
     {
-        char link_target[MAX_PATH_LEN];
-        if (!path_readlink (src_ip, src_path, link_target, sizeof (link_target), errmsg)) {
-            if (dst_exists && dst_is_dir)
-                target = target_path, path_join (dst_path, my_basename (src_path), target_path, sizeof (target_path));
-            else
+        char link_target[MAX_PATH_LEN] = "";
+        if (path_stat (src_ip, src_path, &src_st, &src_is_dir, &src_exists, link_target, sizeof (link_target), errmsg)) {
+            fprintf (stderr, "Error stating source %s: %s\n", src, errmsg);
+            return 1;
+        }
+
+        if (last_src_char_is_dir && !src_is_dir) {
+            fprintf (stderr, "Error: %s is not a directory\n", src);
+            return 1;
+        }
+
+        /* stat destination */
+        if (path_stat (dst_ip, dst_path, &dst_st, &dst_is_dir, &dst_exists, NULL, 0, errmsg)) {
+            fprintf (stderr, "Error stating destination %s: %s\n", dst, errmsg);
+            return 1;
+        }
+
+        if (last_dst_char_is_dir && !dst_is_dir) {
+            fprintf (stderr, "Error: %s is not a directory\n", dst);
+            return 1;
+        }
+
+        if (link_target[0]) {
+            if (dst_exists && dst_is_dir) {
+                target = target_path;
+                path_join (dst_path, my_basename (src_path), target_path, sizeof (target_path));
+            } else {
                 target = dst_path;
+            }
             if (dst_exists && !dst_is_dir) {
                 if (!confirm_overwrite (dst))
                     return 0;
@@ -709,10 +688,12 @@ static int handle_single_source (const char *src, const char *dst)
             fprintf (stderr, "Error: cannot copy directory %s to a file %s\n", src, dst);
             return 1;
         }
-        if (dst_exists && dst_is_dir)
-            target = target_path, path_join (dst_path, my_basename (src_path), target_path, sizeof (target_path));
-        else
+        if (dst_exists && dst_is_dir) {
+            target = target_path;
+            path_join (dst_path, my_basename (src_path), target_path, sizeof (target_path));
+        } else {
             target = dst_path;
+        }
 
         if (!dst_is_remote) {
             if (copy_dir_remote_to_local (src_ip, src_path, target, force_flag))
@@ -727,10 +708,12 @@ static int handle_single_source (const char *src, const char *dst)
             warn_skipping (&src_st, src);
             return 0;
         }
-        if (dst_exists && dst_is_dir)
-            target = target_path, path_join (dst_path, my_basename (src_path), target_path, sizeof (target_path));
-        else
+        if (dst_exists && dst_is_dir) {
+            target = target_path;
+            path_join (dst_path, my_basename (src_path), target_path, sizeof (target_path));
+        } else {
             target = dst_path;
+        }
 
         if (dst_exists && !dst_is_dir) {
             if (!confirm_overwrite (dst))
@@ -755,8 +738,8 @@ static int handle_single_source (const char *src, const char *dst)
 
 static int ls_cmp (const void *a, const void *b)
 {
-    const struct file_entry *fa = (const struct file_entry *) a;
-    const struct file_entry *fb = (const struct file_entry *) b;
+    const struct file_item *fa = (const struct file_item *) a;
+    const struct file_item *fb = (const struct file_item *) b;
     int r;
     if (ls_opt_S) {
         long long sa = (long long) fa->pstat.ustat.st_size;
@@ -774,7 +757,12 @@ static int ls_cmp (const void *a, const void *b)
     return ls_opt_r ? -r : r;
 }
 
-static void ls_print_long (struct file_entry *e)
+static int ls_cmp_ptr (const void *a, const void *b)
+{
+    return ls_cmp (*(const struct file_item **) a, *(const struct file_item **) b);
+}
+
+static void ls_print_long (struct file_item *e, const char *target)
 {
     char mode[64];
     char timebuf[64];
@@ -789,25 +777,29 @@ static void ls_print_long (struct file_entry *e)
     else
         strftime (timebuf, sizeof (timebuf), "%b %d %H:%M", &tm);
     if (S_ISBLK (e->pstat.ustat.st_mode) || S_ISCHR (e->pstat.ustat.st_mode))
-        printf ("%-10s %4lu %5lu %5lu %3lu, %3lu %s %s\n",
+        printf ("%-10s %4lu %5lu %5lu %3lu, %3lu %s %s%s%s\n",
             mode, (unsigned long) e->pstat.ustat.st_nlink,
             (unsigned long) e->pstat.ustat.st_uid,
             (unsigned long) e->pstat.ustat.st_gid,
             (unsigned long) major (e->pstat.ustat.st_rdev),
             (unsigned long) minor (e->pstat.ustat.st_rdev),
-            timebuf, e->name);
+            timebuf, e->name,
+            target ? " -> " : "",
+            target ? target : "");
     else
-        printf ("%-10s %4lu %5lu %5lu %8lld %s %s\n",
+        printf ("%-10s %4lu %5lu %5lu %8lld %s %s%s%s\n",
             mode, (unsigned long) e->pstat.ustat.st_nlink,
             (unsigned long) e->pstat.ustat.st_uid,
             (unsigned long) e->pstat.ustat.st_gid,
             (long long) e->pstat.ustat.st_size,
-            timebuf, e->name);
+            timebuf, e->name,
+            target ? " -> " : "",
+            target ? target : "");
 }
 
-static void ls_print_entry (struct file_entry *e)
+static void ls_print_entry (struct file_item *e, const char *target)
 {
-    if (ls_opt_l) ls_print_long (e);
+    if (ls_opt_l) ls_print_long (e, target);
     else printf ("%s\n", e->name);
 }
 
@@ -817,17 +809,37 @@ static int do_ls (const char *path_)
     char errmsg[REMOTEFS_ERR_MSG_LEN];
     struct remotefs *rfs;
     struct file_entry *list = NULL;
-    int n = 0, i, cached = 0;
+    int i, cached = 0;
     struct portable_stat st;
     int is_dir, exists, last_char_is_dir = 0;
+    char symlink_target[MAX_PATH_LEN];
+    int is_symlink = 0;
+    int stat_failed = 0;
     parse_remote_path (path_, ip, sizeof (ip), dir_path, sizeof (dir_path));
     strip_trailing_slash (dir_path, &last_char_is_dir);
     rfs = ip[0] ? remotefs_lookup (ip, NULL) : the_remotefs_local;
-    if (path_stat (ip, dir_path, &st, &is_dir, &exists, errmsg)) {
+    if (path_stat (ip, dir_path, &st, &is_dir, &exists, symlink_target, sizeof (symlink_target), errmsg)) {
+        stat_failed = 1;
+    } else {
+        is_symlink = (symlink_target[0] != '\0');
+    }
+    if (is_symlink && (stat_failed || !exists)) {
+        struct file_item *e;
+        e = (struct file_item *) malloc (sizeof (*e));
+        memset (e, '\0', sizeof (*e));
+        e->name = Cstrdup (dir_path);
+        e->pstat.ustat.st_mode = S_IFLNK | 0777;
+        e->pstat.ustat.st_size = strlen (symlink_target);
+        ls_print_entry (e, symlink_target);
+        free (e->name);
+        free (e);
+        return 0;
+    }
+    if (stat_failed) {
         fprintf (stderr, "Error stating %s: %s\n", path_, errmsg);
         return 1;
     }
-    if (last_char_is_dir && !is_dir) {
+    if (last_char_is_dir && !is_dir && !is_symlink) {
         fprintf (stderr, "Error: %s is not a directory\n", path_);
         return 1;
     }
@@ -835,26 +847,52 @@ static int do_ls (const char *path_)
         fprintf (stderr, "Error: %s does not exist\n", path_);
         return 1;
     }
-    if (ls_opt_d || !is_dir) {
-        struct file_entry e;
-        memset (&e, '\0', sizeof (e));
-        strncpy (e.name, dir_path, sizeof (e.name) - 1);
-        e.name[sizeof (e.name) - 1] = '\0';
-        e.pstat = st;
-        ls_print_entry (&e);
+    if (is_symlink && !ls_opt_d && !is_dir && (!ls_opt_l || last_char_is_dir)) {
+        char resolved[MAX_PATH_LEN + MAX_PATH_LEN];
+        struct portable_stat target_st;
+        int target_is_dir, target_exists2;
+        if (symlink_target[0] == '/') {
+            strncpy (resolved, symlink_target, sizeof (resolved) - 1);
+            resolved[sizeof (resolved) - 1] = '\0';
+        } else {
+            const char *last_slash = strrchr (dir_path, '/');
+            int parent_len = last_slash ? (int)(last_slash - dir_path) : 0;
+            snprintf (resolved, sizeof (resolved), "%.*s/%s", parent_len, dir_path, symlink_target);
+        }
+        if (!path_stat (ip, resolved, &target_st, &target_is_dir, &target_exists2, NULL, 0, errmsg)
+            && target_exists2 && target_is_dir) {
+            strncpy (dir_path, resolved, sizeof (dir_path) - 1);
+            dir_path[sizeof (dir_path) - 1] = '\0';
+            is_dir = 1;
+        }
+    }
+    if (ls_opt_d || !is_dir || (is_symlink && ls_opt_l && !last_char_is_dir)) {
+        struct file_item *e;
+        e = (struct file_item *) malloc (sizeof (*e));
+        memset (e, '\0', sizeof (*e));
+        e->name = Cstrdup (dir_path);
+        e->pstat = st;
+        if (is_symlink)
+            e->pstat.ustat.st_size = strlen (symlink_target);
+        ls_print_entry (e, is_symlink ? symlink_target : NULL);
+        free (e->name);
+        free (e);
         return 0;
     }
-    if ((*rfs->remotefs_listdir) (rfs, &cached, dir_path, FILELIST_ALL_FILES, "*", &list, &n, errmsg)) {
+    if ((*rfs->remotefs_listdir) (rfs, &cached, dir_path, FILELIST_ALL_FILES, "*", &list, errmsg)) {
         fprintf (stderr, "Error listing %s: %s\n", path_, errmsg);
         return 1;
     }
-    qsort (list, n, sizeof (struct file_entry), ls_cmp);
-    for (i = 0; i < n; i++) {
-        if (list[i].options & FILELIST_LAST_ENTRY) break;
-        if (!ls_opt_a && list[i].name[0] == '.') continue;
-        ls_print_entry (&list[i]);
+    qsort (list->d, list->dl, sizeof (struct file_item *), ls_cmp_ptr);
+    for (i = 0; i < list->dl; i++) {
+        if (!ls_opt_a && list->d[i]->name[0] == '.') continue;
+        if (S_ISLNK (list->d[i]->pstat.ustat.st_mode))
+            ls_print_entry (list->d[i], list->d[i]->link_target);
+        else {
+            ls_print_entry (list->d[i], NULL);
+        }
     }
-    free (list);
+    file_array_free (list);
     return 0;
 }
 
@@ -872,7 +910,7 @@ static int do_ls_multi (int npaths, char **paths)
             char errmsg[REMOTEFS_ERR_MSG_LEN];
             parse_remote_path (paths[i], ip, sizeof (ip), dir_path, sizeof (dir_path));
             strip_trailing_slash (dir_path, &last_char_is_dir);
-            r = path_stat (ip, dir_path, &st, &is_dir, &exists, errmsg);
+            r = path_stat (ip, dir_path, &st, &is_dir, &exists, NULL, 0, errmsg);
             if (!r && exists && is_dir)
                 show_header = 1;
             if (r) {
@@ -997,7 +1035,7 @@ static int filetool_process_args_ (int argc, char **argv)
         char ip[256], dir_path[MAX_PATH_LEN];
         parse_remote_path (dst, ip, sizeof (ip), dir_path, sizeof (dir_path));
         strip_trailing_slash (dir_path, NULL);
-        if (path_stat (ip, dir_path, &dst_st, &dst_is_dir, &dst_exists, errmsg)) {
+        if (path_stat (ip, dir_path, &dst_st, &dst_is_dir, &dst_exists, NULL, 0, errmsg)) {
             fprintf (stderr, "Error stating destination %s: %s\n", dst, errmsg);
             return 1;
         }

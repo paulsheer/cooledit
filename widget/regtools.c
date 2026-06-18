@@ -19,7 +19,7 @@
    0 if string doesn't match
    -1 if error in pattern */
 
-int glob_match (char *pattern, char *string)
+int glob_match (const char *pattern, const char *string)
 {
     int r = my_fnmatch (pattern, string, 0);
     if (r == 0)

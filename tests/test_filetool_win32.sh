@@ -674,6 +674,336 @@ else
 fi
 
 # ============================================================
+# Case 24: remote dir -> local, verify symlinks preserved
+# ============================================================
+echo ""
+echo "--- Case 24: remote symlinks dir -> local, verify symlinks preserved ---"
+rm -rf "$WORKDIR/roundtrip/case24"
+mkdir -p "$WORKDIR/roundtrip/case24"
+# Use the remote symlinks directory pushed in Case 9
+run_filetool "${REMOTE_TESTDIR}/symlinks" "$WORKDIR/roundtrip/case24"
+ret=$?
+if [ $ret -eq 0 ]; then
+    assert_symlinks_match "$WORKDIR/local-symlinks" "$WORKDIR/roundtrip/case24/symlinks" \
+        "remote symlinks dir -> local: targets match"
+else
+    fail "remote symlinks dir -> local: copy failed (exit $ret)"
+fi
+
+# ============================================================
+# Case 25: single local symlink -> remote, verify target preserved
+# ============================================================
+echo ""
+echo "--- Case 25: single local symlink -> remote, verify target preserved ---"
+ln -sf "hosts-target" "$WORKDIR/standalone-link"
+createtext "$WORKDIR/hosts-target" "hosts target content"
+rm -rf "$WORKDIR/roundtrip/case25"
+mkdir -p "$WORKDIR/roundtrip/case25"
+run_filetool "$WORKDIR/standalone-link" "${REMOTE_TESTDIR}/dst"
+ret=$?
+if [ $ret -eq 0 ]; then
+    run_filetool "${REMOTE_TESTDIR}/dst/standalone-link" "$WORKDIR/roundtrip/case25"
+    ret=$?
+fi
+if [ $ret -eq 0 ]; then
+    dst_target=$(readlink "$WORKDIR/roundtrip/case25/standalone-link" 2>/dev/null)
+    if [ "$dst_target" = "hosts-target" ]; then
+        pass "single local symlink -> remote: target preserved as symlink"
+    elif [ -z "$dst_target" ]; then
+        fail "single local symlink -> remote: NOT a symlink (symlink reproduction missing for single-file copy)"
+    else
+        fail "single local symlink -> remote: wrong target '$dst_target' expected 'hosts-target'"
+    fi
+else
+    fail "single local symlink -> remote: copy failed (exit $ret)"
+fi
+
+# ============================================================
+# Case 26: single remote symlink -> local, verify target preserved
+# ============================================================
+echo ""
+echo "--- Case 26: single remote symlink -> local, verify target preserved ---"
+# Create a standalone symlink on the remote side by pushing one from local
+ln -sf "rfile-target" "$WORKDIR/remote-standalone-link"
+createtext "$WORKDIR/rfile-target" "remote standalone target"
+run_filetool "$WORKDIR/remote-standalone-link" "${REMOTE_TESTDIR}/dst"
+# Now copy that remote symlink as a standalone source back to local
+rm -rf "$WORKDIR/roundtrip/case26"
+mkdir -p "$WORKDIR/roundtrip/case26"
+run_filetool "${REMOTE_TESTDIR}/dst/remote-standalone-link" "$WORKDIR/roundtrip/case26"
+ret=$?
+if [ $ret -eq 0 ]; then
+    dst_target=$(readlink "$WORKDIR/roundtrip/case26/remote-standalone-link" 2>/dev/null)
+    if [ "$dst_target" = "rfile-target" ]; then
+        pass "single remote symlink -> local: target preserved as symlink"
+    elif [ -z "$dst_target" ]; then
+        fail "single remote symlink -> local: NOT a symlink (symlink reproduction missing for single-file copy)"
+    else
+        fail "single remote symlink -> local: wrong target '$dst_target' expected 'rfile-target'"
+    fi
+else
+    fail "single remote symlink -> local: copy failed (exit $ret)"
+fi
+
+# ============================================================
+# Case 27: single local broken symlink -> remote
+# ============================================================
+echo ""
+echo "--- Case 27: single local broken symlink -> remote ---"
+ln -sf "/nonexistent/target/path" "$WORKDIR/broken-link"
+rm -rf "$WORKDIR/roundtrip/case27"
+mkdir -p "$WORKDIR/roundtrip/case27"
+run_filetool "$WORKDIR/broken-link" "${REMOTE_TESTDIR}/dst"
+ret=$?
+if [ $ret -eq 0 ]; then
+    run_filetool "${REMOTE_TESTDIR}/dst/broken-link" "$WORKDIR/roundtrip/case27"
+    ret=$?
+fi
+if [ $ret -eq 0 ]; then
+    dst_target=$(readlink "$WORKDIR/roundtrip/case27/broken-link" 2>/dev/null)
+    if [ "$dst_target" = "/nonexistent/target/path" ]; then
+        pass "single local broken symlink -> remote: target preserved as symlink"
+    elif [ -z "$dst_target" ]; then
+        fail "single local broken symlink -> remote: NOT a symlink (broken symlink not copied)"
+    else
+        fail "single local broken symlink -> remote: wrong target '$dst_target' expected '/nonexistent/target/path'"
+    fi
+else
+    fail "single local broken symlink -> remote: copy failed — broken symlinks should be copyable (exit $ret)"
+fi
+
+# ============================================================
+# --ls tests: verify listing of different file types on remote Windows
+# ============================================================
+
+# Create local test data for --ls, then push to remote
+mkdir -p "$WORKDIR/ls-test/subdir"
+createtext "$WORKDIR/ls-test/regular.txt" "regular file for --ls test"
+createtext "$WORKDIR/ls-test/subdir/nested.txt" "nested file for --ls test"
+ln -sf "regular.txt" "$WORKDIR/ls-test/link1"
+ln -sf "/nonexistent/target" "$WORKDIR/ls-test/broken"
+ln -sf "subdir" "$WORKDIR/ls-test/link-to-dir"
+rm -rf "$WORKDIR/ls-test-staging"
+run_filetool "$WORKDIR/ls-test" "${REMOTE_TESTDIR}/ls-test"
+if [ $? -ne 0 ]; then
+    echo "WARNING: Failed to push --ls test data to remote; --ls tests may fail"
+fi
+
+# Helper: run --ls, capture stdout+stderr separately. Returns exit code.
+run_filetool_ls_capture() {
+    # Writes stdout to $LS_STDOUT, stderr to $LS_STDERR
+    local tmpout tmperr ret
+    tmpout=$(mktemp)
+    tmperr=$(mktemp)
+    "$COOLEDIT" --filetool --ls "$@" >"$tmpout" 2>"$tmperr"
+    ret=$?
+    LS_STDOUT=$(cat "$tmpout")
+    LS_STDERR=$(cat "$tmperr")
+    rm -f "$tmpout" "$tmperr"
+    return $ret
+}
+
+# ============================================================
+# Case 28: --ls -l symlink -> target arrow and non-zero size
+# ============================================================
+echo ""
+echo "--- Case 28: --ls -l symlink shows -> target and size ---"
+# symlink to file: should show "link1 -> regular.txt" with size 11
+run_filetool_ls_capture -l "${REMOTE_TESTDIR}/ls-test/link1"
+ret=$?
+if [ $ret -eq 0 ]; then
+    if echo "$LS_STDOUT" | grep -q "link1 -> regular.txt"; then
+        pass "--ls -l symlink-to-file: shows '-> regular.txt'"
+    else
+        fail "--ls -l symlink-to-file: missing -> target, got: $LS_STDOUT"
+    fi
+    size=$(echo "$LS_STDOUT" | awk '{print $5}')
+    if [ "$size" != "0" ] && [ -n "$size" ]; then
+        pass "--ls -l symlink-to-file: size is $size (non-zero, expected length of 'regular.txt' = 11)"
+    else
+        fail "--ls -l symlink-to-file: size is 0, expected 11 (length of 'regular.txt')"
+    fi
+else
+    fail "--ls -l symlink-to-file: failed (exit $ret, stderr: $LS_STDERR)"
+fi
+# symlink to directory: should show "link-to-dir -> subdir" with size 6
+run_filetool_ls_capture -l "${REMOTE_TESTDIR}/ls-test/link-to-dir"
+ret=$?
+if [ $ret -eq 0 ]; then
+    if echo "$LS_STDOUT" | grep -q "link-to-dir -> subdir"; then
+        pass "--ls -l symlink-to-dir: shows '-> subdir'"
+    else
+        fail "--ls -l symlink-to-dir: missing -> target, got: $LS_STDOUT"
+    fi
+    size=$(echo "$LS_STDOUT" | awk '{print $5}')
+    if [ "$size" != "0" ] && [ -n "$size" ]; then
+        pass "--ls -l symlink-to-dir: size is $size (non-zero, expected length of 'subdir' = 6)"
+    else
+        fail "--ls -l symlink-to-dir: size is 0, expected 6 (length of 'subdir')"
+    fi
+else
+    fail "--ls -l symlink-to-dir: failed (exit $ret, stderr: $LS_STDERR)"
+fi
+
+# ============================================================
+# Case 29: --ls directory listing includes broken symlink with -> target
+# ============================================================
+echo ""
+echo "--- Case 29: --ls directory listing includes broken symlink ---"
+run_filetool_ls_capture -l "${REMOTE_TESTDIR}/ls-test"
+ret=$?
+if [ $ret -eq 0 ]; then
+    if echo "$LS_STDOUT" | grep -q "broken"; then
+        pass "--ls -l dir: broken symlink appears in listing"
+    else
+        fail "--ls -l dir: broken symlink missing from listing, got: $LS_STDOUT"
+    fi
+    if echo "$LS_STDOUT" | grep -q "broken -> /nonexistent/target"; then
+        pass "--ls -l dir: broken symlink shows -> target"
+    else
+        fail "--ls -l dir: broken symlink missing -> /nonexistent/target, got: $LS_STDOUT"
+    fi
+else
+    fail "--ls -l dir: failed (exit $ret, stderr: $LS_STDERR)"
+fi
+
+# ============================================================
+# Case 30: --ls on broken symlink directly
+# ============================================================
+echo ""
+echo "--- Case 30: --ls on broken symlink directly ---"
+run_filetool_ls_capture "${REMOTE_TESTDIR}/ls-test/broken"
+ret=$?
+if [ $ret -eq 0 ]; then
+    if echo "$LS_STDOUT" | grep -q "broken"; then
+        pass "--ls broken symlink: output contains name"
+    else
+        fail "--ls broken symlink: output missing name, got: $LS_STDOUT"
+    fi
+else
+    fail "--ls broken symlink: failed — broken symlinks should be listable (exit $ret, stderr: $LS_STDERR)"
+fi
+run_filetool_ls_capture -l "${REMOTE_TESTDIR}/ls-test/broken"
+ret=$?
+if [ $ret -eq 0 ]; then
+    if echo "$LS_STDOUT" | grep -q "broken -> /nonexistent/target"; then
+        pass "--ls -l broken symlink: shows -> target"
+    else
+        fail "--ls -l broken symlink: missing -> target, got: $LS_STDOUT"
+    fi
+else
+    fail "--ls -l broken symlink: failed — broken symlinks should be listable (exit $ret, stderr: $LS_STDERR)"
+fi
+
+# ============================================================
+# Case 31: --ls regular file: no symlink arrow, correct size
+# ============================================================
+echo ""
+echo "--- Case 31: --ls regular file: no false symlink arrow ---"
+run_filetool_ls_capture -l "${REMOTE_TESTDIR}/ls-test/regular.txt"
+ret=$?
+if [ $ret -eq 0 ]; then
+    if echo "$LS_STDOUT" | grep -q "regular.txt" && ! echo "$LS_STDOUT" | grep -q "regular.txt ->"; then
+        pass "--ls -l regular file: no symlink arrow (correct)"
+    else
+        fail "--ls -l regular file: incorrectly shows -> arrow, got: $LS_STDOUT"
+    fi
+    size=$(echo "$LS_STDOUT" | awk '{print $5}')
+    if [ "$size" = "27" ]; then
+        pass "--ls -l regular file: size is 27 (correct)"
+    else
+        fail "--ls -l regular file: size is $size, expected 27"
+    fi
+else
+    fail "--ls -l regular file: failed (exit $ret, stderr: $LS_STDERR)"
+fi
+
+# ============================================================
+# Case 32: --ls directory: -d shows name without ->, lists contents without -d
+# ============================================================
+echo ""
+echo "--- Case 32: --ls directory listing ---"
+run_filetool_ls_capture "${REMOTE_TESTDIR}/ls-test/subdir"
+ret=$?
+if [ $ret -eq 0 ]; then
+    if echo "$LS_STDOUT" | grep -q "nested.txt"; then
+        pass "--ls directory: lists contents (nested.txt found)"
+    else
+        fail "--ls directory: nested.txt not in listing, got: $LS_STDOUT"
+    fi
+else
+    fail "--ls directory: failed (exit $ret, stderr: $LS_STDERR)"
+fi
+run_filetool_ls_capture -d "${REMOTE_TESTDIR}/ls-test/subdir"
+ret=$?
+if [ $ret -eq 0 ]; then
+    if echo "$LS_STDOUT" | grep -q "subdir" && ! echo "$LS_STDOUT" | grep -q "nested.txt"; then
+        pass "--ls -d directory: lists directory name, not contents"
+    else
+        fail "--ls -d directory: -d flag ignored or missing name, got: $LS_STDOUT"
+    fi
+else
+    fail "--ls -d directory: failed (exit $ret, stderr: $LS_STDERR)"
+fi
+
+# ============================================================
+# Case 33: --ls symlink-to-dir: follows by default, -d shows symlink itself
+# ============================================================
+echo ""
+echo "--- Case 33: --ls symlink-to-directory ---"
+run_filetool_ls_capture "${REMOTE_TESTDIR}/ls-test/link-to-dir"
+ret=$?
+if [ $ret -eq 0 ]; then
+    if echo "$LS_STDOUT" | grep -q "nested.txt"; then
+        pass "--ls symlink-to-dir: follows symlink, lists target contents"
+    else
+        fail "--ls symlink-to-dir: target contents not listed, got: $LS_STDOUT"
+    fi
+else
+    fail "--ls symlink-to-dir: failed (exit $ret, stderr: $LS_STDERR)"
+fi
+	# Added test: --ls -l symlink-to-dir should show symlink itself, not contents
+	run_filetool_ls_capture -l "${REMOTE_TESTDIR}/ls-test/link-to-dir"
+	ret=$?
+	if [ $ret -eq 0 ]; then
+	    if echo "$LS_STDOUT" | grep -q "link-to-dir -> subdir" && ! echo "$LS_STDOUT" | grep -q "nested.txt"; then
+	        pass "--ls -l symlink-to-dir: shows symlink entry, does not list contents"
+	    else
+	        fail "--ls -l symlink-to-dir: expected symlink entry only, got: $LS_STDOUT"
+	    fi
+	else
+	    fail "--ls -l symlink-to-dir: failed (exit $ret, stderr: $LS_STDERR)"
+	fi
+run_filetool_ls_capture -l -d "${REMOTE_TESTDIR}/ls-test/link-to-dir"
+ret=$?
+if [ $ret -eq 0 ]; then
+    if echo "$LS_STDOUT" | grep -q "link-to-dir -> subdir"; then
+        pass "--ls -l -d symlink-to-dir: shows symlink name with -> target"
+    else
+        fail "--ls -l -d symlink-to-dir: missing -> target, got: $LS_STDOUT"
+    fi
+else
+    fail "--ls -l -d symlink-to-dir: failed (exit $ret, stderr: $LS_STDERR)"
+fi
+
+
+# ============================================================
+# Case 34: --ls -l symlink-to-dir/ with trailing slash follows symlink
+# ============================================================
+echo ""
+echo "--- Case 34: --ls -l symlink-to-dir with trailing slash ---"
+run_filetool_ls_capture -l "${REMOTE_TESTDIR}/ls-test/link-to-dir/"
+ret=$?
+if [ $ret -eq 0 ]; then
+    if echo "$LS_STDOUT" | grep -q "nested.txt" && ! echo "$LS_STDOUT" | grep -q "link-to-dir ->"; then
+        pass "--ls -l symlink-to-dir/: follows symlink, lists target contents"
+    else
+        fail "--ls -l symlink-to-dir/: expected directory contents, got: $LS_STDOUT"
+    fi
+else
+    fail "--ls -l symlink-to-dir/: failed (exit $ret, stderr: $LS_STDERR)"
+fi
+# ============================================================
 # Results
 # ============================================================
 echo ""

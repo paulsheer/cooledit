@@ -37,11 +37,6 @@ extern int option_replace_case;
 extern int option_replace_backwards;
 extern int option_search_create_bookmark;
 
-struct look_cool_list {
-    struct file_entry *l;
-    int n;
-};
-
 int look_cool_search_replace_dialog (Window parent, int x, int y, CStr *search_text, CStr *replace_text, CStr *arg_order, const char *heading, int option)
 {E_
     int cancel = 0;
@@ -220,11 +215,8 @@ int look_cool_search_replace_dialog (Window parent, int x, int y, CStr *search_t
 static void destroy_filelist (CWidget * w)
 {E_
     if (w->hook) {
-        struct look_cool_list *fe = (struct look_cool_list *) w->hook;
-        if (fe->l)
-            free (fe->l);
-	free (w->hook);
-	w->hook = 0;
+        file_array_free ((struct file_entry *) w->hook);
+        w->hook = NULL;
     }
 }
 
@@ -276,9 +268,9 @@ static void destroy_filelist (CWidget * w)
 void get_file_time (char *timestr, time_t file_time, int l);
 
 static char **get_filelist_line (void *data, const int line_number, int *num_fields, int *tagged)
-{E_
-    struct file_entry *directentry;
-    struct look_cool_list *fe;
+{
+    struct file_item *e;
+    struct file_entry *fe;
     static char *fields[10], size[24], mode[65], timestr[32];
     static char name[520], *n;
     struct stat *s;
@@ -287,16 +279,16 @@ static char **get_filelist_line (void *data, const int line_number, int *num_fie
 
     *num_fields = 4;		/* name, size, date, mode only (for the mean time) */
 
-    fe = (struct look_cool_list *) data;
-    if (line_number >= fe->n)
+    fe = (struct file_entry *) data;
+    if (line_number >= fe->dl)
 	return 0;
-    directentry = fe->l;
+    e = fe->d[line_number];
 
-    ps = &directentry[line_number].pstat;
+    ps = &e->pstat;
     s = &ps->ustat;
     m = s->st_mode;
     n = name;
-    strcpy (name, directentry[line_number].name);
+    strcpy (name, e->name);
     fields[0] = name;
     if (((int) m & S_IFMT) == S_IFCHR || ((int) m & S_IFMT) == S_IFBLK) {
         sprintf (size, "\t%lu, %3lu", ps->dev_major, ps->dev_minor);
@@ -313,7 +305,7 @@ static char **get_filelist_line (void *data, const int line_number, int *num_fie
     if (S_ISLNK (m)) {
 	int l, i;
 	char *p;
-	p = directentry[line_number].name;
+	p = e->name;
 	l = strlen (n);
 	for (i = 0; i < l; i++) {
 	    *n++ = '\b';
@@ -323,7 +315,7 @@ static char **get_filelist_line (void *data, const int line_number, int *num_fie
     } else if (m & (S_IXUSR | S_IXGRP | S_IXOTH)) {
 	int l, i;
 	char *p;
-	p = directentry[line_number].name;
+	p = e->name;
 	l = strlen (n);
 	for (i = 0; i < l; i++) {
 	    *n++ = '\r';
@@ -333,7 +325,7 @@ static char **get_filelist_line (void *data, const int line_number, int *num_fie
     }
     fields[3] = mode;
     fields[*num_fields] = 0;
-    if (directentry[line_number].options & FILELIST_TAGGED_ENTRY)
+    if (e->options & FILELIST_TAGGED_ENTRY)
 	*tagged = 1;
     return fields;
 }
@@ -344,17 +336,10 @@ CWidget *look_cool_draw_file_list (const char *identifier, Window parent, int x,
 			struct file_entry *directentry,
 			long options)
 {E_
-    struct look_cool_list *fe;
+    struct file_entry *fe;
     CWidget *w;
-    int n;
 
-    for (n = 0; directentry && !(directentry[n].options & FILELIST_LAST_ENTRY); n++);	/* count entries */
-
-    fe = CMalloc (sizeof (struct look_cool_list));
-    fe->l = CMalloc (sizeof (struct file_entry) * (n + 1));
-    memcpy (fe->l, directentry, sizeof (struct file_entry) * n);
-    memset (&fe->l[n], '\0', sizeof (struct file_entry));
-    fe->n = n;
+    fe = file_array_copy (directentry);
 
     w = CDrawFieldedTextbox (identifier, parent, x, y,
 			     width, height, line, column,
@@ -368,35 +353,30 @@ CWidget *look_cool_draw_file_list (const char *identifier, Window parent, int x,
 
 CWidget *look_cool_redraw_file_list (const char *identifier, struct file_entry *directentry, int preserve)
 {E_
-    struct look_cool_list *fe;
+    struct file_entry *fe, *copy;
     CWidget *w;
-    int n;
-
-    for (n = 0; directentry && !(directentry[n].options & FILELIST_LAST_ENTRY); n++);	/* count entries */
 
     w = CIdent (identifier);
-    fe = (struct look_cool_list *) w->hook;
-    free (fe->l);
-    fe->l = CMalloc (sizeof (struct file_entry) * (n + 1));
-    memcpy (fe->l, directentry, sizeof (struct file_entry) * n);
-    memset (&fe->l[n], '\0', sizeof (struct file_entry));
-    fe->n = n;
+    fe = (struct file_entry *) w->hook;
+    copy = file_array_copy (directentry);
+    file_array_free (fe);
+    w->hook = (void *) copy;
 
     w = CRedrawFieldedTextbox (identifier, preserve);
 
     return w;
 }
 
-struct file_entry *look_cool_get_file_list_line (CWidget * w, int line)
+struct file_item *look_cool_get_file_list_line (CWidget * w, int line)
 {E_
-    struct look_cool_list *fe;
-    static struct file_entry r;
+    struct file_entry *fe;
+    static struct file_item r;
     memset (&r, 0, sizeof (r));
-    fe = (struct look_cool_list *) w->hook;
-    if (line >= fe->n || line < 0)
+    fe = (struct file_entry *) w->hook;
+    if (line >= fe->dl || line < 0)
 	r.options = FILELIST_LAST_ENTRY;
     else
-	r = fe->l[line];
+	r = *fe->d[line];
     return &r;
 }
 
@@ -452,7 +432,7 @@ static Window draw_file_browser (const char *identifier, Window parent, int x, i
 		    const char *host, const char *directory, const char *file, const char *label)
 {E_
     CWidget * w;
-    struct file_entry *filelist = 0, *directorylist = 0;
+    struct file_entry *filelist = NULL, *directorylist = NULL;
     int fail;
     char *resolved_path, *p;
     int y2, x2, x3, y3;
@@ -566,10 +546,8 @@ static Window draw_file_browser (const char *identifier, Window parent, int x, i
     CSetWindowResizable (identifier, FONT_MEAN_WIDTH * 40, min (FONT_PIX_PER_LINE * 5 + 210, y), 1600, 1200);	/* minimum and maximum sizes */
 
   error:
-    if (directorylist)
-	free (directorylist);
-    if (filelist)
-	free (filelist);
+    file_array_free (directorylist);
+    file_array_free (filelist);
     return win;
 }
 
@@ -585,7 +563,7 @@ static int how_much_matches (const char *a, const char *b)
 static int goto_partial_file_name (CWidget * list, char *text)
 {E_
     int i = 0;
-    struct file_entry *fe = 0;
+    struct file_item *fe = 0;
     char *e;
     int max_match = -1;
     int found_matchiest = -1;
@@ -790,10 +768,8 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
             CRedrawText (catstrs (identifier, ".dir", NULL), "%s", dir);
             CRedrawFilelist (catstrs (identifier, ".dbox", NULL), g, 0);
         }
-	if (f)
-	    free (f);
-	if (g)
-	    free (g);
+	file_array_free (f);
+	file_array_free (g);
         if (fail)
             show_error (identifier, errmsg);
 	CUnHourGlass (CFirstWindow);
@@ -965,7 +941,7 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
             goto out;
         }
         int from_cache = 1;
-	if ((*u->remotefs_stat) (u, &from_cache, estr, &st, &just_not_there, &error_code, errmsg)) {
+	if ((*u->remotefs_stat) (u, &from_cache, estr, &st, NULL, 0, &just_not_there, &error_code, errmsg)) {
             show_error (identifier, errmsg);
             r = "";
             goto out;
@@ -983,7 +959,7 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
         }
 /* ********* */
 	if (S_ISDIR (st.ustat.st_mode)) {
-	    struct file_entry *g = 0, *f = 0;
+	    struct file_entry *g = NULL, *f = NULL;
             int fail;
 	    CHourGlass (CFirstWindow);
             fail = get_file_dir_entry_list (1, &g, &f, ipinput ? ipinput->text.data : 0, estr, NULL, FILELIST_FILES_ONLY, filterinput->text.data, FILELIST_DIRECTORIES_ONLY, "", errmsg);
@@ -1007,10 +983,8 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
 	    } else {
                 show_error (identifier, errmsg);
             }
-	    if (g)
-		free (g);
-	    if (f)
-		free (f);
+	    file_array_free (g);
+	    file_array_free (f);
 	    r = "";
             goto out;
 	} else {
@@ -1020,7 +994,7 @@ static char *handle_browser (const char *identifier, CEvent * cwevent, int optio
                 goto out;
 	    }
             if (from_cache) {
-	        if ((*u->remotefs_stat) (u, NULL, estr, &st, &just_not_there, &error_code, errmsg)) {
+	        if ((*u->remotefs_stat) (u, NULL, estr, &st, NULL, 0, &just_not_there, &error_code, errmsg)) {
                     show_error (identifier, errmsg);
                     r = "";
                     goto out;

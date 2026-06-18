@@ -46,7 +46,7 @@ D        FILE_ATTRIBUTE_DEVICE                   0x40
 N        FILE_ATTRIBUTE_NORMAL                   0x80
 T        FILE_ATTRIBUTE_TEMPORARY                0x100
 s        FILE_ATTRIBUTE_SPARSE_FILE              0x200
-r        FILE_ATTRIBUTE_REPARSE_POINT            0x400
+l        FILE_ATTRIBUTE_REPARSE_POINT            0x400
 C        FILE_ATTRIBUTE_COMPRESSED               0x800
 O        FILE_ATTRIBUTE_OFFLINE                  0x1000
 n        FILE_ATTRIBUTE_NOT_CONTENT_INDEXED      0x2000
@@ -72,7 +72,7 @@ a        FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS    0x400000
 
 */
 
-        const char *a = "RHS?dADNTsrCOnEIVoP???a?????????????????????????????????????????";
+        const char *a = "RHS?dADNTslCOnEIVoP???a?????????????????????????????????????????";
         const char *common = "RHSd";
         int c;
         char *q;
@@ -135,7 +135,7 @@ a        FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS    0x400000
     }
 }
 
-int compare_fileentries (struct file_entry *file_entry1, struct file_entry *file_entry2)
+int compare_fileentries (struct file_item *file_entry1, struct file_item *file_entry2)
 {E_
 #if 0
     if (file_entry->options & FILELIST_SORT_...);
@@ -143,11 +143,39 @@ int compare_fileentries (struct file_entry *file_entry1, struct file_entry *file
     return (strcmp (file_entry1->name, file_entry2->name));
 }
 
+static int compare_fileentry_ptrs (const void *a, const void *b)
+{
+    struct file_item * const *fa = (struct file_item * const *) a;
+    struct file_item * const *fb = (struct file_item * const *) b;
+    return strcmp ((*fa)->name, (*fb)->name);
+}
+
+struct file_entry *file_array_copy (struct file_entry *fa)
+{
+    struct file_entry *copy;
+    int i;
+    if (!fa) return NULL;
+    copy = (struct file_entry *) malloc (sizeof (struct file_entry));
+    copy->dl = fa->dl;
+    copy->d = (struct file_item **) malloc (sizeof (struct file_item *) * fa->dl);
+    for (i = 0; i < fa->dl; i++) {
+        copy->d[i] = (struct file_item *) malloc (sizeof (struct file_item));
+        memcpy (copy->d[i], fa->d[i], sizeof (struct file_item));
+        copy->d[i]->name = (char *) malloc (strlen (fa->d[i]->name) + 1);
+        strcpy (copy->d[i]->name, fa->d[i]->name);
+        if (fa->d[i]->link_target) {
+            copy->d[i]->link_target = (char *) malloc (strlen (fa->d[i]->link_target) + 1);
+            strcpy (copy->d[i]->link_target, fa->d[i]->link_target);
+        } else
+            copy->d[i]->link_target = NULL;
+    }
+    return copy;
+}
+
 struct file_entry *get_file_entry_list (int cached, const char *host, const char *directory, char *last_dir, unsigned long options, const char *filter, char *errmsg)
 {E_
     struct remotefs *u;
-    int n = 0;
-    struct file_entry *list = NULL;
+    struct file_entry *fa = NULL;
     errmsg[0] = '\0';
     char last_dir_[MAX_PATH_LEN];
 
@@ -156,23 +184,22 @@ struct file_entry *get_file_entry_list (int cached, const char *host, const char
     u = remotefs_lookup (host, last_dir_);
     if (!*directory)
         directory = last_dir_;
-    if ((*u->remotefs_listdir) (u, &cached, directory, options, filter, &list, &n, errmsg))
+    if ((*u->remotefs_listdir) (u, &cached, directory, options, filter, &fa, errmsg))
         return NULL;
 
     if (last_dir)
         Cstrlcpy (last_dir, last_dir_, MAX_PATH_LEN);
 
-    qsort((void *) list, n, sizeof (struct file_entry), (int (*) (const void *, const void *)) compare_fileentries);
+    qsort((void *) fa->d, fa->dl, sizeof (struct file_item *), compare_fileentry_ptrs);
 
-    return list;
+    return fa;
 }
 
 /* returns 0 on success */
 int get_file_dir_entry_list (int cached, struct file_entry **r1, struct file_entry **r2, const char *host, const char *directory, char *last_dir, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, char *errmsg)
 {E_
     struct remotefs *u;
-    int n1 = 0, n2 = 0;
-    struct file_entry *list1 = NULL, *list2 = NULL;
+    struct file_entry *fa1 = NULL, *fa2 = NULL;
     errmsg[0] = '\0';
     char last_dir_[MAX_PATH_LEN];
 
@@ -183,17 +210,17 @@ int get_file_dir_entry_list (int cached, struct file_entry **r1, struct file_ent
     u = remotefs_lookup (host, last_dir_);
     if (!*directory)
         directory = last_dir_;
-    if ((*u->remotefs_listtwodirs) (u, &cached, directory, options1, filter1, options2, filter2, &list1, &n1, &list2, &n2, errmsg))
+    if ((*u->remotefs_listtwodirs) (u, &cached, directory, options1, filter1, options2, filter2, &fa1, &fa2, errmsg))
         return 1;
 
     if (last_dir)
         Cstrlcpy (last_dir, last_dir_, MAX_PATH_LEN);
 
-    qsort((void *) list1, n1, sizeof (struct file_entry), (int (*) (const void *, const void *)) compare_fileentries);
-    qsort((void *) list2, n2, sizeof (struct file_entry), (int (*) (const void *, const void *)) compare_fileentries);
+    qsort((void *) fa1->d, fa1->dl, sizeof (struct file_item *), compare_fileentry_ptrs);
+    qsort((void *) fa2->d, fa2->dl, sizeof (struct file_item *), compare_fileentry_ptrs);
 
-    *r1 = list1;
-    *r2 = list2;
+    *r1 = fa1;
+    *r2 = fa2;
 
     return 0;
 }

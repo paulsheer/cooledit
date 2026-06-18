@@ -31,7 +31,7 @@ extern CWidget *look_cool_draw_file_list (const char *identifier, Window parent,
 extern CWidget *look_cool_redraw_file_list (const char *identifier,
 						  struct file_entry *directentry, int preserve);
 
-extern struct file_entry *look_cool_get_file_list_line (CWidget * w, int line);
+extern struct file_item *look_cool_get_file_list_line (CWidget * w, int line);
 
 Window find_mapped_window (Window w);
 

@@ -34,6 +34,10 @@
 #include <my_string.h>
 #include "stringtools.h"
 #include "hashtable.h"
+#include "androidtest.h"
+#if defined(ANDROID) || defined(ANDROID_TEST)
+#include "androidmounts.h"
+#endif
 
 #ifdef HAVE_PWD_H
 #include <pwd.h>
@@ -128,7 +132,7 @@ static unsigned long long remotefs_start_time;
 static long remotefs_host_pid;
 
 
-char *pathdup_ (const char *p, const char *home_dir);
+char *pathdup_ (const char *p, const char *home_dir, char *errmsg);
 
 static int translate_unix_errno (int err);
 
@@ -579,6 +583,59 @@ static void mswin_alloc_encode_errno_strerror (CStr * r, const int force_shutdow
     alloc_encode_error (r, translate_mswin_lasterror (errval), mswin_error_to_text (errval), force_shutdown);
 }
 
+static int mswin_readlink (const char *linkpath, char *target, int target_sz, int *errval)
+{
+    MSWIN_HANDLE h;
+    char rdbuf[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+    REPARSE_DATA_BUFFER *rdb = (REPARSE_DATA_BUFFER *) rdbuf;
+    DWORD bytes_returned;
+    wchar_t *w_target;
+    int w_len, target_len;
+
+    h = CreateFileA (translate_path_sep (linkpath), GENERIC_READ,
+                        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                        NULL, OPEN_EXISTING,
+                        FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
+                        NULL);
+    if (h == INVALID_HANDLE_VALUE_64BIT) {
+        *errval = GetLastError ();
+        return 1;
+    }
+
+    if (!DeviceIoControl (h, FSCTL_GET_REPARSE_POINT, NULL, 0,
+                            rdb, sizeof (rdbuf), &bytes_returned, NULL)) {
+        *errval = GetLastError ();
+        CloseHandle (h);
+        return 1;
+    }
+    CloseHandle (h);
+
+    if (rdb->ReparseTag != IO_REPARSE_TAG_SYMLINK) {
+        *errval = ERROR_PATH_NOT_FOUND;
+        return 1;
+    }
+
+    w_target = (wchar_t *) ((char *) rdb->SymbolicLinkReparseBuffer.PathBuffer
+                            + rdb->SymbolicLinkReparseBuffer.PrintNameOffset);
+    w_len = rdb->SymbolicLinkReparseBuffer.PrintNameLength / sizeof (wchar_t);
+    target_len = WideCharToMultiByte (CP_UTF8, 0, w_target, w_len,
+                                        target, target_sz - 1, NULL, NULL);
+    if (target_len <= 0) {
+        *errval = GetLastError ();
+        return 1;
+    }
+    target[target_len] = '\0';
+    {
+        char *unix_target = windows_path_to_unix (target);
+        if (unix_target) {
+            strncpy (target, unix_target, target_sz - 1);
+            target[target_sz - 1] = '\0';
+            free (unix_target);
+        }
+    }
+    return 0;
+}
+
 static int portable_stat (int link, const char *fname, struct portable_stat *p, int *just_not_there, enum remotefs_error_code *remotefs_error_code_, char *errmsg)
 {E_
     WIN32_FILE_ATTRIBUTE_DATA a;
@@ -635,6 +692,11 @@ static int portable_stat (int link, const char *fname, struct portable_stat *p, 
     p->wattr.file_size |= a.nFileSizeLow;
 
     if ((r = my_stat (fname, &p->ustat))) {
+        if (link && (a.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+            p->ustat.st_mode = S_IFLNK | 0777;
+            p->ustat.st_size = 0;
+            return 0;
+        }
         if (errmsg) {
             strncpy (errmsg, strerror (errno), REMOTEFS_ERR_MSG_LEN);
             errmsg[REMOTEFS_ERR_MSG_LEN - 1] = '\0';
@@ -712,6 +774,16 @@ static void perrorsocket (const char *msg)
 int remotefs_check_indefinite_length (const char *path)
 {
     return !strncmp (path, "/proc/", 6) || !strncmp (path, "/sys/", 5);
+}
+
+static int posix_readlink (const char *linkpath, char *target, int target_sz)
+{
+    ssize_t n;
+    n = readlink (translate_path_sep (linkpath), target, target_sz - 1);
+    if (n < 0)
+        return 1;
+    target[n] = '\0';
+    return 0;
 }
 
 static int portable_stat (int link, const char *fname, struct portable_stat *p, int *just_not_there, enum remotefs_error_code *remotefs_error_code_, char *errmsg)
@@ -2810,8 +2882,9 @@ static int decode_struct (const unsigned char **p_, const unsigned char *end, st
 
 #define N_STAT_FIELDS           14
 #define N_WINDOWS_FIELDS        5
+#define N_NONWINDOWS_FIELDS     0
 
-static int encode_stat (unsigned char **p_, const struct portable_stat *ps)
+static int encode_stat (unsigned char **p_, const struct portable_stat *ps, const char *link_target)
 {E_
     int r, i;
     unsigned char enclose[3];
@@ -2829,12 +2902,9 @@ static int encode_stat (unsigned char **p_, const struct portable_stat *ps)
     SET_FIELD_TYPE (enclose, 0, FIELD_TYPE_UINT);
     SET_FIELD_TYPE (enclose, 1, FIELD_TYPE_UINT);
     SET_FIELD_TYPE (enclose, 2, FIELD_TYPE_STRUCT);
-#ifdef MSWIN
     SET_FIELD_TYPE (enclose, 3, FIELD_TYPE_STRUCT);
-    SET_FIELD_TYPE (enclose, 4, FIELD_TYPE_END);
-#else
-    SET_FIELD_TYPE (enclose, 3, FIELD_TYPE_END);
-#endif
+    SET_FIELD_TYPE (enclose, 4, FIELD_TYPE_STRING);
+    SET_FIELD_TYPE (enclose, 5, FIELD_TYPE_END);
     r = encode_str (p_, (const char *) enclose, sizeof (enclose));
 #ifdef MSWIN
     r += encode_uint (p_, OS_TYPE_WINDOWS);
@@ -2897,7 +2967,18 @@ static int encode_stat (unsigned char **p_, const struct portable_stat *ps)
         r += encode_uint (p_, w->last_write_time);              /* 3 */
         r += encode_uint (p_, w->file_size);                    /* 4 */
     }
+#else
+    {
+        unsigned char fields[(N_NONWINDOWS_FIELDS + 1 + 1) / 2];
+        memset (fields, '\0', sizeof (fields));
+        for (i = 0; i < N_NONWINDOWS_FIELDS; i++)
+            SET_FIELD_TYPE (fields, i, FIELD_TYPE_UINT);
+        SET_FIELD_TYPE (fields, N_NONWINDOWS_FIELDS, FIELD_TYPE_END);
+        r += encode_str (p_, (const char *) fields, sizeof (fields));
+        /* empty struct */
+    }
 #endif
+    r += encode_str (p_, link_target ? link_target : "", link_target ? strlen (link_target) : 0);
     return r;
 }
 
@@ -2906,6 +2987,8 @@ struct decode_stat_data {
     unsigned int magic;
     unsigned long rdev_major;
     unsigned long rdev_minor;
+    char *link_target;
+    int link_target_sz;
     struct portable_stat *s;
 };
 
@@ -2964,7 +3047,25 @@ int stat_store_int (void *user_data_, const unsigned short *path, const int dept
     return 0;
 }
 
-static int decode_stat (const unsigned char **p, const unsigned char *end, struct portable_stat *s)
+static int stat_store_str (void *user_data_, const unsigned short *path, const int depth, char **storage, int *storage_len)
+{E_
+    struct decode_stat_data *user_data;
+
+    user_data = (struct decode_stat_data *) user_data_;
+
+    assert (user_data->magic == DECODE_STAT_MAGIC);
+
+    if (depth == 1 && path[0] == 4) {
+        if (user_data->link_target && user_data->link_target_sz > 0) {
+            *storage = user_data->link_target;
+            *storage_len = user_data->link_target_sz;
+        }
+    }
+
+    return 0;
+}
+
+static int decode_stat (const unsigned char **p, const unsigned char *end, struct portable_stat *s, char *link_target, int link_target_sz)
 {E_
     struct storage_hook hook;
     struct decode_stat_data user_data;
@@ -2975,9 +3076,12 @@ static int decode_stat (const unsigned char **p, const unsigned char *end, struc
 
     user_data.magic = DECODE_STAT_MAGIC;
     user_data.s = s;
+    user_data.link_target = link_target;
+    user_data.link_target_sz = link_target_sz;
 
     hook.user_data = &user_data;
     hook.store_uint = stat_store_int;
+    hook.store_str = stat_store_str;
 
     if (decode_struct (p, end, &hook, 0))
         return -1;
@@ -3108,7 +3212,11 @@ static int shellcmdnew_req_store_vector (void *user_data_, const unsigned short 
         return 0;
     switch (path[0]) {
         case 15: d->n_undead = (int) n; d->undead_idx = -1; break;
-        case 16: d->n_args = (int) n; d->args = (char **) calloc (n + 1, sizeof (char *)); d->args_idx = 0; break;
+        case 16: d->n_args = (int) n;
+                 d->args = (char **) malloc ((n + 1) * sizeof (char *));
+                 memset (d->args, '\0', sizeof ((n + 1) * sizeof (char *)));
+                 d->args_idx = 0;
+                 break;
         default: break;
     }
     return 0;
@@ -3163,9 +3271,27 @@ static char *dname (struct dirent *directentry)
     return t;
 }
 
+void file_array_free (struct file_entry *fa)
+{
+    if (fa) {
+        if (fa->d) {
+            int i;
+            for (i = 0; i < fa->dl; i++) {
+                if (fa->d[i]) {
+                    free (fa->d[i]->name);
+                    free (fa->d[i]->link_target);
+                    free (fa->d[i]);
+                }
+            }
+            free (fa->d);
+        }
+        free (fa);
+    }
+}
+
 struct file_entry_item {
     struct file_entry_item *next;
-    struct file_entry data;
+    struct file_item data;
 };
 
 static int encode_filelist (unsigned char **p_, struct file_entry_item *list)
@@ -3177,33 +3303,44 @@ static int encode_filelist (unsigned char **p_, struct file_entry_item *list)
     r = encode_uint (p_, n);
     for (i = list; i; i = i->next) {
         r += encode_str (p_, i->data.name, strlen (i->data.name));
-        r += encode_stat (p_, &i->data.pstat);
+        r += encode_stat (p_, &i->data.pstat, i->data.link_target);
     }
     return r;
 }
 
-static int decode_filelist (const unsigned char **p, const unsigned char *end, struct file_entry **r, int *n)
+static int decode_filelist (const unsigned char **p, const unsigned char *end, struct file_entry **r)
 {E_
     unsigned long long v;
     unsigned int i;
     *r = NULL;
     if (decode_uint (p, end, &v))
         return -1;
-    *n = v;
-    *r = (struct file_entry *) malloc ((v + 1) * sizeof (struct file_entry));
-    memset (*r, '\0', (v + 1) * sizeof (struct file_entry));
+    *r = (struct file_entry *) malloc (sizeof (struct file_entry));
+    (*r)->dl = (int) v;
+    (*r)->d = (struct file_item **) malloc (sizeof (struct file_item *) * v);
     for (i = 0; i < v; i++) {
-        if (decode_str (p, end, (*r)[i].name, sizeof ((*r)[i].name)))
-            goto errout;
-        if (decode_stat (p, end, &(*r)[i].pstat))
-            goto errout;
+        (*r)->d[i] = (struct file_item *) malloc (sizeof (struct file_item));
+        memset ((*r)->d[i], '\0', sizeof (struct file_item));
     }
-    (*r)[v].options = FILELIST_LAST_ENTRY;
+    for (i = 0; i < v; i++) {
+        char t[MAX_PATH_LEN];
+        if (decode_str (p, end, t, sizeof (t)))
+            goto errout;
+        (*r)->d[i]->name = (char *) malloc (strlen (t) + 1);
+        strcpy ((*r)->d[i]->name, t);
+
+        t[0] = '\0';
+        if (decode_stat (p, end, &(*r)->d[i]->pstat, t, sizeof (t)))
+            goto errout;
+        if (t[0]) {
+            (*r)->d[i]->link_target = (char *) malloc (strlen (t) + 1);
+            strcpy ((*r)->d[i]->link_target, t);
+        }
+    }
     return 0;
 
   errout:
-    if (*r)
-        free (*r);
+    file_array_free (*r);
     *r = NULL;
     return -1;
 }
@@ -3667,16 +3804,62 @@ struct listdirs_data {
     int got_dot_dot;
 };
 
+struct file_entry_item *file_entry_item_alloc (const char *dn, const char *link_target)
+{
+    struct file_entry_item *i;
+    char *i_;
+    i = (struct file_entry_item *) malloc (sizeof (*i) + strlen (dn) + 1 + strlen (link_target) + 1);
+    i_ = (char *) i;
+    memset (i, '\0', sizeof (*i));
+    i->data.name = i_ + sizeof (*i);
+    strcpy (i->data.name, dn);
+    i->data.link_target = i_ + sizeof (*i) + strlen (dn) + 1;
+    strcpy (i->data.link_target, link_target);
+    return i;
+}
+
+struct mount_listdir_data {
+    int n_view;
+    struct remotefs_listdir_view *view;
+    struct listdirs_data *data;
+};
+
+#if defined(ANDROID) || defined(ANDROID_TEST)
+static void mount_listdir_cb (const char *real, const char *encoded, void *userdata)
+{
+    struct mount_listdir_data *ctx = (struct mount_listdir_data *) userdata;
+    const char *stripped = (*real == '/') ? real + 1 : real;
+    int k;
+    for (k = 0; k < ctx->n_view; k++) {
+        if (!(ctx->view[k].options & FILELIST_FILES_ONLY)) {
+            struct file_entry_item *found;
+            for (found = ctx->data[k].first; found; found = found->next)
+                if (!strcmp (found->data.name, encoded))
+                    break;
+            if (!found && glob_match ((char *) ctx->view[k].filter, stripped) == 1) {
+                struct file_entry_item *i = file_entry_item_alloc (encoded, real);
+                i->data.pstat.ustat.st_mode = S_IFLNK | 00777;
+                i->next = ctx->data[k].first;
+                ctx->data[k].first = i;
+            }
+        }
+    }
+}
+#endif
+
 static void remotefs_listdir_ (const char *directory, int n_view, struct remotefs_listdir_view *view, CStr *r)
 {E_
     int k;
     struct listdirs_data data[MAX_VIEWS];
     struct file_entry_item *i, *next;
     struct dirent *directentry;
-    struct portable_stat stats;
+    struct portable_stat stats, lstats;
     DIR *dir;
     char path_fname[MAX_PATH_LEN * 2];
     unsigned char *p;
+#if defined(ANDROID) || defined(ANDROID_TEST)
+    directory = mount_resolve (directory);
+#endif
 
     if (n_view > MAX_VIEWS) {
         r->data = NULL;
@@ -3694,7 +3877,7 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
             view[k].filter = "*";
 
     if ((dir = opendir (translate_path_sep (directory))) == NULL) {
-#ifdef ANDROID
+#if defined(ANDROID) || defined(ANDROID_TEST)
         if (!strcmp (directory, "/")) {
             /* let's do some magic with the root directory under Android */
         } else {
@@ -3745,7 +3928,21 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
             strcat (path_fname, dn);
         }
         q = translate_path_sep (path_fname);
-        if (strcmp (dn, ".") && !portable_stat (0, q, &stats, NULL, NULL, NULL)) {
+        if (strcmp (dn, ".") && !portable_stat (1, q, &lstats, NULL, NULL, NULL)) {
+            char link_target[MAX_PATH_LEN] = "";
+            /* note the wierd logic here: */
+            if (!S_ISLNK (lstats.ustat.st_mode) || portable_stat (0, q, &stats, NULL, NULL, NULL))
+                stats = lstats;
+            if (S_ISLNK (lstats.ustat.st_mode)) {
+#ifdef MSWIN
+                int errval = 0;
+                if (mswin_readlink (q, link_target, sizeof (link_target), &errval))
+                    link_target[0] = '\0';
+#else
+                if (posix_readlink (q, link_target, sizeof (link_target)))
+                    link_target[0] = '\0';
+#endif
+            }
             for (k = 0; k < n_view; k++) {
                 if (!strcmp (dn, ".."))
                     data[k].got_dot_dot = 1;
@@ -3753,10 +3950,8 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
                     (S_ISDIR (stats.ustat.st_mode) && (view[k].options & FILELIST_DIRECTORIES_ONLY)) ||
                     (!S_ISDIR (stats.ustat.st_mode) && (view[k].options & FILELIST_FILES_ONLY))) {
                     if (glob_match ((char *) view[k].filter, dn) == 1) {
-                        i = (struct file_entry_item *) malloc (sizeof (*i));
-                        memset (i, '\0', sizeof (*i));
-                        portable_stat (1, q, &i->data.pstat, NULL, NULL, NULL);
-                        strcpy (i->data.name, dn);
+                        i = file_entry_item_alloc (dn, link_target);
+                        i->data.pstat = lstats;
                         i->next = data[k].first;
                         data[k].first = i;
                     }
@@ -3765,72 +3960,14 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
         }
     }
 
-#ifdef ANDROID
+#if defined(ANDROID) || defined(ANDROID_TEST)
     if (!strcmp (directory, "/")) {
-        FILE *f;
-        f = fopen ("/proc/mounts", "r");
-        if (f) {
-            char mount_line[1024];
-            while (fgets (mount_line, sizeof (mount_line), f)) {
-                DIR *mount_dir;
-                char *p, *mount_path;
-                if (!(mount_path = strchr (mount_line, ' ')))
-                    continue;
-                mount_path++;
-                if (!(p = strchr (mount_path, ' ')))
-                    continue;
-                *p = '\0';
-                if (*mount_path != '/' || !strcmp (mount_path, "/"))
-                    continue;
-                if (!(mount_dir = opendir (mount_path)))
-                    continue;
-                closedir (mount_dir);
-                if (*mount_path == '/')
-                    mount_path++;
-                for (k = 0; k < n_view; k++) {
-                    if (!(view[k].options & FILELIST_FILES_ONLY)) {
-                        struct file_entry_item *found;
-                        for (found = data[k].first; found; found = found->next)
-                            if (!strcmp (found->data.name, mount_path))  /* is already in the list */
-                                break;
-                        if (!found && glob_match ((char *) view[k].filter, mount_path) == 1) {
-                            i = (struct file_entry_item *) malloc (sizeof (*i));
-                            memset (i, '\0', sizeof (*i));
-                            i->data.pstat.ustat.st_mode = S_IFDIR | 00777;
-                            strncpy (i->data.name, mount_path, sizeof (i->data.name));
-                            i->data.name[sizeof (i->data.name) - 1] = '\0';
-                            i->next = data[k].first;
-                            data[k].first = i;
-                        }
-                    }
-                }
-            }
-            fclose (f);
-        }
-        {
-            char *extras[] = { "sdcard", NULL };
-            char **q;
-            char *mount_path;
-            for (q = extras; *q; q++) {
-                mount_path = *q;
-                for (k = 0; k < n_view; k++) {
-                    if (!(view[k].options & FILELIST_FILES_ONLY)) {
-                        struct file_entry_item *found;
-                        for (found = data[k].first; found; found = found->next)
-                            if (!strcmp (found->data.name, mount_path))  /* is already in the list */
-                                break;
-                        if (!found && glob_match ((char *) view[k].filter, mount_path) == 1) {
-                            i = (struct file_entry_item *) malloc (sizeof (*i));
-                            memset (i, '\0', sizeof (*i));
-                            i->data.pstat.ustat.st_mode = S_IFDIR | 00777;
-                            strcpy (i->data.name, mount_path);
-                            i->next = data[k].first;
-                            data[k].first = i;
-                        }
-                    }
-                }
-            }
-        }
+        struct mount_listdir_data ctx;
+        ctx.n_view = n_view;
+        ctx.view = view;
+        ctx.data = data;
+        load_mount (1); /* refresh the mounts on listdir so the user can re-read /proc/mounts by listing the root directory */
+        mount_lambda (mount_listdir_cb, &ctx);
     }
 #endif
 
@@ -3844,11 +3981,9 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
             e = strrchr (path_fname, '/');
             if (e)
                 *e = '/';
-            i = (struct file_entry_item *) malloc (sizeof (*i));
-            memset (i, '\0', sizeof (*i));
+            i = file_entry_item_alloc ("..", "");
             if (portable_stat (1, translate_path_sep (path_fname), &i->data.pstat, NULL, NULL, NULL))
                 i->data.pstat.ustat.st_mode = S_IFDIR | 00777;
-            strcpy (i->data.name, "..");
             i->next = data[k].first;
             data[k].first = i;
         }
@@ -3880,6 +4015,10 @@ static void remotefs_readfile_ (int (*chunk_cb) (void *, const unsigned char *, 
     struct stat_posix_or_mswin st;
     const char *path;
     int file_len_indefinite = 0;
+
+#if defined(ANDROID) || defined(ANDROID_TEST)
+    filename = mount_resolve (filename);
+#endif
 
     chunk = &chunk_[4];
     memset (&st, '\0', sizeof (st));
@@ -4058,6 +4197,10 @@ static void remotefs_writefile_ (void (*intermediate_ack_cb) (void *, int), int 
     HANDLE fd_exists = INVALID_HANDLE_VALUE;
     char temp_name[MAX_PATH_LEN + 40];
 
+#if defined(ANDROID) || defined(ANDROID_TEST)
+    filename = mount_resolve (filename);
+#endif
+
     if (strlen (filename) > MAX_PATH_LEN - 1) {
         alloc_encode_error (r, RFSERR_PATHNAME_TOO_LONG, "Pathname too long", FORCE_SHUTDOWN);
         goto errout;
@@ -4184,11 +4327,11 @@ static void remotefs_writefile_ (void (*intermediate_ack_cb) (void *, int), int 
     }
 
     r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
-    r->len += encode_stat (NULL, &st);
+    r->len += encode_stat (NULL, &st, NULL);
     r->data = (char *) malloc (r->len);
     p = (unsigned char *) r->data;
     encode_uint (&p, REMOTEFS_SUCCESS);
-    encode_stat (&p, &st);
+    encode_stat (&p, &st, NULL);
 
     (*intermediate_ack_cb) (hook, 0);
 
@@ -4249,11 +4392,11 @@ static void remotefs_checkordinaryfileaccess_ (const char *filename, unsigned lo
     close (fd);
 
     r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
-    r->len += encode_stat (NULL, &st);
+    r->len += encode_stat (NULL, &st, NULL);
     r->data = (char *) malloc (r->len);
     p = (unsigned char *) r->data;
     encode_uint (&p, REMOTEFS_SUCCESS);
-    encode_stat (&p, &st);
+    encode_stat (&p, &st, NULL);
     return;
 
   errout:
@@ -4267,31 +4410,55 @@ static void remotefs_stat_ (const char *pathname, int handle_just_not_there, CSt
 {E_
     char errmsg[REMOTEFS_ERR_MSG_LEN] = "";
     enum remotefs_error_code remotefs_error_code_ = RFSERR_SUCCESS;
-    struct portable_stat st;
+    struct portable_stat lst, st;
     unsigned char *p;
+    char link_target[MAX_PATH_LEN] = "";
+    const char *q;
     int just_not_there = 0;
 
     memset (&st, '\0', sizeof (st));
+    memset (&lst, '\0', sizeof (lst));
 
-    if (portable_stat (0, translate_path_sep (pathname), &st, handle_just_not_there ? &just_not_there : NULL, &remotefs_error_code_, errmsg) < 0) {
+    q = translate_path_sep (pathname);
+#if defined(ANDROID) || defined(ANDROID_TEST)
+    if (!mount_stat (q, &st, link_target, sizeof (link_target)))
+        goto skip_real_lookup;
+    q = mount_resolve (q);
+#endif
+    if (portable_stat (0, q, &st, handle_just_not_there ? &just_not_there : NULL, &remotefs_error_code_, errmsg) < 0) {
         if (!handle_just_not_there || !just_not_there) {
             alloc_encode_error (r, remotefs_error_code_, errmsg, 0);
             return;
         }
     }
+    if (!portable_stat (1, q, &lst, NULL, NULL, NULL)) {
+        if (S_ISLNK (lst.ustat.st_mode)) {
+#ifdef MSWIN
+            int errval = 0;
+            if (mswin_readlink (q, link_target, sizeof (link_target), &errval))
+                link_target[0] = '\0';
+#else
+            if (posix_readlink (q, link_target, sizeof (link_target)))
+                link_target[0] = '\0';
+#endif
+        }
+    }
+#if defined(ANDROID) || defined(ANDROID_TEST)
+  skip_real_lookup:
+#endif
 
     r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
     r->len += encode_uint (NULL, just_not_there);
     r->len += encode_uint (NULL, remotefs_error_code_);
     r->len += encode_str (NULL, errmsg, strlen (errmsg));
-    r->len += encode_stat (NULL, &st);
+    r->len += encode_stat (NULL, &st, link_target);
     r->data = (char *) malloc (r->len);
     p = (unsigned char *) r->data;
     encode_uint (&p, REMOTEFS_SUCCESS);
     encode_uint (&p, just_not_there);
     encode_uint (&p, remotefs_error_code_);
     encode_str (&p, errmsg, strlen (errmsg));
-    encode_stat (&p, &st);
+    encode_stat (&p, &st, link_target);
 }
 
 char *get_current_wd (char *p, int size)
@@ -4348,6 +4515,10 @@ static void remotefs_mkdir_ (const char *pathname, unsigned int mode, CStr * r)
 {E_
     unsigned char *p;
 
+#if defined(ANDROID) || defined(ANDROID_TEST)
+    pathname = mount_resolve (pathname);
+#endif
+
 #ifdef MSWIN
     if (mkdir (translate_path_sep (pathname)) < 0) {
         alloc_encode_errno_strerror (r, 0);
@@ -4369,6 +4540,10 @@ static void remotefs_mkdir_ (const char *pathname, unsigned int mode, CStr * r)
 static void remotefs_symlink_ (const char *target, const char *linkpath, CStr * r)
 {E_
     unsigned char *p;
+
+#if defined(ANDROID) || defined(ANDROID_TEST)
+    linkpath = mount_resolve (linkpath);
+#endif
 
 #ifdef MSWIN
     DWORD attrs, flags = 0;
@@ -4397,67 +4572,25 @@ static void remotefs_readlink_ (const char *linkpath, CStr * r)
     unsigned char *p;
     char target[MAX_PATH_LEN];
 
+#if defined(ANDROID) || defined(ANDROID_TEST)
+    if (!mount_stat (linkpath, NULL, target, sizeof (target)))
+        goto skip_real_lookup;
+    linkpath = mount_resolve (linkpath);
+#endif
 #ifdef MSWIN
-    {
-        MSWIN_HANDLE h;
-        char rdbuf[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-        REPARSE_DATA_BUFFER *rdb = (REPARSE_DATA_BUFFER *) rdbuf;
-        DWORD bytes_returned;
-        wchar_t *w_target;
-        int w_len, target_len;
-
-        h = CreateFileA (translate_path_sep (linkpath), GENERIC_READ,
-                         FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                         NULL, OPEN_EXISTING,
-                         FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
-                         NULL);
-        if (h == INVALID_HANDLE_VALUE_64BIT) {
-            mswin_alloc_encode_errno_strerror (r, 0);
-            return;
-        }
-
-        if (!DeviceIoControl (h, FSCTL_GET_REPARSE_POINT, NULL, 0,
-                              rdb, sizeof (rdbuf), &bytes_returned, NULL)) {
-            CloseHandle (h);
-            mswin_alloc_encode_errno_strerror (r, 0);
-            return;
-        }
-        CloseHandle (h);
-
-        if (rdb->ReparseTag != IO_REPARSE_TAG_SYMLINK) {
-            mswin_alloc_encode_errno_strerror (r, 0);
-            return;
-        }
-
-        w_target = (wchar_t *) ((char *) rdb->SymbolicLinkReparseBuffer.PathBuffer
-                                + rdb->SymbolicLinkReparseBuffer.PrintNameOffset);
-        w_len = rdb->SymbolicLinkReparseBuffer.PrintNameLength / sizeof (wchar_t);
-        target_len = WideCharToMultiByte (CP_UTF8, 0, w_target, w_len,
-                                          target, sizeof (target) - 1, NULL, NULL);
-        if (target_len <= 0) {
-            mswin_alloc_encode_errno_strerror (r, 0);
-            return;
-        }
-        target[target_len] = '\0';
-        {
-            char *unix_target = windows_path_to_unix (target);
-            if (unix_target) {
-                strncpy (target, unix_target, sizeof (target) - 1);
-                target[sizeof (target) - 1] = '\0';
-                free (unix_target);
-            }
-        }
+    int errval = 0;
+    if (mswin_readlink (linkpath, target, sizeof (target), &errval)) {
+        alloc_encode_error (r, translate_mswin_lasterror (errval), mswin_error_to_text (errval), 0);
+        return;
     }
 #else
-    {
-        ssize_t n;
-        n = readlink (translate_path_sep (linkpath), target, sizeof (target) - 1);
-        if (n < 0) {
-            alloc_encode_errno_strerror (r, 0);
-            return;
-        }
-        target[n] = '\0';
+    if (posix_readlink (linkpath, target, sizeof (target))) {
+        alloc_encode_errno_strerror (r, 0);
+        return;
     }
+#endif
+#if defined(ANDROID) || defined(ANDROID_TEST)
+  skip_real_lookup:
 #endif
 
     r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
@@ -4472,8 +4605,13 @@ static void remotefs_realpathize_ (const char *path, const char *homedir, CStr *
 {E_
     unsigned char *p;
     char *out = NULL;
+    char errmsg[REMOTEFS_ERR_MSG_LEN] = "";
 
-    out = pathdup_ (path, homedir);
+#if defined(ANDROID) || defined(ANDROID_TEST)
+    path = mount_resolve (path);
+#endif
+
+    out = pathdup_ (path, homedir, errmsg /* diagnostics */);
     if (!out) {
         alloc_encode_errno_strerror (r, 0);
         return;
@@ -4767,7 +4905,7 @@ static int local_invalidatecache (struct remotefs *rfs, char *errmsg)
     return 0;
 }
 
-static int local_listdir (struct remotefs *rfs, int *cached, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
+static int local_listdir (struct remotefs *rfs, int *cached, const char *directory, unsigned long options, const char *filter, struct file_entry **r, char *errmsg)
 {E_
     struct remotefs_listdir_view view = { options, filter };
     CStr s;
@@ -4777,14 +4915,14 @@ static int local_listdir (struct remotefs *rfs, int *cached, const char *directo
         *cached = 0;
 
     MARSHAL_START_LOCAL;
-    if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r, n)) {
+    if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r)) {
         free (s.data);
         return -1;
     }
     MARSHAL_END_LOCAL(NULL);
 }
 
-static int local_listtwodirs (struct remotefs *rfs, int *cached, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
+static int local_listtwodirs (struct remotefs *rfs, int *cached, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, struct file_entry **r2, char *errmsg)
 {E_
     struct remotefs_listdir_view view[2] = { {options1, filter1}, {options2, filter2} };
     CStr s;
@@ -4794,12 +4932,13 @@ static int local_listtwodirs (struct remotefs *rfs, int *cached, const char *dir
         *cached = 0;
 
     MARSHAL_START_LOCAL;
-    if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r1, n1)) {
+    if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r1)) {
         free (s.data);
         return -1;
     }
-    if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r2, n2)) {
-        free (r1);
+    if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r2)) {
+        file_array_free (*r1);
+        *r1 = NULL;
         free (s.data);
         return -1;
     }
@@ -4845,7 +4984,7 @@ static int local_writefile (struct remotefs *rfs, struct action_callbacks *o, co
     remotefs_writefile_ (local_intermediate_ack_cb, local_chunk_writer_cb, (void *) o, filename, filelen, overwritemode, permissions, backup_extension, &s);
 
     MARSHAL_START_LOCAL;
-    if (decode_stat (&p, end, st)) {
+    if (decode_stat (&p, end, st, NULL, 0)) {
         free (s.data);
         return -1;
     }
@@ -4859,14 +4998,14 @@ static int local_checkordinaryfileaccess (struct remotefs *rfs, const char *file
     remotefs_checkordinaryfileaccess_ (filename, sizelimit, &s);
 
     MARSHAL_START_LOCAL;
-    if (decode_stat (&p, end, st)) {
+    if (decode_stat (&p, end, st, NULL, 0)) {
         free (s.data);
         return -1;
     }
     MARSHAL_END_LOCAL(NULL);
 }
 
-static int local_stat (struct remotefs *rfs, int *cached, const char *pathname, struct portable_stat *st, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg)
+static int local_stat (struct remotefs *rfs, int *cached, const char *pathname, struct portable_stat *st, char *link_target, int link_target_sz, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg)
 {E_
     CStr s;
     unsigned long long just_not_there_;
@@ -4887,7 +5026,7 @@ static int local_stat (struct remotefs *rfs, int *cached, const char *pathname, 
     *error_code = error_code_;
     if (decode_str (&p, end, errmsg, REMOTEFS_ERR_MSG_LEN))
         return -1;
-    if (decode_stat (&p, end, st)) {
+    if (decode_stat (&p, end, st, link_target, link_target_sz)) {
         free (s.data);
         return -1;
     }
@@ -5232,7 +5371,7 @@ static int remote_invalidatecache (struct remotefs *rfs, char *errmsg)
     return 0;
 }
 
-static int remote_listdir (struct remotefs *rfs, int *cached, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
+static int remote_listdir (struct remotefs *rfs, int *cached, const char *directory, unsigned long options, const char *filter, struct file_entry **r, char *errmsg)
 {E_
     CStr s, msg;
     unsigned char *q;
@@ -5250,14 +5389,14 @@ static int remote_listdir (struct remotefs *rfs, int *cached, const char *direct
     free (msg.data);
 
     MARSHAL_START_REMOTE;
-    if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r, n)) {
+    if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r)) {
         free (s.data);
         return -1;
     }
     MARSHAL_END_REMOTE(NULL);
 }
 
-static int remote_listtwodirs (struct remotefs *rfs, int *cached, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
+static int remote_listtwodirs (struct remotefs *rfs, int *cached, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, struct file_entry **r2, char *errmsg)
 {E_
     CStr s, msg;
     unsigned char *q;
@@ -5275,12 +5414,13 @@ static int remote_listtwodirs (struct remotefs *rfs, int *cached, const char *di
     free (msg.data);
 
     MARSHAL_START_REMOTE;
-    if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r1, n1)) {
+    if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r1)) {
         free (s.data);
         return -1;
     }
-    if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r2, n2)) {
-        free (r1);
+    if (decode_filelist (&p, (const unsigned char *) s.data + s.len, r2)) {
+        file_array_free (*r1);
+        *r1 = NULL;
         free (s.data);
         return -1;
     }
@@ -5557,7 +5697,7 @@ static int remote_writefile (struct remotefs *rfs, struct action_callbacks *o, c
         return -1;
 
     MARSHAL_START_REMOTE;
-    if (decode_stat (&p, end, st)) {
+    if (decode_stat (&p, end, st, NULL, 0)) {
         free (s.data);
         return -1;
     }
@@ -5584,14 +5724,14 @@ static int remote_checkordinaryfileaccess (struct remotefs *rfs, const char *fil
     free (msg.data);
 
     MARSHAL_START_REMOTE;
-    if (decode_stat (&p, end, st)) {
+    if (decode_stat (&p, end, st, NULL, 0)) {
         free (s.data);
         return -1;
     }
     MARSHAL_END_REMOTE(NULL);
 }
 
-static int remote_stat (struct remotefs *rfs, int *cached, const char *pathname, struct portable_stat *st, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg)
+static int remote_stat (struct remotefs *rfs, int *cached, const char *pathname, struct portable_stat *st, char *link_target, int link_target_sz, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg)
 {E_
     CStr s, msg;
     unsigned char *q;
@@ -5623,7 +5763,7 @@ static int remote_stat (struct remotefs *rfs, int *cached, const char *pathname,
     *error_code = error_code_;
     if (decode_str (&p, end, errmsg, REMOTEFS_ERR_MSG_LEN))
         return -1;
-    if (decode_stat (&p, end, st)) {
+    if (decode_stat (&p, end, st, link_target, link_target_sz)) {
         free (s.data);
         return -1;
     }
@@ -7108,13 +7248,15 @@ static int dummyerr_invalidatecache (struct remotefs *rfs, char *errmsg)
     return remotefs_error_return (errmsg);
 }
 
-static int dummyerr_listdir (struct remotefs *rfs, int *cached, const char *directory, unsigned long options, const char *filter, struct file_entry **r, int *n, char *errmsg)
+static int dummyerr_listdir (struct remotefs *rfs, int *cached, const char *directory, unsigned long options, const char *filter, struct file_entry **r, char *errmsg)
 {E_
+    (void) rfs; (void) cached; (void) directory; (void) options; (void) filter; (void) r;
     return remotefs_error_return (errmsg);
 }
 
-static int dummyerr_listtwodirs (struct remotefs *rfs, int *cached, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, int *n1, struct file_entry **r2, int *n2, char *errmsg)
+static int dummyerr_listtwodirs (struct remotefs *rfs, int *cached, const char *directory, unsigned long options1, const char *filter1, unsigned long options2, const char *filter2, struct file_entry **r1, struct file_entry **r2, char *errmsg)
 {E_
+    (void) rfs; (void) cached; (void) directory; (void) options1; (void) filter1; (void) options2; (void) filter2; (void) r1; (void) r2;
     return remotefs_error_return (errmsg);
 }
 
@@ -7133,7 +7275,7 @@ static int dummyerr_checkordinaryfileaccess (struct remotefs *rfs, const char *f
     return remotefs_error_return (errmsg);
 }
 
-static int dummyerr_stat (struct remotefs *rfs, int *cached, const char *path, struct portable_stat *st, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg)
+static int dummyerr_stat (struct remotefs *rfs, int *cached, const char *path, struct portable_stat *st, char *link_target, int link_target_sz, int *just_not_there, remotefs_error_code_t *error_code, char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
 }
@@ -8982,6 +9124,17 @@ void completion_wr_cb (unsigned long err, unsigned long c, OVERLAPPED * overlapp
 }
 #endif
 
+#ifdef ANDROID
+static int wake_pipe[2] = {-1, -1};
+
+void android_wake_select (void)
+{
+    char c = 1;
+    if (wake_pipe[1] >= 0)
+        write (wake_pipe[1], &c, 1);
+}
+#endif
+
 static void run_service (struct service *serv)
 {E_
     int there_are_shells_running = 0;
@@ -9095,6 +9248,11 @@ static void run_service (struct service *serv)
     n = MAX (n, serv->h);
 #endif
 
+#ifdef ANDROID
+    FD_SET (wake_pipe[0], &rd);
+    n = MAX (n, wake_pipe[0]);
+#endif
+
 /* maximum keyboard repeat rate is 30, so this is set to not hangup the user when he hold repeat PgDown/Down keys */
 #define SENDS_PER_SEC           50
 
@@ -9107,9 +9265,19 @@ static void run_service (struct service *serv)
         goto clear_events;
     }
 #else
+#ifdef ANDROID
+    if (!serv->client_list) {
+        r = select (n + 1, &rd, &wr, NULL, NULL);
+    } else {
+        tv.tv_sec = 0;
+        tv.tv_usec = there_are_shells_running ? (1000000 / SENDS_PER_SEC) : 500000;
+        r = select (n + 1, &rd, &wr, NULL, &tv);
+    }
+#else
     tv.tv_sec = 0;
     tv.tv_usec = there_are_shells_running ? (1000000 / SENDS_PER_SEC) : 500000;
     r = select (n + 1, &rd, &wr, NULL, &tv);
+#endif
     if (!r) {
         FD_ZERO (&rd);
         FD_ZERO (&wr);
@@ -9121,6 +9289,12 @@ static void run_service (struct service *serv)
         exit (1);
     }
     childhandler_ ();
+#ifdef ANDROID
+    if (r > 0 && FD_ISSET (wake_pipe[0], &rd)) {
+        char c;
+        while (read (wake_pipe[0], &c, 1) > 0) {}
+    }
+#endif
 #endif
 
     gettimeofday (&now, NULL);
@@ -9460,9 +9634,14 @@ if (now > v1 + 5) {
 #endif
 
 static int kill_received = 0;
+
 void remotefs_set_kill_received (int v)
 {
     kill_received = v;
+#ifdef ANDROID
+    if (v)
+        android_wake_select ();
+#endif
 }
 
 #ifdef SHELL_SUPPORT
@@ -9514,6 +9693,12 @@ void remotefs_serverize (void)
 #elif defined(ANDROID)
     /* Android: Linux sockets, no fork/signals */
     signal (SIGPIPE, SIG_IGN);
+    if (pipe (wake_pipe) < 0) {
+        perror ("pipe");
+        exit (1);
+    }
+    fcntl (wake_pipe[0], F_SETFL, O_NONBLOCK);
+    fcntl (wake_pipe[1], F_SETFL, O_NONBLOCK);
     extern int android_server_running;
     android_server_running = 1;
     option_listen_address = "0.0.0.0";

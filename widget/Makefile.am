@@ -18,7 +18,7 @@ libCw_a_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
 	vertchar.c cursor.c bookmark.c font.c font.h xim.c \
 	pathdup.c widechar.c unicodedialog.c aafont.c aafont.h \
 	look-cool.c look-gtk.c look-next.c redblack.c redblack.h \
-	regtools.c remotefs.c remotefs.h ipv6scan.c aes.c aes.h \
+	regtools.c remotefs.c remotefs.h androidmounts.c androidmounts.h ipv6scan.c aes.c aes.h\
 	sha256.c sha256.h remotefspassword.c remotefspassword.h \
 	symauth.c symauth.h inspect.c cterminal.c cterminal.h \
 	childhandler.c childhandler.h xwinfwd.c xwinfwd.h soundfwd.c soundfwd.h \

@@ -2,7 +2,7 @@ bin_PROGRAMS = remotefs
 
 AM_CPPFLAGS = -I$(top_srcdir)/widget -I$(top_srcdir) 
 
-remotefs_SOURCES = remotefs.c regtools.c pathdup.c ipv6scan.c aes.c sha256.c symauth.c hashtable.c cterminal.c childhandler.c xwinfwd.c soundfwd.c fnmatch.c
+remotefs_SOURCES = remotefs.c regtools.c pathdup.c ipv6scan.c aes.c sha256.c symauth.c hashtable.c cterminal.c childhandler.c xwinfwd.c soundfwd.c fnmatch.c androidmounts.c
 FREETYPE_LIBS = 
 LIBS = 
 LDFLAGS = -static 
@@ -50,6 +50,9 @@ soundfwd.c:
 
 hashtable.c:
 	ln -sf ../widget/hashtable.c .
+
+androidmounts.c:
+	ln -sf ../widget/androidmounts.c .
 
 
 remotefs_LDADD = 

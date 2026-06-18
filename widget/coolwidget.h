@@ -628,7 +628,7 @@ CWidget *CDrawFilelist (const char *identifier, Window parent, int x, int y,
 			struct file_entry *directentry,
 			long options);
 CWidget *CRedrawFilelist (const char *identifier, struct file_entry *directentry, int preserve);
-struct file_entry *CGetFilelistLine (CWidget *w, int line);
+struct file_item *CGetFilelistLine (CWidget *w, int line);
 CWidget *CDrawTextbox (const char *identifier, Window parent, int x, int y, int width, int height, int line,
 		       int column, const char *text, long options);
 
@@ -918,7 +918,7 @@ short CKeySymMod (XEvent * e);
 unsigned int CGetKeyBoardState (void);
 
 /* match glob expressions */
-int glob_match (char *pattern, char *string);
+int glob_match (const char *pattern, const char *string);
 
 /* gets a widgets position relative to some ancestor widget */
 void CGetWindowPosition (Window win, Window ancestor, int *x_return, int *y_return);
@@ -1124,7 +1124,7 @@ struct look {
 				struct file_entry * directentry, long options);
     CWidget *(*redraw_file_list) (const char *identifier, struct file_entry * directentry,
 				  int preserve);
-    struct file_entry *(*get_file_list_line) (CWidget * w, int line);
+    struct file_item *(*get_file_list_line) (CWidget * w, int line);
     int (*search_replace_dialog) (Window parent, int x, int y, CStr *search_text,
 				   CStr *replace_text, CStr *arg_order, const char *heading,
 				   int option);

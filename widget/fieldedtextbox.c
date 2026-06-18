@@ -984,8 +984,8 @@ int eh_fielded_textbox (CWidget * w, XEvent * xevent, CEvent * cwevent)
 	    if (w->options & TEXTBOX_FILE_LIST && w->hook) {
 		if (cwevent->key == XK_Insert || cwevent->key == XK_KP_Insert) {
 		    if (w->mark1 == w->mark2) {
-			struct file_entry *f;
-			f = (struct file_entry *) w->hook;
+			struct file_item *f;
+			f = (struct file_item *) w->hook;
 			if (f[w->cursor].options & FILELIST_TAGGED_ENTRY)
 			    f[w->cursor].options &= (0xFFFFFFFFUL - FILELIST_TAGGED_ENTRY);
 			else

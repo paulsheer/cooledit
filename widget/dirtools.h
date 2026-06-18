@@ -80,11 +80,19 @@ struct portable_stat {
     struct windows_file_attributes wattr;
 };
 
-struct file_entry {
+struct file_item {
     unsigned long options;
-    char name[260];
+    char *name;
+    char *link_target;
     struct portable_stat pstat;
 };
+
+struct file_entry {
+    struct file_item **d;
+    int dl;
+};
+void file_array_free (struct file_entry *fa);
+struct file_entry *file_array_copy (struct file_entry *fa);
 
 #define FILELIST_LAST_ENTRY		(1<<8)
 #define FILELIST_FILES_ONLY		(1<<15)

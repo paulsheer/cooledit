@@ -1197,7 +1197,7 @@ static int xdebug_run_program (Debug * d)
     xdebug_cursor_bookmark_flush ();
 
     u = remotefs_lookup (debug_session.host, NULL);
-    if ((*u->remotefs_stat) (u, NULL, d->progname, &s, NULL, &error_code, errmsg)) {
+    if ((*u->remotefs_stat) (u, NULL, d->progname, &s, NULL, 0, NULL, &error_code, errmsg)) {
 	debug_error2 (d, _("Error trying to stat executable: check that the filename and \n current directory are correct"), errmsg);
 	return 1;
     }

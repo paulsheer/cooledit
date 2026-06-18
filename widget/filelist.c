@@ -119,7 +119,7 @@ CWidget *CRedrawFilelist (const char *identifier, struct file_entry *directentry
     return (*look->redraw_file_list) (identifier, directentry, preserve);
 }
 
-struct file_entry *CGetFilelistLine (CWidget * w, int line)
+struct file_item *CGetFilelistLine (CWidget * w, int line)
 {E_
     return (*look->get_file_list_line) (w, line);
 }

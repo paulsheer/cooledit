@@ -11,6 +11,7 @@ set(WIDGET_DIR "${REMOTEFS_DIR}/../widget")
 
 set(SOURCES
     ${WIDGET_DIR}/remotefs.c
+    ${WIDGET_DIR}/androidmounts.c
     ${WIDGET_DIR}/aes.c
     ${WIDGET_DIR}/sha256.c
     ${WIDGET_DIR}/symauth.c

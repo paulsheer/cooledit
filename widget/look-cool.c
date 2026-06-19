@@ -280,6 +280,8 @@ static char **get_filelist_line (void *data, const int line_number, int *num_fie
     *num_fields = 4;		/* name, size, date, mode only (for the mean time) */
 
     fe = (struct file_entry *) data;
+    if (!fe)
+        return 0;
     if (line_number >= fe->dl)
 	return 0;
     e = fe->d[line_number];
@@ -373,7 +375,7 @@ struct file_item *look_cool_get_file_list_line (CWidget * w, int line)
     static struct file_item r;
     memset (&r, 0, sizeof (r));
     fe = (struct file_entry *) w->hook;
-    if (line >= fe->dl || line < 0)
+    if (!fe || line >= fe->dl || line < 0)
 	r.options = FILELIST_LAST_ENTRY;
     else
 	r = *fe->d[line];

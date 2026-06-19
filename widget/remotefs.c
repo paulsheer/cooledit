@@ -9860,10 +9860,13 @@ void remotefs_create_aes_key (const char *n)
 {E_
     int i;
     FILE *f = NULL;
+    mode_t old_umask;
 
     remotefs_init_random ();
 
+    old_umask = umask (S_IWUSR | S_IRWXG | S_IRWXO);
     f = fopen (n, "wb");
+    umask (old_umask);
     if (!f)
         goto err;
 /* 256 / (log(strlen(digits)) / log(2)) = 43.88904974692184 */
@@ -10649,6 +10652,12 @@ int main (int argc, char **argv)
         f = fopen (option_keyfile_path, "rb");
         if (f) {
             fclose (f);
+            {
+                struct stat st;
+                if (!stat (option_keyfile_path, &st)
+                    && (st.st_mode & (S_IRWXG | S_IRWXO)))
+                    chmod (option_keyfile_path, st.st_mode & ~(S_IWUSR | S_IXUSR | S_IRWXG | S_IRWXO));
+            }
         } else if (!f && errno == ENOENT) {
             /* ok, doesn't exist yet*/
             log_fmt (1, "creating keyfile %s\n", option_keyfile_path);

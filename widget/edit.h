@@ -272,13 +272,9 @@ struct syntax_rule {
     unsigned long end;
     unsigned short keyword;
     unsigned short state;
-    unsigned char brace_depth;
     unsigned char context_brace_depth;
     unsigned char context;
     unsigned char _context;
-#define RULE_ON_LEFT_BORDER 1
-#define RULE_ON_RIGHT_BORDER 2
-    unsigned char border;
 };
 
 #define MAX_WORDS_PER_CONTEXT	4096

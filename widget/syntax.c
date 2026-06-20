@@ -246,6 +246,13 @@ static inline const char *xx_strchr (const WEdit * edit, const unsigned char *s,
         rules = edit->rules; \
         r = rules[rule.context];
 
+#define CLOSURE_BODY_START \
+    switch(rule.state) { \
+    case 0:
+
+#define CLOSURE_BODY_END \
+    }
+
 static inline int match_keyword (WEdit * edit, struct context_rule *r, int c, long i, int *j_, long *ek_)
 {
     const char *p;
@@ -298,121 +305,122 @@ static inline void apply_rules_going_right (WEdit * edit, long i, struct syntax_
     if (!(c = edit_get_lowercase_byte (edit, i)))
         return;
 
-    switch(rule.state) {
-    case 0:
-        for (;;) {
-            long ec, ek;
-            int j;
-            int count;
-            if (match_context_start (edit, rules, r, c, i, &count, &ec)) {
-                rule.end = ec;
-                rule._context = count;
-                if (rules[rule._context]->between_delimiters) {
-                    if (match_keyword (edit, r, c, i, &j, &ek) && ec == ek) {
-                        rule.keyword = j;
-                        while (rule.end != i) {
-                            WAIT (c);
-	                    if (edit_get_byte (edit, i - 1) == '\n')
-	                        break;
-                        }
-                        rule.keyword = 0;
-                    } else {
-                        while (rule.end != i) {
-                            WAIT (c);
-                        }
+    CLOSURE_BODY_START;
+
+    for (;;) {
+        long ec, ek;
+        int j;
+        int count;
+        if (match_context_start (edit, rules, r, c, i, &count, &ec)) {
+            rule.end = ec;
+            rule._context = count;
+            if (rules[rule._context]->between_delimiters) {
+                if (match_keyword (edit, r, c, i, &j, &ek) && ec == ek) {
+                    rule.keyword = j;
+                    while (rule.end != i) {
+                        WAIT (c);
+                        if (edit_get_byte (edit, i - 1) == '\n')
+                            break;
                     }
-                    rule.context = rule._context;
-                    r = rules[rule.context];
+                    rule.keyword = 0;
                 } else {
-                    rule.context = rule._context;
-                    r = rules[rule.context];
                     while (rule.end != i) {
                         WAIT (c);
                     }
                 }
-                for (;;) {
-                    if (r->bracematch) {
-                        if (r->first_right == ')' && c == '(')
-                            rule.context_brace_depth++;
-                        else if (r->first_right == '}' && c == '{')
-                            rule.context_brace_depth++;
-                        else if (r->first_right == ']' && c == '[')
-                            rule.context_brace_depth++;
-                        else if (r->first_right == '>' && c == '<')
-                            rule.context_brace_depth++;
-                    }
-                    if (r->first_right == c && (ec = compare_word_to_right (edit, i, r->right, r->whole_word_chars_left, r->whole_word_chars_right, r->line_start_right, 0)) > 0) {
-                        if (rule.context_brace_depth) {
-                            rule.context_brace_depth--;
-                        } else {
-                            if (match_keyword (edit, r, c, i, &j, &ek) && ek > ec) { /* keyword can prevent the ending of a context */
-                                rule.keyword = j;
-                                rule.end = ek;
-                                while (rule.end != i) {
-                                    WAIT (c);
-	                            if (edit_get_byte (edit, i - 1) == '\n')
-	                                break;
-                                }
-                                rule.end = 0;
-                                rule.keyword = 0;
-                                continue;
-                            }
-                            rule.end = ec;
-                            if (r->between_delimiters) {
-                                rule.context = 0;
-                                r = rules[rule.context];
-                                if (match_keyword (edit, r, c, i, &j, &ek)) {
-                                    rule.keyword = j;
-                                    while (rule.end != i) {
-                                        WAIT (c);
-	                                if (edit_get_byte (edit, i - 1) == '\n')
-	                                    break;
-                                    }
-                                    rule.keyword = 0;
-                                } else {
-                                    WAIT (c);
-                                }
-                            } else {
-                                while (rule.end != i) {
-                                    WAIT (c);
-                                }
-                                rule.context = 0;
-                                r = rules[rule.context];
-                            }
-                            break;
-                        }
-                    }
-                    if (match_keyword (edit, r, c, i, &j, &ek)) {
-                        rule.keyword = j;
-                        rule.end = ek;
-                        while (rule.end != i) {
-                            WAIT (c);
-                            if (edit_get_byte (edit, i - 1) == '\n')
-                                break;
-                        }
-                        rule.end = 0;
-                        rule.keyword = 0;
-                        continue;
-                    }
-                    WAIT (c);
-                }
-                continue;
-            }
-            if (match_keyword (edit, r, c, i, &j, &ek)) {
-                rule.keyword = j;
-                rule.end = ek;
+                rule.context = rule._context;
+                r = rules[rule.context];
+            } else {
+                rule.context = rule._context;
+                r = rules[rule.context];
                 while (rule.end != i) {
                     WAIT (c);
-                    if (edit_get_byte (edit, i - 1) == '\n')
-                        break;
                 }
-                rule.end = 0;
-                rule.keyword = 0;
-                continue;
             }
-            WAIT (c);
-        } /* main loop */
+            for (;;) {
+                if (r->bracematch) {
+                    if (r->first_right == ')' && c == '(')
+                        rule.context_brace_depth++;
+                    else if (r->first_right == '}' && c == '{')
+                        rule.context_brace_depth++;
+                    else if (r->first_right == ']' && c == '[')
+                        rule.context_brace_depth++;
+                    else if (r->first_right == '>' && c == '<')
+                        rule.context_brace_depth++;
+                }
+                if (r->first_right == c && (ec = compare_word_to_right (edit, i, r->right, r->whole_word_chars_left, r->whole_word_chars_right, r->line_start_right, 0)) > 0) {
+                    if (rule.context_brace_depth) {
+                        rule.context_brace_depth--;
+                    } else {
+                        if (match_keyword (edit, r, c, i, &j, &ek) && ek > ec) { /* keyword can prevent the ending of a context */
+                            rule.keyword = j;
+                            rule.end = ek;
+                            while (rule.end != i) {
+                                WAIT (c);
+                                if (edit_get_byte (edit, i - 1) == '\n')
+                                    break;
+                            }
+                            rule.end = 0;
+                            rule.keyword = 0;
+                            continue;
+                        }
+                        rule.end = ec;
+                        if (r->between_delimiters) {
+                            rule.context = 0;
+                            r = rules[rule.context];
+                            if (match_keyword (edit, r, c, i, &j, &ek)) {
+                                rule.keyword = j;
+                                while (rule.end != i) {
+                                    WAIT (c);
+                                    if (edit_get_byte (edit, i - 1) == '\n')
+                                        break;
+                                }
+                                rule.keyword = 0;
+                            } else {
+                                WAIT (c);
+                            }
+                        } else {
+                            while (rule.end != i) {
+                                WAIT (c);
+                            }
+                            rule.context = 0;
+                            r = rules[rule.context];
+                        }
+                        break;
+                    }
+                }
+                if (match_keyword (edit, r, c, i, &j, &ek)) {
+                    rule.keyword = j;
+                    rule.end = ek;
+                    while (rule.end != i) {
+                        WAIT (c);
+                        if (edit_get_byte (edit, i - 1) == '\n')
+                            break;
+                    }
+                    rule.end = 0;
+                    rule.keyword = 0;
+                    continue;
+                }
+                WAIT (c);
+            }
+            continue;
+        }
+        if (match_keyword (edit, r, c, i, &j, &ek)) {
+            rule.keyword = j;
+            rule.end = ek;
+            while (rule.end != i) {
+                WAIT (c);
+                if (edit_get_byte (edit, i - 1) == '\n')
+                    break;
+            }
+            rule.end = 0;
+            rule.keyword = 0;
+            continue;
+        }
+        WAIT (c);
     }
+
+    CLOSURE_BODY_END;
 }
 
 #else

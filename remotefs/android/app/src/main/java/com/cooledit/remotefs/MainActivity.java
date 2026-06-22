@@ -11,7 +11,9 @@ import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.provider.Settings;
 import android.view.View;
 import android.widget.Button;
@@ -47,6 +49,7 @@ public class MainActivity extends Activity {
     private TextView qrLabel;
     private ImageView qrCode;
     private TextView keyText;
+    private TextView qrPlaceholder;
 
     private static final int REQUEST_STORAGE = 100;
     private static final int REQUEST_NOTIFICATIONS = 101;
@@ -54,6 +57,11 @@ public class MainActivity extends Activity {
     private SettingsStore settings;
     private boolean serviceBound = false;
     private RemoteFSService boundService;
+
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private Runnable hideQrRunnable;
+    private String cachedKey;
+    private boolean qrVisible = false;
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -118,6 +126,7 @@ public class MainActivity extends Activity {
         qrLabel = (TextView) findViewById(R.id.qr_label);
         qrCode = (ImageView) findViewById(R.id.qr_code);
         keyText = (TextView) findViewById(R.id.key_text);
+        qrPlaceholder = (TextView) findViewById(R.id.qr_placeholder);
 
         /* Set monospace font size so 11 chars ≈ 1/3 screen width */
         float screenW = getResources().getDisplayMetrics().widthPixels
@@ -130,6 +139,22 @@ public class MainActivity extends Activity {
         int qrPx = (int) (qrDp * getResources().getDisplayMetrics().density);
         qrCode.getLayoutParams().width = qrPx;
         qrCode.getLayoutParams().height = qrPx;
+        qrPlaceholder.getLayoutParams().width = qrPx;
+        qrPlaceholder.getLayoutParams().height = qrPx;
+
+        qrPlaceholder.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showQrWithTimer();
+            }
+        });
+
+        hideQrRunnable = new Runnable() {
+            @Override
+            public void run() {
+                hideQrCode();
+            }
+        };
 
         /* Load saved settings */
         ipRangeEdit.setText(settings.getIpRange());
@@ -157,6 +182,12 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         updateUI();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        handler.removeCallbacks(hideQrRunnable);
     }
 
     @Override
@@ -224,6 +255,7 @@ public class MainActivity extends Activity {
 
         Toast.makeText(this, "Server starting on " + listenAddr + ":50095", Toast.LENGTH_SHORT).show();
         updateUI();
+        showQrWithTimer();
     }
 
     private void onStopClicked() {
@@ -251,21 +283,10 @@ public class MainActivity extends Activity {
             stopButton.setEnabled(true);
             ipRangeEdit.setEnabled(false);
 
-            /* Load AES key and show QR code */
-            String key = readKeyfile();
-            if (key != null && key.length() == 44) {
-                Bitmap bmp = generateQRCode(key);
-                if (bmp != null) {
-                    qrCode.setImageBitmap(bmp);
-                    qrLabel.setVisibility(View.VISIBLE);
-                    qrCode.setVisibility(View.VISIBLE);
-                }
-                String keyLines = key.substring(0, 11) + "\n"
-                        + key.substring(11, 22) + "\n"
-                        + key.substring(22, 33) + "\n"
-                        + key.substring(33, 44);
-                keyText.setText(keyLines);
-                keyText.setVisibility(View.VISIBLE);
+            /* Cache key so placeholder tap can re-display QR */
+            cachedKey = readKeyfile();
+            if (!qrVisible && cachedKey != null && cachedKey.length() == 44) {
+                qrPlaceholder.setVisibility(View.VISIBLE);
             }
         } else {
             statusText.setText(R.string.status_stopped);
@@ -273,10 +294,47 @@ public class MainActivity extends Activity {
             startButton.setEnabled(true);
             stopButton.setEnabled(false);
             ipRangeEdit.setEnabled(true);
+
+            handler.removeCallbacks(hideQrRunnable);
+            cachedKey = null;
+            qrVisible = false;
             qrLabel.setVisibility(View.GONE);
             qrCode.setVisibility(View.GONE);
             keyText.setVisibility(View.GONE);
+            qrPlaceholder.setVisibility(View.GONE);
         }
+    }
+
+    private void showQrWithTimer() {
+        handler.removeCallbacks(hideQrRunnable);
+
+        if (cachedKey != null && cachedKey.length() == 44) {
+            Bitmap bmp = generateQRCode(cachedKey);
+            if (bmp != null) {
+                qrCode.setImageBitmap(bmp);
+            }
+            String keyLines = cachedKey.substring(0, 11) + "\n"
+                    + cachedKey.substring(11, 22) + "\n"
+                    + cachedKey.substring(22, 33) + "\n"
+                    + cachedKey.substring(33, 44);
+            keyText.setText(keyLines);
+        }
+
+        qrLabel.setVisibility(View.VISIBLE);
+        qrCode.setVisibility(View.VISIBLE);
+        keyText.setVisibility(View.VISIBLE);
+        qrPlaceholder.setVisibility(View.GONE);
+        qrVisible = true;
+
+        handler.postDelayed(hideQrRunnable, 10000);
+    }
+
+    private void hideQrCode() {
+        qrLabel.setVisibility(View.GONE);
+        qrCode.setVisibility(View.GONE);
+        keyText.setVisibility(View.GONE);
+        qrPlaceholder.setVisibility(View.VISIBLE);
+        qrVisible = false;
     }
 
     private String readKeyfile() {

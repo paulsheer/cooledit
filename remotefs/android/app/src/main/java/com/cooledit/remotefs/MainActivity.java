@@ -18,6 +18,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.google.zxing.BarcodeFormat;
@@ -303,11 +304,11 @@ public class MainActivity extends Activity {
         try {
             Map<EncodeHintType, Object> hints = new HashMap<>();
             hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M);
+            hints.put(EncodeHintType.CHARACTER_SET, "UTF-8");
 
-            /* Get target pixel size from the ImageView layout params */
+            /* ImageView layout params are already in pixels */
             int size = qrCode.getLayoutParams().width;
             if (size <= 0) size = 200;
-            size = (int) (size * getResources().getDisplayMetrics().density);
 
             BitMatrix matrix = new QRCodeWriter().encode(
                 data, BarcodeFormat.QR_CODE, size, size, hints);
@@ -321,6 +322,7 @@ public class MainActivity extends Activity {
             bitmap.setPixels(pixels, 0, size, 0, 0, size, size);
             return bitmap;
         } catch (Exception e) {
+            Log.e("RemoteFS", "Failed to generate QR code", e);
             return null;
         }
     }

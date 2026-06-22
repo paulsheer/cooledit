@@ -17,6 +17,8 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -50,6 +52,7 @@ public class MainActivity extends Activity {
     private ImageView qrCode;
     private TextView keyText;
     private TextView qrPlaceholder;
+    private CheckBox showNotificationCheckbox;
 
     private static final int REQUEST_STORAGE = 100;
     private static final int REQUEST_NOTIFICATIONS = 101;
@@ -66,11 +69,14 @@ public class MainActivity extends Activity {
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+            RemoteFSService.LocalBinder binder = (RemoteFSService.LocalBinder) service;
+            boundService = binder.getService();
             serviceBound = true;
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            boundService = null;
             serviceBound = false;
         }
     };
@@ -118,6 +124,15 @@ public class MainActivity extends Activity {
 
         settings = new SettingsStore(this);
 
+        /* Detect upgrade: compare build time to last known */
+        String currentBuildTime = BuildConfig.BUILD_TIME;
+        if (!currentBuildTime.equals(settings.getLastBuildTime())) {
+            settings.setLastBuildTime(currentBuildTime);
+            if (settings.getWasRunning()) {
+                restoreServer();
+            }
+        }
+
         /* Find views */
         ipRangeEdit = (EditText) findViewById(R.id.ip_range_edit);
         startButton = (Button) findViewById(R.id.start_button);
@@ -127,6 +142,19 @@ public class MainActivity extends Activity {
         qrCode = (ImageView) findViewById(R.id.qr_code);
         keyText = (TextView) findViewById(R.id.key_text);
         qrPlaceholder = (TextView) findViewById(R.id.qr_placeholder);
+        showNotificationCheckbox = (CheckBox) findViewById(R.id.show_notification_checkbox);
+
+        showNotificationCheckbox.setChecked(settings.getShowNotification());
+        showNotificationCheckbox.setOnCheckedChangeListener(
+            new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    settings.setShowNotification(isChecked);
+                    if (boundService != null) {
+                        boundService.updateForegroundNotification();
+                    }
+                }
+            });
 
         /* Set monospace font size so 11 chars ≈ 1/3 screen width */
         float screenW = getResources().getDisplayMetrics().widthPixels
@@ -188,6 +216,7 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         handler.removeCallbacks(hideQrRunnable);
+        settings.setWasRunning(settings.isServerRunning());
     }
 
     @Override
@@ -212,6 +241,39 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** Auto-restart server after upgrade when it was running before */
+    private void restoreServer() {
+        String ipRange = settings.getIpRange();
+        String listenAddr = settings.getListenAddress();
+
+        settings.setServerRunning(true);
+
+        String keyfilePath = settings.getKeyfilePath();
+        if (keyfilePath == null || keyfilePath.isEmpty()) {
+            keyfilePath = getFilesDir().getAbsolutePath() + "/aeskeyfile";
+        }
+        File keyfile = new File(keyfilePath);
+        if (!keyfile.exists()) {
+            RemoteFSService.createAESKey(keyfilePath);
+        }
+
+        Intent intent = new Intent(this, RemoteFSService.class);
+        intent.putExtra("action", "start");
+        intent.putExtra("listen_addr", listenAddr);
+        intent.putExtra("ip_range", ipRange);
+        intent.putExtra("keyfile_path", settings.getKeyfilePath());
+
+        if (settings.getShowNotification()
+                && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(intent);
+        } else {
+            startService(intent);
+        }
+
+        bindService(new Intent(this, RemoteFSService.class),
+                    serviceConnection, Context.BIND_AUTO_CREATE);
+    }
+
     private void onStartClicked() {
         String ipRange = ipRangeEdit.getText().toString().trim();
         String listenAddr = "0.0.0.0";
@@ -225,6 +287,7 @@ public class MainActivity extends Activity {
         settings.setIpRange(ipRange);
         settings.setListenAddress(listenAddr);
         settings.setServerRunning(true);
+        settings.setWasRunning(true);
 
         /* Create keyfile on Java side so it's ready before service starts */
         String keyfilePath = settings.getKeyfilePath();
@@ -243,7 +306,8 @@ public class MainActivity extends Activity {
         intent.putExtra("ip_range", ipRange);
         intent.putExtra("keyfile_path", settings.getKeyfilePath());
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+        if (settings.getShowNotification()
+                && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             startForegroundService(intent);
         } else {
             startService(intent);
@@ -255,7 +319,6 @@ public class MainActivity extends Activity {
 
         Toast.makeText(this, "Server starting on " + listenAddr + ":50095", Toast.LENGTH_SHORT).show();
         updateUI();
-        showQrWithTimer();
     }
 
     private void onStopClicked() {
@@ -269,6 +332,7 @@ public class MainActivity extends Activity {
         }
 
         settings.setServerRunning(false);
+        settings.setWasRunning(false);
         Toast.makeText(this, "Server stopped", Toast.LENGTH_SHORT).show();
         updateUI();
     }

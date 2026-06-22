@@ -8,6 +8,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
@@ -98,6 +99,7 @@ public class RemoteFSService extends Service {
             public void run() {
                 boolean ok = nativeStart(finalListen, finalRange, finalKeyfile);
                 if (!ok) {
+                    new SettingsStore(RemoteFSService.this).setServerRunning(false);
                     isRunning = false;
                     stopForeground(true);
                     stopSelf();
@@ -110,13 +112,15 @@ public class RemoteFSService extends Service {
 
         isRunning = true;
 
-        /* Show foreground notification */
-        Notification notification = buildNotification("RemoteFS Server", "RemoteFS server is running");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
-        } else {
-            startForeground(NOTIFICATION_ID, notification);
+        /* Show foreground notification only when enabled */
+        if (new SettingsStore(this).getShowNotification()) {
+            Notification notification = buildNotification("RemoteFS Server", "RemoteFS server is running");
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+            } else {
+                startForeground(NOTIFICATION_ID, notification);
+            }
         }
     }
 
@@ -188,9 +192,32 @@ public class RemoteFSService extends Service {
         }
     }
 
+    public class LocalBinder extends Binder {
+        public RemoteFSService getService() {
+            return RemoteFSService.this;
+        }
+    }
+
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        return new LocalBinder();
+    }
+
+    /** Show or hide the foreground notification based on current setting */
+    public void updateForegroundNotification() {
+        if (!isRunning) return;
+
+        if (new SettingsStore(this).getShowNotification()) {
+            Notification notification = buildNotification("RemoteFS Server", "RemoteFS server is running");
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+            } else {
+                startForeground(NOTIFICATION_ID, notification);
+            }
+        } else {
+            stopForeground(true);
+        }
     }
 
     /** Create AES keyfile from Java side before starting server */

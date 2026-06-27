@@ -52,7 +52,6 @@ static int strip_trailing_slash (char *path, int *last_char_is_dir)
             path[--len] = '\0';
     } else if (len > 1 && path[len - 1] == '\\') {
         r = 1;
-        *last_char_is_dir = 1;
         while (len > 1 && (path[len - 1] == '\\'))
             path[--len] = '\0';
     }
@@ -453,9 +452,7 @@ static enum remotfs_password_return password_remotfs_password_cb (void *user_dat
         }
         string_chomp (s);
         strcpy ((char *) pass, s);
-        if (!crypto_enabled && contains_whitespace (pass)) {
-            pass[0] = '\0';
-        } else if (contains_whitespace (pass)) {
+        if (!pass[0] || contains_whitespace (pass)) {
             printf("Password Error: Whitespace characters are not allowed.\n");
             continue;
         }

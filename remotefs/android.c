@@ -11,6 +11,7 @@
 #include <string.h>
 #include <errno.h>
 #include <android/log.h>
+#include "log_window.h"
 
 #define LOG_TAG "RemoteFS-JNI"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -26,6 +27,9 @@ int android_server_running = 0;
 static JavaVM *cached_jvm;
 static jobject service_obj;
 static jmethodID refresh_wakelock_method;
+static jmethodID enable_polling_method;
+
+struct log_window_shared_data_s *volatile log_window = NULL;
 
 JNIEXPORT jint JNICALL JNI_OnLoad (JavaVM *vm, void *reserved)
 {
@@ -58,6 +62,29 @@ void android_signal_activity (void)
         (*cached_jvm)->DetachCurrentThread (cached_jvm);
 }
 
+void notify_java_enable_polling (int enable)
+{
+    JNIEnv *env;
+    int attached = 0;
+
+    if (!cached_jvm || !service_obj || !enable_polling_method)
+        return;
+
+    if ((*cached_jvm)->GetEnv (cached_jvm, (void **) &env, JNI_VERSION_1_6) != JNI_OK) {
+        if ((*cached_jvm)->AttachCurrentThread (cached_jvm, &env, NULL) != JNI_OK)
+            return;
+        attached = 1;
+    }
+
+    (*env)->CallStaticVoidMethod (env, (jclass) service_obj, enable_polling_method,
+                                  enable ? JNI_TRUE : JNI_FALSE);
+    if ((*env)->ExceptionCheck (env))
+        (*env)->ExceptionClear (env);
+
+    if (attached)
+        (*cached_jvm)->DetachCurrentThread (cached_jvm);
+}
+
 static pthread_t server_thread;
 static int server_thread_started = 0;
 
@@ -68,6 +95,7 @@ void remotefs_read_keyfile (const char *n);
 void remotefs_init_random (void);
 void remotefs_set_kill_received (int v);
 
+extern int init_random_done;
 
 static void *server_thread_func (void *arg)
 {
@@ -75,6 +103,7 @@ static void *server_thread_func (void *arg)
     LOGI ("Server thread starting...");
     remotefs_serverize ();
     LOGI ("Server thread exiting");
+    init_random_done = 0;
     android_server_running = 0;
     return NULL;
 }
@@ -107,6 +136,12 @@ Java_com_cooledit_remotefs_RemoteFSService_nativeStart (JNIEnv * env, jobject th
             (*env)->ExceptionClear (env);
             refresh_wakelock_method = NULL;
         }
+        enable_polling_method = (*env)->GetStaticMethodID (env, cls,
+            "enablePolling", "(Z)V");
+        if ((*env)->ExceptionCheck (env)) {
+            (*env)->ExceptionClear (env);
+            enable_polling_method = NULL;
+        }
     }
 
     if (server_thread_started && android_server_running) {
@@ -128,12 +163,14 @@ Java_com_cooledit_remotefs_RemoteFSService_nativeStart (JNIEnv * env, jobject th
     (*env)->ReleaseStringUTFChars (env, listenAddr, listen_str);
 
     /* Set IP range from Java config */
+    free (option_ip_range);
     range_str = (*env)->GetStringUTFChars (env, ipRange, NULL);
     option_ip_range = strdup (range_str);
     (*env)->ReleaseStringUTFChars (env, ipRange, range_str);
     LOGI ("IP range set to: %s", option_ip_range);
 
     /* Set keyfile path */
+    free (option_keyfile_path);
     keyfile_str = (*env)->GetStringUTFChars (env, keyfilePath, NULL);
     if (keyfile_str && keyfile_str[0]) {
         option_keyfile_path = strdup (keyfile_str);
@@ -195,15 +232,22 @@ Java_com_cooledit_remotefs_RemoteFSService_nativeStop (JNIEnv * env, jobject thi
     pthread_join (server_thread, NULL);
     server_thread_started = 0;
 
-    /* Release the cached service global reference so the next start
-       caches a fresh one in case the service was recreated */
-    if (service_obj) {
-        (*env)->DeleteGlobalRef (env, service_obj);
-        service_obj = NULL;
-        refresh_wakelock_method = NULL;
-    }
+    asm volatile("": : :"memory");
+
+    /* Clear log window so the next start or activity recreation re-initializes it */
+    log_window = NULL;
+
+    asm volatile("": : :"memory");
 
     LOGI ("Server stopped");
+}
+
+JNIEXPORT void JNICALL
+Java_com_cooledit_remotefs_RemoteFSService_nativeClearLogWindow (JNIEnv * env, jclass clazz)
+{
+    (void) env;
+    (void) clazz;
+    log_window = NULL;
 }
 
 JNIEXPORT void JNICALL
@@ -225,4 +269,38 @@ Java_com_cooledit_remotefs_RemoteFSService_nativeIsRunning (JNIEnv * env, jobjec
     (void) env;
     (void) thiz;
     return android_server_running ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL
+Java_com_cooledit_remotefs_RemoteFSService_nativeInitLogWindow (JNIEnv * env, jclass clazz,
+                                                                 jobject buffer)
+{
+    jlong capacity;
+    uint32_t rows, columns;
+    struct log_window_shared_data_s *lw;
+
+    (void) clazz;
+
+    lw = (struct log_window_shared_data_s *)
+        (*env)->GetDirectBufferAddress (env, buffer);
+    if (!lw)
+        return;
+
+    capacity = (*env)->GetDirectBufferCapacity (env, buffer);
+    rows = lw->lw_rows;
+    columns = lw->lw_columns;
+
+    /* Only touch memory we know is allocated */
+    if ((jlong)(20 + rows * columns) > capacity)
+        return;
+
+    lw->lw_epoch = 0;
+    lw->lw_current = 0;
+    memset (lw->lw_data, ' ', rows * columns);
+
+    asm volatile("": : :"memory");
+
+    log_window = lw;
+
+    asm volatile("": : :"memory");
 }

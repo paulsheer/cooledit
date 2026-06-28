@@ -8,6 +8,8 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Paint;
+import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -24,6 +26,9 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.util.Log;
 import android.widget.Toast;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
@@ -53,6 +58,33 @@ public class MainActivity extends Activity {
     private TextView keyText;
     private TextView qrPlaceholder;
     private CheckBox showNotificationCheckbox;
+    private TextView terminalText;
+
+    /* Log window shared memory */
+    private ByteBuffer logWindowBuffer;
+    private Thread pollingThread;
+    private volatile boolean pollingEnabled;
+    private long lastEpoch = -1;
+    private int logRows = 25;
+    private int logCols;
+
+    private static final int LW_OFFSET_EPOCH = 0;
+    private static final int LW_OFFSET_CURRENT = 8;
+    private static final int LW_OFFSET_ROWS = 12;
+    private static final int LW_OFFSET_COLUMNS = 16;
+    private static final int LW_OFFSET_DATA = 20;
+
+    private final RemoteFSService.PollingListener pollingListener =
+        new RemoteFSService.PollingListener() {
+            @Override
+            public void onEnablePolling(boolean enable) {
+                if (enable) {
+                    startPolling();
+                } else {
+                    stopPolling();
+                }
+            }
+        };
 
     private static final int REQUEST_STORAGE = 100;
     private static final int REQUEST_NOTIFICATIONS = 101;
@@ -152,6 +184,10 @@ public class MainActivity extends Activity {
                     settings.setShowNotification(isChecked);
                     if (boundService != null) {
                         boundService.updateForegroundNotification();
+                    } else if (settings.isServerRunning()) {
+                        Intent intent = new Intent(MainActivity.this, RemoteFSService.class);
+                        intent.putExtra("action", "update_notification");
+                        startService(intent);
                     }
                 }
             });
@@ -169,6 +205,37 @@ public class MainActivity extends Activity {
         qrCode.getLayoutParams().height = qrPx;
         qrPlaceholder.getLayoutParams().width = qrPx;
         qrPlaceholder.getLayoutParams().height = qrPx;
+
+        /* Terminal log window at bottom */
+        terminalText = (TextView) findViewById(R.id.terminal_text);
+        terminalText.setTypeface(Typeface.MONOSPACE);
+        terminalText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 8);
+        terminalText.setTextColor(0xFF00FF00);
+        terminalText.setBackgroundColor(0xFF000000);
+        terminalText.setHorizontallyScrolling(false);
+
+        /* Measure 8sp monospace character width and line height */
+        Paint charPaint = new Paint();
+        charPaint.setTypeface(Typeface.MONOSPACE);
+        charPaint.setTextSize(8 * getResources().getDisplayMetrics().scaledDensity);
+        float charWidth = charPaint.measureText("W");
+        float lineHeight = charPaint.getFontSpacing();
+        float density = getResources().getDisplayMetrics().density;
+        logCols = (int) ((screenW * density) / charWidth);
+
+        /* Set terminal height = rows * line height + top/bottom padding */
+        int termHeight = (int) Math.ceil(logRows * lineHeight + 12.0f * density);
+        terminalText.getLayoutParams().height = termHeight;
+
+        /* Allocate direct buffer: 20 bytes header + rows * cols data */
+        int bufSize = LW_OFFSET_DATA + logRows * logCols;
+        logWindowBuffer = ByteBuffer.allocateDirect(bufSize);
+        logWindowBuffer.order(ByteOrder.nativeOrder());
+        logWindowBuffer.putInt(LW_OFFSET_ROWS, logRows);
+        logWindowBuffer.putInt(LW_OFFSET_COLUMNS, logCols);
+
+        RemoteFSService.initLogWindow(logWindowBuffer);
+        RemoteFSService.setPollingListener(pollingListener);
 
         qrPlaceholder.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -210,12 +277,20 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         updateUI();
+        /* Rebinds if server is running, e.g. after activity recreation */
+        if (settings.isServerRunning() && !serviceBound) {
+            bindService(new Intent(this, RemoteFSService.class),
+                        serviceConnection, Context.BIND_AUTO_CREATE);
+        }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         handler.removeCallbacks(hideQrRunnable);
+        stopPolling();
+        RemoteFSService.setPollingListener(null);
+        RemoteFSService.clearLogWindow();
         settings.setWasRunning(settings.isServerRunning());
     }
 
@@ -270,6 +345,9 @@ public class MainActivity extends Activity {
             startService(intent);
         }
 
+        /* Reinitialize native log window pointer (cleared by nativeStop) */
+        RemoteFSService.initLogWindow(logWindowBuffer);
+
         bindService(new Intent(this, RemoteFSService.class),
                     serviceConnection, Context.BIND_AUTO_CREATE);
     }
@@ -312,6 +390,9 @@ public class MainActivity extends Activity {
         } else {
             startService(intent);
         }
+
+        /* Reinitialize native log window pointer (cleared by nativeStop) */
+        RemoteFSService.initLogWindow(logWindowBuffer);
 
         /* Bind to service for status updates */
         bindService(new Intent(this, RemoteFSService.class),
@@ -399,6 +480,67 @@ public class MainActivity extends Activity {
         keyText.setVisibility(View.GONE);
         qrPlaceholder.setVisibility(View.VISIBLE);
         qrVisible = false;
+    }
+
+    private void startPolling() {
+        if (pollingThread != null) return;
+        pollingEnabled = true;
+        lastEpoch = -1;
+        pollingThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (pollingEnabled) {
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        break;
+                    }
+                    if (!pollingEnabled) break;
+                    if (logWindowBuffer == null) continue;
+                    long epoch = logWindowBuffer.getLong(LW_OFFSET_EPOCH);
+                    if (epoch != lastEpoch) {
+                        lastEpoch = epoch;
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                updateTerminal();
+                            }
+                        });
+                    }
+                }
+            }
+        });
+        pollingThread.setName("LogWindow-Poll");
+        pollingThread.setDaemon(true);
+        pollingThread.start();
+    }
+
+    private void stopPolling() {
+        pollingEnabled = false;
+        if (pollingThread != null) {
+            pollingThread.interrupt();
+            pollingThread = null;
+        }
+    }
+
+    private void updateTerminal() {
+        if (logWindowBuffer == null || terminalText == null) return;
+        int rows = logWindowBuffer.getInt(LW_OFFSET_ROWS);
+        int cols = logWindowBuffer.getInt(LW_OFFSET_COLUMNS);
+        if (rows <= 0 || cols <= 0) return;
+
+        StringBuilder sb = new StringBuilder(rows * (cols + 1));
+        for (int r = 0; r < rows; r++) {
+            int base = LW_OFFSET_DATA + r * cols;
+            for (int c = 0; c < cols; c++) {
+                byte b = logWindowBuffer.get(base + c);
+                char ch = (char) (b & 0xFF);
+                if (ch < ' ') ch = ' ';
+                sb.append(ch);
+            }
+            if (r < rows - 1) sb.append('\n');
+        }
+        terminalText.setText(sb.toString());
     }
 
     private String readKeyfile() {

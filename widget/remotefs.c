@@ -162,7 +162,7 @@ static int windows_rename (const char *a, const char *b)
 
 static const char *translate_path_sep (const char *p)
 {E_
-    char *s;
+    char *s, *c, *start;
     static unsigned int rotate = 0;
     static char r_[2][MAX_PATH_LEN * 2];
     char *r;
@@ -196,6 +196,24 @@ static const char *translate_path_sep (const char *p)
     for (s = r; *s; s++)
         if (*s == '/')
             *s = '\\';
+
+    /* Windows silently strips trailing dots and spaces from filenames
+       (e.g. "Dir." or "Dir " → Dir). A path component ending with "."
+       or " " that is not "." or ".." therefore names a file that doesn't
+       truly exist — reject it so the caller sees "no such file" instead
+       of acting on the wrong filesystem object. */
+    c = r;
+    while (*c) {
+        while (*c == '\\') c++;
+        if (!*c) break;
+        start = c;
+        while (*c && *c != '\\') c++;
+        if (c > start && (c[-1] == '.' || c[-1] == ' ')) {
+            if (c - start == 1) continue;
+            if (c - start == 2 && start[0] == '.') continue;
+            return "";
+        }
+    }
 
     return r;
 }
@@ -827,16 +845,50 @@ static const char *strerrorsocket (void)
 }
 
 #ifdef ANDROID
+#include "log_window.h"
 
 static void log_fmt (int error, const char *fmt, ...)
 {
+    char s[512];
     va_list ap;
+    int len, i;
+
     va_start(ap, fmt);
-    if (error)
-        __android_log_vprint (ANDROID_LOG_ERROR, LOG_TAG, fmt, ap);
-    else
-        __android_log_vprint (ANDROID_LOG_INFO, LOG_TAG, fmt, ap);
+    vsnprintf (s, sizeof (s), fmt, ap);
     va_end(ap);
+
+    if (error)
+        __android_log_print (ANDROID_LOG_ERROR, LOG_TAG, "%s", s);
+    else
+        __android_log_print (ANDROID_LOG_INFO, LOG_TAG, "%s", s);
+
+#define NEWLINE         do { log_window->lw_current = (log_window->lw_current + 1) % log_window->lw_rows; } while (0)
+
+    if (log_window && log_window->lw_rows > 0 && log_window->lw_columns > 0) {
+        int last_char = -1;
+        uint32_t col = 0;
+        len = strlen (s);
+        for (i = 0; i < len; i++) {
+            last_char = s[i];
+            if (s[i] == '\n') {
+                NEWLINE;
+                col = 0;
+                continue;
+            }
+            log_window->lw_data[log_window->lw_current * log_window->lw_columns + col] = (uint8_t) s[i];
+            col++;
+            if (col >= log_window->lw_columns) {
+                col = 0;
+                NEWLINE;
+            }
+        }
+        if (last_char != '\n')
+            NEWLINE;
+        /* set next two lines to blank: */
+        memset (log_window->lw_data + ((log_window->lw_current + 0) % log_window->lw_rows) * log_window->lw_columns, ' ', log_window->lw_columns);
+        memset (log_window->lw_data + ((log_window->lw_current + 1) % log_window->lw_rows) * log_window->lw_columns, ' ', log_window->lw_columns);
+        log_window->lw_epoch++;
+    }
 }
 
 static void perrorsocket (const char *msg)
@@ -2110,10 +2162,10 @@ static void init_random (void);
 static void get_next_iv (unsigned char *iv);
 
 unsigned char the_key[REMOTEFS_MAX_PASSWORD_LEN] = "";
+int init_random_done = 0;
 
 void remotefs_init_random (void)
 {E_
-    static int init_random_done = 0;
     if (!init_random_done) {
         init_random_done = 1;
         init_random ();
@@ -4630,22 +4682,33 @@ static void remotefs_realpathize_ (const char *path, const char *homedir, CStr *
 static void remotefs_gethomedir_ (CStr * r)
 {E_
     unsigned char *p;
-    static char *homedir = NULL;
+    static char homedir[MAX_PATH_LEN];
 
-    if (option_home_dir)
-        homedir = option_home_dir;
+    if (option_home_dir) {
+        strncpy (homedir, option_home_dir, sizeof (homedir) - 1);
+        homedir[sizeof (homedir) - 1] = '\0';
+    }
 
-    if (!homedir || !*homedir) {
 #ifdef MSWIN
-        homedir = getenv ("HOMEPATH");
-        if (!homedir || !*homedir) {
+    if (!homedir[0]) {
+        const char *hp = getenv ("HOMEPATH");
+        if (!hp || !*hp) {
             alloc_encode_error (r, RFSERR_OTHER_ERROR, "HOMEPATH env var is empty", 0);
             return;
         }
-        homedir = windows_path_to_unix (homedir);
+        hp = windows_path_to_unix (hp);
+        strncpy (homedir, hp, sizeof (homedir) - 1);
+        homedir[sizeof (homedir) - 1] = '\0';
+    }
 #else
-        homedir = getenv ("HOME");
-        if (!homedir || !*homedir) {
+    if (!homedir[0]) {
+        const char *home_src;
+        home_src = getenv ("HOME");
+        if (home_src && *home_src) {
+            strncpy (homedir, home_src, sizeof (homedir) - 1);
+            homedir[sizeof (homedir) - 1] = '\0';
+        }
+        if (!homedir[0]) {
             struct passwd *pe;
 #warning dynamic modules that lookup the home directory from a network service need to be loaded here. this does work with /etc/passwd home directories. it is not currently called by cooledit.
             pe = getpwuid (geteuid ());
@@ -4653,15 +4716,16 @@ static void remotefs_gethomedir_ (CStr * r)
                 alloc_encode_errno_strerror (r, 0);
                 return;
             }
-            homedir = pe->pw_dir;
-            if (!homedir || !*homedir) {
-                alloc_encode_error (r, RFSERR_OTHER_ERROR,
-                                    "getpwuid returned empty field pw_dir for home directory and HOME env var is empty", 0);
+            home_src = pe->pw_dir;
+            if (!home_src || !*home_src) {
+                alloc_encode_error (r, RFSERR_OTHER_ERROR, "getpwuid returned empty field pw_dir for home directory and HOME env var is empty", 0);
                 return;
             }
+            strncpy (homedir, home_src, sizeof (homedir) - 1);
+            homedir[sizeof (homedir) - 1] = '\0';
         }
-#endif
     }
+#endif
 
     r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
     r->len += encode_str (NULL, homedir, strlen (homedir));
@@ -6981,6 +7045,8 @@ static int send_mesg (struct remotefs *rfs, struct reader_data *d, CStr * msg, i
                     *recursive = 1;
                     if ((enable_error = remotefs_enable_crypto (rfs, errmsg)))
                         strcpy (user_msg, errmsg);
+                    if (strstr (errmsg, "remote hangs up"))
+                        return -1;
                     *recursive = 0;
                 }
                 if (rfs->remotefs_private->sock_data->sock == INVALID_SOCKET) {
@@ -8680,6 +8746,10 @@ struct service {
     struct iprange_list *iprange_list;
     struct client_item *client_list;
     const char *option_range;
+#ifdef ANDROID
+    time_t active_timeout;
+    int active;
+#endif
 };
 
 static void init_service (struct service *serv, const char *listen_address, const char *option_range)
@@ -9266,9 +9336,11 @@ static void run_service (struct service *serv)
     }
 #else
 #ifdef ANDROID
-    if (!serv->client_list) {
+    if (!serv->active) {
         r = select (n + 1, &rd, &wr, NULL, NULL);
-    } else {
+    }
+    else
+    {
         tv.tv_sec = 0;
         tv.tv_usec = there_are_shells_running ? (1000000 / SENDS_PER_SEC) : 500000;
         r = select (n + 1, &rd, &wr, NULL, &tv);
@@ -9553,8 +9625,7 @@ if (now > v1 + 5) {
     }
 
     for (j = &serv->client_list;;) {
-        time_t now;
-        time (&now);
+        gettimeofday (&now, NULL);
         i = *j;
         if (!i)
             break;
@@ -9571,7 +9642,7 @@ if (now > v1 + 5) {
         } else
 #endif
 #endif
-        if (now > i->last_accessed + 25 /* for firewalls that are 30s timeout */) {
+        if (now.tv_sec > i->last_accessed + 25 /* for firewalls that are 30s timeout */) {
             write_shutdown_trailer (i, RFSERR_SERVER_CLOSED_IDLE_CLIENT);
             i->kill = KILL_HARD;
         }
@@ -9625,6 +9696,17 @@ if (now > v1 + 5) {
         accept_event = 0;
     }
 #endif
+
+#ifdef ANDROID
+#define ACTIVE  (serv->client_list != NULL || !serv->active_timeout || serv->active_timeout > now.tv_sec)
+    if (serv->active != ACTIVE) {
+        serv->active = ACTIVE;
+        notify_java_enable_polling (serv->active);
+    }
+    if (r > 0)
+        serv->active_timeout = now.tv_sec + 5;
+#endif
+    return;
 }
 
 #if (RETSIGTYPE==void)
@@ -9693,6 +9775,8 @@ void remotefs_serverize (void)
 #elif defined(ANDROID)
     /* Android: Linux sockets, no fork/signals */
     signal (SIGPIPE, SIG_IGN);
+    if (wake_pipe[0] >= 0) { close (wake_pipe[0]); wake_pipe[0] = -1; }
+    if (wake_pipe[1] >= 0) { close (wake_pipe[1]); wake_pipe[1] = -1; }
     if (pipe (wake_pipe) < 0) {
         perror ("pipe");
         exit (1);
@@ -9729,6 +9813,7 @@ void remotefs_serverize (void)
             run_service (&serv);
         }
     }
+    mount_cleanup ();
 #else
     while (!kill_received) {
         run_service (&serv);

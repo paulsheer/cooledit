@@ -167,6 +167,10 @@ context exclusive // \n brown
     keyword ??\[?\] brightred
 
 
+context linestart #!/ \n brown
+
+
+
 #=============================
 # Strings
 

@@ -44,24 +44,6 @@
         android:layout_marginBottom="12dp"
         android:textColor="#AA0000" />
 
-    <!-- Listen address -->
-    <!-- Listen address hidden: always uses 0.0.0.0
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/listen_address_label"
-        android:textSize="14sp" />
-
-    <EditText
-        android:id="@+id/listen_addr_edit"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="0.0.0.0"
-        android:inputType="text"
-        android:text="0.0.0.0"
-        android:layout_marginBottom="12dp" />
-    -->
-
     <!-- IP range -->
     <TextView
         android:layout_width="wrap_content"
@@ -161,6 +143,18 @@
         android:fontFamily="monospace"
         android:gravity="center"
         android:visibility="gone" />
+
+    <!-- Terminal log window -->
+    <TextView
+        android:id="@+id/terminal_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:typeface="monospace"
+        android:textSize="8sp"
+        android:textColor="#00FF00"
+        android:background="#000000"
+        android:padding="4dp" />
 
 </LinearLayout>
 

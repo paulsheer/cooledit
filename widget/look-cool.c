@@ -374,6 +374,7 @@ struct file_item *look_cool_get_file_list_line (CWidget * w, int line)
     struct file_entry *fe;
     static struct file_item r;
     memset (&r, 0, sizeof (r));
+    r.name = "";
     fe = (struct file_entry *) w->hook;
     if (!fe || line >= fe->dl || line < 0)
 	r.options = FILELIST_LAST_ENTRY;

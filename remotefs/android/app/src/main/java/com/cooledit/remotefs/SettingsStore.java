@@ -56,7 +56,7 @@ public class SettingsStore {
     }
 
     public void setServerRunning(boolean running) {
-        prefs.edit().putBoolean(KEY_SERVER_RUNNING, running).apply();
+        prefs.edit().putBoolean(KEY_SERVER_RUNNING, running).commit();
     }
 
     public boolean getShowNotification() {
@@ -64,7 +64,7 @@ public class SettingsStore {
     }
 
     public void setShowNotification(boolean show) {
-        prefs.edit().putBoolean(KEY_SHOW_NOTIFICATION, show).apply();
+        prefs.edit().putBoolean(KEY_SHOW_NOTIFICATION, show).commit();
     }
 
     public String getLastBuildTime() {
@@ -80,6 +80,6 @@ public class SettingsStore {
     }
 
     public void setWasRunning(boolean running) {
-        prefs.edit().putBoolean(KEY_WAS_RUNNING, running).apply();
+        prefs.edit().putBoolean(KEY_WAS_RUNNING, running).commit();
     }
 }

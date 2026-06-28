@@ -103,9 +103,14 @@ static int path_stat (const char *ip, const char *path, struct portable_stat *st
     return 0;
 }
 
-static const char *my_basename (const char *path)
+static const char *my_basename (const char *path, int os_type)
 {
     const char *p = strrchr (path, '/');
+    if (os_type == OS_TYPE_WINDOWS) {
+        const char *q = strrchr (path, '\\');
+        if (!p || (q && q > p))
+            p = q;
+    }
     return p ? p + 1 : path;
 }
 
@@ -650,7 +655,7 @@ static int handle_single_source (const char *src, const char *dst)
         if (link_target[0]) {
             if (dst_exists && dst_is_dir) {
                 target = target_path;
-                path_join (dst_path, my_basename (src_path), target_path, sizeof (target_path));
+                path_join (dst_path, my_basename (src_path, src_st.os), target_path, sizeof (target_path));
             } else {
                 target = dst_path;
             }
@@ -687,7 +692,7 @@ static int handle_single_source (const char *src, const char *dst)
         }
         if (dst_exists && dst_is_dir) {
             target = target_path;
-            path_join (dst_path, my_basename (src_path), target_path, sizeof (target_path));
+            path_join (dst_path, my_basename (src_path, src_st.os), target_path, sizeof (target_path));
         } else {
             target = dst_path;
         }
@@ -707,7 +712,7 @@ static int handle_single_source (const char *src, const char *dst)
         }
         if (dst_exists && dst_is_dir) {
             target = target_path;
-            path_join (dst_path, my_basename (src_path), target_path, sizeof (target_path));
+            path_join (dst_path, my_basename (src_path, src_st.os), target_path, sizeof (target_path));
         } else {
             target = dst_path;
         }
@@ -853,6 +858,11 @@ static int do_ls (const char *path_)
             resolved[sizeof (resolved) - 1] = '\0';
         } else {
             const char *last_slash = strrchr (dir_path, '/');
+            if (st.os == OS_TYPE_WINDOWS) {
+                const char *bs = strrchr (dir_path, '\\');
+                if (!last_slash || (bs && bs > last_slash))
+                    last_slash = bs;
+            }
             int parent_len = last_slash ? (int)(last_slash - dir_path) : 0;
             snprintf (resolved, sizeof (resolved), "%.*s/%s", parent_len, dir_path, symlink_target);
         }

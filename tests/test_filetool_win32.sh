@@ -1004,6 +1004,152 @@ else
     fail "--ls -l symlink-to-dir/: failed (exit $ret, stderr: $LS_STDERR)"
 fi
 # ============================================================
+# Case 35: remote dir with trailing dot/space in source path
+# ============================================================
+echo ""
+echo "--- Case 35: remote dir with trailing dot/space in source path ---"
+# Create a remote directory without any trailing dot or space
+run_filetool "$WORKDIR/empty-staging" "${REMOTE_TESTDIR}/trailspec-dir"
+ret=$?
+if [ $ret -ne 0 ]; then
+    fail "trailing dot/space: failed to create remote test dir"
+else
+    # --- trailing dot ---
+    rm -rf "$WORKDIR/roundtrip/case35-dot"
+    mkdir -p "$WORKDIR/roundtrip/case35-dot"
+    run_filetool_stderr "${REMOTE_TESTDIR}/trailspec-dir." "$WORKDIR/roundtrip/case35-dot"
+    ret=$?
+    if [ $ret -ne 0 ]; then
+        pass "remote dir with trailing dot: correctly errors (path does not exist)"
+    elif [ -d "$WORKDIR/roundtrip/case35-dot/trailspec-dir." ]; then
+        fail "remote dir with trailing dot: created local dir with trailing dot (BUG: trailing dot preserved)"
+    elif [ -d "$WORKDIR/roundtrip/case35-dot/trailspec-dir" ]; then
+        fail "remote dir with trailing dot: copy succeeded and trailing dot silently stripped (should have errored)"
+    else
+        fail "remote dir with trailing dot: copy succeeded but unexpected result"
+    fi
+
+    # --- trailing space ---
+    rm -rf "$WORKDIR/roundtrip/case35-space"
+    mkdir -p "$WORKDIR/roundtrip/case35-space"
+    run_filetool_stderr "${REMOTE_TESTDIR}/trailspec-dir " "$WORKDIR/roundtrip/case35-space"
+    ret=$?
+    if [ $ret -ne 0 ]; then
+        pass "remote dir with trailing space: correctly errors (path does not exist)"
+    elif [ -d "$WORKDIR/roundtrip/case35-space/trailspec-dir " ]; then
+        fail "remote dir with trailing space: created local dir with trailing space (BUG: trailing space preserved)"
+    elif [ -d "$WORKDIR/roundtrip/case35-space/trailspec-dir" ]; then
+        fail "remote dir with trailing space: copy succeeded and trailing space silently stripped (should have errored)"
+    else
+        fail "remote dir with trailing space: copy succeeded but unexpected result"
+    fi
+fi
+
+# ============================================================
+# Case 36: remote dir with trailing dot/space — verify --ls also errors
+# ============================================================
+echo ""
+echo "--- Case 36: --ls on remote dir with trailing dot/space ---"
+run_filetool_ls_capture "${REMOTE_TESTDIR}/trailspec-dir."
+ret=$?
+if [ $ret -ne 0 ]; then
+    pass "--ls remote dir with trailing dot: correctly errors (path does not exist)"
+else
+    if echo "$LS_STDOUT" | grep -q "trailspec-dir"; then
+        fail "--ls remote dir with trailing dot: succeeded but should have errored (listing '$LS_STDOUT')"
+    else
+        fail "--ls remote dir with trailing dot: succeeded unexpectedly (output: $LS_STDOUT)"
+    fi
+fi
+run_filetool_ls_capture "${REMOTE_TESTDIR}/trailspec-dir "
+ret=$?
+if [ $ret -ne 0 ]; then
+    pass "--ls remote dir with trailing space: correctly errors (path does not exist)"
+else
+    if echo "$LS_STDOUT" | grep -q "trailspec-dir"; then
+        fail "--ls remote dir with trailing space: succeeded but should have errored (listing '$LS_STDOUT')"
+    else
+        fail "--ls remote dir with trailing space: succeeded unexpectedly (output: $LS_STDOUT)"
+    fi
+fi
+
+# ============================================================
+# Case 37: Windows backslash path — basename extraction
+# ============================================================
+echo ""
+echo "--- Case 37: Windows backslash path basename extraction ---"
+# First create a file on remote using forward slashes (known working)
+createtext "$WORKDIR/local-src/basename.txt" "backslash basename test content"
+run_filetool "$WORKDIR/local-src/basename.txt" "${REMOTE_TESTDIR}/src"
+ret=$?
+if [ $ret -ne 0 ]; then
+    fail "backslash basename: failed to push test file to remote"
+else
+    rm -rf "$WORKDIR/roundtrip/case37"
+    mkdir -p "$WORKDIR/roundtrip/case37"
+    # Build a backslash path for the same file:
+    #   host:C:\Users\Owner\REMOTEFS-TESTS\filetool-test-$$\src\basename.txt
+    REMOTE_BACKSLASH="${REMOTE_TESTDIR}/src/basename.txt"
+    REMOTE_BACKSLASH=$(echo "$REMOTE_BACKSLASH" | sed 's|/|\\|g')
+    run_filetool "${REMOTE_BACKSLASH}" "$WORKDIR/roundtrip/case37"
+    ret=$?
+    if [ $ret -ne 0 ]; then
+        fail "backslash basename: copy failed (exit $ret)"
+    elif [ -f "$WORKDIR/roundtrip/case37/basename.txt" ]; then
+        pass "backslash basename: file created with correct basename (backslash path separator honored)"
+    elif [ -f "$WORKDIR/roundtrip/case37/${REMOTE_BACKSLASH#*:}" ]; then
+        fail "backslash basename: BUG — created file with full backslash path as name instead of just basename"
+    else
+        fail "backslash basename: unexpected result — no basename.txt and no full-path file found"
+    fi
+fi
+
+# ============================================================
+# Case 38: multi-source with mixed forward/backslash separators
+# ============================================================
+echo ""
+echo "--- Case 38: multi-source with mixed forward/backslash separators ---"
+# Push three files to remote using forward slashes
+createtext "$WORKDIR/local-src/mixed1.txt" "mixed slash test 1"
+createtext "$WORKDIR/local-src/mixed2.txt" "mixed slash test 2"
+createtext "$WORKDIR/local-src/mixed3.txt" "mixed slash test 3"
+run_filetool "$WORKDIR/local-src/mixed1.txt" "${REMOTE_TESTDIR}/src"
+run_filetool "$WORKDIR/local-src/mixed2.txt" "${REMOTE_TESTDIR}/src"
+run_filetool "$WORKDIR/local-src/mixed3.txt" "${REMOTE_TESTDIR}/src"
+# Build three variants of the same remote directory path:
+#   all-backslash:   host:C:\...\src
+#   all-forward:     host:C:/.../src
+#   mixed:           host:C:/...\src   (forward then backslash)
+REMOTE_FWD="${REMOTE_TESTDIR}/src"
+REMOTE_BSL=$(echo "${REMOTE_TESTDIR}/src" | sed 's|/|\\|g')
+# Mixed: only the path separator before "src" is backslash, rest forward
+REMOTE_MIXED="${REMOTE_TESTDIR}"'\src'
+
+rm -rf "$WORKDIR/roundtrip/case38"
+mkdir -p "$WORKDIR/roundtrip/case38"
+run_filetool \
+    "${REMOTE_BSL}\\mixed1.txt" \
+    "${REMOTE_FWD}/mixed2.txt" \
+    "${REMOTE_MIXED}\\mixed3.txt" \
+    "$WORKDIR/roundtrip/case38"
+ret=$?
+if [ $ret -ne 0 ]; then
+    fail "mixed slashes: multi-source copy failed (exit $ret)"
+else
+    ok=1
+    for f in mixed1.txt mixed2.txt mixed3.txt; do
+        if [ -f "$WORKDIR/roundtrip/case38/$f" ]; then
+            pass "mixed slashes: $f extracted correctly"
+        else
+            fail "mixed slashes: $f missing from destination"
+            ok=0
+        fi
+    done
+    [ "$ok" -eq 1 ] && ls_out=$(ls "$WORKDIR/roundtrip/case38") && \
+        pass "mixed slashes: all three basenames correct (got: $ls_out)"
+fi
+
+# ============================================================
 # Results
 # ============================================================
 echo ""

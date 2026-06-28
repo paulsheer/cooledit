@@ -8,9 +8,12 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.net.wifi.WifiManager;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PowerManager;
 
 /**
@@ -23,14 +26,30 @@ public class RemoteFSService extends Service {
     private static final int NOTIFICATION_ID = 1;
 
     private static PowerManager.WakeLock wakeLock;
+    private static WifiManager.WifiLock wifiLock;
+    private static Handler wifiLockHandler;
+    private static Runnable wifiLockReleaser;
     private Thread serverThread;
     private boolean isRunning = false;
 
-    /* Native methods implemented in android-bridge.c */
+    /* Callback from native code to control log window polling */
+    public interface PollingListener {
+        void onEnablePolling(boolean enable);
+    }
+
+    private static PollingListener pollingListener;
+
+    public static void setPollingListener(PollingListener listener) {
+        pollingListener = listener;
+    }
+
+    /* Native methods implemented in android.c */
     private static native boolean nativeStart(String listenAddr, String ipRange, String keyfilePath);
     private static native void nativeStop();
     private static native boolean nativeIsRunning();
     private static native void nativeCreateAESKey(String keyfilePath);
+    private static native void nativeInitLogWindow(java.nio.ByteBuffer buffer);
+    private static native void nativeClearLogWindow();
 
     static {
         System.loadLibrary("remotefs");
@@ -62,7 +81,9 @@ public class RemoteFSService extends Service {
         if ("start".equals(action)) {
             startServer(intent);
         } else if ("stop".equals(action)) {
-            stopServer();
+            stopServer(startId);
+        } else if ("update_notification".equals(action)) {
+            updateForegroundNotification();
         }
 
         return START_STICKY;
@@ -91,6 +112,24 @@ public class RemoteFSService extends Service {
         if (pm != null) {
             wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "RemoteFS::WakeLock");
             wakeLock.acquire(600000);
+        }
+
+        /* Acquire Wi-Fi lock to keep radio at full power (mirrors wake lock 10-min timeout) */
+        WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        if (wm != null) {
+            wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL, "RemoteFS::WiFiLock");
+            wifiLock.acquire();
+            if (wifiLockHandler == null) {
+                wifiLockHandler = new Handler(Looper.getMainLooper());
+                wifiLockReleaser = new Runnable() {
+                    public void run() {
+                        if (wifiLock != null && wifiLock.isHeld())
+                            wifiLock.release();
+                    }
+                };
+            }
+            wifiLockHandler.removeCallbacks(wifiLockReleaser);
+            wifiLockHandler.postDelayed(wifiLockReleaser, 600000);
         }
 
         /* Start native server on a background thread */
@@ -124,16 +163,29 @@ public class RemoteFSService extends Service {
         }
     }
 
-    /** Called from native code to refresh the wake lock on each client action */
+    /** Called from native code when client list empty state changes */
+    public static void enablePolling(boolean enable) {
+        if (pollingListener != null) {
+            pollingListener.onEnablePolling(enable);
+        }
+    }
+
+    /** Called from native code to refresh both locks on each client action */
     public static void refreshWakeLock() {
         if (wakeLock != null) {
             if (wakeLock.isHeld())
                 wakeLock.release();
             wakeLock.acquire(600000);
         }
+        if (wifiLock != null && wifiLockReleaser != null) {
+            if (!wifiLock.isHeld())
+                wifiLock.acquire();
+            wifiLockHandler.removeCallbacks(wifiLockReleaser);
+            wifiLockHandler.postDelayed(wifiLockReleaser, 600000);
+        }
     }
 
-    private void stopServer() {
+    private void stopServer(int startId) {
         boolean serverWasStarted = (serverThread != null);
 
         if (serverWasStarted) {
@@ -147,9 +199,18 @@ public class RemoteFSService extends Service {
             wakeLock.release();
             wakeLock = null;
         }
+        if (wifiLock != null) {
+            if (wifiLockReleaser != null)
+                wifiLockHandler.removeCallbacks(wifiLockReleaser);
+            if (wifiLock.isHeld())
+                wifiLock.release();
+            wifiLock = null;
+        }
 
         stopForeground(true);
-        stopSelf();
+        if (startId >= 0) {
+            stopSelf(startId);
+        }
     }
 
     private Notification buildNotification(String title, String text) {
@@ -220,6 +281,20 @@ public class RemoteFSService extends Service {
         }
     }
 
+    private static java.nio.ByteBuffer logWindowBuffer;
+
+    /** Initialize the shared log window buffer from Java side */
+    public static void initLogWindow(java.nio.ByteBuffer buffer) {
+        logWindowBuffer = buffer;
+        nativeInitLogWindow(buffer);
+    }
+
+    /** Clear the log window native pointer when the activity is destroyed */
+    public static void clearLogWindow() {
+        logWindowBuffer = null;
+        nativeClearLogWindow();
+    }
+
     /** Create AES keyfile from Java side before starting server */
     public static void createAESKey(String keyfilePath) {
         nativeCreateAESKey(keyfilePath);
@@ -227,7 +302,7 @@ public class RemoteFSService extends Service {
 
     @Override
     public void onDestroy() {
-        stopServer();
+        stopServer(-1);
         super.onDestroy();
     }
 }

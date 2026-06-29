@@ -215,6 +215,16 @@ static const char *translate_path_sep (const char *p)
         }
     }
 
+    /* Strip trailing backslashes (but not from root paths like "C:\" or "\") */
+    {
+        int len2 = strlen (r);
+        while (len2 > 1 && r[len2 - 1] == '\\') {
+            if (len2 == 3 && IS_DRIVE_LETTER (r[0]) && r[1] == ':')
+                break;
+            r[--len2] = '\0';
+        }
+    }
+
     return r;
 }
 
@@ -601,22 +611,38 @@ static void mswin_alloc_encode_errno_strerror (CStr * r, const int force_shutdow
     alloc_encode_error (r, translate_mswin_lasterror (errval), mswin_error_to_text (errval), force_shutdown);
 }
 
-static int mswin_readlink (const char *linkpath, char *target, int target_sz, int *errval)
+static int mswin_readlink (const char *linkpath, char *target, int target_sz, int *errval, unsigned long long *reparse_tag)
 {
     MSWIN_HANDLE h;
     char rdbuf[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
     REPARSE_DATA_BUFFER *rdb = (REPARSE_DATA_BUFFER *) rdbuf;
     DWORD bytes_returned;
+    const char *q;
     wchar_t *w_target;
     int w_len, target_len;
 
-    h = CreateFileA (translate_path_sep (linkpath), GENERIC_READ,
-                        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+    q = translate_path_sep (linkpath);
+    h = CreateFileA (q, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
                         NULL, OPEN_EXISTING,
-                        FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
+                        FILE_FLAG_OPEN_REPARSE_POINT,
                         NULL);
     if (h == INVALID_HANDLE_VALUE_64BIT) {
-        *errval = GetLastError ();
+        int terr;
+        terr = GetLastError ();
+        if (terr != ERROR_ACCESS_DENIED || !reparse_tag) {
+            *errval = terr;
+            return 1;
+        }
+        // Fallback: FindFirstFile can retrieve the reparse tag from
+        // dwReserved0 without needing to open the reparse point itself.
+        WIN32_FIND_DATA ffd;
+        HANDLE hf = FindFirstFileA (q, &ffd);
+        if (hf == INVALID_HANDLE_VALUE) {
+            *errval = GetLastError ();
+            return 1;
+        }
+        FindClose (hf);
+        *reparse_tag = ffd.dwReserved0;
         return 1;
     }
 
@@ -627,6 +653,9 @@ static int mswin_readlink (const char *linkpath, char *target, int target_sz, in
         return 1;
     }
     CloseHandle (h);
+
+    if (reparse_tag)
+        *reparse_tag = rdb->ReparseTag;
 
     if (rdb->ReparseTag != IO_REPARSE_TAG_SYMLINK) {
         *errval = ERROR_PATH_NOT_FOUND;
@@ -2933,7 +2962,7 @@ static int decode_struct (const unsigned char **p_, const unsigned char *end, st
 }
 
 #define N_STAT_FIELDS           14
-#define N_WINDOWS_FIELDS        5
+#define N_WINDOWS_FIELDS        6
 #define N_NONWINDOWS_FIELDS     0
 
 static int encode_stat (unsigned char **p_, const struct portable_stat *ps, const char *link_target)
@@ -3018,6 +3047,7 @@ static int encode_stat (unsigned char **p_, const struct portable_stat *ps, cons
         r += encode_uint (p_, w->last_accessed_time);           /* 2 */
         r += encode_uint (p_, w->last_write_time);              /* 3 */
         r += encode_uint (p_, w->file_size);                    /* 4 */
+        r += encode_uint (p_, w->reparse_tag);                  /* 5 */
     }
 #else
     {
@@ -3093,6 +3123,7 @@ int stat_store_int (void *user_data_, const unsigned short *path, const int dept
             FLD (2, s->wattr.last_accessed_time);
             FLD (3, s->wattr.last_write_time);
             FLD (4, s->wattr.file_size);
+            FLD (5, s->wattr.reparse_tag);
         }
     }
 
@@ -3988,7 +4019,7 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
             if (S_ISLNK (lstats.ustat.st_mode)) {
 #ifdef MSWIN
                 int errval = 0;
-                if (mswin_readlink (q, link_target, sizeof (link_target), &errval))
+                if (mswin_readlink (q, link_target, sizeof (link_target), &errval, &lstats.wattr.reparse_tag))
                     link_target[0] = '\0';
 #else
                 if (posix_readlink (q, link_target, sizeof (link_target)))
@@ -4487,7 +4518,7 @@ static void remotefs_stat_ (const char *pathname, int handle_just_not_there, CSt
         if (S_ISLNK (lst.ustat.st_mode)) {
 #ifdef MSWIN
             int errval = 0;
-            if (mswin_readlink (q, link_target, sizeof (link_target), &errval))
+            if (mswin_readlink (q, link_target, sizeof (link_target), &errval, &lst.wattr.reparse_tag))
                 link_target[0] = '\0';
 #else
             if (posix_readlink (q, link_target, sizeof (link_target)))
@@ -4631,7 +4662,7 @@ static void remotefs_readlink_ (const char *linkpath, CStr * r)
 #endif
 #ifdef MSWIN
     int errval = 0;
-    if (mswin_readlink (linkpath, target, sizeof (target), &errval)) {
+    if (mswin_readlink (linkpath, target, sizeof (target), &errval, NULL)) {
         alloc_encode_error (r, translate_mswin_lasterror (errval), mswin_error_to_text (errval), 0);
         return;
     }

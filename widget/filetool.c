@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
 #include <errno.h>
 #include <sys/sysmacros.h>
 
@@ -26,6 +27,8 @@ void get_home_dir (void);
 static int password_loaded = 0;
 static int dummy_data;
 static int force_flag = 0;
+static int verbose_flag = 0;
+static int progress_file_count = 0;
 static int ls_flag = 0;
 static int ls_opt_a = 0;
 static int ls_opt_d = 0;
@@ -41,16 +44,18 @@ extern char *option_backup_ext;
 
 /* --- helpers for new CLI --- */
 
-static int strip_trailing_slash (char *path, int *last_char_is_dir)
+static void strip_trailing_slash (char *path, int os_type, int *last_char_is_dir)
 {
     int r = 0, len;
-    /* strip trailing slashes (Windows APIs reject them) */
+    /* Strip trailing slashes.  '/' is always a path separator.
+       '\' is a path separator only on Windows (OS_TYPE_WINDOWS);
+       on Unix it is a literal filename character. */
     len = strlen (path);
     if (len > 1 && path[len - 1] == '/') {
         r = 1;
         while (len > 1 && (path[len - 1] == '/'))
             path[--len] = '\0';
-    } else if (len > 1 && path[len - 1] == '\\') {
+    } else if (os_type == OS_TYPE_WINDOWS && len > 1 && path[len - 1] == '\\') {
         r = 1;
         while (len > 1 && (path[len - 1] == '\\'))
             path[--len] = '\0';
@@ -59,10 +64,54 @@ static int strip_trailing_slash (char *path, int *last_char_is_dir)
         *last_char_is_dir = r;
 }
 
+static int log__2 (unsigned long long n)
+{
+    int r = 0;
+    while (n) {
+        r++;
+        n >>= 1;
+    }
+    return r;
+}
+
+static void progress (int is_dir, int filecount, int bytes)
+{
+    static int backspace = 0;
+    static int filecount_ = 0;
+    static int rotate_ = 0;
+    static long long bytes_ = 0;
+    static long long last_bytes_ = 0;
+    char rotate[] = "|/-\\";
+    if (!verbose_flag)
+        return;
+    if (filecount_ < filecount) {
+        filecount_ = filecount;
+        last_bytes_ = bytes_ = 0LL;
+    }
+    bytes_ += bytes;
+    if (is_dir || bytes_ < 1024 * 1024) {
+        last_bytes_ = bytes_;
+        rotate_++;
+        printf ("%c\b", rotate[rotate_ % 4]);
+        fflush (stdout);
+        backspace = 1;
+        return;
+    }
+    if (backspace) {
+        printf ("*");
+        fflush (stdout);
+        backspace = 0;
+    }
+    if (log__2 (last_bytes_) != log__2 (bytes_)) {
+        printf (".");
+        fflush (stdout);
+        last_bytes_ = bytes_;
+    }
+}
+
 static void parse_remote_path (const char *arg, char *ip, int ip_len, char *path, int path_len)
 {
     const char *colon;
-    int len;
 
     ip[0] = '\0';
     colon = strchr (arg, ':');
@@ -84,7 +133,6 @@ static int path_stat (const char *ip, const char *path, struct portable_stat *st
     struct remotefs *rfs;
     remotefs_error_code_t error_code;
     int just_not_there = 0;
-    int last_char_is_dir = 0;
 
     *exists = 0;
     *is_dir = 0;
@@ -124,6 +172,67 @@ static void path_join (const char *dir, const char *name, char *out, int outlen)
     strncat (out, name, outlen - strlen (out) - 1);
 }
 
+static const char *reparse_tag_name (unsigned long long tag)
+{
+    switch (tag) {
+    case REPARSE_TAG_RESERVED_ZERO:     return "reserved (0)";
+    case REPARSE_TAG_RESERVED_ONE:      return "reserved (1)";
+    case REPARSE_TAG_RESERVED_TWO:      return "reserved (2)";
+    case REPARSE_TAG_MOUNT_POINT:       return "junction/mount-point";
+    case REPARSE_TAG_HSM:               return "HSM (obsolete)";
+    case REPARSE_TAG_DRIVE_EXTENDER:    return "drive extender";
+    case REPARSE_TAG_HSM2:              return "HSM2 (obsolete)";
+    case REPARSE_TAG_SIS:               return "single-instance storage";
+    case REPARSE_TAG_WIM:               return "WIM mount filter";
+    case REPARSE_TAG_CSV:               return "clustered shared volumes";
+    case REPARSE_TAG_DFS:               return "distributed file system";
+    case REPARSE_TAG_FILTER_MANAGER:    return "filter manager";
+    case REPARSE_TAG_SYMLINK:           return "symlink";
+    case REPARSE_TAG_IIS_CACHE:         return "IIS cache";
+    case REPARSE_TAG_DFSR:              return "DFS replication";
+    case REPARSE_TAG_DEDUP:             return "data deduplication";
+    case REPARSE_TAG_APPXSTRM:          return "appx stream";
+    case REPARSE_TAG_NFS:               return "NFS";
+    case REPARSE_TAG_FILE_PLACEHOLDER:  return "file placeholder (obsolete)";
+    case REPARSE_TAG_DFM:               return "dynamic file filter";
+    case REPARSE_TAG_WOF:               return "Windows overlay filter";
+    case REPARSE_TAG_WCI:               return "container isolation";
+    case REPARSE_TAG_WCI_1:             return "container isolation (1)";
+    case REPARSE_TAG_GLOBAL_REPARSE:    return "global reparse (named pipe)";
+    case REPARSE_TAG_CLOUD:             return "cloud files (OneDrive)";
+    case REPARSE_TAG_CLOUD_1:           return "cloud files (1)";
+    case REPARSE_TAG_CLOUD_2:           return "cloud files (2)";
+    case REPARSE_TAG_CLOUD_3:           return "cloud files (3)";
+    case REPARSE_TAG_CLOUD_4:           return "cloud files (4)";
+    case REPARSE_TAG_CLOUD_5:           return "cloud files (5)";
+    case REPARSE_TAG_CLOUD_6:           return "cloud files (6)";
+    case REPARSE_TAG_CLOUD_7:           return "cloud files (7)";
+    case REPARSE_TAG_CLOUD_8:           return "cloud files (8)";
+    case REPARSE_TAG_CLOUD_9:           return "cloud files (9)";
+    case REPARSE_TAG_CLOUD_A:           return "cloud files (A)";
+    case REPARSE_TAG_CLOUD_B:           return "cloud files (B)";
+    case REPARSE_TAG_CLOUD_C:           return "cloud files (C)";
+    case REPARSE_TAG_CLOUD_D:           return "cloud files (D)";
+    case REPARSE_TAG_CLOUD_E:           return "cloud files (E)";
+    case REPARSE_TAG_CLOUD_F:           return "cloud files (F)";
+    case REPARSE_TAG_APPEXECLINK:       return "UWP app execution link";
+    case REPARSE_TAG_PROJFS:            return "projected file system";
+    case REPARSE_TAG_LX_SYMLINK:        return "WSL symlink";
+    case REPARSE_TAG_STORAGE_SYNC:      return "Azure file sync";
+    case REPARSE_TAG_WCI_TOMBSTONE:     return "container tombstone";
+    case REPARSE_TAG_UNHANDLED:         return "WCI unhandled";
+    case REPARSE_TAG_ONEDRIVE:          return "OneDrive (legacy)";
+    case REPARSE_TAG_PROJFS_TOMBSTONE:  return "ProjFS tombstone";
+    case REPARSE_TAG_AF_UNIX:           return "WSL Unix socket";
+    case REPARSE_TAG_LX_FIFO:           return "WSL FIFO";
+    case REPARSE_TAG_LX_CHR:            return "WSL character device";
+    case REPARSE_TAG_LX_BLK:            return "WSL block device";
+    case REPARSE_TAG_WCI_LINK:          return "container link";
+    case REPARSE_TAG_WCI_LINK_1:        return "container link (1)";
+    default:                            return NULL;
+    }
+}
+
 static void warn_skipping (struct portable_stat *pst, const char *path)
 {
     if (S_ISCHR (pst->ustat.st_mode))
@@ -134,7 +243,13 @@ static void warn_skipping (struct portable_stat *pst, const char *path)
         fprintf (stderr, "Warning: skipping FIFO: %s\n", path);
     else if (S_ISSOCK (pst->ustat.st_mode))
         fprintf (stderr, "Warning: skipping socket: %s\n", path);
-    else
+    else if (S_ISLNK (pst->ustat.st_mode)) {
+        const char *name = reparse_tag_name (pst->wattr.reparse_tag);
+        if (name)
+            fprintf (stderr, "Warning: skipping unsupported reparse point (%s): %s\n", name, path);
+        else
+            fprintf (stderr, "Warning: skipping unsupported reparse point (tag 0x%llx): %s\n", pst->wattr.reparse_tag, path);
+    } else
         fprintf (stderr, "Warning: skipping unknown special file: %s\n", path);
 }
 
@@ -167,6 +282,7 @@ static int filetool_sock_reader (struct action_callbacks *o, const unsigned char
         snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "%s: Error writing to file: %s\n", ld->fname, get_sys_error (""));
         return -1;
     }
+    progress (0, progress_file_count, buflen);
 
     return 0;
 }
@@ -185,6 +301,7 @@ int filetool_copy_remote_to_local (const char *host, const char *remote_filename
         snprintf (errmsg, REMOTEFS_ERR_MSG_LEN, "%s: Error opening file: %s\n", local_filename, get_sys_error (""));
         return 1;
     }
+    progress (0, ++progress_file_count, 0);
 
     memset (&o, '\0', sizeof (o));
 
@@ -243,6 +360,7 @@ static int filetool_sock_writer (struct action_callbacks *o, unsigned char *chun
         sd->done = 1;
     sd->totalwritten += c;
     *chunklen_ = c;
+    progress (0, progress_file_count, c);
 
     return 0;
 }
@@ -265,6 +383,7 @@ int filetool_copy_local_to_remote (const char *local_filename, const char *host,
         perror (local_filename);
         return 1;
     }
+    progress (0, ++progress_file_count, 0);
 
     if (fstat (fileno (sd.f), &local_st)) {
         fclose (sd.f);
@@ -330,6 +449,7 @@ int filetool_copy_local_to_local (const char *local_src_filename, const char *lo
         fclose (fsrc);
         return 1;
     }
+    progress (0, ++progress_file_count, 0);
 
     if (indefinite) {
         for (;;) {
@@ -344,6 +464,7 @@ int filetool_copy_local_to_local (const char *local_src_filename, const char *lo
                 return 1;
             }
             totalwritten += c;
+            progress (0, progress_file_count, c);
         }
     } else {
         while (totalwritten < filelen) {
@@ -358,6 +479,7 @@ int filetool_copy_local_to_local (const char *local_src_filename, const char *lo
                 return 1;
             }
             totalwritten += c;
+            progress (0, progress_file_count, c);
         }
         if (totalwritten != filelen) {
             fprintf (stderr, "%s: Error: Did not write all bytes\n", local_src_filename);
@@ -375,8 +497,9 @@ int filetool_copy_local_to_local (const char *local_src_filename, const char *lo
 void filetool_usage(FILE *out, const char *prefix)
 {
     fprintf(out, "%s\
---filetool [-f|--force] [--] <src> [<src>...] <target>      scp-like remote copy\n\
-                                         with recursive directory copy feature.\n\
+--filetool [-f|--force] [-v|--verbose] [--] <src> [<src>...] <target>\n\
+                                         scp-like remote copy with\n\
+                                         recursive directory copy feature.\n\
                                          Uses remotefs / REMOTEFS.EXE /\n\
                                          remotefs.apk as a server.\n\
 --filetool --ls|-ls [-adlrSt1] [<path>...]            list files in ls style\n\
@@ -495,6 +618,7 @@ static int copy_dir_local_to_remote (const char *local_dir, const char *host, co
         fprintf (stderr, "Error creating remote directory %s: %s\n", remote_dir, errmsg);
         goto err;;
     }
+    progress (1, ++progress_file_count, 0);
 
     /* list local directory */
     {
@@ -519,7 +643,10 @@ static int copy_dir_local_to_remote (const char *local_dir, const char *host, co
             if (filetool_copy_local_to_remote (sub_local, host, sub_remote))
                 goto err;;
         } else if (S_ISLNK (list->d[i]->pstat.ustat.st_mode)) {
-            if ((*rfs->remotefs_symlink) (rfs, list->d[i]->link_target, sub_remote, errmsg)) {
+            if (list->d[i]->pstat.wattr.reparse_tag
+                && list->d[i]->pstat.wattr.reparse_tag != REPARSE_TAG_SYMLINK) {
+                warn_skipping (&list->d[i]->pstat, sub_local);
+            } else if ((*rfs->remotefs_symlink) (rfs, list->d[i]->link_target, sub_remote, errmsg)) {
                 fprintf (stderr, "Error creating remote symlink %s: %s\n", sub_remote, errmsg);
                 goto err;;
             }
@@ -551,6 +678,7 @@ static int copy_dir_remote_to_local (const char *ip, const char *remote_dir, con
         fprintf (stderr, "Error creating directory %s: %s\n", local_dir, strerror (errno));
         goto err;
     }
+    progress (1, ++progress_file_count, 0);
 
     /* list remote directory */
     if ((*rfs->remotefs_listdir) (rfs, &cached, remote_dir, FILELIST_ALL_FILES, "*", &list, errmsg)) {
@@ -574,7 +702,10 @@ static int copy_dir_remote_to_local (const char *ip, const char *remote_dir, con
                 : filetool_copy_local_to_local (sub_remote, sub_local))
                 goto err;
         } else if (S_ISLNK (list->d[i]->pstat.ustat.st_mode)) {
-            if ((*the_remotefs_local->remotefs_symlink) (the_remotefs_local, list->d[i]->link_target, sub_local, errmsg)) {
+            if (list->d[i]->pstat.wattr.reparse_tag
+                && list->d[i]->pstat.wattr.reparse_tag != REPARSE_TAG_SYMLINK) {
+                warn_skipping (&list->d[i]->pstat, sub_remote);
+            } else if ((*the_remotefs_local->remotefs_symlink) (the_remotefs_local, list->d[i]->link_target, sub_local, errmsg)) {
                 fprintf (stderr, "Error creating symlink %s: %s\n", sub_local, errmsg);
                 goto err;
             }
@@ -608,7 +739,7 @@ static int is_cross_remote (int nsrcs, char **srcs, const char *dst)
 static int handle_single_source (const char *src, const char *dst)
 {
     char errmsg[REMOTEFS_ERR_MSG_LEN];
-    char src_ip[256], src_path[MAX_PATH_LEN], src_path__symlinks_resolved[MAX_PATH_LEN];
+    char src_ip[256], src_path[MAX_PATH_LEN];
     char dst_ip[256], dst_path[MAX_PATH_LEN];
     struct portable_stat src_st, dst_st;
     int src_is_dir = 0, src_exists = 0, dst_is_dir = 0, dst_exists = 0;
@@ -620,10 +751,8 @@ static int handle_single_source (const char *src, const char *dst)
     *errmsg = '\0';
 
     parse_remote_path (src, src_ip, sizeof (src_ip), src_path, sizeof (src_path));
-    strip_trailing_slash (src_path, &last_src_char_is_dir);
 
     parse_remote_path (dst, dst_ip, sizeof (dst_ip), dst_path, sizeof (dst_path));
-    strip_trailing_slash (dst_path, &last_dst_char_is_dir);
 
     src_is_remote = (src_ip[0] != '\0');
     dst_is_remote = (dst_ip[0] != '\0');
@@ -636,6 +765,8 @@ static int handle_single_source (const char *src, const char *dst)
             return 1;
         }
 
+        strip_trailing_slash (src_path, src_st.os, &last_src_char_is_dir);
+
         if (last_src_char_is_dir && !src_is_dir) {
             fprintf (stderr, "Error: %s is not a directory\n", src);
             return 1;
@@ -646,6 +777,8 @@ static int handle_single_source (const char *src, const char *dst)
             fprintf (stderr, "Error stating destination %s: %s\n", dst, errmsg);
             return 1;
         }
+
+        strip_trailing_slash (dst_path, dst_st.os, &last_dst_char_is_dir);
 
         if (last_dst_char_is_dir && !dst_is_dir) {
             fprintf (stderr, "Error: %s is not a directory\n", dst);
@@ -818,13 +951,14 @@ static int do_ls (const char *path_)
     int is_symlink = 0;
     int stat_failed = 0;
     parse_remote_path (path_, ip, sizeof (ip), dir_path, sizeof (dir_path));
-    strip_trailing_slash (dir_path, &last_char_is_dir);
     rfs = ip[0] ? remotefs_lookup (ip, NULL) : the_remotefs_local;
     if (path_stat (ip, dir_path, &st, &is_dir, &exists, symlink_target, sizeof (symlink_target), errmsg)) {
         stat_failed = 1;
     } else {
         is_symlink = (symlink_target[0] != '\0');
     }
+    if (!stat_failed)
+        strip_trailing_slash (dir_path, st.os, &last_char_is_dir);
     if (is_symlink && (stat_failed || !exists)) {
         struct file_item *e;
         e = (struct file_item *) malloc (sizeof (*e));
@@ -916,8 +1050,9 @@ static int do_ls_multi (int npaths, char **paths)
             int is_dir, exists, last_char_is_dir = 0;
             char errmsg[REMOTEFS_ERR_MSG_LEN];
             parse_remote_path (paths[i], ip, sizeof (ip), dir_path, sizeof (dir_path));
-            strip_trailing_slash (dir_path, &last_char_is_dir);
             r = path_stat (ip, dir_path, &st, &is_dir, &exists, NULL, 0, errmsg);
+            if (!r)
+                strip_trailing_slash (dir_path, st.os, &last_char_is_dir);
             if (!r && exists && is_dir)
                 show_header = 1;
             if (r) {
@@ -971,6 +1106,10 @@ static int filetool_process_args_ (int argc, char **argv)
         }
         if (!strcmp (argv[i], "-f") || !strcmp (argv[i], "--force")) {
             force_flag = 1;
+            continue;
+        }
+        if (!strcmp (argv[i], "-v") || !strcmp (argv[i], "--verbose")) {
+            verbose_flag = 1;
             continue;
         }
         if (!strcmp (argv[i], "--ls") || !strcmp (argv[i], "-ls")) {
@@ -1041,11 +1180,11 @@ static int filetool_process_args_ (int argc, char **argv)
     if (nsrcs > 1) {
         char ip[256], dir_path[MAX_PATH_LEN];
         parse_remote_path (dst, ip, sizeof (ip), dir_path, sizeof (dir_path));
-        strip_trailing_slash (dir_path, NULL);
         if (path_stat (ip, dir_path, &dst_st, &dst_is_dir, &dst_exists, NULL, 0, errmsg)) {
             fprintf (stderr, "Error stating destination %s: %s\n", dst, errmsg);
             return 1;
         }
+        strip_trailing_slash (dir_path, dst_st.os, NULL);
         if (!dst_exists || !dst_is_dir) {
             fprintf (stderr, "Error: with multiple sources, destination %s must be an existing directory\n", dst);
             return 1;
@@ -1056,6 +1195,9 @@ static int filetool_process_args_ (int argc, char **argv)
         if (handle_single_source (srcs[i], dst))
             return 1;
     }
+
+    if (verbose_flag)
+        printf ("\n");
 
     return 0;
 }

@@ -799,7 +799,7 @@ echo ""
 echo "--- Case: Source file with trailing slash (error) ---"
 run_filetool_stderr "$WORKDIR/local-src/file1.txt/" "${REMOTE}${WORKDIR}/remote-dst/should-not-exist"
 assert_error $? "source file with trailing slash: errors"
-if echo "$FILE_TOOL_STDERR" | grep -q "is not a directory"; then
+if echo "$FILE_TOOL_STDERR" | grep -qiE "(is not a directory|not a directory)"; then
     pass "source file with trailing slash: error message says 'is not a directory'"
 else
     fail "source file with trailing slash: expected 'is not a directory' in stderr, got: $FILE_TOOL_STDERR"
@@ -809,7 +809,7 @@ echo ""
 echo "--- Case: Destination file with trailing slash (error) ---"
 run_filetool_stderr "$WORKDIR/local-src" "${REMOTE}${WORKDIR}/remote-dst/existing-file.txt/"
 assert_error $? "destination file with trailing slash: errors"
-if echo "$FILE_TOOL_STDERR" | grep -q "is not a directory"; then
+if echo "$FILE_TOOL_STDERR" | grep -qiE "(is not a directory|not a directory)"; then
     pass "destination file with trailing slash: error message says 'is not a directory'"
 else
     fail "destination file with trailing slash: expected 'is not a directory' in stderr, got: $FILE_TOOL_STDERR"
@@ -824,7 +824,7 @@ echo "--- Case: --ls: local file with trailing slash ---"
 run_filetool_stderr --ls "$WORKDIR/local-src/file1.txt/"
 ret=$?
 assert_error $ret "--ls local file with trailing slash: errors"
-if echo "$FILE_TOOL_STDERR" | grep -q "is not a directory"; then
+if echo "$FILE_TOOL_STDERR" | grep -qiE "(is not a directory|not a directory)"; then
     pass "--ls local file with trailing slash: error message says 'is not a directory'"
 else
     fail "--ls local file with trailing slash: expected 'is not a directory' in stderr, got: $FILE_TOOL_STDERR"
@@ -835,7 +835,7 @@ echo "--- Case: --ls: remote file with trailing slash ---"
 run_filetool_stderr --ls "${REMOTE}${WORKDIR}/remote-src/file1.txt/"
 ret=$?
 assert_error $ret "--ls remote file with trailing slash: errors"
-if echo "$FILE_TOOL_STDERR" | grep -q "is not a directory"; then
+if echo "$FILE_TOOL_STDERR" | grep -qiE "(is not a directory|not a directory)"; then
     pass "--ls remote file with trailing slash: error message says 'is not a directory'"
 else
     fail "--ls remote file with trailing slash: expected 'is not a directory' in stderr, got: $FILE_TOOL_STDERR"
@@ -856,7 +856,7 @@ echo "--- Case: --ls: multi-path, local file with trailing slash ---"
 run_filetool_stderr --ls "$WORKDIR/local-src/file1.txt/" "$WORKDIR/local-src/file2.txt"
 ret=$?
 assert_error $ret "--ls multi with trailing-slash file: errors"
-if echo "$FILE_TOOL_STDERR" | grep -q "is not a directory"; then
+if echo "$FILE_TOOL_STDERR" | grep -qiE "(is not a directory|not a directory)"; then
     pass "--ls multi with trailing-slash file: error message says 'is not a directory'"
 else
     fail "--ls multi with trailing-slash file: expected 'is not a directory' in stderr, got: $FILE_TOOL_STDERR"
@@ -867,7 +867,7 @@ echo "--- Case: --ls: multi-path, remote file with trailing slash ---"
 run_filetool_stderr --ls "${REMOTE}${WORKDIR}/remote-src/file1.txt/" "$WORKDIR/local-src/file2.txt"
 ret=$?
 assert_error $ret "--ls multi with remote trailing-slash file: errors"
-if echo "$FILE_TOOL_STDERR" | grep -q "is not a directory"; then
+if echo "$FILE_TOOL_STDERR" | grep -qiE "(is not a directory|not a directory)"; then
     pass "--ls multi with remote trailing-slash file: error message says 'is not a directory'"
 else
     fail "--ls multi with remote trailing-slash file: expected 'is not a directory' in stderr, got: $FILE_TOOL_STDERR"
@@ -1255,6 +1255,166 @@ if [ -p "$SPECIAL_DIR/test-fifo" ]; then
 else
     echo ""
     echo "--- Case: special files: FIFO tests SKIPPED (filesystem does not support FIFOs) ---"
+fi
+
+# ============================================================
+# Backslash in filenames (Unix-to-Unix)
+# On Unix, backslash (\) is a literal filename character, not a
+# path separator. All copies must preserve backslashes in file
+# and directory names exactly, in both directions.
+# ============================================================
+echo ""
+echo "=== Backslash in Filenames (Unix-to-Unix) ==="
+
+# Define names with literal backslashes via single quotes.
+# Files: backslash at start, middle, and end of name.
+bsf_start1='\bs-start1.txt'
+bsf_start2='\\bs-start2.txt'
+bsf_start3='\\\bs-start3.txt'
+bsf_mid1='bs\mid1.txt'
+bsf_mid2='bs\\mid2.txt'
+bsf_mid3='bs\\\mid3.txt'
+bsf_end1='bs-end1\'
+bsf_end2='bs-end2\\'
+bsf_end3='bs-end3\\\'
+
+# Directories: backslash at start, middle, and end of name.
+bsd_start1='\dir-s1'
+bsd_start2='\\dir-s2'
+bsd_start3='\\\dir-s3'
+bsd_mid1='dir\m1'
+bsd_mid2='dir\\m2'
+bsd_mid3='dir\\\m3'
+bsd_end1='dir-e1\'
+bsd_end2='dir-e2\\'
+bsd_end3='dir-e3\\\'
+
+mkdir -p "$WORKDIR/bs-test"
+for f in "$bsf_start1" "$bsf_start2" "$bsf_start3" \
+         "$bsf_mid1" "$bsf_mid2" "$bsf_mid3" \
+         "$bsf_end1" "$bsf_end2" "$bsf_end3"; do
+    createtext "$WORKDIR/bs-test/$f" "content of $f"
+done
+for d in "$bsd_start1" "$bsd_start2" "$bsd_start3" \
+         "$bsd_mid1" "$bsd_mid2" "$bsd_mid3" \
+         "$bsd_end1" "$bsd_end2" "$bsd_end3"; do
+    mkdir -p "$WORKDIR/bs-test/$d"
+    createtext "$WORKDIR/bs-test/$d/nested.txt" "nested in $d"
+done
+
+# --- directory local->remote, verify names on remote ---
+echo ""
+echo "--- Case: local dir with backslash names -> remote ---"
+rm -rf "$WORKDIR/remote-dst/bs-test"
+run_filetool "$WORKDIR/bs-test" "${REMOTE}${WORKDIR}/remote-dst/"
+ret=$?
+if [ $ret -eq 0 ]; then
+    ok=1
+    for f in "$bsf_start1" "$bsf_start2" "$bsf_start3" \
+             "$bsf_mid1" "$bsf_mid2" "$bsf_mid3" \
+             "$bsf_end1" "$bsf_end2" "$bsf_end3"; do
+        if [ -f "$WORKDIR/remote-dst/bs-test/$f" ]; then
+            pass "dir local->remote: file '$f' present on remote"
+        else
+            fail "dir local->remote: file '$f' missing on remote"
+            ok=0
+        fi
+    done
+    for d in "$bsd_start1" "$bsd_start2" "$bsd_start3" \
+             "$bsd_mid1" "$bsd_mid2" "$bsd_mid3" \
+             "$bsd_end1" "$bsd_end2" "$bsd_end3"; do
+        if [ -f "$WORKDIR/remote-dst/bs-test/$d/nested.txt" ]; then
+            pass "dir local->remote: dir '$d' with nested file present"
+        else
+            fail "dir local->remote: dir '$d' nested file missing"
+            ok=0
+        fi
+    done
+    [ "$ok" -eq 0 ] && fail "dir local->remote: one or more backslash names not preserved"
+else
+    fail "dir local->remote: copy failed (exit $ret)"
+fi
+
+# --- roundtrip: remote->local copy back, trailing slash on non-existent dest is an error ---
+echo ""
+echo "--- Case: backslash names roundtrip (remote->local) with trailing slash ---"
+rm -rf "$WORKDIR/roundtrip/bs-test"
+rm -rf "$WORKDIR/roundtrip"
+run_filetool_stderr "${REMOTE}${WORKDIR}/remote-dst/bs-test" "$WORKDIR/roundtrip/"
+ret=$?
+assert_error $ret "backslash names roundtrip with trailing slash: errors"
+if echo "$FILE_TOOL_STDERR" | grep -qiE "(is not a directory|not a directory)"; then
+    pass "backslash names roundtrip with trailing slash: error message says 'not a directory'"
+else
+    fail "backslash names roundtrip with trailing slash: expected 'not a directory' in stderr, got: $FILE_TOOL_STDERR"
+fi
+
+# --- roundtrip: remote->local copy back, diff against original ---
+echo ""
+echo "--- Case: backslash names roundtrip (remote->local) ---"
+rm -rf "$WORKDIR/roundtrip"
+mkdir -p "$WORKDIR/roundtrip"
+run_filetool "${REMOTE}${WORKDIR}/remote-dst/bs-test" "$WORKDIR/roundtrip/"
+ret=$?
+if [ $ret -eq 0 ]; then
+    if diff -r "$WORKDIR/bs-test" "$WORKDIR/roundtrip/bs-test" >/dev/null 2>&1; then
+        pass "backslash names roundtrip: diff -r matches (all backslash names preserved exactly)"
+    else
+        fail "backslash names roundtrip: diff -r shows differences"
+    fi
+else
+    fail "backslash names roundtrip: remote->local copy failed (exit $ret)"
+fi
+
+# --- single file with backslash at start: local->remote->local ---
+echo ""
+echo "--- Case: single file, double backslash at start, roundtrip ---"
+rm -rf "$WORKDIR/roundtrip/bs-start"
+mkdir -p "$WORKDIR/roundtrip/bs-start"
+run_filetool "$WORKDIR/bs-test/$bsf_start2" "${REMOTE}${WORKDIR}/remote-dst/"
+run_filetool "${REMOTE}${WORKDIR}/remote-dst/$bsf_start2" "$WORKDIR/roundtrip/bs-start"
+assert_file_eq "$WORKDIR/bs-test/$bsf_start2" \
+    "$WORKDIR/roundtrip/bs-start/$bsf_start2" \
+    "single file with \\\\ at start: roundtrip content matches"
+
+# --- single file with backslash in middle: local->remote->local ---
+echo ""
+echo "--- Case: single file, double backslash in middle, roundtrip ---"
+rm -rf "$WORKDIR/roundtrip/bs-mid"
+mkdir -p "$WORKDIR/roundtrip/bs-mid"
+run_filetool "$WORKDIR/bs-test/$bsf_mid2" "${REMOTE}${WORKDIR}/remote-dst/"
+run_filetool "${REMOTE}${WORKDIR}/remote-dst/$bsf_mid2" "$WORKDIR/roundtrip/bs-mid"
+assert_file_eq "$WORKDIR/bs-test/$bsf_mid2" \
+    "$WORKDIR/roundtrip/bs-mid/$bsf_mid2" \
+    "single file with \\\\ in middle: roundtrip content matches"
+
+# --- single file with backslash at end: local->remote->local ---
+echo ""
+echo "--- Case: single file, double backslash at end, roundtrip ---"
+rm -rf "$WORKDIR/roundtrip/bs-end"
+mkdir -p "$WORKDIR/roundtrip/bs-end"
+run_filetool "$WORKDIR/bs-test/$bsf_end2" "${REMOTE}${WORKDIR}/remote-dst/"
+run_filetool "${REMOTE}${WORKDIR}/remote-dst/$bsf_end2" "$WORKDIR/roundtrip/bs-end"
+assert_file_eq "$WORKDIR/bs-test/$bsf_end2" \
+    "$WORKDIR/roundtrip/bs-end/$bsf_end2" \
+    "single file with \\\\ at end: roundtrip content matches"
+
+# --- directory with trailing backslash: local->remote->local ---
+echo ""
+echo "--- Case: directory with double trailing backslash, roundtrip ---"
+rm -rf "$WORKDIR/remote-dst/$bsd_end2" "$WORKDIR/roundtrip/bs-enddir"
+run_filetool "$WORKDIR/bs-test/$bsd_end2" "${REMOTE}${WORKDIR}/remote-dst/"
+ret=$?
+if [ $ret -eq 0 ] && [ -f "$WORKDIR/remote-dst/$bsd_end2/nested.txt" ]; then
+    mkdir -p "$WORKDIR/roundtrip/bs-enddir"
+    run_filetool "${REMOTE}${WORKDIR}/remote-dst/$bsd_end2" "$WORKDIR/roundtrip/bs-enddir"
+    if [ -f "$WORKDIR/roundtrip/bs-enddir/$bsd_end2/nested.txt" ]; then
+        pass "dir with trailing \\\\: nested file present after roundtrip"
+    else
+        fail "dir with trailing \\\\: nested file missing after roundtrip"
+    fi
+else
+    fail "dir with trailing \\\\: local->remote copy failed (exit $ret)"
 fi
 
 # ============================================================

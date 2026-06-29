@@ -154,7 +154,7 @@ static int init_dynamic_edit_buffers_text (WEdit * edit, const char *host, const
 }
 
 
-static inline int edit_insert_ (WEdit * edit, int c)
+static inline void edit_insert_ (WEdit * edit, int c)
 {
 /* add a new buffer if we've reached the end of the last one */
     if (!(edit->curs1 & M_EDIT_BUF_SIZE))

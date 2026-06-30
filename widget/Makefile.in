@@ -133,7 +133,7 @@ am_libCw_a_OBJECTS = initapp.$(OBJEXT) coolwidget.$(OBJEXT) \
 	aes.$(OBJEXT) sha256.$(OBJEXT) remotefspassword.$(OBJEXT) \
 	symauth.$(OBJEXT) inspect.$(OBJEXT) cterminal.$(OBJEXT) \
 	childhandler.$(OBJEXT) xwinfwd.$(OBJEXT) soundfwd.$(OBJEXT) \
-	filetool.$(OBJEXT) fnmatch.$(OBJEXT)
+	filetool.$(OBJEXT) fnmatch.$(OBJEXT) classify.$(OBJEXT)
 libCw_a_OBJECTS = $(am_libCw_a_OBJECTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -153,27 +153,27 @@ am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/ClientWin.Po ./$(DEPDIR)/aafont.Po \
 	./$(DEPDIR)/aes.Po ./$(DEPDIR)/androidmounts.Po \
 	./$(DEPDIR)/bitmapbutton.Po ./$(DEPDIR)/bookmark.Po \
-	./$(DEPDIR)/childhandler.Po ./$(DEPDIR)/cmdlineopt.Po \
-	./$(DEPDIR)/compatable.Po ./$(DEPDIR)/coolnext.Po \
-	./$(DEPDIR)/coolwidget.Po ./$(DEPDIR)/cterminal.Po \
-	./$(DEPDIR)/cursor.Po ./$(DEPDIR)/dialog.Po \
-	./$(DEPDIR)/dirtools.Po ./$(DEPDIR)/disable.Po \
-	./$(DEPDIR)/edit.Po ./$(DEPDIR)/edit_key_translator.Po \
-	./$(DEPDIR)/editcmd.Po ./$(DEPDIR)/editdraw.Po \
-	./$(DEPDIR)/editmenu.Po ./$(DEPDIR)/editwidget.Po \
-	./$(DEPDIR)/fieldedtextbox.Po ./$(DEPDIR)/filebrowser.Po \
-	./$(DEPDIR)/filelist.Po ./$(DEPDIR)/filetool.Po \
-	./$(DEPDIR)/fnmatch.Po ./$(DEPDIR)/focus.Po \
-	./$(DEPDIR)/font.Po ./$(DEPDIR)/hashtable.Po \
-	./$(DEPDIR)/hintpos.Po ./$(DEPDIR)/initapp.Po \
-	./$(DEPDIR)/inputwidget.Po ./$(DEPDIR)/inspect.Po \
-	./$(DEPDIR)/international.Po ./$(DEPDIR)/ipv6scan.Po \
-	./$(DEPDIR)/loadfile.Po ./$(DEPDIR)/look-cool.Po \
-	./$(DEPDIR)/look-gtk.Po ./$(DEPDIR)/look-next.Po \
-	./$(DEPDIR)/mad.Po ./$(DEPDIR)/mathfuncs.Po \
-	./$(DEPDIR)/menu.Po ./$(DEPDIR)/mousemark.Po \
-	./$(DEPDIR)/pathdup.Po ./$(DEPDIR)/pipe.Po \
-	./$(DEPDIR)/pixmap.Po ./$(DEPDIR)/pool.Po \
+	./$(DEPDIR)/childhandler.Po ./$(DEPDIR)/classify.Po \
+	./$(DEPDIR)/cmdlineopt.Po ./$(DEPDIR)/compatable.Po \
+	./$(DEPDIR)/coolnext.Po ./$(DEPDIR)/coolwidget.Po \
+	./$(DEPDIR)/cterminal.Po ./$(DEPDIR)/cursor.Po \
+	./$(DEPDIR)/dialog.Po ./$(DEPDIR)/dirtools.Po \
+	./$(DEPDIR)/disable.Po ./$(DEPDIR)/edit.Po \
+	./$(DEPDIR)/edit_key_translator.Po ./$(DEPDIR)/editcmd.Po \
+	./$(DEPDIR)/editdraw.Po ./$(DEPDIR)/editmenu.Po \
+	./$(DEPDIR)/editwidget.Po ./$(DEPDIR)/fieldedtextbox.Po \
+	./$(DEPDIR)/filebrowser.Po ./$(DEPDIR)/filelist.Po \
+	./$(DEPDIR)/filetool.Po ./$(DEPDIR)/fnmatch.Po \
+	./$(DEPDIR)/focus.Po ./$(DEPDIR)/font.Po \
+	./$(DEPDIR)/hashtable.Po ./$(DEPDIR)/hintpos.Po \
+	./$(DEPDIR)/initapp.Po ./$(DEPDIR)/inputwidget.Po \
+	./$(DEPDIR)/inspect.Po ./$(DEPDIR)/international.Po \
+	./$(DEPDIR)/ipv6scan.Po ./$(DEPDIR)/loadfile.Po \
+	./$(DEPDIR)/look-cool.Po ./$(DEPDIR)/look-gtk.Po \
+	./$(DEPDIR)/look-next.Po ./$(DEPDIR)/mad.Po \
+	./$(DEPDIR)/mathfuncs.Po ./$(DEPDIR)/menu.Po \
+	./$(DEPDIR)/mousemark.Po ./$(DEPDIR)/pathdup.Po \
+	./$(DEPDIR)/pipe.Po ./$(DEPDIR)/pixmap.Po ./$(DEPDIR)/pool.Po \
 	./$(DEPDIR)/propfont.Po ./$(DEPDIR)/redblack.Po \
 	./$(DEPDIR)/regex.Po ./$(DEPDIR)/regtools.Po \
 	./$(DEPDIR)/remotefs.Po ./$(DEPDIR)/remotefspassword.Po \
@@ -409,7 +409,7 @@ libCw_a_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
 	sha256.c sha256.h remotefspassword.c remotefspassword.h \
 	symauth.c symauth.h inspect.c cterminal.c cterminal.h \
 	childhandler.c childhandler.h xwinfwd.c xwinfwd.h soundfwd.c soundfwd.h \
-	filetool.c filetool.h fnmatch.c fnmatch.h
+	filetool.c filetool.h fnmatch.c fnmatch.h classify.c classify.h
 
 all: all-am
 
@@ -456,6 +456,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bitmapbutton.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bookmark.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/childhandler.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/classify.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cmdlineopt.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/compatable.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/coolnext.Po@am__quote@ # am--include-marker
@@ -682,6 +683,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/bitmapbutton.Po
 	-rm -f ./$(DEPDIR)/bookmark.Po
 	-rm -f ./$(DEPDIR)/childhandler.Po
+	-rm -f ./$(DEPDIR)/classify.Po
 	-rm -f ./$(DEPDIR)/cmdlineopt.Po
 	-rm -f ./$(DEPDIR)/compatable.Po
 	-rm -f ./$(DEPDIR)/coolnext.Po
@@ -795,6 +797,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/bitmapbutton.Po
 	-rm -f ./$(DEPDIR)/bookmark.Po
 	-rm -f ./$(DEPDIR)/childhandler.Po
+	-rm -f ./$(DEPDIR)/classify.Po
 	-rm -f ./$(DEPDIR)/cmdlineopt.Po
 	-rm -f ./$(DEPDIR)/compatable.Po
 	-rm -f ./$(DEPDIR)/coolnext.Po

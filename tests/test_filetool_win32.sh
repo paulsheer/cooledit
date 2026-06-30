@@ -117,6 +117,57 @@ assert_symlinks_match() {
     [ "$ok" -eq 1 ] && pass "$desc"
 }
 
+# Find symlinks with trusted.windows.junction xattr set (i.e. junctions)
+find_junctions() {
+    local dir="$1"
+    find "$dir" -type l 2>/dev/null | while read -r link; do
+        local val
+        val=$(getfattr -h -n trusted.windows.junction "$link" --only-values 2>/dev/null)
+        [ "$val" = "1" ] && echo "$link"
+    done | sort
+}
+
+# Verify junctions in srcdir are reproduced in dstdir with matching targets and xattr
+assert_junctions_match() {
+    local srcdir="$1" dstdir="$2" desc="$3"
+    local ok=1 src_target dst_target relpath dstlink dst_xattr
+    while IFS= read -r link; do
+        relpath="${link#$srcdir/}"
+        dstlink="$dstdir/$relpath"
+        if [ ! -L "$dstlink" ]; then
+            fail "$desc: $relpath missing or not a symlink at dst"; ok=0; continue
+        fi
+        dst_target=$(readlink "$dstlink")
+        src_target=$(readlink "$link")
+        if [ "$src_target" != "$dst_target" ]; then
+            fail "$desc: $relpath target '$dst_target' != '$src_target'"; ok=0
+        fi
+        dst_xattr=$(getfattr -h -n trusted.windows.junction "$dstlink" --only-values 2>/dev/null)
+        if [ "$dst_xattr" != "1" ]; then
+            fail "$desc: $relpath missing junction xattr at dst (got '$dst_xattr')"; ok=0
+        fi
+    done < <(find_junctions "$srcdir")
+    [ "$ok" -eq 1 ] && pass "$desc"
+}
+
+# Verify a single path is a junction with the expected target
+assert_is_junction() {
+    local path="$1" target="$2" desc="$3"
+    local actual_target xattr_val ok=1
+    if [ ! -L "$path" ]; then
+        fail "$desc: not a symlink"; return 1
+    fi
+    actual_target=$(readlink "$path")
+    if [ "$actual_target" != "$target" ]; then
+        fail "$desc: target '$actual_target' != '$target'"; ok=0
+    fi
+    xattr_val=$(getfattr -h -n trusted.windows.junction "$path" --only-values 2>/dev/null)
+    if [ "$xattr_val" != "1" ]; then
+        fail "$desc: missing junction xattr (got '$xattr_val')"; ok=0
+    fi
+    [ "$ok" -eq 1 ] && pass "$desc"
+}
+
 # Run cooledit --filetool. Password is pre-populated so no stdin needed.
 run_filetool() {
     local ret
@@ -219,6 +270,25 @@ createtext "$WORKDIR/local-symlinks/subdir/nested.txt" "nested file for symlink 
 ln -s "regular.txt" "$WORKDIR/local-symlinks/link-to-file"
 ln -s "subdir" "$WORKDIR/local-symlinks/link-to-dir"
 ln -s "/etc/hosts" "$WORKDIR/local-symlinks/link-absolute"
+
+# Junction test data (local side) — symlinks with trusted.windows.junction xattr
+MKJUNCTION="$SCRIPTDIR/../mkjunction"
+mkdir -p "$WORKDIR/local-junctions/subdir"
+createtext "$WORKDIR/local-junctions/regular.txt" "regular file in junction test dir"
+createtext "$WORKDIR/local-junctions/subdir/nested.txt" "nested file in junction test dir"
+ln -s "regular.txt" "$WORKDIR/local-junctions/link-to-file"
+ln -s "subdir" "$WORKDIR/local-junctions/link-to-dir"
+"$MKJUNCTION" "regular.txt" "$WORKDIR/local-junctions/junction-to-file"
+"$MKJUNCTION" "subdir" "$WORKDIR/local-junctions/junction-to-dir"
+# Standalone junctions for individual copy tests
+"$MKJUNCTION" "some-target" "$WORKDIR/standalone-junction1"
+"$MKJUNCTION" "/absolute/target/path" "$WORKDIR/standalone-junction2"
+
+# Push junctions to remote (setup, not a test)
+echo "Pushing junction test data to remote..."
+run_filetool "$WORKDIR/local-junctions" "${REMOTE_TESTDIR}/junctions"
+run_filetool "$WORKDIR/standalone-junction1" "${REMOTE_TESTDIR}/dst"
+run_filetool "$WORKDIR/standalone-junction2" "${REMOTE_TESTDIR}/dst"
 
 # Local roundtrip staging area
 mkdir -p "$WORKDIR/roundtrip"
@@ -1147,6 +1217,269 @@ else
     done
     [ "$ok" -eq 1 ] && ls_out=$(ls "$WORKDIR/roundtrip/case38") && \
         pass "mixed slashes: all three basenames correct (got: $ls_out)"
+fi
+
+# ============================================================
+# Junction Tests — roundtrip through Windows
+# These verify that Unix junctions (symlinks + trusted.windows.junction xattr)
+# survive the roundtrip: Unix -> Windows (becomes reparse point) -> Unix (xattr restored).
+# ============================================================
+
+echo ""
+echo "=== Junction Copy Tests (Windows roundtrip) ==="
+
+# ============================================================
+# Case 39: Junction dir local -> remote -> local (roundtrip)
+# ============================================================
+echo ""
+echo "--- Case 39: Junction dir local -> remote -> local (roundtrip) ---"
+rm -rf "$WORKDIR/roundtrip/case39"
+mkdir -p "$WORKDIR/roundtrip/case39"
+run_filetool "$WORKDIR/local-junctions" "${REMOTE_TESTDIR}/junc-rt"
+ret=$?
+if [ $ret -eq 0 ]; then
+    run_filetool "${REMOTE_TESTDIR}/junc-rt" "$WORKDIR/roundtrip/case39"
+    ret=$?
+fi
+if [ $ret -eq 0 ]; then
+    assert_junctions_match "$WORKDIR/local-junctions" "$WORKDIR/roundtrip/case39/junc-rt" \
+        "junction dir roundtrip: junctions preserved"
+    # Verify plain symlinks inside the dir remain plain symlinks (no xattr)
+    for link in link-to-file link-to-dir; do
+        xv=$(getfattr -h -n trusted.windows.junction "$WORKDIR/roundtrip/case39/junc-rt/$link" --only-values 2>/dev/null)
+        if [ -z "$xv" ]; then
+            pass "junction dir roundtrip: $link remains plain symlink (no xattr)"
+        else
+            fail "junction dir roundtrip: $link got unexpected junction xattr"
+        fi
+    done
+else
+    fail "junction dir roundtrip: copy failed (exit $ret)"
+fi
+
+# ============================================================
+# Case 40: Junction dir remote -> local
+# Uses junctions already on Windows (pushed during setup).
+# ============================================================
+echo ""
+echo "--- Case 40: Junction dir remote -> local ---"
+rm -rf "$WORKDIR/roundtrip/case40"
+mkdir -p "$WORKDIR/roundtrip/case40"
+run_filetool "${REMOTE_TESTDIR}/junctions" "$WORKDIR/roundtrip/case40"
+ret=$?
+if [ $ret -eq 0 ]; then
+    assert_junctions_match "$WORKDIR/local-junctions" "$WORKDIR/roundtrip/case40/junctions" \
+        "junction dir remote->local: junctions preserved"
+    for link in link-to-file link-to-dir; do
+        xv=$(getfattr -h -n trusted.windows.junction "$WORKDIR/roundtrip/case40/junctions/$link" --only-values 2>/dev/null)
+        if [ -z "$xv" ]; then
+            pass "junction dir remote->local: $link remains plain symlink"
+        else
+            fail "junction dir remote->local: $link got unexpected junction xattr"
+        fi
+    done
+else
+    fail "junction dir remote->local: copy failed (exit $ret)"
+fi
+
+# ============================================================
+# Case 41: Single junction local -> remote -> local (roundtrip)
+# ============================================================
+echo ""
+echo "--- Case 41: Single junction local -> remote -> local ---"
+rm -rf "$WORKDIR/roundtrip/case41"
+mkdir -p "$WORKDIR/roundtrip/case41"
+run_filetool "$WORKDIR/standalone-junction1" "${REMOTE_TESTDIR}/junc-single"
+ret=$?
+if [ $ret -eq 0 ]; then
+    run_filetool "${REMOTE_TESTDIR}/junc-single" "$WORKDIR/roundtrip/case41"
+    ret=$?
+fi
+if [ $ret -eq 0 ]; then
+    assert_is_junction "$WORKDIR/roundtrip/case41/junc-single" "some-target" \
+        "single junction roundtrip: target and xattr preserved"
+else
+    fail "single junction roundtrip: copy failed (exit $ret)"
+fi
+
+# ============================================================
+# Case 42: Single junction remote -> local
+# Uses standalone junction already on Windows (pushed during setup).
+# ============================================================
+echo ""
+echo "--- Case 42: Single junction remote -> local ---"
+rm -rf "$WORKDIR/roundtrip/case42"
+mkdir -p "$WORKDIR/roundtrip/case42"
+run_filetool "${REMOTE_TESTDIR}/dst/standalone-junction1" "$WORKDIR/roundtrip/case42"
+ret=$?
+if [ $ret -eq 0 ]; then
+    assert_is_junction "$WORKDIR/roundtrip/case42/standalone-junction1" "some-target" \
+        "single junction remote->local: target and xattr preserved"
+else
+    fail "single junction remote->local: copy failed (exit $ret)"
+fi
+
+# ============================================================
+# Case 43: Single junction (absolute target) local -> remote -> local
+# ============================================================
+echo ""
+echo "--- Case 43: Single junction (absolute target) roundtrip ---"
+rm -rf "$WORKDIR/roundtrip/case43"
+mkdir -p "$WORKDIR/roundtrip/case43"
+run_filetool "$WORKDIR/standalone-junction2" "${REMOTE_TESTDIR}/junc-abs"
+ret=$?
+if [ $ret -eq 0 ]; then
+    run_filetool "${REMOTE_TESTDIR}/junc-abs" "$WORKDIR/roundtrip/case43"
+    ret=$?
+fi
+if [ $ret -eq 0 ]; then
+    assert_is_junction "$WORKDIR/roundtrip/case43/junc-abs" "/absolute/target/path" \
+        "single junction (abs target) roundtrip: target and xattr preserved"
+else
+    fail "single junction (abs target) roundtrip: copy failed (exit $ret)"
+fi
+
+# ============================================================
+# Case 44: Junction roundtrip diff -r verification
+# Verify that all regular files inside the roundtripped junction
+# directory are intact.
+# ============================================================
+echo ""
+echo "--- Case 44: Junction roundtrip diff -r ---"
+if diff -r "$WORKDIR/local-junctions" "$WORKDIR/roundtrip/case39/junc-rt" >/dev/null 2>&1; then
+    pass "junction roundtrip: diff -r matches (files intact)"
+else
+    fail "junction roundtrip: diff -r shows differences"
+fi
+
+# ============================================================
+# --ls mode prefix verification: L=symlink, J=junction
+# These verify the pstat_to_mode_string() prefixes directly on remote.
+# ============================================================
+
+echo ""
+echo "=== --ls Mode Prefix Tests (L=symlink, J=junction) ==="
+
+# Helper: get the mode field (first column) from --ls -l output
+ls_mode_prefix() {
+    local path="$1"
+    local output
+    output=$("$COOLEDIT" --filetool --ls -l "$path" 2>/dev/null)
+    echo "$output" | awk '{print $1}'
+}
+
+# Helper: assert the first character of the mode string for a given path
+assert_ls_prefix() {
+    local path="$1" expected="$2" desc="$3"
+    local mode
+    mode=$(ls_mode_prefix "$path")
+    if [ -z "$mode" ]; then
+        fail "$desc: no --ls output"
+    elif [ "${mode:0:1}" = "$expected" ]; then
+        pass "$desc (mode=$mode)"
+    else
+        fail "$desc: expected '$expected' prefix, got '$mode'"
+    fi
+}
+
+# ============================================================
+# Case 45: --ls -l remote symlink shows L prefix
+# ============================================================
+echo ""
+echo "--- Case 45: --ls -l symlink shows L prefix ---"
+assert_ls_prefix "${REMOTE_TESTDIR}/symlinks/link-to-file" "L" \
+    "--ls -l symlink link-to-file"
+assert_ls_prefix "${REMOTE_TESTDIR}/symlinks/link-to-dir" "L" \
+    "--ls -l symlink link-to-dir"
+assert_ls_prefix "${REMOTE_TESTDIR}/symlinks/link-absolute" "L" \
+    "--ls -l symlink link-absolute"
+
+# ============================================================
+# Case 46: --ls -l remote junction shows J prefix
+# ============================================================
+echo ""
+echo "--- Case 46: --ls -l junction shows J prefix ---"
+assert_ls_prefix "${REMOTE_TESTDIR}/junctions/junction-to-file" "J" \
+    "--ls -l junction junction-to-file"
+assert_ls_prefix "${REMOTE_TESTDIR}/junctions/junction-to-dir" "J" \
+    "--ls -l junction junction-to-dir"
+assert_ls_prefix "${REMOTE_TESTDIR}/dst/standalone-junction1" "J" \
+    "--ls -l standalone junction1"
+assert_ls_prefix "${REMOTE_TESTDIR}/dst/standalone-junction2" "J" \
+    "--ls -l standalone junction2 (abs target)"
+
+# ============================================================
+# Case 47: --ls -l regular files do NOT get L or J prefix
+# ============================================================
+echo ""
+echo "--- Case 47: --ls -l regular files have no L/J prefix ---"
+assert_ls_prefix "${REMOTE_TESTDIR}/symlinks/regular.txt" "-" \
+    "--ls -l regular file: no symlink/junction prefix"
+assert_ls_prefix "${REMOTE_TESTDIR}/junctions/regular.txt" "-" \
+    "--ls -l regular file in junction dir: no prefix"
+assert_ls_prefix "${REMOTE_TESTDIR}/exist.txt" "-" \
+    "--ls -l standalone regular file: no prefix"
+
+# ============================================================
+# Case 48: --ls -l directory listing shows correct prefixes
+# ============================================================
+echo ""
+echo "--- Case 48: --ls -l dir listing shows L/J prefixes ---"
+
+# symlinks directory: link-to-file, link-to-dir, link-absolute should all be L
+run_filetool_ls_capture -l "${REMOTE_TESTDIR}/symlinks"
+ret=$?
+if [ $ret -eq 0 ]; then
+    ok=1
+    for name in link-to-file link-to-dir link-absolute; do
+        mode=$(echo "$LS_STDOUT" | grep "$name" | head -1 | awk '{print $1}')
+        if [ "${mode:0:1}" != "L" ]; then
+            fail "--ls -l symlinks dir: $name expected L prefix, got $mode"
+            ok=0
+        fi
+    done
+    [ "$ok" -eq 1 ] && pass "--ls -l symlinks dir: all symlinks have L prefix"
+    # regular.txt should NOT have L or J prefix
+    # (exclude symlink lines with ' -> ' to avoid matching the target field)
+    mode=$(echo "$LS_STDOUT" | grep -v ' -> ' | grep 'regular.txt' | awk '{print $1}')
+    if [ -n "$mode" ] && [ "${mode:0:1}" != "L" ] && [ "${mode:0:1}" != "J" ]; then
+        pass "--ls -l symlinks dir: regular.txt has no L/J prefix (mode=$mode)"
+    elif [ -n "$mode" ]; then
+        fail "--ls -l symlinks dir: regular.txt got unexpected prefix (mode=$mode)"
+    fi
+else
+    fail "--ls -l symlinks dir: failed (exit $ret)"
+fi
+
+# junctions directory: junction-to-file, junction-to-dir should be J,
+# link-to-file, link-to-dir should be L
+run_filetool_ls_capture -l "${REMOTE_TESTDIR}/junctions"
+ret=$?
+if [ $ret -eq 0 ]; then
+    ok=1
+    for name in junction-to-file junction-to-dir; do
+        mode=$(echo "$LS_STDOUT" | grep "$name" | head -1 | awk '{print $1}')
+        if [ -z "$mode" ]; then
+            fail "--ls -l junctions dir: $name not found in listing"
+            ok=0
+        elif [ "${mode:0:1}" != "J" ]; then
+            fail "--ls -l junctions dir: $name expected J prefix, got $mode"
+            ok=0
+        fi
+    done
+    for name in link-to-file link-to-dir; do
+        mode=$(echo "$LS_STDOUT" | grep "$name" | head -1 | awk '{print $1}')
+        if [ -z "$mode" ]; then
+            fail "--ls -l junctions dir: $name not found in listing"
+            ok=0
+        elif [ "${mode:0:1}" != "L" ]; then
+            fail "--ls -l junctions dir: $name expected L prefix, got $mode"
+            ok=0
+        fi
+    done
+    [ "$ok" -eq 1 ] && pass "--ls -l junctions dir: J for junctions, L for symlinks"
+else
+    fail "--ls -l junctions dir: failed (exit $ret)"
 fi
 
 # ============================================================

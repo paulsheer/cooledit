@@ -51,6 +51,7 @@
 #include "_rxvtlib.h"
 #include "rxvtlibtypedef.h"
 #include "rxvtexport.h"
+#include "classify.h"
 #include <cterminal.h>
 #include <remotefs.h>
 
@@ -1939,7 +1940,9 @@ int      encoding_method;
     (X)->per_char[(Y) - (X)->min_char_or_byte2].rbearing
 
 #define DELIMIT_TEXT(x) \
-    ((text_t_to_char(x) == ' ' || text_t_to_char(x) == '\t') ? 2 : ((text_t_to_char(x) <= 255 && strchr(o->rs[Rs_cutchars], text_t_to_char(x)) != NULL)))
+    ((text_t_to_char(x) == ' ' || text_t_to_char(x) == '\t') ? 2 : \
+     (text_t_to_char(x) <= '~' ? (strchr(o->rs[Rs_cutchars], text_t_to_char(x)) != NULL) : \
+      !uc_is_word_char(text_t_to_char(x))))
 #ifdef MULTICHAR_SET
 # define DELIMIT_REND(x)	(((x) & RS_multiMask) ? 1 : 0)
 #else

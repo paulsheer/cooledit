@@ -66,6 +66,7 @@
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
 #include <sys/types.h>
+#include <sys/xattr.h>
 #include <sys/wait.h>
 #include <sys/un.h>
 #endif
@@ -611,6 +612,31 @@ static void mswin_alloc_encode_errno_strerror (CStr * r, const int force_shutdow
     alloc_encode_error (r, translate_mswin_lasterror (errval), mswin_error_to_text (errval), force_shutdown);
 }
 
+static void log_fmt (int error, const char *fmt, ...);
+
+static void enable_backup_privilege (void)
+{
+    MSWIN_HANDLE token;
+    TOKEN_PRIVILEGES tp;
+    if (!OpenProcessToken (GetCurrentProcess (), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token)) {
+        log_fmt (1, "OpenProcessToken failed: %s\n", mswin_error_to_text (GetLastError ()));
+        return;
+    }
+    if (!LookupPrivilegeValueW (NULL, L"SeBackupPrivilege", &tp.Privileges[0].Luid)) {
+        log_fmt (1, "LookupPrivilegeValueW(SeBackupPrivilege) failed: %s\n", mswin_error_to_text (GetLastError ()));
+        CloseHandle (token);
+        return;
+    }
+    tp.PrivilegeCount = 1;
+    tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+    if (!AdjustTokenPrivileges (token, FALSE, &tp, 0, NULL, NULL)) {
+        log_fmt (1, "AdjustTokenPrivileges failed: %s\n", mswin_error_to_text (GetLastError ()));
+    } else if (GetLastError () == ERROR_NOT_ALL_ASSIGNED) {
+        log_fmt (1, "SeBackupPrivilege not assigned to this process — not running elevated?\n");
+    }
+    CloseHandle (token);
+}
+
 static int mswin_readlink (const char *linkpath, char *target, int target_sz, int *errval, unsigned long long *reparse_tag)
 {
     MSWIN_HANDLE h;
@@ -620,11 +646,12 @@ static int mswin_readlink (const char *linkpath, char *target, int target_sz, in
     const char *q;
     wchar_t *w_target;
     int w_len, target_len;
+    USHORT name_off, name_len;
 
     q = translate_path_sep (linkpath);
     h = CreateFileA (q, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
                         NULL, OPEN_EXISTING,
-                        FILE_FLAG_OPEN_REPARSE_POINT,
+                        FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
                         NULL);
     if (h == INVALID_HANDLE_VALUE_64BIT) {
         int terr;
@@ -636,8 +663,8 @@ static int mswin_readlink (const char *linkpath, char *target, int target_sz, in
         // Fallback: FindFirstFile can retrieve the reparse tag from
         // dwReserved0 without needing to open the reparse point itself.
         WIN32_FIND_DATA ffd;
-        HANDLE hf = FindFirstFileA (q, &ffd);
-        if (hf == INVALID_HANDLE_VALUE) {
+        MSWIN_HANDLE hf = FindFirstFileA (q, &ffd);
+        if (hf == INVALID_HANDLE_VALUE_64BIT) {
             *errval = GetLastError ();
             return 1;
         }
@@ -657,14 +684,22 @@ static int mswin_readlink (const char *linkpath, char *target, int target_sz, in
     if (reparse_tag)
         *reparse_tag = rdb->ReparseTag;
 
-    if (rdb->ReparseTag != IO_REPARSE_TAG_SYMLINK) {
+    /* Symlink and mount-point both have SubstituteNameOffset/PrintNameOffset
+       at the same layout within their respective union members */
+    if (rdb->ReparseTag == IO_REPARSE_TAG_SYMLINK) {
+        name_off = rdb->SymbolicLinkReparseBuffer.PrintNameOffset;
+        name_len = rdb->SymbolicLinkReparseBuffer.PrintNameLength;
+        w_target = (wchar_t *) ((char *) rdb->SymbolicLinkReparseBuffer.PathBuffer + name_off);
+    } else if (rdb->ReparseTag == IO_REPARSE_TAG_MOUNT_POINT) {
+        name_off = rdb->MountPointReparseBuffer.PrintNameOffset;
+        name_len = rdb->MountPointReparseBuffer.PrintNameLength;
+        w_target = (wchar_t *) ((char *) rdb->MountPointReparseBuffer.PathBuffer + name_off);
+    } else {
         *errval = ERROR_PATH_NOT_FOUND;
         return 1;
     }
 
-    w_target = (wchar_t *) ((char *) rdb->SymbolicLinkReparseBuffer.PathBuffer
-                            + rdb->SymbolicLinkReparseBuffer.PrintNameOffset);
-    w_len = rdb->SymbolicLinkReparseBuffer.PrintNameLength / sizeof (wchar_t);
+    w_len = name_len / sizeof (wchar_t);
     target_len = WideCharToMultiByte (CP_UTF8, 0, w_target, w_len,
                                         target, target_sz - 1, NULL, NULL);
     if (target_len <= 0) {
@@ -831,6 +866,13 @@ static int posix_readlink (const char *linkpath, char *target, int target_sz)
         return 1;
     target[n] = '\0';
     return 0;
+}
+
+static void check_junction_xattr (const char *path, struct portable_stat *pst)
+{
+    char val[2] = "";
+    if (lgetxattr (translate_path_sep (path), "trusted.windows.junction", val, 1) == 1 && val[0] == '1')
+        pst->wattr.reparse_tag = REPARSE_TAG_MOUNT_POINT;
 }
 
 static int portable_stat (int link, const char *fname, struct portable_stat *p, int *just_not_there, enum remotefs_error_code *remotefs_error_code_, char *errmsg)
@@ -1744,6 +1786,7 @@ const char *action_descr[] = {
     "MKDIR",
     "SYMLINK",
     "READLINK",
+    "JUNCTION",
 };
 
 
@@ -2963,21 +3006,16 @@ static int decode_struct (const unsigned char **p_, const unsigned char *end, st
 
 #define N_STAT_FIELDS           14
 #define N_WINDOWS_FIELDS        6
-#define N_NONWINDOWS_FIELDS     0
 
 static int encode_stat (unsigned char **p_, const struct portable_stat *ps, const char *link_target)
 {E_
     int r, i;
     unsigned char enclose[3];
     const struct stat_posix_or_mswin *s;
-#ifdef MSWIN
     const struct windows_file_attributes *w;
-#endif
 
     s = &ps->ustat;
-#ifdef MSWIN
     w = &ps->wattr;
-#endif
 
     memset (enclose, '\0', sizeof (enclose));
     SET_FIELD_TYPE (enclose, 0, FIELD_TYPE_UINT);
@@ -2997,7 +3035,6 @@ static int encode_stat (unsigned char **p_, const struct portable_stat *ps, cons
     r += encode_uint (p_, OS_TYPE_POSIX);
     r += encode_uint (p_, OS_SUBTYPE_LINUX);
 #endif
-#warning do not forget filetool with /proc/mounts
     {
         unsigned char fields[(N_STAT_FIELDS + 1 + 1) / 2];
         memset (fields, '\0', sizeof (fields));
@@ -3034,7 +3071,6 @@ static int encode_stat (unsigned char **p_, const struct portable_stat *ps, cons
         r += encode_uint (p_, (unsigned long long) s->st_mtime);        /* 12 */
         r += encode_uint (p_, (unsigned long long) s->st_ctime);        /* 13 */
     }
-#ifdef MSWIN
     {
         unsigned char fields[(N_WINDOWS_FIELDS + 1 + 1) / 2];
         memset (fields, '\0', sizeof (fields));
@@ -3042,24 +3078,21 @@ static int encode_stat (unsigned char **p_, const struct portable_stat *ps, cons
             SET_FIELD_TYPE (fields, i, FIELD_TYPE_UINT);
         SET_FIELD_TYPE (fields, N_WINDOWS_FIELDS, FIELD_TYPE_END);
         r += encode_str (p_, (const char *) fields, sizeof (fields));
+#ifdef MSWIN
         r += encode_uint (p_, w->file_attributes);              /* 0 */
         r += encode_uint (p_, w->creation_time);                /* 1 */
         r += encode_uint (p_, w->last_accessed_time);           /* 2 */
         r += encode_uint (p_, w->last_write_time);              /* 3 */
         r += encode_uint (p_, w->file_size);                    /* 4 */
+#else
+        r += encode_uint (p_, 0);                               /* 0 */
+        r += encode_uint (p_, 0);                               /* 1 */
+        r += encode_uint (p_, 0);                               /* 2 */
+        r += encode_uint (p_, 0);                               /* 3 */
+        r += encode_uint (p_, 0);                               /* 4 */
+#endif
         r += encode_uint (p_, w->reparse_tag);                  /* 5 */
     }
-#else
-    {
-        unsigned char fields[(N_NONWINDOWS_FIELDS + 1 + 1) / 2];
-        memset (fields, '\0', sizeof (fields));
-        for (i = 0; i < N_NONWINDOWS_FIELDS; i++)
-            SET_FIELD_TYPE (fields, i, FIELD_TYPE_UINT);
-        SET_FIELD_TYPE (fields, N_NONWINDOWS_FIELDS, FIELD_TYPE_END);
-        r += encode_str (p_, (const char *) fields, sizeof (fields));
-        /* empty struct */
-    }
-#endif
     r += encode_str (p_, link_target ? link_target : "", link_target ? strlen (link_target) : 0);
     return r;
 }
@@ -4024,6 +4057,7 @@ static void remotefs_listdir_ (const char *directory, int n_view, struct remotef
 #else
                 if (posix_readlink (q, link_target, sizeof (link_target)))
                     link_target[0] = '\0';
+                check_junction_xattr (q, &lstats);
 #endif
             }
             for (k = 0; k < n_view; k++) {
@@ -4518,11 +4552,12 @@ static void remotefs_stat_ (const char *pathname, int handle_just_not_there, CSt
         if (S_ISLNK (lst.ustat.st_mode)) {
 #ifdef MSWIN
             int errval = 0;
-            if (mswin_readlink (q, link_target, sizeof (link_target), &errval, &lst.wattr.reparse_tag))
+            if (mswin_readlink (q, link_target, sizeof (link_target), &errval, &st.wattr.reparse_tag))
                 link_target[0] = '\0';
 #else
             if (posix_readlink (q, link_target, sizeof (link_target)))
                 link_target[0] = '\0';
+            check_junction_xattr (q, &st);
 #endif
         }
     }
@@ -4641,6 +4676,96 @@ static void remotefs_symlink_ (const char *target, const char *linkpath, CStr * 
     if (symlink (translate_path_sep (target), translate_path_sep (linkpath)) < 0) {
         alloc_encode_errno_strerror (r, 0);
         return;
+    }
+#endif
+
+    r->len = encode_uint (NULL, REMOTEFS_SUCCESS);
+    r->data = (char *) malloc (r->len);
+    p = (unsigned char *) r->data;
+    encode_uint (&p, REMOTEFS_SUCCESS);
+}
+
+static void remotefs_junction_ (const char *target, const char *linkpath, CStr * r)
+{E_
+    unsigned char *p;
+
+#ifdef MSWIN
+    MSWIN_HANDLE h;
+    char native_target[MAX_PATH_LEN * 2];
+    char rdbuf[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+    REPARSE_DATA_BUFFER *rdb;
+    USHORT subst_off, subst_len, print_off, print_len;
+    DWORD bytes_returned;
+    wchar_t *w_native;
+    int i, native_chars;
+
+    if (!CreateDirectoryA (translate_path_sep (linkpath), NULL)) {
+        mswin_alloc_encode_errno_strerror (r, 0);
+        return;
+    }
+
+    h = CreateFileA (translate_path_sep (linkpath), GENERIC_WRITE, 0, NULL,
+                        OPEN_EXISTING,
+                        FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
+                        NULL);
+    if (h == INVALID_HANDLE_VALUE_64BIT) {
+        mswin_alloc_encode_errno_strerror (r, 0);
+        return;
+    }
+
+    snprintf (native_target, sizeof (native_target), "\\??\\%s", translate_path_sep (target));
+    for (i = 0; native_target[i]; i++)
+        if (native_target[i] == '/')
+            native_target[i] = '\\';
+
+    native_chars = MultiByteToWideChar (CP_UTF8, 0, native_target, -1, NULL, 0);
+    w_native = (wchar_t *) malloc (native_chars * sizeof (wchar_t));
+    MultiByteToWideChar (CP_UTF8, 0, native_target, -1, w_native, native_chars);
+
+    memset (rdbuf, '\0', sizeof (rdbuf));
+    rdb = (REPARSE_DATA_BUFFER *) rdbuf;
+    subst_off = 0;
+    subst_len = (USHORT) ((native_chars - 1) * sizeof (wchar_t));
+    print_off = subst_off + subst_len + sizeof (wchar_t);
+
+    {
+        char *print_name = translate_path_sep (target);
+        int pn_chars = MultiByteToWideChar (CP_UTF8, 0, print_name, -1, NULL, 0);
+        wchar_t *w_print = (wchar_t *) malloc (pn_chars * sizeof (wchar_t));
+        MultiByteToWideChar (CP_UTF8, 0, print_name, -1, w_print, pn_chars);
+        print_len = (USHORT) ((pn_chars - 1) * sizeof (wchar_t));
+        rdb->ReparseTag = IO_REPARSE_TAG_MOUNT_POINT;
+        rdb->MountPointReparseBuffer.SubstituteNameOffset = subst_off;
+        rdb->MountPointReparseBuffer.SubstituteNameLength = subst_len;
+        rdb->MountPointReparseBuffer.PrintNameOffset = print_off;
+        rdb->MountPointReparseBuffer.PrintNameLength = print_len;
+        memcpy ((char *) rdb->MountPointReparseBuffer.PathBuffer + subst_off, w_native, subst_len);
+        memcpy ((char *) rdb->MountPointReparseBuffer.PathBuffer + print_off, w_print, print_len);
+        free (w_print);
+    }
+    free (w_native);
+
+    rdb->ReparseDataLength = (char *)rdb->MountPointReparseBuffer.PathBuffer - (char *)rdb
+                             + print_off + print_len + sizeof (WCHAR)
+                             - REPARSE_DATA_BUFFER_HEADER_SIZE;
+
+    if (!DeviceIoControl (h, FSCTL_SET_REPARSE_POINT, rdb,
+                            rdb->ReparseDataLength + REPARSE_DATA_BUFFER_HEADER_SIZE,
+                            NULL, 0, &bytes_returned, NULL)) {
+        mswin_alloc_encode_errno_strerror (r, 0);
+        CloseHandle (h);
+        RemoveDirectoryA (translate_path_sep (linkpath));
+        return;
+    }
+    CloseHandle (h);
+#else
+    if (symlink (translate_path_sep (target), translate_path_sep (linkpath)) < 0) {
+        alloc_encode_errno_strerror (r, 0);
+        return;
+    }
+    {
+        const char val[] = "1";
+        (void) lsetxattr (translate_path_sep (linkpath), "trusted.windows.junction", val, 1, 0);
     }
 #endif
 
@@ -5157,6 +5282,16 @@ static int local_symlink (struct remotefs *rfs, const char *target, const char *
     CStr s;
     *errmsg = '\0';
     remotefs_symlink_ (target, linkpath, &s);
+
+    MARSHAL_START_LOCAL;
+    MARSHAL_END_LOCAL(NULL);
+}
+
+static int local_junction (struct remotefs *rfs, const char *target, const char *linkpath, char *errmsg)
+{E_
+    CStr s;
+    *errmsg = '\0';
+    remotefs_junction_ (target, linkpath, &s);
 
     MARSHAL_START_LOCAL;
     MARSHAL_END_LOCAL(NULL);
@@ -5927,6 +6062,29 @@ static int remote_symlink (struct remotefs *rfs, const char *target, const char 
     encode_str (&q, linkpath, strlen (linkpath));
 
     if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, NULL, &msg, &s, REMOTEFS_ACTION_SYMLINK, errmsg, NULL)) {
+        free (msg.data);
+        return -1;
+    }
+    free (msg.data);
+
+    MARSHAL_START_REMOTE;
+    MARSHAL_END_REMOTE(NULL);
+}
+
+static int remote_junction (struct remotefs *rfs, const char *target, const char *linkpath, char *errmsg)
+{E_
+    CStr s, msg;
+    unsigned char *q;
+    *errmsg = '\0';
+
+    msg.len = encode_str (NULL, target, strlen (target));
+    msg.len += encode_str (NULL, linkpath, strlen (linkpath));
+    msg.data = (char *) malloc (msg.len);
+    q = (unsigned char *) msg.data;
+    encode_str (&q, target, strlen (target));
+    encode_str (&q, linkpath, strlen (linkpath));
+
+    if (send_recv_mesg (rfs, CACHE_BEHAVIOR_NOTCACHEABLE, NULL, &msg, &s, REMOTEFS_ACTION_JUNCTION, errmsg, NULL)) {
         free (msg.data);
         return -1;
     }
@@ -7392,6 +7550,11 @@ static int dummyerr_symlink (struct remotefs *rfs, const char *target, const cha
     return remotefs_error_return (errmsg);
 }
 
+static int dummyerr_junction (struct remotefs *rfs, const char *target, const char *linkpath, char *errmsg)
+{E_
+    return remotefs_error_return (errmsg);
+}
+
 static int dummyerr_readlink (struct remotefs *rfs, const char *linkpath, char *target, int target_len, char *errmsg)
 {E_
     return remotefs_error_return (errmsg);
@@ -7470,6 +7633,7 @@ struct remotefs remotefs_dummyerr = {
     dummyerr_chdir,
     dummyerr_mkdir,
     dummyerr_symlink,
+    dummyerr_junction,
     dummyerr_readlink,
     dummyerr_realpathize,
     dummyerr_gethomedir,
@@ -7510,6 +7674,7 @@ struct remotefs remotefs_local = {
     local_chdir,
     local_mkdir,
     local_symlink,
+    local_junction,
     local_readlink,
     local_realpathize,
     local_gethomedir,
@@ -7550,6 +7715,7 @@ struct remotefs remotefs_socket = {
     remote_chdir,
     remote_mkdir,
     remote_symlink,
+    remote_junction,
     remote_readlink,
     remote_realpathize,
     remote_gethomedir,
@@ -8347,6 +8513,21 @@ static int remote_action_fn_v5_symlink (struct server_data *sd, CStr *s, const u
     return 0;
 }
 
+static int remote_action_fn_v5_junction (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
+{E_
+    const unsigned char *p, *end;
+    char target[MAX_PATH_LEN];
+    char linkpath[MAX_PATH_LEN];
+    p = in;
+    end = in + inlen;
+    if (decode_str (&p, end, target, sizeof (target)))
+        return -1;
+    if (decode_str (&p, end, linkpath, sizeof (linkpath)))
+        return -1;
+    remotefs_junction_ (target, linkpath, s);
+    return 0;
+}
+
 static int remote_action_fn_v5_readlink (struct server_data *sd, CStr *s, const unsigned char *in, int inlen)
 {E_
     const unsigned char *p, *end;
@@ -8768,6 +8949,7 @@ struct action_item action_list[] = {
     { 1, 1, remote_action_fn_v5_mkdir, },                       /* REMOTEFS_ACTION_MKDIR                   */
     { 1, 1, remote_action_fn_v5_symlink, },                     /* REMOTEFS_ACTION_SYMLINK                 */
     { 1, 1, remote_action_fn_v5_readlink, },                    /* REMOTEFS_ACTION_READLINK                */
+    { 1, 1, remote_action_fn_v5_junction, },                    /* REMOTEFS_ACTION_JUNCTION                */
 };
 
 static unsigned int client_count = 0L;
@@ -9803,6 +9985,7 @@ void remotefs_serverize (void)
         log_fmt (1, "WSAStartup failed with error: %d\n", err);
         exit (1);
     }
+    enable_backup_privilege ();
 #elif defined(ANDROID)
     /* Android: Linux sockets, no fork/signals */
     signal (SIGPIPE, SIG_IGN);

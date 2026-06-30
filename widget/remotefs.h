@@ -453,6 +453,7 @@ struct remotefs {
     int (*remotefs_chdir) (struct remotefs *rfs, const char *dirname, char *cwd, int cwdlen, char *errmsg);
     int (*remotefs_mkdir) (struct remotefs *rfs, const char *pathname, unsigned int mode, char *errmsg);
     int (*remotefs_symlink) (struct remotefs *rfs, const char *target, const char *linkpath, char *errmsg);
+    int (*remotefs_junction) (struct remotefs *rfs, const char *target, const char *linkpath, char *errmsg);
     int (*remotefs_readlink) (struct remotefs *rfs, const char *linkpath, char *target, int target_len, char *errmsg);
     int (*remotefs_realpathize) (struct remotefs *rfs, const char *path, const char *homedir, char *out, int outlen, char *errmsg);
     int (*remotefs_gethomedir) (struct remotefs *rfs, char *out, int outlen, char *errmsg);

@@ -9,6 +9,7 @@
 #include <math.h>
 #include <errno.h>
 #include <sys/sysmacros.h>
+#include <sys/xattr.h>
 
 #include "inspect.h"
 #include <config.h>
@@ -53,12 +54,18 @@ static void strip_trailing_slash (char *path, int os_type, int *last_char_is_dir
     len = strlen (path);
     if (len > 1 && path[len - 1] == '/') {
         r = 1;
-        while (len > 1 && (path[len - 1] == '/'))
+        while (len > 1 && (path[len - 1] == '/')) {
+            if (len == 3 && ((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) && path[1] == ':')
+                break;
             path[--len] = '\0';
+        }
     } else if (os_type == OS_TYPE_WINDOWS && len > 1 && path[len - 1] == '\\') {
         r = 1;
-        while (len > 1 && (path[len - 1] == '\\'))
+        while (len > 1 && (path[len - 1] == '\\')) {
+            if (len == 3 && ((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) && path[1] == ':')
+                break;
             path[--len] = '\0';
+        }
     }
     if (last_char_is_dir)
         *last_char_is_dir = r;
@@ -231,6 +238,13 @@ static const char *reparse_tag_name (unsigned long long tag)
     case REPARSE_TAG_WCI_LINK_1:        return "container link (1)";
     default:                            return NULL;
     }
+}
+
+static void set_junction_xattr (const char *path)
+{
+    const char val[] = "1";
+    if (lsetxattr (path, "trusted.windows.junction", val, 1, 0) < 0)
+        fprintf (stderr, "Warning: could not set xattr on %s: %s\n", path, strerror (errno));
 }
 
 static void warn_skipping (struct portable_stat *pst, const char *path)
@@ -644,8 +658,14 @@ static int copy_dir_local_to_remote (const char *local_dir, const char *host, co
                 goto err;;
         } else if (S_ISLNK (list->d[i]->pstat.ustat.st_mode)) {
             if (list->d[i]->pstat.wattr.reparse_tag
-                && list->d[i]->pstat.wattr.reparse_tag != REPARSE_TAG_SYMLINK) {
+                && list->d[i]->pstat.wattr.reparse_tag != REPARSE_TAG_SYMLINK
+                && list->d[i]->pstat.wattr.reparse_tag != REPARSE_TAG_MOUNT_POINT) {
                 warn_skipping (&list->d[i]->pstat, sub_local);
+            } else if (list->d[i]->pstat.wattr.reparse_tag == REPARSE_TAG_MOUNT_POINT) {
+                if ((*rfs->remotefs_junction) (rfs, list->d[i]->link_target, sub_remote, errmsg)) {
+                    fprintf (stderr, "Error creating remote junction %s: %s\n", sub_remote, errmsg);
+                    goto err;;
+                }
             } else if ((*rfs->remotefs_symlink) (rfs, list->d[i]->link_target, sub_remote, errmsg)) {
                 fprintf (stderr, "Error creating remote symlink %s: %s\n", sub_remote, errmsg);
                 goto err;;
@@ -703,11 +723,14 @@ static int copy_dir_remote_to_local (const char *ip, const char *remote_dir, con
                 goto err;
         } else if (S_ISLNK (list->d[i]->pstat.ustat.st_mode)) {
             if (list->d[i]->pstat.wattr.reparse_tag
-                && list->d[i]->pstat.wattr.reparse_tag != REPARSE_TAG_SYMLINK) {
+                && list->d[i]->pstat.wattr.reparse_tag != REPARSE_TAG_SYMLINK
+                && list->d[i]->pstat.wattr.reparse_tag != REPARSE_TAG_MOUNT_POINT) {
                 warn_skipping (&list->d[i]->pstat, sub_remote);
             } else if ((*the_remotefs_local->remotefs_symlink) (the_remotefs_local, list->d[i]->link_target, sub_local, errmsg)) {
                 fprintf (stderr, "Error creating symlink %s: %s\n", sub_local, errmsg);
                 goto err;
+            } else if (list->d[i]->pstat.wattr.reparse_tag == REPARSE_TAG_MOUNT_POINT) {
+                set_junction_xattr (sub_local);
             }
         } else {
             warn_skipping (&list->d[i]->pstat, sub_remote);
@@ -798,15 +821,24 @@ static int handle_single_source (const char *src, const char *dst)
             }
             if (dst_is_remote) {
                 struct remotefs *rfs = remotefs_lookup (dst_ip, NULL);
-                if ((*rfs->remotefs_symlink) (rfs, link_target, target, errmsg)) {
-                    fprintf (stderr, "Error creating remote symlink %s: %s\n", target, errmsg);
-                    return 1;
+                if (src_st.wattr.reparse_tag == REPARSE_TAG_MOUNT_POINT) {
+                    if ((*rfs->remotefs_junction) (rfs, link_target, target, errmsg)) {
+                        fprintf (stderr, "Error creating remote junction %s: %s\n", target, errmsg);
+                        return 1;
+                    }
+                } else {
+                    if ((*rfs->remotefs_symlink) (rfs, link_target, target, errmsg)) {
+                        fprintf (stderr, "Error creating remote symlink %s: %s\n", target, errmsg);
+                        return 1;
+                    }
                 }
             } else {
                 if ((*the_remotefs_local->remotefs_symlink) (the_remotefs_local, link_target, target, errmsg)) {
                     fprintf (stderr, "Error creating symlink %s: %s\n", target, errmsg);
                     return 1;
                 }
+                if (src_st.wattr.reparse_tag == REPARSE_TAG_MOUNT_POINT)
+                    set_junction_xattr (target);
             }
             return 0;
         }

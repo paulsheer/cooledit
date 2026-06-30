@@ -82,6 +82,7 @@ typedef void *WSAEVENT;
 #define REMOTEFS_ACTION_MKDIR                   20
 #define REMOTEFS_ACTION_SYMLINK                 21
 #define REMOTEFS_ACTION_READLINK                22
+#define REMOTEFS_ACTION_JUNCTION                23
 
 
 #define CONNCHECK_SUCCESS       0

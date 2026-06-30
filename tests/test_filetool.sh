@@ -116,6 +116,57 @@ assert_symlinks_match() {
     [ "$ok" -eq 1 ] && pass "$desc"
 }
 
+# Find symlinks with trusted.windows.junction xattr set (i.e. junctions)
+find_junctions() {
+    local dir="$1"
+    find "$dir" -type l 2>/dev/null | while read -r link; do
+        local val
+        val=$(getfattr -h -n trusted.windows.junction "$link" --only-values 2>/dev/null)
+        [ "$val" = "1" ] && echo "$link"
+    done | sort
+}
+
+# Verify junctions in srcdir are reproduced in dstdir with matching targets and xattr
+assert_junctions_match() {
+    local srcdir="$1" dstdir="$2" desc="$3"
+    local ok=1 src_target dst_target relpath dstlink dst_xattr
+    while IFS= read -r link; do
+        relpath="${link#$srcdir/}"
+        dstlink="$dstdir/$relpath"
+        if [ ! -L "$dstlink" ]; then
+            fail "$desc: $relpath missing or not a symlink at dst"; ok=0; continue
+        fi
+        dst_target=$(readlink "$dstlink")
+        src_target=$(readlink "$link")
+        if [ "$src_target" != "$dst_target" ]; then
+            fail "$desc: $relpath target '$dst_target' != '$src_target'"; ok=0
+        fi
+        dst_xattr=$(getfattr -h -n trusted.windows.junction "$dstlink" --only-values 2>/dev/null)
+        if [ "$dst_xattr" != "1" ]; then
+            fail "$desc: $relpath missing junction xattr at dst (got '$dst_xattr')"; ok=0
+        fi
+    done < <(find_junctions "$srcdir")
+    [ "$ok" -eq 1 ] && pass "$desc"
+}
+
+# Verify a single path is a junction with the expected target
+assert_is_junction() {
+    local path="$1" target="$2" desc="$3"
+    local actual_target xattr_val ok=1
+    if [ ! -L "$path" ]; then
+        fail "$desc: not a symlink"; return 1
+    fi
+    actual_target=$(readlink "$path")
+    if [ "$actual_target" != "$target" ]; then
+        fail "$desc: target '$actual_target' != '$target'"; ok=0
+    fi
+    xattr_val=$(getfattr -h -n trusted.windows.junction "$path" --only-values 2>/dev/null)
+    if [ "$xattr_val" != "1" ]; then
+        fail "$desc: missing junction xattr (got '$xattr_val')"; ok=0
+    fi
+    [ "$ok" -eq 1 ] && pass "$desc"
+}
+
 # Run cooledit --filetool under valgrind. Returns cooledit exit code.
 # Use "yes n |" prefix to answer overwrite prompts with "no".
 run_filetool() {
@@ -373,6 +424,30 @@ createtext "$WORKDIR/remote-symlinks/rfile.txt" "remote symlink target"
 createtext "$WORKDIR/remote-symlinks/subdir/rnested.txt" "remote nested target"
 ln -s "rfile.txt" "$WORKDIR/remote-symlinks/rlink-to-file"
 ln -s "subdir" "$WORKDIR/remote-symlinks/rlink-to-dir"
+
+# Junction test data (local side) — symlinks with trusted.windows.junction xattr
+MKJUNCTION="$SCRIPTDIR/../mkjunction"
+mkdir -p "$WORKDIR/local-junctions/subdir"
+createtext "$WORKDIR/local-junctions/regular.txt" "regular file in junction test dir"
+createtext "$WORKDIR/local-junctions/subdir/nested.txt" "nested file in junction test dir"
+ln -s "regular.txt" "$WORKDIR/local-junctions/link-to-file"
+ln -s "subdir" "$WORKDIR/local-junctions/link-to-dir"
+"$MKJUNCTION" "regular.txt" "$WORKDIR/local-junctions/junction-to-file"
+"$MKJUNCTION" "subdir" "$WORKDIR/local-junctions/junction-to-dir"
+# Standalone junctions for individual copy tests
+"$MKJUNCTION" "some-target" "$WORKDIR/standalone-junction1"
+"$MKJUNCTION" "/absolute/target/path" "$WORKDIR/standalone-junction2"
+
+# Junction test data (remote side)
+mkdir -p "$WORKDIR/remote-junctions/subdir"
+createtext "$WORKDIR/remote-junctions/rfile.txt" "remote file in junction test dir"
+createtext "$WORKDIR/remote-junctions/subdir/rnested.txt" "remote nested file in junction test dir"
+ln -s "rfile.txt" "$WORKDIR/remote-junctions/rlink-to-file"
+ln -s "subdir" "$WORKDIR/remote-junctions/rlink-to-dir"
+"$MKJUNCTION" "rfile.txt" "$WORKDIR/remote-junctions/rjunction-to-file"
+"$MKJUNCTION" "subdir" "$WORKDIR/remote-junctions/rjunction-to-dir"
+# Standalone remote junctions
+"$MKJUNCTION" "remote-target" "$WORKDIR/remote-junctions/remote-standalone-junction"
 
 # Start the server
 start_server
@@ -780,6 +855,136 @@ if [ $ret -eq 0 ]; then
     fi
 else
     fail "single local broken symlink -> remote: copy failed — broken symlinks should be copyable (exit $ret)"
+fi
+
+# ============================================================
+# Junction copy tests (symlinks with trusted.windows.junction xattr)
+# These verify that the junction identity is preserved through
+# copy operations in all directions, both nested in directories
+# (recursive) and as individually copied entries.
+# ============================================================
+
+echo ""
+echo "=== Junction Copy Tests ==="
+
+# --- Junction dir: local -> local ---
+echo ""
+echo "--- Case: Junction dir: local -> local (recursive) ---"
+rm -rf "$WORKDIR/local-dst/junctions-local"
+run_filetool "$WORKDIR/local-junctions" "$WORKDIR/local-dst/junctions-local"
+assert_junctions_match "$WORKDIR/local-junctions" "$WORKDIR/local-dst/junctions-local" \
+    "junction dir local->local: junctions preserved"
+# Also verify regular symlinks inside the dir are still regular symlinks (no xattr)
+for link in link-to-file link-to-dir; do
+    xv=$(getfattr -h -n trusted.windows.junction "$WORKDIR/local-dst/junctions-local/$link" --only-values 2>/dev/null)
+    if [ -z "$xv" ]; then
+        pass "junction dir local->local: $link remains plain symlink (no xattr)"
+    else
+        fail "junction dir local->local: $link got unexpected junction xattr"
+    fi
+done
+
+# --- Single junction: local -> local ---
+echo ""
+echo "--- Case: Single junction: local -> local ---"
+rm -rf "$WORKDIR/local-dst/standalone-junction1" "$WORKDIR/local-dst/standalone-junction2"
+run_filetool "$WORKDIR/standalone-junction1" "$WORKDIR/local-dst/"
+ret=$?
+if [ $ret -eq 0 ]; then
+    assert_is_junction "$WORKDIR/local-dst/standalone-junction1" "some-target" \
+        "single junction local->local: junction1 preserved"
+else
+    fail "single junction local->local: junction1 copy failed (exit $ret)"
+fi
+run_filetool "$WORKDIR/standalone-junction2" "$WORKDIR/local-dst/"
+ret=$?
+if [ $ret -eq 0 ]; then
+    assert_is_junction "$WORKDIR/local-dst/standalone-junction2" "/absolute/target/path" \
+        "single junction local->local: junction2 (absolute target) preserved"
+else
+    fail "single junction local->local: junction2 copy failed (exit $ret)"
+fi
+
+# --- Junction dir: local -> remote ---
+echo ""
+echo "--- Case: Junction dir: local -> remote (recursive) ---"
+rm -rf "$WORKDIR/remote-dst/junctions-remote"
+run_filetool "$WORKDIR/local-junctions" "${REMOTE}${WORKDIR}/remote-dst/junctions-remote"
+assert_junctions_match "$WORKDIR/local-junctions" "$WORKDIR/remote-dst/junctions-remote" \
+    "junction dir local->remote: junctions preserved"
+# Plain symlinks should remain plain
+for link in link-to-file link-to-dir; do
+    xv=$(getfattr -h -n trusted.windows.junction "$WORKDIR/remote-dst/junctions-remote/$link" --only-values 2>/dev/null)
+    if [ -z "$xv" ]; then
+        pass "junction dir local->remote: $link remains plain symlink"
+    else
+        fail "junction dir local->remote: $link got unexpected junction xattr"
+    fi
+done
+
+# --- Single junction: local -> remote ---
+echo ""
+echo "--- Case: Single junction: local -> remote ---"
+rm -rf "$WORKDIR/remote-dst/standalone-junction1" "$WORKDIR/remote-dst/standalone-junction2"
+run_filetool "$WORKDIR/standalone-junction1" "${REMOTE}${WORKDIR}/remote-dst/"
+ret=$?
+if [ $ret -eq 0 ]; then
+    assert_is_junction "$WORKDIR/remote-dst/standalone-junction1" "some-target" \
+        "single junction local->remote: junction1 preserved"
+else
+    fail "single junction local->remote: junction1 copy failed (exit $ret)"
+fi
+run_filetool "$WORKDIR/standalone-junction2" "${REMOTE}${WORKDIR}/remote-dst/"
+ret=$?
+if [ $ret -eq 0 ]; then
+    assert_is_junction "$WORKDIR/remote-dst/standalone-junction2" "/absolute/target/path" \
+        "single junction local->remote: junction2 (absolute target) preserved"
+else
+    fail "single junction local->remote: junction2 copy failed (exit $ret)"
+fi
+
+# --- Junction dir: remote -> local ---
+echo ""
+echo "--- Case: Junction dir: remote -> local (recursive) ---"
+rm -rf "$WORKDIR/local-dst/junctions-from-remote"
+run_filetool "${REMOTE}${WORKDIR}/remote-junctions" "$WORKDIR/local-dst/junctions-from-remote"
+assert_junctions_match "$WORKDIR/remote-junctions" "$WORKDIR/local-dst/junctions-from-remote" \
+    "junction dir remote->local: junctions preserved"
+# Plain symlinks should remain plain
+for link in rlink-to-file rlink-to-dir; do
+    xv=$(getfattr -h -n trusted.windows.junction "$WORKDIR/local-dst/junctions-from-remote/$link" --only-values 2>/dev/null)
+    if [ -z "$xv" ]; then
+        pass "junction dir remote->local: $link remains plain symlink"
+    else
+        fail "junction dir remote->local: $link got unexpected junction xattr"
+    fi
+done
+
+# --- Single junction: remote -> local ---
+echo ""
+echo "--- Case: Single junction: remote -> local ---"
+rm -rf "$WORKDIR/local-dst/remote-standalone-junction"
+run_filetool "${REMOTE}${WORKDIR}/remote-junctions/remote-standalone-junction" "$WORKDIR/local-dst/"
+ret=$?
+if [ $ret -eq 0 ]; then
+    assert_is_junction "$WORKDIR/local-dst/remote-standalone-junction" "remote-target" \
+        "single junction remote->local: junction preserved"
+else
+    fail "single junction remote->local: junction copy failed (exit $ret)"
+fi
+
+# --- Junction roundtrip: local -> remote -> local ---
+echo ""
+echo "--- Case: Junction roundtrip: local -> remote -> local ---"
+rm -rf "$WORKDIR/local-dst/junctions-rt"
+run_filetool "${REMOTE}${WORKDIR}/remote-dst/junctions-remote" "$WORKDIR/local-dst/junctions-rt"
+assert_junctions_match "$WORKDIR/local-junctions" "$WORKDIR/local-dst/junctions-rt" \
+    "junction roundtrip: junctions preserved"
+# Also diff -r to verify regular file contents intact
+if diff -r "$WORKDIR/local-junctions" "$WORKDIR/local-dst/junctions-rt" >/dev/null 2>&1; then
+    pass "junction roundtrip: diff -r matches (files intact)"
+else
+    fail "junction roundtrip: diff -r shows differences"
 fi
 
 # ============================================================

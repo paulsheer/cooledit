@@ -74,10 +74,17 @@ a        FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS    0x400000
 
         const char *a = "RHS?dADNTslCOnEIVoP???a?????????????????????????????????????????";
         const char *common = "RHSd";
-        int c;
+        int c, offset = 0;
         char *q;
         assert (strlen (a) == 64);
-        for (c = 0, q = mode; c < 64; c++)
+        if (ps->wattr.reparse_tag == REPARSE_TAG_SYMLINK) {
+            mode[0] = 'L';
+            offset = 1;
+        } else if (ps->wattr.reparse_tag == REPARSE_TAG_MOUNT_POINT) {
+            mode[0] = 'J';
+            offset = 1;
+        }
+        for (c = 0, q = mode + offset; c < 64; c++)
             if ((ps->wattr.file_attributes & (1ULL << c)))
                 *q++ = a[c];
             else if (strchr (common, a[c]))

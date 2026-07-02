@@ -2,6 +2,10 @@
 #include "inspect.h"
 #include "rxvtlib.h"
 #include <stringtools.h>
+
+extern Atom ATOM_UTF8_STRING;
+extern Atom ATOM_NET_WM_NAME;
+extern Atom ATOM_NET_WM_ICON_NAME;
 #ifdef UTF8_FONT
 #include <app_glob.c>
 #include <font.h>
@@ -637,13 +641,20 @@ void            rxvtlib_set_title (rxvtlib *o, const char *str)
 {E_
 #ifndef SMART_WINDOW_TITLE
     XStoreName (o->Xdisplay, o->TermWin.parent[0], str);
+    XChangeProperty (o->Xdisplay, o->TermWin.parent[0],
+		     ATOM_NET_WM_NAME, ATOM_UTF8_STRING, 8, PropModeReplace,
+		     (const unsigned char *) str, strlen (str));
 #else
     char           *name = NULL;
 
     if (!XFetchName (o->Xdisplay, o->TermWin.parent[0], &name))
 	name = NULL;
-    if (name == NULL || strcmp (name, str))
+    if (name == NULL || strcmp (name, str)) {
 	XStoreName (o->Xdisplay, o->TermWin.parent[0], str);
+	XChangeProperty (o->Xdisplay, o->TermWin.parent[0],
+			 ATOM_NET_WM_NAME, ATOM_UTF8_STRING, 8, PropModeReplace,
+			 (const unsigned char *) str, strlen (str));
+    }
     if (name)
 	XFree (name);
 #endif
@@ -654,13 +665,20 @@ void            rxvtlib_set_iconName (rxvtlib *o, const char *str)
 {E_
 #ifndef SMART_WINDOW_TITLE
     XSetIconName (o->Xdisplay, o->TermWin.parent[0], str);
+    XChangeProperty (o->Xdisplay, o->TermWin.parent[0],
+		     ATOM_NET_WM_ICON_NAME, ATOM_UTF8_STRING, 8, PropModeReplace,
+		     (const unsigned char *) str, strlen (str));
 #else
     char           *name;
 
     if (!XGetIconName (o->Xdisplay, o->TermWin.parent[0], &name))
 	name = NULL;
-    if (name == NULL || strcmp (name, str))
+    if (name == NULL || strcmp (name, str)) {
 	XSetIconName (o->Xdisplay, o->TermWin.parent[0], str);
+	XChangeProperty (o->Xdisplay, o->TermWin.parent[0],
+			 ATOM_NET_WM_ICON_NAME, ATOM_UTF8_STRING, 8, PropModeReplace,
+			 (const unsigned char *) str, strlen (str));
+    }
     if (name)
 	XFree (name);
 #endif

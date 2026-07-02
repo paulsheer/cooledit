@@ -12,6 +12,8 @@
 
 extern Atom ATOM_ICCCM_P2P_CLIPBOARD;
 extern Atom ATOM_UTF8_STRING;
+extern Atom ATOM_NET_WM_NAME;
+extern Atom ATOM_NET_WM_ICON_NAME;
 
 /* Various rendering routines called internally */
 void render_bevel (Window win, int x1, int y1, int x2, int y2, int thick, int sunken);

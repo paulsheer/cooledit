@@ -123,6 +123,7 @@ Atom ATOM_ICCCM_P2P_CLIPBOARD;
 Atom ATOM_UTF8_STRING;
 Atom ATOM_WM_PROTOCOLS, ATOM_WM_DELETE_WINDOW;
 Atom ATOM_WM_NAME, ATOM_WM_NORMAL_HINTS, ATOM_WM_TAKE_FOCUS;
+Atom ATOM_NET_WM_NAME, ATOM_NET_WM_ICON_NAME;
 
 /* Resources */
 
@@ -1207,6 +1208,8 @@ void wm_interaction_init (void)
 {E_
     ATOM_ICCCM_P2P_CLIPBOARD = XInternAtom (CDisplay, "CLIPBOARD", False);
     ATOM_UTF8_STRING = XInternAtom (CDisplay, "UTF8_STRING", False);
+    ATOM_NET_WM_NAME = XInternAtom (CDisplay, "_NET_WM_NAME", False);
+    ATOM_NET_WM_ICON_NAME = XInternAtom (CDisplay, "_NET_WM_ICON_NAME", False);
     ATOM_WM_PROTOCOLS = XInternAtom (CDisplay, "WM_PROTOCOLS", False);
     ATOM_WM_DELETE_WINDOW = XInternAtom (CDisplay, "WM_DELETE_WINDOW", False);
     ATOM_WM_NAME = XInternAtom (CDisplay, "WM_NAME", False);

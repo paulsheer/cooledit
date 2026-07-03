@@ -228,9 +228,9 @@ AESKEYFILE file, it must have sufficient randomness to provide security.\n\
 This means the key is a long string of random characters and not a short\n\
 easy-to-remember password. When remotefs reads AESKEYFFILE it will test\n\
 if sufficient bits of randomness are present, and give an error\n\
-otherwise. If remotefs was not started with --force-crypto then you may\n\
+otherwise. If remotefs was started with --no-force-crypto then you may\n\
 select 'Disable crypto' to connect without security: this means anyone\n\
-on the network can read any file you load or save.\
+can connect and anyone can read any file you load or save.\
 \
 ";
 

@@ -50,12 +50,12 @@ def main():
     # Targets found in ALL Makefile.in files:
     common_targets = [
         r'\$\(srcdir\)/Makefile\.in:',   # runs $(AUTOMAKE)
+        r'\$\(ACLOCAL_M4\):',             # runs $(ACLOCAL)
     ]
 
     # Targets found ONLY in the top-level Makefile.in:
     toplevel_targets = common_targets + [
         r'\$\(top_srcdir\)/configure:',   # runs $(AUTOCONF)
-        r'\$\(ACLOCAL_M4\):',             # runs $(ACLOCAL)
         r'\$\(srcdir\)/config\.h\.in:',   # runs $(AUTOHEADER)
     ]
 

@@ -131,6 +131,7 @@ cooledit/
 ├── man [documentation]
 ├── rxvt [built in shell terminal]
 ├── syntax [syntax highlighting rules]
+├── onigmo [unicode regular expression library]
 └── editor [executables]
 ```
 

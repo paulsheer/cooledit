@@ -19,7 +19,7 @@
 #include "editcmddef.h"
 #include "remotefs.h"
 
-extern int cooledit_get_utf8_or_ascii(void);
+extern int cooledit_regex_get_utf8_or_ascii(void);
 
 #ifndef MIDNIGHT
 #include <X11/Xatom.h>
@@ -1740,7 +1740,7 @@ int string_regexp_search (char *pattern, char *string, int len, int match_type, 
     if (!pmatch)
 	pmatch = s;
 
-    if (!old_pattern || strcmp (old_pattern, pattern) || old_type != match_type || old_icase != icase || old_utf8 != cooledit_get_utf8_or_ascii()) {
+    if (!old_pattern || strcmp (old_pattern, pattern) || old_type != match_type || old_icase != icase || old_utf8 != cooledit_regex_get_utf8_or_ascii()) {
 	if (old_pattern) {
 	    regfree (&r);
 	    free (old_pattern);
@@ -1754,7 +1754,7 @@ int string_regexp_search (char *pattern, char *string, int len, int match_type, 
 	old_pattern = (char *) strdup (pattern);
 	old_type = match_type;
 	old_icase = icase;
-	old_utf8 = cooledit_get_utf8_or_ascii();
+	old_utf8 = cooledit_regex_get_utf8_or_ascii();
     }
     if (regexec (&r, string, d ? NUM_REPL_ARGS : 1, pmatch, ((match_bol || match_type != match_normal) ? 0 : REG_NOTBOL)) != 0) {
 	*found_len = 0;

@@ -22,7 +22,8 @@ libCw_a_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
 	sha256.c sha256.h remotefspassword.c remotefspassword.h \
 	symauth.c symauth.h inspect.c cterminal.c cterminal.h \
 	childhandler.c childhandler.h xwinfwd.c xwinfwd.h soundfwd.c soundfwd.h \
-	filetool.c filetool.h fnmatch.c fnmatch.h classify.c classify.h
+	filetool.c filetool.h fnmatch.c fnmatch.h classify.c classify.h \
+	detectencoding.c
 
 DEFS = @X_CFLAGS@ -DLOCALEDIR=\"$(localedir)\" -DLIBDIR=\"${exec_prefix}/share/cooledit\" @DEFS@ 
 

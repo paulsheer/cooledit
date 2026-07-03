@@ -133,7 +133,8 @@ am_libCw_a_OBJECTS = initapp.$(OBJEXT) coolwidget.$(OBJEXT) \
 	aes.$(OBJEXT) sha256.$(OBJEXT) remotefspassword.$(OBJEXT) \
 	symauth.$(OBJEXT) inspect.$(OBJEXT) cterminal.$(OBJEXT) \
 	childhandler.$(OBJEXT) xwinfwd.$(OBJEXT) soundfwd.$(OBJEXT) \
-	filetool.$(OBJEXT) fnmatch.$(OBJEXT) classify.$(OBJEXT)
+	filetool.$(OBJEXT) fnmatch.$(OBJEXT) classify.$(OBJEXT) \
+	detectencoding.$(OBJEXT)
 libCw_a_OBJECTS = $(am_libCw_a_OBJECTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -409,7 +410,8 @@ libCw_a_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
 	sha256.c sha256.h remotefspassword.c remotefspassword.h \
 	symauth.c symauth.h inspect.c cterminal.c cterminal.h \
 	childhandler.c childhandler.h xwinfwd.c xwinfwd.h soundfwd.c soundfwd.h \
-	filetool.c filetool.h fnmatch.c fnmatch.h classify.c classify.h
+	filetool.c filetool.h fnmatch.c fnmatch.h classify.c classify.h \
+		detectencoding.c
 
 all: all-am
 

@@ -115,6 +115,16 @@ extern int option_color_26;
 
 static int dummy = 0;
 
+extern char *init_detected_locale_encoding;
+
+static char *get_locale_label_text (void)
+{
+    static char *locale_label_text = NULL;
+    if (!locale_label_text)
+        locale_label_text = sprintf_alloc (" Use locale encoding (%s) ", init_detected_locale_encoding);
+    return locale_label_text;
+}
+
 static struct {
     char *name;
     int *value;
@@ -124,10 +134,12 @@ static struct {
 #define TYPE_HIDDEN_VALUE	3
 #define TYPE_HIDDEN_HEX_VALUE	4
 #define TYPE_BLANK		5
+#define TYPE_ONOFFCALLBACK	6
     int type;
+    char *(*prompt_fn) (void);
 } integer_options [] = {
 /* The following are check box labels */
-	{"option_locale_encoding", &option_locale_encoding, gettext_noop(" Use locale encoding "), TYPE_ON_OFF},
+	{"option_locale_encoding", &option_locale_encoding, NULL, TYPE_ONOFFCALLBACK, get_locale_label_text },
 	{"option_word_wrap_line_length", &option_word_wrap_line_length, gettext_noop(" Word wrap line length: "), TYPE_VALUE},
 	{"option_tab_spacing", &option_tab_spacing, gettext_noop(" Tab spacing: "), TYPE_VALUE},
 	{"option_fill_tabs_with_spaces", &option_fill_tabs_with_spaces, gettext_noop(" Fill tabs with spaces "), TYPE_ON_OFF},
@@ -235,7 +247,7 @@ static struct {
         {"options_startup_backspace_ctrl_h", &rxvt_startup_options.backspace_ctrl_h, "rxvt/xterm, Force backspace to ^H", TYPE_ON_OFF},
         {"options_startup_backspace_127", &rxvt_startup_options.backspace_127, "rxvt/xterm, Force backspace to ^?", TYPE_ON_OFF},
         {"options_startup_x11_forwarding", &rxvt_startup_options.x11_forwarding, "rxvt/xterm, Enable X11 forwarding", TYPE_ON_OFF},
-        {"options_startup_sound_forwarding", &rxvt_startup_options.sound_forwarding, "rxvt/xterm, Enable pulseaudio sound forwarding", TYPE_ON_OFF},
+        {"options_startup_sound_forwarding", &rxvt_startup_options.sound_forwarding, "rxvt/xterm, Enable pulseaudio\nsound forwarding", TYPE_ON_OFF},
 
 	{0, 0}
 };
@@ -481,6 +493,9 @@ static void assign_options (int which)
         if (integer_options[i].type == TYPE_BLANK) {
             /* pass */
 	} else
+        if (integer_options[i].type == TYPE_ONOFFCALLBACK && which == WHICH_SWITCHES) {
+	    *integer_options[i].value = (CIdent (short_name (integer_options[i].name, "")))->keypressed;
+	} else
 	if (integer_options[i].prompt) {
 	    if (which == WHICH_SWITCHES) {
 		if (integer_options[i].type == TYPE_ON_OFF)
@@ -625,7 +640,7 @@ void draw_switches_dialog (Window parent, int x, int y)
 
     n = i = 0;
     while (integer_options[i].value) {
-	if (integer_options[i].prompt && integer_options[i].type == TYPE_ON_OFF)
+	if ((integer_options[i].prompt && integer_options[i].type == TYPE_ON_OFF) || integer_options[i].type == TYPE_ONOFFCALLBACK)
 	    n++;
 	i++;
     }
@@ -634,13 +649,18 @@ void draw_switches_dialog (Window parent, int x, int y)
     xh = x;
     yh = y;
     while (integer_options[i].value) {
-	if (integer_options[i].prompt && integer_options[i].type == TYPE_ON_OFF) {
+	if ((integer_options[i].prompt && integer_options[i].type == TYPE_ON_OFF) || integer_options[i].type == TYPE_ONOFFCALLBACK) {
+            const char *prompt;
+            if (integer_options[i].type == TYPE_ONOFFCALLBACK)
+                prompt = (*integer_options[i].prompt_fn) ();
+            else
+                prompt = integer_options[i].prompt;
 	    if (n <= 0) {
 		get_hint_limits (&xh, 0);	/* half on the left, half on the right */
 		n = 9999;
 		yh = y;
 	    }
-	    CDrawSwitch (short_name (integer_options[i].name, ""), win, xh, yh, *integer_options[i].value, _ (integer_options[i].prompt), 0);
+	    CDrawSwitch (short_name (integer_options[i].name, ""), win, xh, yh, *integer_options[i].value, prompt, 0);
             dy = yh;
 	    CGetHintPos (0, &yh);
             dy = yh - dy;

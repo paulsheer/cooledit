@@ -30,7 +30,7 @@
 
 #include "regint.h"
 
-extern int cooledit_get_utf8_or_ascii(void);
+extern int cooledit_regex_get_utf8_or_ascii(void);
 
 OnigEncoding OnigEncDefaultCharEncoding = ONIG_ENCODING_INIT_DEFAULT;
 
@@ -43,7 +43,7 @@ onigenc_init(void)
 extern OnigEncoding
 onigenc_get_default_encoding(void)
 {
-  return cooledit_get_utf8_or_ascii() ? ONIG_ENCODING_UTF8 : ONIG_ENCODING_ASCII;
+  return cooledit_regex_get_utf8_or_ascii() ? ONIG_ENCODING_UTF8 : ONIG_ENCODING_ASCII;
 }
 
 extern int

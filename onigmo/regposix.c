@@ -223,7 +223,7 @@ regfree(regex_t* reg)
 }
 
 
-#if 0 /* cooledit: encoding now comes from cooledit_get_utf8_or_ascii() */
+#if 0 /* cooledit: encoding now comes from cooledit_regex_get_utf8_or_ascii() */
 extern void
 reg_set_encoding(int mb_code)
 {

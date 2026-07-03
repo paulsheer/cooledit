@@ -118,6 +118,7 @@ char *init_look = "gtk";
 #else
 char *init_look = "next";
 #endif
+char *init_detected_locale_encoding = "UTF-8";
 
 Atom ATOM_ICCCM_P2P_CLIPBOARD;
 Atom ATOM_UTF8_STRING;
@@ -218,9 +219,15 @@ enum font_encoding get_editor_encoding (void)
     return editor_encoding;
 }
 
-int cooledit_get_utf8_or_ascii(void)
-{
-    return get_editor_encoding() == FONT_ENCODING_UTF8;
+int cooledit_regex_get_utf8_or_ascii (void)
+{E_
+    if (get_editor_encoding () == FONT_ENCODING_UTF8)
+        return 1;
+    if (get_editor_encoding () == FONT_ENCODING_8BIT)
+        return 0;
+    if (!strcmp (init_detected_locale_encoding, "UTF-8"))
+        return 1;
+    return 0;
 }
 
 #ifndef NO_TTF
@@ -1533,11 +1540,14 @@ int ignore_handler (Display * c, XErrorEvent * e)
 
 void init_cursors (void);
 void get_dummy_gc (void);
+const char *detect_locale_encoding (void);
 
 /*-------------------------------------------------------------*/
 void CInitialise (CInitData * config_start)
 {E_
     get_endian ();
+
+    init_detected_locale_encoding = detect_locale_encoding ();
 
     onig_set_cooledit_mode ();
 

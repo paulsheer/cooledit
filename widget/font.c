@@ -30,7 +30,7 @@ const char *font_error_string = "Use <x-font-name>/3 or <x-font-name>/1 or <font
 #include FT_FREETYPE_H
 
 static int last_font_load_id = 1;
-static void utf8_to_wchar_t (const unsigned char *s, int l, C_wchar_t ** r_ret, int *l_ret, enum font_encoding e);
+static void encoding_to_wchar_t (const unsigned char *s, int l, C_wchar_t ** r_ret, int *l_ret, enum font_encoding e);
 static const char *font_lazy_find_pref1 (const char *name, enum font_encoding **e, enum force_fixed_width_enum *force_fixed_width);
 static const char *font_lazy_find_pref2 (const char *name, enum font_encoding **e, enum force_fixed_width_enum *force_fixed_width);
 
@@ -258,7 +258,7 @@ small buttons and menus. We also want a condensed text editing style. */
             int a_ascent = 0, y_descent = 0;
             C_wchar_t *wc = 0;
             int wc_l = 0, v = 0;
-            utf8_to_wchar_t ((const unsigned char *) p, strlen(p), &wc, &wc_l, FONT_ENCODING_UTF8);
+            encoding_to_wchar_t ((const unsigned char *) p, strlen(p), &wc, &wc_l, FONT_ENCODING_UTF8);
             for (v = 0; v < wc_l; v++) {
                 if (FT_Get_Char_Index(face, wc[v]) && !FT_Load_Char(face, wc[v], FT_LOAD_RENDER) && face->glyph && face->glyph->bitmap.width) {
                     FT_Glyph_Metrics *metrics;
@@ -312,7 +312,7 @@ void utf_tmp_buf_free(void)
     }
 }
 
-static void utf8_to_wchar_t (const unsigned char *s, int l, C_wchar_t ** r_ret, int *l_ret, enum font_encoding e)
+static void encoding_to_wchar_t (const unsigned char *s, int l, C_wchar_t ** r_ret, int *l_ret, enum font_encoding e)
 {E_
     C_wchar_t *c;
     if (wchar_tmp_buf_len < l + 1) {
@@ -322,13 +322,36 @@ static void utf8_to_wchar_t (const unsigned char *s, int l, C_wchar_t ** r_ret, 
         wchar_tmp_buf = malloc (wchar_tmp_buf_len * sizeof (C_wchar_t));
     }
     *r_ret = c = wchar_tmp_buf;
-/* FIXME: we don't deal with locale encoding */
     if (e == FONT_ENCODING_8BIT) {
         while (l) {
             *c = *s;
             c++;
             s++;
             l--;
+        }
+        *l_ret = (c - *r_ret);
+        return;
+    }
+    if (e == FONT_ENCODING_LOCALE) {
+        mbstate_t ps;
+        memset (&ps, 0, sizeof (ps));
+        while (l > 0) {
+            wchar_t wc;
+            size_t len = mbrtowc (&wc, (const char *) s, l, &ps);
+            if (len == (size_t) -1 || len == (size_t) -2) {
+                *c = *s;
+                c++;
+                s++;
+                l--;
+                memset (&ps, 0, sizeof (ps));
+                continue;
+            }
+            if (len == 0)
+                break;
+            *c = (C_wchar_t) wc;
+            c++;
+            s += len;
+            l -= len;
         }
         *l_ret = (c - *r_ret);
         return;
@@ -394,8 +417,9 @@ static void utf8_to_wchar_t (const unsigned char *s, int l, C_wchar_t ** r_ret, 
     *l_ret = (c - *r_ret);
 }
 
-int count_one_utf8_char (const char *s_)
+int count_one_encoding_char (const char *s_)
 {E_
+
     int n = 0, r = 0;
     const unsigned char *s = (const unsigned char *) s_;
     for (;;) {
@@ -404,6 +428,21 @@ int count_one_utf8_char (const char *s_)
         if (*current_font->encoding_interpretation == FONT_ENCODING_8BIT) {
 	    n = 1;
 	    break;
+        }
+        if (*current_font->encoding_interpretation == FONT_ENCODING_LOCALE) {
+            wchar_t wc;
+            mbstate_t ps;
+            size_t len;
+            memset (&ps, 0, sizeof (ps));
+            len = mbrtowc (&wc, (const char *) s, MB_CUR_MAX, &ps);
+            if (len == (size_t) -1 || len == (size_t) -2) {
+                n = 1;
+                break;
+            }
+            if (len == 0)
+                return 0;
+            n = (int) len;
+            break;
         }
         if ((*s & 0xC0) == 0x80)
             return -1;
@@ -443,10 +482,10 @@ int count_one_utf8_char (const char *s_)
     return r;
 }
 
-int count_one_utf8_char_sloppy (const char *s)
+int count_one_encoding_char_sloppy (const char *s)
 {E_
     int r;
-    r = count_one_utf8_char (s);
+    r = count_one_encoding_char (s);
     return r > 0 ? r : 1;
 }
 
@@ -485,7 +524,7 @@ unsigned char *font_wchar_to_charenc (C_wchar_t c, int *l)
     return 0;
 }
 
-int utf8_to_wchar_t_one_char_safe (C_wchar_t * c, const char *t, int n)
+int encoding_to_wchar_t_one_char_safe (C_wchar_t * c, const char *t, int n)
 {E_
     int r;
     if (!*t) {
@@ -495,6 +534,18 @@ int utf8_to_wchar_t_one_char_safe (C_wchar_t * c, const char *t, int n)
     if (*current_font->encoding_interpretation == FONT_ENCODING_8BIT) {
         *c = *((const unsigned char *) t);
         return 1;
+    }
+    if (*current_font->encoding_interpretation == FONT_ENCODING_LOCALE) {
+        wchar_t wc;
+        mbstate_t ps;
+        memset (&ps, 0, sizeof (ps));
+        r = (int) mbrtowc (&wc, t, n, &ps);
+        if (r <= 0) {
+            *c = (C_wchar_t) ((unsigned char) *t);
+            return 1;
+        }
+        *c = (C_wchar_t) wc;
+        return r;
     }
     r = mbrtowc_utf8_to_wchar (c, t, n, 0);
     if (r < 0) {
@@ -509,7 +560,7 @@ int CImageTextWidth (const char *s, int l)
 {E_
     C_wchar_t *t = 0;
     int n = 0;
-    utf8_to_wchar_t((const unsigned char *) s, l, &t, &n, *current_font->encoding_interpretation);
+    encoding_to_wchar_t((const unsigned char *) s, l, &t, &n, *current_font->encoding_interpretation);
     return CImageTextWidthWC (0, t, n);
 }
 
@@ -606,7 +657,7 @@ int CImageText (Window w, int x, int y, const char *s, int l)
 {E_
     C_wchar_t *t = 0;
     int n = 0;
-    utf8_to_wchar_t((const unsigned char *) s, l, &t, &n, *current_font->encoding_interpretation);
+    encoding_to_wchar_t((const unsigned char *) s, l, &t, &n, *current_font->encoding_interpretation);
     return CImageTextWC (w, x, y, 0, t, n);
 }
 

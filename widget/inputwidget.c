@@ -29,8 +29,8 @@
 
 int eh_textinput (CWidget * w, XEvent * xevent, CEvent * cwevent);
 void input_mouse_mark (CWidget * w, XEvent * event, CEvent * ce);
-int count_one_utf8_char (const char *s);
-int count_one_utf8_char_sloppy (const char *s);
+int count_one_encoding_char (const char *s);
+int count_one_encoding_char_sloppy (const char *s);
 
 #define INPUT_INSERT_FLUSH              (-1)
 static void input_insert (CWidget * w, int c);
@@ -433,7 +433,7 @@ void render_passwordinput (CWidget * wdt)
     return;
 }
 
-int utf8_to_wchar_t_one_char_safe (C_wchar_t * c, const char *t, int n);
+int encoding_to_wchar_t_one_char_safe (C_wchar_t * c, const char *t, int n);
 int propfont_convert_to_long_printable (C_wchar_t c, C_wchar_t * t);
 int propfont_width_of_long_printable (C_wchar_t c);
 
@@ -449,7 +449,7 @@ static int width_input_text (int max_width, char *p, int n)
             l = 1;
 	    w = FONT_PER_CHAR ('^') + FONT_PER_CHAR (c + '@');
 	} else {
-	    l = utf8_to_wchar_t_one_char_safe (&c, p, q - p);
+	    l = encoding_to_wchar_t_one_char_safe (&c, p, q - p);
 	    w = propfont_width_of_long_printable (c);
 	}
 	x += w;
@@ -481,7 +481,7 @@ static int draw_input_text (CWidget * wdt, int x, int y, int max_width, int m1, 
 	    lp[1] = c + '@';
             glyphs = 2;
 	} else {
-	    l = utf8_to_wchar_t_one_char_safe (&c, p, text + n - p);
+	    l = encoding_to_wchar_t_one_char_safe (&c, p, text + n - p);
 	    w = propfont_convert_to_long_printable (c, lp);
             while(lp[glyphs])
                 glyphs++;
@@ -555,12 +555,12 @@ void render_textinput (CWidget * wdt)
         if (width_input_text(w, text + wdt->firstcolumn, n - wdt->firstcolumn) + 6 + TEXTINPUT_RELIEF * 2 + h <= w) {
             f = 0;
 	} else if (wc > max (w - FONT_MEAN_WIDTH * 8 - h, w * 2 / 3 - h)) {
-	    wdt->firstcolumn += count_one_utf8_char_sloppy(text + wdt->firstcolumn);
+	    wdt->firstcolumn += count_one_encoding_char_sloppy(text + wdt->firstcolumn);
 	    f = 1;
 	}
 	if (wc < min (FONT_MEAN_WIDTH * 8, w / 3)) {
 	    wdt->firstcolumn--;
-            while(wdt->firstcolumn > 0 && count_one_utf8_char(text + wdt->firstcolumn) < 0)
+            while(wdt->firstcolumn > 0 && count_one_encoding_char(text + wdt->firstcolumn) < 0)
                 wdt->firstcolumn--;
 	    f = 1;
 	    /*Unless of course we are at the beginning of the string */
@@ -631,7 +631,7 @@ static long cp (CWidget * wdt, int x, int y)
             l = 1;
 	    w = FONT_PER_CHAR ('^') + FONT_PER_CHAR (c + '@');
 	} else {
-	    l = utf8_to_wchar_t_one_char_safe (&c, p, text + n - p);
+	    l = encoding_to_wchar_t_one_char_safe (&c, p, text + n - p);
 	    w = propfont_width_of_long_printable (c);
 	}
 	a += w;
@@ -696,7 +696,7 @@ static char *get_block (CWidget * w, long start_mark, long end_mark, int *type, 
 
 static void move (CWidget * w, long click, int row)
 {E_
-    while(click > 0 && count_one_utf8_char(w->text.data + click) < 0)
+    while(click > 0 && count_one_encoding_char(w->text.data + click) < 0)
         click--;
     w->cursor = click;
     if (w->mark2 == -1)
@@ -1025,7 +1025,7 @@ int eh_textinput (CWidget * w, XEvent * xevent, CEvent * cwevent)
                     n = w->cursor;
                     while (w->cursor > 0) {
                         w->cursor--;
-                        if (count_one_utf8_char(&w->text.data[w->cursor]) >= 0)
+                        if (count_one_encoding_char(&w->text.data[w->cursor]) >= 0)
                             break;
                     }
 		    Cmemmove (w->text.data + w->cursor, w->text.data + n, w->text.len - n + 1);
@@ -1036,7 +1036,7 @@ int eh_textinput (CWidget * w, XEvent * xevent, CEvent * cwevent)
 	    case CK_Left:
                 while (w->cursor > 0) {
                     w->cursor--;
-                    if (count_one_utf8_char(&w->text.data[w->cursor]) >= 0)
+                    if (count_one_encoding_char(&w->text.data[w->cursor]) >= 0)
                         break;
                 }
 		handled = 1;
@@ -1059,7 +1059,7 @@ int eh_textinput (CWidget * w, XEvent * xevent, CEvent * cwevent)
 		}
 		break;
 	    case CK_Right:
-	        w->cursor += count_one_utf8_char_sloppy(&w->text.data[w->cursor]);
+	        w->cursor += count_one_encoding_char_sloppy(&w->text.data[w->cursor]);
                 if (w->cursor > w->text.len)
                     w->cursor = w->text.len;
 		handled = 1;
@@ -1071,7 +1071,7 @@ int eh_textinput (CWidget * w, XEvent * xevent, CEvent * cwevent)
 		    w->cursor = min (w->mark1, w->mark2);
 		} else if (w->cursor >= 0 && w->cursor < w->text.len) {
                     n = w->cursor;
-	            n += count_one_utf8_char_sloppy(&w->text.data[w->cursor]);
+	            n += count_one_encoding_char_sloppy(&w->text.data[w->cursor]);
 		    Cmemmove (w->text.data + w->cursor, w->text.data + n, w->text.len - n + 1);
                     w->text.len -= (n - w->cursor);
 		}

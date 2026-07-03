@@ -38,7 +38,7 @@ extern unsigned long edit_cursor_color;
 extern int EditExposeRedraw;
 extern int EditClear;
 
-int utf8_to_wchar_t_one_char_safe (C_wchar_t * c, const char *t, int n);
+int encoding_to_wchar_t_one_char_safe (C_wchar_t * c, const char *t, int n);
 
 
 int set_style_color (cache_type s, unsigned long *fg, unsigned long *bg)
@@ -1165,7 +1165,7 @@ static int calc_text_pos_str (unsigned char *text, long b, long *q, int l)
 	    b++;
 	    break;
 	default:
-            consumed = utf8_to_wchar_t_one_char_safe (&c, (const char *) text + b, strnlen((const char *) text + b, 6));
+            consumed = encoding_to_wchar_t_one_char_safe (&c, (const char *) text + b, strnlen((const char *) text + b, 6));
 	    if (!FONT_PER_CHAR (c))
 		c = ' ';
 	    xn = x + FONT_PER_CHAR(c);
@@ -1296,7 +1296,7 @@ void convert_text2 (CWidget * w, long b, long q, cache_type * line, cache_type *
 	    q++;
 	    break;
 	default:
-            consumed = utf8_to_wchar_t_one_char_safe (&c, (const char *) str.data + q, str.len - q);
+            consumed = encoding_to_wchar_t_one_char_safe (&c, (const char *) str.data + q, str.len - q);
 	    if (!FONT_PER_CHAR (c)) {
 		c = ' ';
 		p->c.style |= MOD_ABNORMAL;

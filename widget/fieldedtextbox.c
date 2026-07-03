@@ -604,7 +604,7 @@ CWidget *CRedrawFieldedTextbox (const char *identifier, int preserve)
 }
 
 
-int utf8_to_wchar_t_one_char_safe (C_wchar_t * c, const char *t, int n);
+int encoding_to_wchar_t_one_char_safe (C_wchar_t * c, const char *t, int n);
 
 
 static int calc_text_pos_fielded_textbox (CWidget *w, long b, long *q, int l)
@@ -641,7 +641,7 @@ static int calc_text_pos_fielded_textbox (CWidget *w, long b, long *q, int l)
 	    break;
 	case '\b':
 	case '\r':
-            consumed = utf8_to_wchar_t_one_char_safe (&c, (const char *) text + k + 1, strnlen((const char *) text + k + 1, 6));
+            consumed = encoding_to_wchar_t_one_char_safe (&c, (const char *) text + k + 1, strnlen((const char *) text + k + 1, 6));
 	    xn = x + FONT_PER_CHAR(c);
 	    if (xn > l) {
 		*q = b;
@@ -660,7 +660,7 @@ static int calc_text_pos_fielded_textbox (CWidget *w, long b, long *q, int l)
 	    b += 2;
 	    break;
 	default:
-            consumed = utf8_to_wchar_t_one_char_safe (&c, (const char *) text + k, strnlen((const char *) text + k, 6));
+            consumed = encoding_to_wchar_t_one_char_safe (&c, (const char *) text + k, strnlen((const char *) text + k, 6));
 	    xn = x + FONT_PER_CHAR(c);
 	    if (xn > l) {
 		*q = b;
@@ -751,7 +751,7 @@ static void convert_text_fielded_textbox (CWidget * w, long bol, long q, cache_t
 	    q += 2;
 	    break;
 	default:
-            consumed = utf8_to_wchar_t_one_char_safe (&c, (const char *) text + k, strnlen((const char *) text + k, 6));
+            consumed = encoding_to_wchar_t_one_char_safe (&c, (const char *) text + k, strnlen((const char *) text + k, 6));
             k += consumed;
             q += consumed;
 	    x += FONT_PER_CHAR(c);

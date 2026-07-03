@@ -522,6 +522,9 @@ void render_textinput (CWidget * wdt)
     Window win;
     char *text;
 
+    if (wdt->cursor > wdt->text.len)
+	wdt->cursor = wdt->text.len;
+
     input_insert (wdt, INPUT_INSERT_FLUSH);
 
     if (wdt->options & TEXTINPUT_PASSWORD) {
@@ -845,6 +848,8 @@ static void input_insert (CWidget * w, int c)
     static unsigned char buf[4096];     /* implement a simple freeze-thaw caching system to speed inserts */
     static int buf_len = 0;
     CStr s;
+    if (w->cursor > w->text.len)
+	w->cursor = w->text.len;
     if (c == INPUT_INSERT_FLUSH && !buf_len)
 	return;
     if (!w->keypressed) {
@@ -853,8 +858,6 @@ static void input_insert (CWidget * w, int c)
 	w->text.len = 0;
 	w->text.data[0] = '\0';
     }
-    if (w->cursor > w->text.len)
-	w->cursor = w->text.len;
     if (c != INPUT_INSERT_FLUSH)
         buf[buf_len++] = c;
     if (c == INPUT_INSERT_FLUSH || buf_len == sizeof(buf)) {
@@ -1016,7 +1019,7 @@ int eh_textinput (CWidget * w, XEvent * xevent, CEvent * cwevent)
 	    case CK_BackSpace:
 		if (w->mark1 != w->mark2) {
 		    Cmemmove (w->text.data + min (w->mark1, w->mark2), w->text.data + max (w->mark1, w->mark2), w->text.len - max (w->mark1, w->mark2) + 1);
-                    w->text.len -= max (w->mark1, w->mark2);
+                    w->text.len -= max (w->mark1, w->mark2) - min (w->mark1, w->mark2);
 		    w->cursor = min (w->mark1, w->mark2);
 		} else if (w->cursor > 0) {
                     n = w->cursor;
@@ -1064,7 +1067,7 @@ int eh_textinput (CWidget * w, XEvent * xevent, CEvent * cwevent)
 	    case CK_Delete:
 		if (w->mark1 != w->mark2) {
 		    Cmemmove (w->text.data + min (w->mark1, w->mark2), w->text.data + max (w->mark1, w->mark2), w->text.len - max (w->mark1, w->mark2) + 1);
-                    w->text.len -= max (w->mark1, w->mark2);
+                    w->text.len -= max (w->mark1, w->mark2) - min (w->mark1, w->mark2);
 		    w->cursor = min (w->mark1, w->mark2);
 		} else if (w->cursor >= 0 && w->cursor < w->text.len) {
                     n = w->cursor;

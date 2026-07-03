@@ -109,7 +109,7 @@ re_alloc_pattern(regex_t** reg)
 
   return onig_reg_init(*reg, ONIG_OPTION_DEFAULT,
 		       ONIGENC_CASE_FOLD_DEFAULT,
-		       OnigEncDefaultCharEncoding,
+		       onigenc_get_default_encoding(),
 		       OnigDefaultSyntax);
 }
 

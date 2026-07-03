@@ -150,9 +150,9 @@ regcomp(regex_t* reg, const char* pattern, int posix_options)
 
   reg->comp_options = posix_options;
 
-  ENC_STRING_LEN(OnigEncDefaultCharEncoding, pattern, len);
+  ENC_STRING_LEN(onigenc_get_default_encoding(), pattern, len);
   r = onig_new(PONIG_C(reg), (UChar* )pattern, (UChar* )(pattern + len),
-	       options, OnigEncDefaultCharEncoding, syntax,
+	       options, onigenc_get_default_encoding(), syntax,
 	       (OnigErrorInfo* )NULL);
   if (r != ONIG_NORMAL) {
     return onig2posix_error_code(r);
@@ -223,6 +223,7 @@ regfree(regex_t* reg)
 }
 
 
+#if 0 /* cooledit: encoding now comes from cooledit_get_utf8_or_ascii() */
 extern void
 reg_set_encoding(int mb_code)
 {
@@ -259,6 +260,7 @@ reg_set_encoding(int mb_code)
 
   onigenc_set_default_encoding(enc);
 }
+#endif
 
 extern int
 reg_name_to_group_numbers(regex_t* reg,

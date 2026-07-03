@@ -218,6 +218,11 @@ enum font_encoding get_editor_encoding (void)
     return editor_encoding;
 }
 
+int cooledit_get_utf8_or_ascii(void)
+{
+    return get_editor_encoding() == FONT_ENCODING_UTF8;
+}
+
 #ifndef NO_TTF
 #define ALL_TTF_RESIZABLE_FONTS \
         "cdoc.ttf," \

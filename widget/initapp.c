@@ -239,8 +239,7 @@ int cooledit_regex_get_utf8_or_ascii (void)
         "NotoSansMath-Regular.ttf," \
         "NotoMusic-Regular.ttf," \
         "NotoColorEmoji.ttf," \
-        "NotoLoopedLao-Regular.ttf," \
-        "NotoNastaliqUrdu-Regular.ttf," \
+        "NotoFangsongKSSVertical-Regular.ttf," \
         "NotoSansAdlam-Regular.ttf," \
         "NotoSansAnatolianHieroglyphs-Regular.ttf," \
         "NotoSansArabic-Regular.ttf," \
@@ -291,10 +290,12 @@ int cooledit_regex_get_utf8_or_ascii (void)
         "NotoSansJavanese-Regular.ttf," \
         "NotoSansKaithi-Regular.ttf," \
         "NotoSansKannada-Regular.ttf," \
+        "NotoSansKawi-Regular.ttf," \
         "NotoSansKayahLi-Regular.ttf," \
         "NotoSansKharoshthi-Regular.ttf," \
         "NotoSansKhmer-Regular.ttf," \
         "NotoSansKhudawadi-Regular.ttf," \
+        "NotoSansLao-Regular.ttf," \
         "NotoSansLepcha-Regular.ttf," \
         "NotoSansLimbu-Regular.ttf," \
         "NotoSansLinearA-Regular.ttf," \
@@ -321,6 +322,7 @@ int cooledit_regex_get_utf8_or_ascii (void)
         "NotoSansMyanmar-Regular.ttf," \
         "NotoSansNKo-Regular.ttf," \
         "NotoSansNabataean-Regular.ttf," \
+        "NotoSansNagMundari-Regular.ttf," \
         "NotoSansNandinagari-Regular.ttf," \
         "NotoSansNewTaiLue-Regular.ttf," \
         "NotoSansNewa-Regular.ttf," \
@@ -351,11 +353,12 @@ int cooledit_regex_get_utf8_or_ascii (void)
         "NotoSansShavian-Regular.ttf," \
         "NotoSansSiddham-Regular.ttf," \
         "NotoSansSignWriting-Regular.ttf," \
-        "NotoSansSinhala-Regular.ttf," \
+        "NotoSansSinhalaUI-Regular.ttf," \
         "NotoSansSogdian-Regular.ttf," \
         "NotoSansSoraSompeng-Regular.ttf," \
         "NotoSansSoyombo-Regular.ttf," \
         "NotoSansSundanese-Regular.ttf," \
+        "NotoSansSunuwar-Regular.ttf," \
         "NotoSansSylotiNagri-Regular.ttf," \
         "NotoSansSyriac-Regular.ttf," \
         "NotoSansTagalog-Regular.ttf," \
@@ -369,6 +372,7 @@ int cooledit_regex_get_utf8_or_ascii (void)
         "NotoSansTangsa-Regular.ttf," \
         "NotoSansTelugu-Regular.ttf," \
         "NotoSansThaana-Regular.ttf," \
+        "NotoSansThai-Regular.ttf," \
         "NotoSansTifinagh-Regular.ttf," \
         "NotoSansTirhuta-Regular.ttf," \
         "NotoSansUgaritic-Regular.ttf," \
@@ -381,20 +385,33 @@ int cooledit_regex_get_utf8_or_ascii (void)
         "NotoSerifAhom-Regular.ttf," \
         "NotoSerifDivesAkuru-Regular.ttf," \
         "NotoSerifDogra-Regular.ttf," \
+        "NotoSerifHentaigana-Regular.ttf," \
         "NotoSerifKhojki-Regular.ttf," \
         "NotoSerifMakasar-Regular.ttf," \
-        "NotoSerifNyiakengPuachueHmong-Regular.ttf," \
+        "NotoSerifNPHmong-Regular.ttf," \
         "NotoSerifOldUyghur-Regular.ttf," \
+        "NotoSerifOttomanSiyaq-Regular.ttf," \
         "NotoSerifTangut-Regular.ttf," \
         "NotoSerifTibetan-Regular.ttf," \
+        "NotoSerifTodhri-Regular.ttf," \
         "NotoSerifToto-Regular.ttf," \
         "NotoSerifYezidi-Regular.ttf," \
         "NotoTraditionalNushu-Regular.ttf," \
-        "NotoSansHK-Regular.otf," \
-        "NotoSansJP-Regular.otf," \
-        "NotoSansKR-Regular.otf," \
-        "NotoSansTC-Regular.otf," \
-        "NotoSansSC-Regular.otf"
+        "NotoZnamennyMusicalNotation-Regular.ttf," \
+        "SourceHanSans-Regular.otf," \
+        "LorchinSansP0.ttf," \
+        "LorchinSansP2.ttf"
+
+/*
+ * Adobe font names:
+ * 
+ *  SourceHanSansHC-Regular.otf   (Traditional Chinese, Hong Kong)
+ *  SourceHanSans-Regular.otf     (Japanese)
+ *  SourceHanSansK-Regular.otf    (Korean)
+ *  SourceHanSansTC-Regular.otf   (Traditional Chinese)
+ *  SourceHanSansSC-Regular.otf   (Simplified Chinese)
+ */
+
 #endif
 
 const char *get_default_editor_font (void)

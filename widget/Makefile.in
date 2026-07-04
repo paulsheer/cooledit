@@ -158,23 +158,24 @@ am__depfiles_remade = ./$(DEPDIR)/ClientWin.Po ./$(DEPDIR)/aafont.Po \
 	./$(DEPDIR)/cmdlineopt.Po ./$(DEPDIR)/compatable.Po \
 	./$(DEPDIR)/coolnext.Po ./$(DEPDIR)/coolwidget.Po \
 	./$(DEPDIR)/cterminal.Po ./$(DEPDIR)/cursor.Po \
-	./$(DEPDIR)/dialog.Po ./$(DEPDIR)/dirtools.Po \
-	./$(DEPDIR)/disable.Po ./$(DEPDIR)/edit.Po \
-	./$(DEPDIR)/edit_key_translator.Po ./$(DEPDIR)/editcmd.Po \
-	./$(DEPDIR)/editdraw.Po ./$(DEPDIR)/editmenu.Po \
-	./$(DEPDIR)/editwidget.Po ./$(DEPDIR)/fieldedtextbox.Po \
-	./$(DEPDIR)/filebrowser.Po ./$(DEPDIR)/filelist.Po \
-	./$(DEPDIR)/filetool.Po ./$(DEPDIR)/fnmatch.Po \
-	./$(DEPDIR)/focus.Po ./$(DEPDIR)/font.Po \
-	./$(DEPDIR)/hashtable.Po ./$(DEPDIR)/hintpos.Po \
-	./$(DEPDIR)/initapp.Po ./$(DEPDIR)/inputwidget.Po \
-	./$(DEPDIR)/inspect.Po ./$(DEPDIR)/international.Po \
-	./$(DEPDIR)/ipv6scan.Po ./$(DEPDIR)/loadfile.Po \
-	./$(DEPDIR)/look-cool.Po ./$(DEPDIR)/look-gtk.Po \
-	./$(DEPDIR)/look-next.Po ./$(DEPDIR)/mad.Po \
-	./$(DEPDIR)/mathfuncs.Po ./$(DEPDIR)/menu.Po \
-	./$(DEPDIR)/mousemark.Po ./$(DEPDIR)/pathdup.Po \
-	./$(DEPDIR)/pipe.Po ./$(DEPDIR)/pixmap.Po ./$(DEPDIR)/pool.Po \
+	./$(DEPDIR)/detectencoding.Po ./$(DEPDIR)/dialog.Po \
+	./$(DEPDIR)/dirtools.Po ./$(DEPDIR)/disable.Po \
+	./$(DEPDIR)/edit.Po ./$(DEPDIR)/edit_key_translator.Po \
+	./$(DEPDIR)/editcmd.Po ./$(DEPDIR)/editdraw.Po \
+	./$(DEPDIR)/editmenu.Po ./$(DEPDIR)/editwidget.Po \
+	./$(DEPDIR)/fieldedtextbox.Po ./$(DEPDIR)/filebrowser.Po \
+	./$(DEPDIR)/filelist.Po ./$(DEPDIR)/filetool.Po \
+	./$(DEPDIR)/fnmatch.Po ./$(DEPDIR)/focus.Po \
+	./$(DEPDIR)/font.Po ./$(DEPDIR)/hashtable.Po \
+	./$(DEPDIR)/hintpos.Po ./$(DEPDIR)/initapp.Po \
+	./$(DEPDIR)/inputwidget.Po ./$(DEPDIR)/inspect.Po \
+	./$(DEPDIR)/international.Po ./$(DEPDIR)/ipv6scan.Po \
+	./$(DEPDIR)/loadfile.Po ./$(DEPDIR)/look-cool.Po \
+	./$(DEPDIR)/look-gtk.Po ./$(DEPDIR)/look-next.Po \
+	./$(DEPDIR)/mad.Po ./$(DEPDIR)/mathfuncs.Po \
+	./$(DEPDIR)/menu.Po ./$(DEPDIR)/mousemark.Po \
+	./$(DEPDIR)/pathdup.Po ./$(DEPDIR)/pipe.Po \
+	./$(DEPDIR)/pixmap.Po ./$(DEPDIR)/pool.Po \
 	./$(DEPDIR)/propfont.Po ./$(DEPDIR)/redblack.Po \
 	./$(DEPDIR)/regex.Po ./$(DEPDIR)/regtools.Po \
 	./$(DEPDIR)/remotefs.Po ./$(DEPDIR)/remotefspassword.Po \
@@ -411,7 +412,7 @@ libCw_a_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
 	symauth.c symauth.h inspect.c cterminal.c cterminal.h \
 	childhandler.c childhandler.h xwinfwd.c xwinfwd.h soundfwd.c soundfwd.h \
 	filetool.c filetool.h fnmatch.c fnmatch.h classify.c classify.h \
-		detectencoding.c
+	detectencoding.c
 
 all: all-am
 
@@ -465,6 +466,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/coolwidget.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cterminal.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cursor.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/detectencoding.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dialog.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dirtools.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/disable.Po@am__quote@ # am--include-marker
@@ -692,6 +694,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/coolwidget.Po
 	-rm -f ./$(DEPDIR)/cterminal.Po
 	-rm -f ./$(DEPDIR)/cursor.Po
+	-rm -f ./$(DEPDIR)/detectencoding.Po
 	-rm -f ./$(DEPDIR)/dialog.Po
 	-rm -f ./$(DEPDIR)/dirtools.Po
 	-rm -f ./$(DEPDIR)/disable.Po
@@ -806,6 +809,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/coolwidget.Po
 	-rm -f ./$(DEPDIR)/cterminal.Po
 	-rm -f ./$(DEPDIR)/cursor.Po
+	-rm -f ./$(DEPDIR)/detectencoding.Po
 	-rm -f ./$(DEPDIR)/dialog.Po
 	-rm -f ./$(DEPDIR)/dirtools.Po
 	-rm -f ./$(DEPDIR)/disable.Po

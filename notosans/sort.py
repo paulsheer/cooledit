@@ -293,8 +293,12 @@ def fontname_priority(s):
         r -= 1
     if s.find('UI') >= 0:
         r -= 1
+    if s.find('Black') >= 0:
+        r -= 1
     if s.find('Display') >= 0:
         r -= 2
+    if s.find('Thin') >= 0:
+        r -= 3
     return r
 
 
@@ -314,7 +318,7 @@ def fontname_priority(s):
 
 notosans = []
 notosans_fname = {}
-fnoto = os.popen('ls -1 8x13B.pcf.gz NotoSans-Regular.ttf NotoSansSymbols-Regular.ttf NotoSansSymbols2-Regular.ttf NotoSansMath-Regular.ttf').read().split('\n')
+fnoto = os.popen('ls -1 NotoSans-Regular.ttf NotoSansSymbols-Regular.ttf NotoSansSymbols2-Regular.ttf NotoSansMath-Regular.ttf').read().split('\n')
 for i in fnoto:
     progress()
     i = i.strip()
@@ -338,17 +342,19 @@ for i in f:
         continue
 
     # special cases:
-    if i in ('NotoKufiArabic[wght].ttf'):
+    if i in ('NotoSansSyriacWestern-Black.ttf', 'NotoSansSyriacWestern-Thin.ttf', 'NotoSansSyriacWestern-Regular.ttf', 'NotoSansSyriac-Black.ttf', 'NotoSansSyriacEastern-Black.ttf', 'NotoSansSyriacEastern-Regular.ttf', 'NotoSansSyriacEastern-Thin.ttf', 'NotoSansSyriac-Thin.ttf'):
         continue
-    if i in ('NotoSansDisplay-Italic-VF.ttf', 'NotoSerifDisplay-Italic-VF.ttf'):
+    if i in ('NotoSansTifinaghAdrar-Regular.ttf', 'NotoSansTifinaghAgrawImazighen-Regular.ttf', 'NotoSansTifinaghAhaggar-Regular.ttf', 'NotoSansTifinaghAir-Regular.ttf', 'NotoSansTifinaghAPT-Regular.ttf', 'NotoSansTifinaghAzawagh-Regular.ttf', 'NotoSansTifinaghGhat-Regular.ttf', 'NotoSansTifinaghHawad-Regular.ttf', 'NotoSansTifinaghRhissaIxa-Regular.ttf', 'NotoSansTifinaghSIL-Regular.ttf', 'NotoSansTifinaghTawellemmet-Regular.ttf'):
         continue
-    if i.startswith('NotoSansSyriacWestern') or i.startswith('NotoSansSyriacEastern') or i.startswith('NotoSansSyriacEstrangela'):
+    if i in ('NotoSansSinhala-BlackCondensed.ttf', 'NotoSansSinhala-Black.ttf', 'NotoSansSinhala-Bold.ttf', 'NotoSansSinhala-CondensedBlack.ttf', 'NotoSansSinhala-CondensedBold.ttf', 'NotoSansSinhala-CondensedExtraBold.ttf', 'NotoSansSinhala-CondensedExtraLight.ttf', 'NotoSansSinhala-CondensedLight.ttf', 'NotoSansSinhala-CondensedMedium.ttf', 'NotoSansSinhala-CondensedSemiBold.ttf', 'NotoSansSinhala-CondensedThin.ttf', 'NotoSansSinhala-Condensed.ttf', 'NotoSansSinhala-ExtraBold.ttf', 'NotoSansSinhala-ExtraCondensedBlack.ttf', 'NotoSansSinhala-ExtraCondensedBold.ttf', 'NotoSansSinhala-ExtraCondensedExtraBold.ttf', 'NotoSansSinhala-ExtraCondensedExtraLight.ttf', 'NotoSansSinhala-ExtraCondensedLight.ttf', 'NotoSansSinhala-ExtraCondensedMedium.ttf', 'NotoSansSinhala-ExtraCondensedSemiBold.ttf', 'NotoSansSinhala-ExtraCondensedThin.ttf', 'NotoSansSinhala-ExtraCondensed.ttf', 'NotoSansSinhala-ExtraLight.ttf', 'NotoSansSinhala-Light.ttf', 'NotoSansSinhala-Medium.ttf', 'NotoSansSinhala-Regular.ttf', 'NotoSansSinhala-SemiBold.ttf', 'NotoSansSinhala-SemiCondensedBlack.ttf', 'NotoSansSinhala-SemiCondensedBold.ttf', 'NotoSansSinhala-SemiCondensedExtraBold.ttf', 'NotoSansSinhala-SemiCondensedExtraLight.ttf', 'NotoSansSinhala-SemiCondensedLight.ttf', 'NotoSansSinhala-SemiCondensedMedium.ttf', 'NotoSansSinhala-SemiCondensedSemiBold.ttf', 'NotoSansSinhala-SemiCondensedThin.ttf', 'NotoSansSinhala-SemiCondensed.ttf', 'NotoSansSinhala-ThinCondensed.ttf', 'NotoSansSinhala-Thin.ttf', 'NotoSansSinhalaUI-Black.ttf', 'NotoSansSinhalaUI-Bold.ttf', 'NotoSansSinhalaUI-CondensedBlack.ttf', 'NotoSansSinhalaUI-CondensedBold.ttf', 'NotoSansSinhalaUI-CondensedExtraBold.ttf', 'NotoSansSinhalaUI-CondensedExtraLight.ttf', 'NotoSansSinhalaUI-CondensedLight.ttf', 'NotoSansSinhalaUI-CondensedMedium.ttf', 'NotoSansSinhalaUI-CondensedSemiBold.ttf', 'NotoSansSinhalaUI-CondensedThin.ttf', 'NotoSansSinhalaUI-Condensed.ttf', 'NotoSansSinhalaUI-ExtraBold.ttf', 'NotoSansSinhalaUI-ExtraCondensedBlack.ttf', 'NotoSansSinhalaUI-ExtraCondensedBold.ttf', 'NotoSansSinhalaUI-ExtraCondensedExtraBold.ttf', 'NotoSansSinhalaUI-ExtraCondensedExtraLight.ttf', 'NotoSansSinhalaUI-ExtraCondensedLight.ttf', 'NotoSansSinhalaUI-ExtraCondensedMedium.ttf', 'NotoSansSinhalaUI-ExtraCondensedSemiBold.ttf', 'NotoSansSinhalaUI-ExtraCondensedThin.ttf', 'NotoSansSinhalaUI-ExtraCondensed.ttf', 'NotoSansSinhalaUI-ExtraLight.ttf', 'NotoSansSinhalaUI-Light.ttf', 'NotoSansSinhalaUI-Medium.ttf', 'NotoSansSinhalaUI-SemiBold.ttf', 'NotoSansSinhalaUI-SemiCondensedBlack.ttf', 'NotoSansSinhalaUI-SemiCondensedBold.ttf', 'NotoSansSinhalaUI-SemiCondensedExtraBold.ttf', 'NotoSansSinhalaUI-SemiCondensedExtraLight.ttf', 'NotoSansSinhalaUI-SemiCondensedLight.ttf', 'NotoSansSinhalaUI-SemiCondensedMedium.ttf', 'NotoSansSinhalaUI-SemiCondensedSemiBold.ttf', 'NotoSansSinhalaUI-SemiCondensedThin.ttf', 'NotoSansSinhalaUI-SemiCondensed.ttf', 'NotoSansSinhalaUI-Thin.ttf'):
         continue
-    if i in ('NotoSansTamilUI-VF-torecover.ttf', 'NotoSansTamil-android-VF.ttf', 'NotoSansTamilUI-android-VF.ttf'):
+    if i in ('NotoFangsongKSSRotated-Regular.ttf', 'NotoSerifKhitanSmallScript-Regular.ttf'):
         continue
-    if i.startswith('NotoSansTifinagh') and not i.startswith('NotoSansTifinagh-Regular'):
+    if i in ('NotoKufiArabic-Regular.ttf', 'NotoNaskhArabic-Bold.ttf', 'NotoNaskhArabic-Medium.ttf', 'NotoNaskhArabic-Regular.ttf', 'NotoNaskhArabic-SemiBold.ttf', 'NotoNaskhArabic-Bold.ttf', 'NotoNaskhArabic-Regular.ttf', 'NotoKufiArabic-Black.ttf', 'NotoKufiArabic-Bold.ttf', 'NotoKufiArabic-ExtraBold.ttf', 'NotoKufiArabic-ExtraLight.ttf', 'NotoKufiArabic-Light.ttf', 'NotoKufiArabic-Medium.ttf', 'NotoKufiArabic-SemiBold.ttf', 'NotoKufiArabic-Thin.ttf', 'NotoSansArabic-Black.ttf', 'NotoSansArabic-Bold.ttf', 'NotoSansArabic-CondensedBlack.ttf', 'NotoSansArabic-CondensedBold.ttf', 'NotoSansArabic-CondensedExtraBold.ttf', 'NotoSansArabic-CondensedExtraLight.ttf', 'NotoSansArabic-CondensedLight.ttf', 'NotoSansArabic-CondensedMedium.ttf', 'NotoSansArabic-CondensedSemiBold.ttf', 'NotoSansArabic-CondensedThin.ttf', 'NotoSansArabic-Condensed.ttf', 'NotoSansArabic-ExtraBold.ttf', 'NotoSansArabic-ExtraCondensedBlack.ttf', 'NotoSansArabic-ExtraCondensedBold.ttf', 'NotoSansArabic-ExtraCondensedExtraBold.ttf', 'NotoSansArabic-ExtraCondensedExtraLight.ttf', 'NotoSansArabic-ExtraCondensedLight.ttf', 'NotoSansArabic-ExtraCondensedMedium.ttf', 'NotoSansArabic-ExtraCondensedSemiBold.ttf', 'NotoSansArabic-ExtraCondensedThin.ttf', 'NotoSansArabic-ExtraCondensed.ttf', 'NotoSansArabic-ExtraLight.ttf', 'NotoSansArabic-Light.ttf', 'NotoSansArabic-Medium.ttf', 'NotoSansArabic-SemiBold.ttf', 'NotoSansArabic-SemiCondensedBlack.ttf', 'NotoSansArabic-SemiCondensedBold.ttf', 'NotoSansArabic-SemiCondensedExtraBold.ttf', 'NotoSansArabic-SemiCondensedExtraLight.ttf', 'NotoSansArabic-SemiCondensedLight.ttf', 'NotoSansArabic-SemiCondensedMedium.ttf', 'NotoSansArabic-SemiCondensedSemiBold.ttf', 'NotoSansArabic-SemiCondensedThin.ttf', 'NotoSansArabic-SemiCondensed.ttf', 'NotoSansArabic-Thin.ttf'):
         continue
-    if i.startswith('NotoSansHebrewNew') or i.startswith('NotoSansHebrewDroid'):
+    if i in ('NotoSansLao-Black.ttf', 'NotoSansLao-Bold.ttf', 'NotoSansLao-CondensedBlack.ttf', 'NotoSansLao-CondensedBold.ttf', 'NotoSansLao-CondensedExtraBold.ttf', 'NotoSansLao-CondensedExtraLight.ttf', 'NotoSansLao-CondensedLight.ttf', 'NotoSansLao-CondensedMedium.ttf', 'NotoSansLao-CondensedSemiBold.ttf', 'NotoSansLao-CondensedThin.ttf', 'NotoSansLao-Condensed.ttf', 'NotoSansLao-ExtraBold.ttf', 'NotoSansLao-ExtraCondensedBlack.ttf', 'NotoSansLao-ExtraCondensedBold.ttf', 'NotoSansLao-ExtraCondensedExtraBold.ttf', 'NotoSansLao-ExtraCondensedExtraLight.ttf', 'NotoSansLao-ExtraCondensedLight.ttf', 'NotoSansLao-ExtraCondensedMedium.ttf', 'NotoSansLao-ExtraCondensedSemiBold.ttf', 'NotoSansLao-ExtraCondensedThin.ttf', 'NotoSansLao-ExtraCondensed.ttf', 'NotoSansLao-ExtraLight.ttf', 'NotoSansLao-Light.ttf', 'NotoSansLaoLooped-Black.ttf', 'NotoSansLaoLooped-Bold.ttf', 'NotoSansLaoLooped-CondensedBlack.ttf', 'NotoSansLaoLooped-CondensedBold.ttf', 'NotoSansLaoLooped-CondensedExtraBold.ttf', 'NotoSansLaoLooped-CondensedExtraLight.ttf', 'NotoSansLaoLooped-CondensedLight.ttf', 'NotoSansLaoLooped-CondensedMedium.ttf', 'NotoSansLaoLooped-CondensedSemiBold.ttf', 'NotoSansLaoLooped-CondensedThin.ttf', 'NotoSansLaoLooped-Condensed.ttf', 'NotoSansLaoLooped-ExtraBold.ttf', 'NotoSansLaoLooped-ExtraCondensedBlack.ttf', 'NotoSansLaoLooped-ExtraCondensedBold.ttf', 'NotoSansLaoLooped-ExtraCondensedExtraBold.ttf', 'NotoSansLaoLooped-ExtraCondensedExtraLight.ttf', 'NotoSansLaoLooped-ExtraCondensedLight.ttf', 'NotoSansLaoLooped-ExtraCondensedMedium.ttf', 'NotoSansLaoLooped-ExtraCondensedSemiBold.ttf', 'NotoSansLaoLooped-ExtraCondensedThin.ttf', 'NotoSansLaoLooped-ExtraCondensed.ttf', 'NotoSansLaoLooped-ExtraLight.ttf', 'NotoSansLaoLooped-Light.ttf', 'NotoSansLaoLooped-Medium.ttf', 'NotoSansLaoLooped-Regular.ttf', 'NotoSansLaoLooped-SemiBold.ttf', 'NotoSansLaoLooped-SemiCondensedBlack.ttf', 'NotoSansLaoLooped-SemiCondensedBold.ttf', 'NotoSansLaoLooped-SemiCondensedExtraBold.ttf', 'NotoSansLaoLooped-SemiCondensedExtraLight.ttf', 'NotoSansLaoLooped-SemiCondensedLight.ttf', 'NotoSansLaoLooped-SemiCondensedMedium.ttf', 'NotoSansLaoLooped-SemiCondensedSemiBold.ttf', 'NotoSansLaoLooped-SemiCondensedThin.ttf', 'NotoSansLaoLooped-SemiCondensed.ttf', 'NotoSansLaoLooped-Thin.ttf', 'NotoSansLao-Medium.ttf', 'NotoSansLao-SemiBold.ttf', 'NotoSansLao-SemiCondensedBlack.ttf', 'NotoSansLao-SemiCondensedBold.ttf', 'NotoSansLao-SemiCondensedExtraBold.ttf', 'NotoSansLao-SemiCondensedExtraLight.ttf', 'NotoSansLao-SemiCondensedLight.ttf', 'NotoSansLao-SemiCondensedMedium.ttf', 'NotoSansLao-SemiCondensedSemiBold.ttf', 'NotoSansLao-SemiCondensedThin.ttf', 'NotoSansLao-SemiCondensed.ttf', 'NotoSansLao-Thin.ttf', 'NotoSerifLao-Black.ttf', 'NotoSerifLao-Bold.ttf', 'NotoSerifLao-CondensedBlack.ttf', 'NotoSerifLao-CondensedBold.ttf', 'NotoSerifLao-CondensedExtraBold.ttf', 'NotoSerifLao-CondensedExtraLight.ttf', 'NotoSerifLao-CondensedLight.ttf', 'NotoSerifLao-CondensedMedium.ttf', 'NotoSerifLao-CondensedSemiBold.ttf', 'NotoSerifLao-CondensedThin.ttf', 'NotoSerifLao-Condensed.ttf', 'NotoSerifLao-ExtraBold.ttf', 'NotoSerifLao-ExtraCondensedBlack.ttf', 'NotoSerifLao-ExtraCondensedBold.ttf', 'NotoSerifLao-ExtraCondensedExtraBold.ttf', 'NotoSerifLao-ExtraCondensedExtraLight.ttf', 'NotoSerifLao-ExtraCondensedLight.ttf', 'NotoSerifLao-ExtraCondensedMedium.ttf', 'NotoSerifLao-ExtraCondensedSemiBold.ttf', 'NotoSerifLao-ExtraCondensedThin.ttf', 'NotoSerifLao-ExtraCondensed.ttf', 'NotoSerifLao-ExtraLight.ttf', 'NotoSerifLao-Light.ttf', 'NotoSerifLao-Medium.ttf', 'NotoSerifLao-Regular.ttf', 'NotoSerifLao-SemiBold.ttf', 'NotoSerifLao-SemiCondensedBlack.ttf', 'NotoSerifLao-SemiCondensedBold.ttf', 'NotoSerifLao-SemiCondensedExtraBold.ttf', 'NotoSerifLao-SemiCondensedExtraLight.ttf', 'NotoSerifLao-SemiCondensedLight.ttf', 'NotoSerifLao-SemiCondensedMedium.ttf', 'NotoSerifLao-SemiCondensedSemiBold.ttf', 'NotoSerifLao-SemiCondensedThin.ttf', 'NotoSerifLao-SemiCondensed.ttf', 'NotoSerifLao-Thin.ttf'):
+        continue
+    if i in ('NotoSansThaiLooped-Black.ttf', 'NotoSansThaiLooped-Bold.ttf', 'NotoSansThaiLooped-CondensedBlack.ttf', 'NotoSansThaiLooped-CondensedBold.ttf', 'NotoSansThaiLooped-CondensedExtraBold.ttf', 'NotoSansThaiLooped-CondensedExtraLight.ttf', 'NotoSansThaiLooped-CondensedLight.ttf', 'NotoSansThaiLooped-CondensedMedium.ttf', 'NotoSansThaiLooped-CondensedSemiBold.ttf', 'NotoSansThaiLooped-CondensedThin.ttf', 'NotoSansThaiLooped-Condensed.ttf', 'NotoSansThaiLooped-ExtraBold.ttf', 'NotoSansThaiLooped-ExtraCondensedBlack.ttf', 'NotoSansThaiLooped-ExtraCondensedBold.ttf', 'NotoSansThaiLooped-ExtraCondensedExtraBold.ttf', 'NotoSansThaiLooped-ExtraCondensedExtraLight.ttf', 'NotoSansThaiLooped-ExtraCondensedLight.ttf', 'NotoSansThaiLooped-ExtraCondensedMedium.ttf', 'NotoSansThaiLooped-ExtraCondensedSemiBold.ttf', 'NotoSansThaiLooped-ExtraCondensedThin.ttf', 'NotoSansThaiLooped-ExtraCondensed.ttf', 'NotoSansThaiLooped-ExtraLight.ttf', 'NotoSansThaiLooped-Light.ttf', 'NotoSansThaiLooped-Medium.ttf', 'NotoSansThaiLooped-Regular.ttf', 'NotoSansThaiLooped-SemiBold.ttf', 'NotoSansThaiLooped-SemiCondensedBlack.ttf', 'NotoSansThaiLooped-SemiCondensedBold.ttf', 'NotoSansThaiLooped-SemiCondensedExtraBold.ttf', 'NotoSansThaiLooped-SemiCondensedExtraLight.ttf', 'NotoSansThaiLooped-SemiCondensedLight.ttf', 'NotoSansThaiLooped-SemiCondensedMedium.ttf', 'NotoSansThaiLooped-SemiCondensedSemiBold.ttf', 'NotoSansThaiLooped-SemiCondensedThin.ttf', 'NotoSansThaiLooped-SemiCondensed.ttf', 'NotoSansThaiLooped-Thin.ttf'):
         continue
     charset = font_charset(i)
     if not i in notosans_fname:
@@ -398,6 +404,7 @@ for i in m:
         broken = broken + 1
 
 if broken:
+    print('semething is broken(%d). exitting' % broken)
     sys.exit(0)
 
 print('')
@@ -525,12 +532,15 @@ for i in manual_font_placement:
     initapp_list.append(i)
 
 print('')
-sys.stdout.write("L='")
+copy_script = open('copy.sh', 'w')
+copy_script.write("L='")
 for i in initapp_list:
-    sys.stdout.write(' ' + i)
-sys.stdout.write("'")
-print('for i in $L ; do cp -L $i ../cooledit/notosans/ ; done')
-print('')
+    copy_script.write(' ' + i)
+copy_script.write("'")
+
+copy_script.write('\n\n')
+copy_script.write('for i in $L ; do cp -L $i ../cooledit/notosans/ ; done')
+copy_script.write('\n\n')
 
 for i in initapp_list[:-1]:
     print("        \"%s,\" \\" % i)
@@ -543,7 +553,7 @@ print('')
 
 print(total_bytes)
 
-sys.stderr.write('\n')
+sys.stderr.write('\nSuccess\n')
         
 sys.exit(0)
 

@@ -99,8 +99,8 @@ Run `remotefs` on a remote machine to access files using `cooledit`. On MS Windo
 
 #### Unicode Support
 
-`cooledit` has support for most of Unicode 15 and will render almost any
-glyph imaginable, as well as the capability to enter raw characters
+`cooledit` has support for most of Unicode 17 and will render 153,821
+glyphs from ¡ through 󾠷, as well as the capability to enter raw characters
 and determine encoding correctness.
 
 > 道可道，非常道。名可名，非常名。無名天地之始；有名萬物之母。故常無欲，以觀其妙；常有欲，以觀其徼。此兩者，同出而異名，同謂之玄。玄之又玄，衆妙之門。
@@ -108,6 +108,9 @@ and determine encoding correctness.
 > 😎🛟🚚🔧⍼💕💖💗💘💙💚💛💜💝💞💟💌🐀🐁🐂🐃🐄🐅🐆🐇🐈🐉🐊🐋🐌🐍🐎🐏
 > 
 > 𓅀𓅁𓅂𓅃𓅄𓅅𓅆𓅇𓅈𓅉𓅊𓅚𓅪𓅺𓆊𓆚𓆪𓆺
+
+`cooledit` does not do character combining.
+
 
 ![Unicode examples](screenshot3.gif)
 

@@ -115,7 +115,7 @@ extern int option_color_26;
 
 static int dummy = 0;
 
-extern char *init_detected_locale_encoding;
+extern const char *init_detected_locale_encoding;
 
 static char *get_locale_label_text (void)
 {

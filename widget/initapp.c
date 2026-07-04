@@ -118,7 +118,7 @@ char *init_look = "gtk";
 #else
 char *init_look = "next";
 #endif
-char *init_detected_locale_encoding = "UTF-8";
+const char *init_detected_locale_encoding = "UTF-8";
 
 Atom ATOM_ICCCM_P2P_CLIPBOARD;
 Atom ATOM_UTF8_STRING;

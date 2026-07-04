@@ -846,6 +846,7 @@ static int paste_prop_internal (void *data, void (*insert) (void *, int), Window
     return 0;
 }
 
+extern int cooledit_regex_get_utf8_or_ascii (void);
 
 /*
  * make multiple attempts to get the selection starting first with UTF-8
@@ -860,7 +861,7 @@ static void paste_convert_selection_ (Window w, int start)
 	i = 0;
 	win = w;
         n_convertions = 0;
-        if (get_editor_encoding () == FONT_ENCODING_UTF8) {
+        if (cooledit_regex_get_utf8_or_ascii ()) {
 	    convertions[n_convertions++] = ATOM_UTF8_STRING;
 	    convertions[n_convertions++] = XA_STRING;
         } else {

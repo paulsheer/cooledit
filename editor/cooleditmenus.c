@@ -160,13 +160,14 @@ void CDrawCooleditMenuButtons (Window parent, int x, int y)
 {E_
     CGetHintPos (&x, 0);
 
-    CDrawMenuButton ("menu.optionsmenu", parent, main_window, x, y, AUTO_SIZE, 5,
+    CDrawMenuButton ("menu.optionsmenu", parent, main_window, x, y, AUTO_SIZE, 6,
 		     _(" Options "),
 		     _("Define keys..."), (int) '~', menu_define_key_cmd, 0L,
 		     _("General..."), (int) '~', menu_general_options_cmd, 0L,
 		     _("Switches..."), (int) '~', menu_switches_options_cmd, 0L,
 		     _("Save mode..."), (int) '~', menu_save_mode_cmd, 0L,
-		     _("Syntax highlighting..."), (int) '~', menu_syntax_highlighting_cmd, 0L
+		     _("Syntax highlighting..."), (int) '~', menu_syntax_highlighting_cmd, 0L,
+		     _("Window Manager Key Conflicts..."), (int) '~', show_wm_key_conflicts, 0L
 	);
 /* Toolhint for the 'Options' menu button */
     CSetToolHint ("menu.optionsmenu", _("Configure, redefine keys"));

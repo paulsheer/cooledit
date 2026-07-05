@@ -111,7 +111,8 @@ am_cooledit_OBJECTS = cooledit.$(OBJEXT) find.$(OBJEXT) \
 	debug.$(OBJEXT) cooleditmenus.$(OBJEXT) shell.$(OBJEXT) \
 	mail.$(OBJEXT) complete.$(OBJEXT) manpage.$(OBJEXT) \
 	percentsubs.$(OBJEXT) _coolpython.$(OBJEXT) \
-	postscript.$(OBJEXT) print.$(OBJEXT) rxvt.$(OBJEXT)
+	postscript.$(OBJEXT) print.$(OBJEXT) rxvt.$(OBJEXT) \
+	windowmandetector.$(OBJEXT)
 cooledit_OBJECTS = $(am_cooledit_OBJECTS)
 cooledit_DEPENDENCIES = ../rxvt/librxvt.a ../widget/libCw.a \
 	../onigmo/libonigmo.a
@@ -177,7 +178,8 @@ am__depfiles_remade = ./$(DEPDIR)/_coolpython.Po \
 	./$(DEPDIR)/manpage.Po ./$(DEPDIR)/options.Po \
 	./$(DEPDIR)/percentsubs.Po ./$(DEPDIR)/postscript.Po \
 	./$(DEPDIR)/print.Po ./$(DEPDIR)/rxvt.Po ./$(DEPDIR)/shell.Po \
-	./$(DEPDIR)/smalledit.Po ./$(DEPDIR)/trivoptions.Po
+	./$(DEPDIR)/smalledit.Po ./$(DEPDIR)/trivoptions.Po \
+	./$(DEPDIR)/windowmandetector.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -383,7 +385,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/widget -I$(top_srcdir) -I$(top_srcdir)/intl
 cooledit_SOURCES = cooledit.c find.c editoptions.c mancmd.c options.c \
 	debug.c cooleditmenus.c shell.c shell.h copyright.h mail.c complete.c \
 	manpage.c percentsubs.c _coolpython.c find.h postscript.c postscript.h \
-	print.c rxvt.c
+	print.c rxvt.c windowmandetector.c
 
 smalledit_SOURCES = smalledit.c copyright.h trivoptions.c
 coolman_SOURCES = coolman.c manpage.c trivoptions.c
@@ -535,6 +537,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shell.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/smalledit.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/trivoptions.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/windowmandetector.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -714,6 +717,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/shell.Po
 	-rm -f ./$(DEPDIR)/smalledit.Po
 	-rm -f ./$(DEPDIR)/trivoptions.Po
+	-rm -f ./$(DEPDIR)/windowmandetector.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -778,6 +782,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/shell.Po
 	-rm -f ./$(DEPDIR)/smalledit.Po
 	-rm -f ./$(DEPDIR)/trivoptions.Po
+	-rm -f ./$(DEPDIR)/windowmandetector.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

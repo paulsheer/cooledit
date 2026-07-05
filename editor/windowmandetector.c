@@ -147,6 +147,17 @@ static char *ewmh_get_wm_name (void)
     }
     if (data)
 	XFree (data);
+    /* Fallback: some WMs (ratpoison) set _NET_WM_NAME directly on root */
+    if (!result &&
+	XGetWindowProperty (CDisplay, CRoot, net_name, 0, 64, False,
+			    utf8, &type, &fmt, &nitems, &bytes,
+			    &data) == Success && data) {
+	result = strdup ((char *) data);
+	XFree (data);
+	data = NULL;
+    }
+    if (data)
+	XFree (data);
     return result;
 }
 
@@ -193,7 +204,7 @@ static int ewmh_name_is (const char *expected)
     int r = 0;
     name = ewmh_get_wm_name ();
     if (name) {
-	r = !strcmp (name, expected);
+	r = !strcasecmp (name, expected);
 	free (name);
     }
     return r;
@@ -345,7 +356,9 @@ Then reload with:  i3-msg reload\n\
 
 static int detect_ratpoison (void)
 {E_
-    return root_property_exists ("RP_COMMAND_REQUEST");
+    if (root_property_exists ("RP_COMMAND_REQUEST"))
+	return 1;
+    return ewmh_name_is ("ratpoison");
 }
 
 static const char *help_msg_ratpoison (void)
@@ -375,7 +388,9 @@ Then reload with:\n\
 
 static int detect_blackbox (void)
 {E_
-    return root_property_exists ("_BLACKBOX_HINTS");
+    if (root_property_exists ("_BLACKBOX_HINTS"))
+	return 1;
+    return ewmh_name_is ("Blackbox");
 }
 
 static const char *help_msg_blackbox (void)
@@ -564,7 +579,7 @@ static int detect_mutter (void)
 
     name = ewmh_get_wm_name ();
     if (name) {
-	if (!strcmp (name, "GNOME Shell") || !strcmp (name, "Mutter"))
+	if (!strcasecmp (name, "GNOME Shell") || !strcasecmp (name, "Mutter"))
 	    r = 1;
 	free (name);
     }
@@ -669,7 +684,7 @@ static int detect_fvwm (void)
 
     name = ewmh_get_wm_name ();
     if (name) {
-	if (!strcmp (name, "fvwm3") || !strcmp (name, "fvwm"))
+	if (!strcasecmp (name, "fvwm3") || !strcasecmp (name, "fvwm"))
 	    r = 1;
 	free (name);
     }
@@ -737,7 +752,7 @@ static int detect_dwm (void)
 
     name = ewmh_get_wm_name ();
     if (name) {
-	if (!strcmp (name, "dwm") || !strcmp (name, "LG3D"))
+	if (!strcasecmp (name, "dwm") || !strcasecmp (name, "LG3D"))
 	    r = 1;
 	free (name);
     }
@@ -923,7 +938,7 @@ static int detect_sawfish (void)
 
     name = ewmh_get_wm_name ();
     if (name) {
-	if (!strcmp (name, "Sawfish") || !strcmp (name, "sawmill"))
+	if (!strcasecmp (name, "Sawfish") || !strcasecmp (name, "sawmill"))
 	    r = 1;
 	free (name);
     }
@@ -1029,7 +1044,7 @@ static int detect_xmonad (void)
 
     name = ewmh_get_wm_name ();
     if (name) {
-	if (!strcmp (name, "xmonad") || !strcmp (name, "LG3D"))
+	if (!strcasecmp (name, "xmonad") || !strcasecmp (name, "LG3D"))
 	    r = 1;
 	free (name);
     }

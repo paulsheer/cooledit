@@ -99,7 +99,7 @@ Run `remotefs` on a remote machine to access files using `cooledit`. On MS Windo
 
 #### Unicode Support
 
-`cooledit` has support for most of Unicode 17 and will render 153,821
+`cooledit` has support for 96.4% of Unicode 17 and will render 153,821
 glyphs from ¡ through 󾠷, as well as the capability to enter raw characters
 and determine encoding correctness.
 

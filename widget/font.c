@@ -222,7 +222,10 @@ static int load_font_from_file (const char *fname, struct aa_font *r, int desire
         }
 
         if (!(fontfile)) { /* test if it is a file */
-            if (r->font_freetype.n_fonts == 0) {  /* if the first one is not a loadable file, probably the user specified a X Font, so don't print an error */
+            if (strstr (fname, ".ttf") || strstr (fname, ".otf") || strstr (fname, ".pcf")) {
+                /* Trying to load what really appears to be a filename */
+            } else if (r->font_freetype.n_fonts == 0) {
+                /* if the first one is not a loadable file, probably the user specified a X Font, so don't print an error */
                 return l;
             }
 	    fprintf (stderr, "No such file %s in ./, notosans/, %s/%s/, %s/, or %s/.\n", v, LIBDIR, "/fonts", "/usr/local/share/fonts/noto", "/usr/local/share/fonts/misc");

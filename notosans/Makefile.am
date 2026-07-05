@@ -1,7 +1,8 @@
 
 syntaxdir = $(datadir)/cooledit/fonts
 
-syntax_DATA = 8x13B-ISO8859-1.pcf.gz 8x13B.pcf.gz 9x15B-ISO8859-1.pcf.gz 9x15B.pcf.gz cdoc.ttf LiberationMono-Regular.ttf NotoColorEmoji.ttf \
+syntax_DATA = 8x13B-ISO8859-1.pcf.gz 8x13B.pcf.gz 9x15B-ISO8859-1.pcf.gz 9x15B.pcf.gz cdoc.ttf LiberationMono-Regular.ttf \
+        NotoSansMono-Bold.ttf NotoColorEmoji.ttf \
         NotoFangsongKSSVertical-Regular.ttf NotoMusic-Regular.ttf NotoSansAdlam-Regular.ttf NotoSansAnatolianHieroglyphs-Regular.ttf NotoSansArabic-Regular.ttf \
         NotoSansArmenian-Regular.ttf NotoSansAvestan-Regular.ttf NotoSansBalinese-Regular.ttf NotoSansBamum-Regular.ttf NotoSansBassaVah-Regular.ttf \
         NotoSansBatak-Regular.ttf NotoSansBengali-Regular.ttf NotoSansBhaiksuki-Regular.ttf NotoSansBrahmi-Regular.ttf NotoSansBuginese-Regular.ttf \

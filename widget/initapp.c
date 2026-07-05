@@ -232,13 +232,13 @@ int cooledit_regex_get_utf8_or_ascii (void)
 
 #ifndef NO_TTF
 #define ALL_TTF_RESIZABLE_FONTS \
-        "cdoc.ttf," \
         "NotoSans-Regular.ttf," \
         "NotoSansSymbols-Regular.ttf," \
         "NotoSansSymbols2-Regular.ttf," \
         "NotoSansMath-Regular.ttf," \
         "NotoMusic-Regular.ttf," \
         "NotoColorEmoji.ttf," \
+        "cdoc.ttf," \
         "NotoFangsongKSSVertical-Regular.ttf," \
         "NotoSansAdlam-Regular.ttf," \
         "NotoSansAnatolianHieroglyphs-Regular.ttf," \
@@ -402,6 +402,7 @@ int cooledit_regex_get_utf8_or_ascii (void)
         "LorchinSansP0.ttf," \
         "LorchinSansP2.ttf"
 
+
 /*
  * Adobe font names:
  * 
@@ -417,7 +418,7 @@ int cooledit_regex_get_utf8_or_ascii (void)
 const char *get_default_editor_font (void)
 {E_
 #ifndef NO_TTF
-    return "8x13B.pcf.gz," ALL_TTF_RESIZABLE_FONTS;
+    return "8x13B.pcf.gz,...";
 #else
     return "-*-fixed-bold-r-*--13-120-*-*-*-80-*";
 #endif
@@ -426,7 +427,7 @@ const char *get_default_editor_font (void)
 const char *get_default_editor_font_large (void)
 {E_
 #ifndef NO_TTF
-    return "9x15B.pcf.gz," ALL_TTF_RESIZABLE_FONTS;
+    return "9x15B.pcf.gz,...";
 #else
     return "-*-fixed-bold-r-*--15-140-*-*-*-*-*";
 #endif
@@ -435,7 +436,7 @@ const char *get_default_editor_font_large (void)
 const char *get_default_widget_font (void)
 {E_
 #ifndef NO_TTF
-    return ALL_TTF_RESIZABLE_FONTS ":14";
+    return "...:14";
 #else
     return "-*-helvetica-bold-r-*--14-*-*-*-*-*-*";
 #endif
@@ -467,6 +468,29 @@ const char *get_default_bookmark_font (void)
     return "-*-helvetica-bold-r-*--13-*-*-*-*-*-*";
 #endif
 }
+
+const char *get_list_substitute_unicode_font_list (void)
+{
+    static const char *all = ALL_TTF_RESIZABLE_FONTS;
+    return all;
+}
+
+char *substitute_font_wildcard (const char *s)
+{
+    const char *all;
+    const char *p;
+    char *r;
+    all = get_list_substitute_unicode_font_list ();
+    if ((p = strstr (s, "..."))) {
+        r = CMalloc (strlen (s) + strlen (all) + 256);
+        memcpy (r, s, (p - s));
+        strcpy (r + (p - s), all);
+        strcpy (r + (p - s) + strlen (all), p + 3);
+        return r;
+    }
+    return Cstrdup (s);
+}
+
 
 static void init_load_font (void)
 {E_
@@ -1658,6 +1682,8 @@ void CInitialise (CInitData * config_start)
 #endif
 
 /* Set up font */
+    init_font = substitute_font_wildcard (init_font);
+    init_widget_font = substitute_font_wildcard (init_widget_font);
     init_load_font ();
 
 #ifdef USE_XIM

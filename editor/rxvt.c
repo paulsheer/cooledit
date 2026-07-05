@@ -362,6 +362,7 @@ static int rxvt_startup_dialog_ (struct rxvt_startup_options *opt);
 void save_options (void);
 const char *get_default_editor_font_large (void);
 const char *get_default_8bit_term_font_large (void);
+char *substitute_font_wildcard (const char *s);
 void cooledit_main_loop (void);
 char *get_all_lists (void);
 extern char *editor_options_file;
@@ -387,7 +388,10 @@ int rxvt_startup_dialog (const char *host, char *shell_script)
     }
 
     if (rxvt_startup_options.large_font) {
-        CFontLazyHonorFixedDoubleWidth ("rxvt", get_default_editor_font_large (), NULL, &rxvt_encoding);
+        static char *_large = NULL;
+        if (!_large)
+            _large = substitute_font_wildcard (get_default_editor_font_large ());
+        CFontLazyHonorFixedDoubleWidth ("rxvt", _large, NULL, &rxvt_encoding);
         CFontLazyForceFixed ("rxvt8bit", get_default_8bit_term_font_large (), NULL, &rxvt_8bit_encoding);
     }
 

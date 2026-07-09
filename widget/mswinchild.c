@@ -61,7 +61,7 @@ static const char *mswin_error_to_text (long error)
 void cterminal_cleanup (struct cterminal *c)
 {
     if (c->con_handle) {
-        CloseHandle (c->con_handle);
+        ClosePseudoConsole (c->con_handle);
         c->con_handle = NULL;
     }
     if (c->process_handle) {
@@ -194,8 +194,8 @@ static HRESULT InitializeStartupInfoAttachedToConPTY(STARTUPINFOEX* siEx, HPCON 
     // Create the appropriately sized thread attribute list
     InitializeProcThreadAttributeList(NULL, 1, 0, &size);
 
-    static LPPROC_THREAD_ATTRIBUTE_LIST l = NULL;
-    l = (LPPROC_THREAD_ATTRIBUTE_LIST) realloc (l, size);
+    LPPROC_THREAD_ATTRIBUTE_LIST l = NULL;
+    l = (LPPROC_THREAD_ATTRIBUTE_LIST) malloc (size);
     ZeroMemory (l, size);
 
     // Set startup info's attribute list & initialize it
@@ -317,6 +317,8 @@ int cterminal_run_command (struct cterminal *c, struct cterminal_config *config,
                               NULL,     // use parent's current directory 
                               &siStartInfo.StartupInfo,     // STARTUPINFO pointer 
                               &piProcInfo);     // receives PROCESS_INFORMATION 
+
+    DeleteProcThreadAttributeList (siStartInfo.lpAttributeList);
 
     if (!bSuccess)
         ERR ("CreateProcess");

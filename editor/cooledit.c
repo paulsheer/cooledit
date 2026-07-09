@@ -376,7 +376,7 @@ void usage (void)
 	    "A user-friendly text editor for the X Window System.\n" \
 	    "Usage:\n" \
 	    "cooledit [-AabCEhiPsSUVv?] [options] [[+<line>] <file>] [[+<line>] <file>] ...\n" \
-	    "cooledit [<options>] [-host <ip>] -rxvt\n" \
+	    "cooledit [<options>] [-host <ip>] -rxvt [-script <sh-script>]\n" \
             ), \
 		    VERSION);
     printf (_("-d, -display <display>                   the X server to display on\n"));
@@ -449,6 +449,8 @@ void usage (void)
             "                                         support by connecting to remotefs with\n" \
             "                                         X forwarding support\n" \
             "-host <ip>                               remote IP address of remotefs server\n" \
+            "-script <shell-command>                  execute shell command in rxvt terminal\n" \
+	    "                                         connected to remotefs server\n" \
 	    "-verbose                                 print details of initialisation\n" \
 	    "-h, -H, -?, --help                       print this message to stdout\n" \
 	    "-V, -v, --version                        print versiom info\n" \

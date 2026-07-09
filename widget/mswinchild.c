@@ -220,6 +220,32 @@ static int len_args (char *const *s)
     return i;
 }
 
+static int escape_windows_arg (const char *src, char *dst, int dstsize)
+{
+    int i = 0;
+    while (*src && i < dstsize - 1) {
+        if (*src == '"') {
+            if (i + 2 >= dstsize)
+                break;
+            dst[i++] = '\\';
+            dst[i++] = '"';
+        } else if (*src == '\\') {
+            int n = 0;
+            const char *p = src;
+            while (*p == '\\') { n++; p++; }
+            int out_n = (*p == '"' || *p == '\0') ? n * 2 : n;
+            for (int j = 0; j < out_n && i < dstsize - 1; j++)
+                dst[i++] = '\\';
+            src += n - 1;
+        } else {
+            dst[i++] = *src;
+        }
+        src++;
+    }
+    dst[i] = '\0';
+    return i;
+}
+
 int cterminal_run_command (struct cterminal *c, struct cterminal_config *config, int dumb_terminal, const char *log_origin_host,
                            char *const argv[], char *errmsg)
 {
@@ -255,9 +281,11 @@ int cterminal_run_command (struct cterminal *c, struct cterminal_config *config,
         char exe_path[MAX_PATH];
         int n;
         GetModuleFileName(NULL, exe_path, sizeof(exe_path));
-        if ((n = len_args (argv)) == 3 && !strcmp (argv[0], "sh") && !strcmp (argv[1], "-c"))
-            snprintf (cmdline, sizeof (cmdline), "\"%s\" %s -c \"%s\"", exe_path, "bash", argv[2]);
-        else
+        if ((n = len_args (argv)) == 3 && !strcmp (argv[0], "sh") && !strcmp (argv[1], "-c")) {
+            char escaped_script[2048];
+            escape_windows_arg (argv[2], escaped_script, sizeof (escaped_script));
+            snprintf (cmdline, sizeof (cmdline), "\"%s\" %s -c \"%s\"", exe_path, "bash", escaped_script);
+        } else
             snprintf (cmdline, sizeof (cmdline), "\"%s\" %s", exe_path, "bash");
     }
     PROCESS_INFORMATION piProcInfo;

@@ -237,6 +237,21 @@ Characters that constitute a whole word
 when moving and deleting,
 default: 0-9a-z_; ,[](){} (typed out in full)
 .TP
+.I -server, --server <ip-range>
+Act as remote file-server for cooledit accepting connections
+from <ip-range>, eg. 10.0.0.0/24,192.168.0.0/16
+.TP
+.I -rxvt
+Start a unicode xterm with X forwarding support by connecting
+to remotefs with X forwarding support.
+.TP
+.I -host <ip>
+Remote IP address of remotefs server.
+.TP
+.I -script <shell-command>
+Execute a shell command in the rxvt terminal connected
+to a remotefs server.
+.TP
 .I -verbose
 Print info about X intialisation.
 .TP

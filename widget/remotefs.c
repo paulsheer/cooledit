@@ -8685,9 +8685,10 @@ static int remote_action_fn_v5_shellcmdnew (struct server_data *sd, CStr *s, con
 
     if (remotefs_shellcmdnew_ (&t->cterminal, &req.c, (int) req.dumb_terminal, peername, req.args, s)) {
         free (t);
-    } else {
-        sd->ttyreader_data = t;
+        free_args (req.args);
+        return -1;
     }
+    sd->ttyreader_data = t;
 #ifdef MSWIN
     assert (t->cterminal.cmd_fd_stdin != MSWIN_INVALID_HANDLE_VALUE);
     assert (t->cterminal.cmd_fd_stdout != MSWIN_INVALID_HANDLE_VALUE);
@@ -9656,10 +9657,12 @@ if (now > v1 + 5) {
             exit (1);
         }
         if ((ev.lNetworkEvents & FD_CLOSE)) {
+#ifdef SHELL_SUPPORT
             if (i->sd.ttyreader_data && i->sd.ttyreader_data->cterminal.cmd_pid) {
                 suspend_cterminal (__LINE__, NULL, i->sd.ttyreader_data, 0);
                 i->sd.ttyreader_data = NULL;
             }
+#endif
             i->kill = KILL_HARD;
             continue;
         }

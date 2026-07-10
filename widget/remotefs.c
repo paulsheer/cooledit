@@ -3330,7 +3330,7 @@ static int shellcmdnew_req_store_vector (void *user_data_, const unsigned short 
         case 15: d->n_undead = (int) n; d->undead_idx = -1; break;
         case 16: d->n_args = (int) n;
                  d->args = (char **) malloc ((n + 1) * sizeof (char *));
-                 memset (d->args, '\0', sizeof ((n + 1) * sizeof (char *)));
+                 memset (d->args, '\0', (n + 1) * sizeof (char *));
                  d->args_idx = 0;
                  break;
         default: break;

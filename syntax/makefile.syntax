@@ -1,6 +1,6 @@
 context default
     keyword $$ brightcyan
-    keyword $(*) yellow
+    keyword bracematch $(*) yellow
     keyword ${*} brightgreen
 # GNU Makefiles
     keyword whole linestart define magenta

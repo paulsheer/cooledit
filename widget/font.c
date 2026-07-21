@@ -23,6 +23,7 @@
 #endif
 
 
+extern int verbose_operation;
 const char *font_error_string = "Use <x-font-name>/3 or <x-font-name>/1 or <font-file>:NN. For example 12x24/3 or Helvetica.ttf:12 -- for 12 pixels height\n";
 
 #ifdef HAVE_FREETYPE
@@ -1123,7 +1124,8 @@ static struct font_object *load_font (const char *name, const char *xname_, enum
 /* font list like rxvt. FIXME: make rxvt and this see same font list */
 	current_font->f.font_set = get_font_set ("7x14,6x10,6x13,8x13,9x15");   /* needed for XIM */
     }
-    printf("loaded %s as %s\n", msg_shorten (xname), current_font->f.font_struct ? "font struct" : (current_font->f.font_freetype.n_fonts ? "freetype font" : ((current_font->f.font_set ? "font set" : "(error)"))));
+    if (verbose_operation)
+        printf("loaded %s as %s\n", msg_shorten (xname), current_font->f.font_struct ? "font struct" : (current_font->f.font_freetype.n_fonts ? "freetype font" : ((current_font->f.font_set ? "font set" : "(error)"))));
     free (xname);
     return current_font;
 }

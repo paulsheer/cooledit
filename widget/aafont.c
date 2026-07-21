@@ -23,6 +23,7 @@
 /* #ifndef NO_TTF command-line options are dummy in this case */
 int option_rgb_order = RedFirst;
 int option_interchar_spacing = 0;
+extern int verbose_operation;
 /* #endif */
 
 #ifndef NO_TTF
@@ -639,7 +640,8 @@ u = 1000000000;
                     U = cache->loaded_height;
                     if (!cache->load_logged) {
                         cache->load_logged = 1;
-                        printf("Loaded font %s (height=%d) for unicode code point 0x%X.\n", cache->freetype_fname, cache->loaded_height, (unsigned int) t);
+                        if (verbose_operation)
+                            printf("Loaded font %s (height=%d) for unicode code point 0x%X.\n", cache->freetype_fname, cache->loaded_height, (unsigned int) t);
                     }
                     break;
                 }
@@ -659,6 +661,7 @@ u = 1000000000;
         glyph->descent = 0;
 
 #ifdef AA_LOG_LOAD_FONT
+#error
         assert (aa_log_nessage);
         if (the_chr >= 0 && the_chr <= FONT_LAST_UNICHAR) {
             if (!(aa_log_nessage[the_chr / 8] & (1 << (the_chr % 8)))) {

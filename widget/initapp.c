@@ -78,7 +78,7 @@
 #endif
 
 
-static int verbose_operation = 0;
+int verbose_operation = 0;
 CInitData *given = 0;
 
 

@@ -129,6 +129,25 @@ char *option_listen_address = NULL;
 char *option_ip_range = NULL;
 char *option_keyfile_path = NULL;
 static int option_console_mode = 0;
+int option_port = 0;
+
+static int get_resolved_port (void)
+{E_
+    static int port = 0;
+    const char *env;
+    if (option_port > 0)
+        return option_port;
+    if (port > 0)
+        return port;
+    if ((env = getenv ("REMOTEFS_PORT"))) {
+        port = atoi (env);
+        if (port < 0 || port > 65535)
+            port = 50095;
+        return port;
+    }
+    return 50095;
+}
+
 static unsigned long long remotefs_start_time;
 static long remotefs_host_pid;
 
@@ -142,6 +161,7 @@ static int translate_unix_errno (int err);
 int getexesize (void);
 int makeexe (const char *fname);
 int option_mswin_cmd = 0;
+static SOCKET g_listen_socket_for_cleanup = INVALID_SOCKET;
 
 int remotefs_check_indefinite_length (const char *path)
 {
@@ -6938,11 +6958,19 @@ SOCKET remotefs_listen_socket (const char *listen_address, int listen_port)
         return INVALID_SOCKET;
     }
 
-    if (setsockopt (s, SOL_SOCKET, SO_REUSEADDR, (char *) &yes, sizeof (yes)) == SOCKET_ERROR) {
-        perrorsocket ("setsockopt");
+#ifdef MSWIN
+    if (setsockopt (s, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (char *) &yes, sizeof (yes)) == SOCKET_ERROR) {
+        perrorsocket ("setsockopt SO_EXCLUSIVEADDRUSE");
         closesocket (s);
         return INVALID_SOCKET;
     }
+#else
+    if (setsockopt (s, SOL_SOCKET, SO_REUSEADDR, (char *) &yes, sizeof (yes)) == SOCKET_ERROR) {
+        perrorsocket ("setsockopt SO_REUSEADDR");
+        closesocket (s);
+        return INVALID_SOCKET;
+    }
+#endif
 
     if (bind (s, (struct sockaddr *) &a, remotefs_sockaddr_t_sockaddrlen (&a)) == SOCKET_ERROR) {
         char msg[256];
@@ -7159,7 +7187,7 @@ static int do_connect (struct remotefs *rfs, char *errmsg)
 {E_
     SHUTSOCK (rfs->remotefs_private->sock_data);
 
-    if (connect_socket (rfs->remotefs_private->sock_data, rfs->remotefs_private->remote, 50095, errmsg) == INVALID_SOCKET)
+    if (connect_socket (rfs->remotefs_private->sock_data, rfs->remotefs_private->remote, get_resolved_port (), errmsg) == INVALID_SOCKET)
         return -1;
 
     return 0;
@@ -8970,7 +8998,7 @@ static void init_service (struct service *serv, const char *listen_address, cons
 {E_
     int c = 0;
     memset (serv, '\0', sizeof (*serv));
-    serv->h = remotefs_listen_socket (listen_address, 50095);
+    serv->h = remotefs_listen_socket (listen_address, get_resolved_port ());
     serv->iprange_list = iprange_parse (option_range, &c);
     serv->option_range = option_range;
     if (!serv->iprange_list) {
@@ -9344,6 +9372,9 @@ static void free_service (struct service *serv)
         shutdown (serv->h, 2);
         closesocket (serv->h);
         serv->h = INVALID_SOCKET;
+#ifdef MSWIN
+        g_listen_socket_for_cleanup = INVALID_SOCKET;
+#endif
     }
 }
 
@@ -9954,6 +9985,31 @@ static void kill_handler (int x)
 #endif
 #endif
 
+#ifdef MSWIN
+static BOOL WINAPI console_ctrl_handler (DWORD dwCtrlType)
+{
+    switch (dwCtrlType) {
+    case CTRL_C_EVENT:
+    case CTRL_BREAK_EVENT:
+    case CTRL_CLOSE_EVENT:
+    case CTRL_LOGOFF_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
+        kill_received = 1;
+        return TRUE;
+    default:
+        return FALSE;
+    }
+}
+
+static void atexit_cleanup_socket (void)
+{
+    if (g_listen_socket_for_cleanup != INVALID_SOCKET) {
+        closesocket (g_listen_socket_for_cleanup);
+        g_listen_socket_for_cleanup = INVALID_SOCKET;
+    }
+}
+#endif
+
 void remotefs_cooledit_main_serverize (char *range)
 {E_
     option_listen_address = "0.0.0.0";
@@ -10011,6 +10067,11 @@ void remotefs_serverize (void)
 
     init_service (&serv, option_listen_address, option_ip_range);
 
+#ifdef MSWIN
+    g_listen_socket_for_cleanup = serv.h;
+    atexit (atexit_cleanup_socket);
+#endif
+
     log_fmt (0, "running\n");
 
 #ifdef MSWIN
@@ -10045,6 +10106,9 @@ void remotefs_serverize (void)
 #ifndef ANDROID
     clean_child_handler ();
 #endif
+#endif
+#ifdef MSWIN
+    WSACleanup ();
 #endif
 }
 
@@ -10918,6 +10982,11 @@ int main (int argc, char **argv)
             if (i >= argc)
                 goto usage;
             option_keyfile_path = argv[i];
+        } else if (!strcmp (p, "--port")) {
+            i++;
+            if (i >= argc)
+                goto usage;
+            option_port = atoi (argv[i]);
         } else if (p[0] == '-') {
             goto usage;
         } else {
@@ -11035,6 +11104,9 @@ int main (int argc, char **argv)
         printf ("OPTIONS:\n");
         printf ("  --no-crypto                          Turn off encryption.\n");
         printf ("  --no-force-crypto                    Don't require encryption. Make a GUI choice.\n");
+        printf ("  --no-crypto                          Turn off encryption.\n");
+        printf ("  --port <port>                        Listen on another port. Default is 50095.\n");
+        printf ("                            (You can also set the REMOTEFS_PORT environment variable.)\n");
 #ifdef MSWIN
         printf ("  -k <file>, --key-file <file>         Read AES key from <file>.\n");
         printf ("                                       Default: %%PROGRAMDATA%%\\Cooledit\\AESKEYFILE\n");
@@ -11073,6 +11145,7 @@ int main (int argc, char **argv)
     option_listen_address = argv[1];
     option_ip_range = argv[2];
     if (option_console_mode) {
+        SetConsoleCtrlHandler (console_ctrl_handler, TRUE);
         remotefs_serverize ();
         return 0;
     }

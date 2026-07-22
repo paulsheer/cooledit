@@ -8845,28 +8845,6 @@ static int remote_action_fn_v3_shellwrite (struct server_data *sd, CStr *s, cons
         return ACTION_SILENT;
     }
 
-#ifdef MSWIN
-
-    int i;
-    for (i = 0; i < chunklen; i++) {
-        if (p[i] == '\r') {
-            tt->wr.buf[tt->wr.avail++] = '\n';
-            if (tt->input_echo) {
-                if (tt->echo.avail < tt->echo.alloced - 1) {
-                    tt->echo.buf[tt->echo.avail++] = '\n';
-                }
-            }
-        } else {
-            tt->wr.buf[tt->wr.avail++] = p[i];
-            if (tt->input_echo) {
-                if (tt->echo.avail < tt->echo.alloced)
-                    tt->echo.buf[tt->echo.avail++] = p[i];
-            }
-        }
-        assert (tt->wr.avail <= tt->wr.alloced);
-        assert (tt->echo.avail <= tt->echo.alloced);
-    }
-#else
     if (tt->wr.avail + chunklen > tt->wr.alloced) {
         tt->wr.buf = (unsigned char *) realloc (tt->wr.buf, tt->wr.avail + chunklen);
         tt->wr.alloced = tt->wr.avail + chunklen;
@@ -8874,6 +8852,16 @@ static int remote_action_fn_v3_shellwrite (struct server_data *sd, CStr *s, cons
 
     memcpy (tt->wr.buf + tt->wr.avail, p, chunklen);
     tt->wr.avail += chunklen;
+
+#ifdef MSWIN
+    if (tt->input_echo) {
+        if (tt->echo.avail + chunklen > tt->echo.alloced) {
+            tt->echo.buf = (unsigned char *) realloc (tt->echo.buf, tt->echo.avail + chunklen);
+            tt->echo.alloced = tt->echo.avail + chunklen;
+        }
+        memcpy (tt->echo.buf + tt->echo.avail, p, chunklen);
+        tt->echo.avail += chunklen;
+    }
 #endif
 
     return ACTION_SILENT;

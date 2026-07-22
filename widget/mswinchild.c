@@ -308,6 +308,10 @@ int cterminal_run_command (struct cterminal *c, struct cterminal_config *config,
     // Prepare the StartupInfoEx structure attached to the ConPTY.
     InitializeStartupInfoAttachedToConPTY(&siStartInfo, con);
 
+    if (config->term_name[0])
+        SetEnvironmentVariable ("TERM", config->term_name);
+    SetEnvironmentVariable ("BB_TERMINAL_MODE", "3");
+
     bSuccess = CreateProcess (NULL, cmdline,  // command line 
                               NULL,     // process security attributes 
                               NULL,     // primary thread security attributes 

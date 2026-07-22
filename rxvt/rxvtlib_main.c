@@ -1095,6 +1095,7 @@ void            rxvtlib_init_vars (rxvtlib *o)
     o->TermWin.mapped = 0;
     o->want_refresh = 1;
     o->scrollBar.win = 0;
+    o->last_activity = 0;
 #if (MENUBAR_MAX)
     o->menuBar.win = 0;
 #endif

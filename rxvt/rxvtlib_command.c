@@ -488,11 +488,11 @@ void rxvt_fd_write_watch (int fd, fd_set * reading, fd_set * writing, fd_set * e
 int            rxvtlib_tt_resize (rxvtlib *o)
 {E_
     char errmsg[REMOTEFS_ERR_MSG_LEN];
+    if (o->life_cycle == LIFE_CYCLE_SUSPENDED)
+        return 0;
     if ((*o->cterminal_io.remotefs->remotefs_shellresize) (o->cterminal_io.remotefs, o->cmd_pid, o->TermWin.ncol, o->TermWin.nrow, errmsg)) {
-        printf ("error, resizing terminal, [%s]\n", errmsg);
         CRemoveWatch (o->cmd_fd, NULL, 3);
-        if (!o->life_cycle) o->killed_line = __LINE__;
-        o->life_cycle = LIFE_CYCLE_EXIT_FAILURE;
+        o->life_cycle = LIFE_CYCLE_SUSPENDED;
         return -1;
     }
     return 0;
@@ -1250,6 +1250,7 @@ void rxvt_fd_read_watch (int fd, fd_set * reading, fd_set * writing,
     rxvtlib *o = (rxvtlib *) data;
     if (rxvt_fd_read (o))
         return;
+    time (&o->last_activity);
     rxvtlib_main_loop (o);
     rxvtlib_update_screen (o);
 }
@@ -1545,6 +1546,19 @@ static void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
     case TickEvent:
         if (scrollbar_isUpDn ())
             scrollbar_button_repeat (o);
+        if (o->last_activity && o->cterminal_io.remotefs && o->life_cycle != LIFE_CYCLE_SUSPENDED) {
+            time_t now;
+            time (&now);
+            if (now - o->last_activity >= 25) {
+                char ret[256], errmsg[CTERMINAL_ERR_MSG_LEN];
+                o->last_activity = now;
+                if ((*o->cterminal_io.remotefs->remotefs_ping) (o->cterminal_io.remotefs, "ping", ret, sizeof (ret), errmsg)) {
+                    CRemoveWatch (o->cmd_fd, NULL, 3);
+                    o->life_cycle = LIFE_CYCLE_SUSPENDED;
+	            break;
+                }
+            }
+        }
 	break;
 
     case KeyPress:
@@ -3080,6 +3094,7 @@ void rxvt_fd_write_watch (int fd, fd_set * reading,
 	o->v_bufstr = o->v_bufptr = o->v_buffer;
 	CRemoveWatch (o->cmd_fd, rxvt_fd_write_watch, 2);
     }
+    time (&o->last_activity);
     rxvtlib_main_loop (o);
     rxvtlib_update_screen (o);
 }
@@ -3610,6 +3625,7 @@ int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const ar
 #endif
     if (remotefs_shell_util (host, ConnectionNumber (o->Xdisplay), &o->cterminal_io, &c, 0, argv, errmsg))
         return -1;
+    time (&o->last_activity);
 
 #ifdef STANDALONE
 /* 

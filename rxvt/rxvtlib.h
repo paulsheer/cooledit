@@ -1675,6 +1675,7 @@ struct bar_t {
 #define cmd_pid         cterminal_io.cmd_pid
 
  struct remotefs_terminalio cterminal_io;
+ time_t   last_activity;
  int      Xfd ;
 
  unsigned long scroll_arrow_timestamp_ms;

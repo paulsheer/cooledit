@@ -11,6 +11,7 @@
 
 #include <config-mswin.h>
 #include <winsock2.h>
+#include <mstcpip.h>
 #include <ws2ipdef.h>
 #include <aclapi.h>
 #include <sddl.h>
@@ -9085,6 +9086,31 @@ static void add_client (struct service *serv)
         SHUTSOCK (sock_data);
         perrorsocket ("setsockopt TCP_NODELAY\n");
         return;
+    }
+    {
+        int keepalive = 1;
+        if (setsockopt (sock_data->sock, SOL_SOCKET, SO_KEEPALIVE, (char *) &keepalive, sizeof (keepalive)))
+            perrorsocket ("setsockopt SO_KEEPALIVE");
+#ifdef MSWIN
+        {
+            struct tcp_keepalive ka;
+            DWORD bytes;
+            ka.onoff = 1;
+            ka.keepalivetime = 25000;       /* 25 s idle before first probe */
+            ka.keepaliveinterval = 5000;    /* 5 s between probes */
+            if (WSAIoctl (sock_data->sock, SIO_KEEPALIVE_VALS, &ka, sizeof (ka), NULL, 0, &bytes, NULL, NULL))
+                perrorsocket ("WSAIoctl SIO_KEEPALIVE_VALS");
+        }
+#else
+        {
+            int keepidle = 25;
+            int keepintvl = 5;
+            int keepcnt = 3;
+            setsockopt (sock_data->sock, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof (keepidle));
+            setsockopt (sock_data->sock, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof (keepintvl));
+            setsockopt (sock_data->sock, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof (keepcnt));
+        }
+#endif
     }
     if (ioctlsocket (sock_data->sock, FIONBIO, &nbio))  {
         SHUTSOCK (sock_data);

@@ -1,6 +1,14 @@
 /* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 
 
+printf("0x%lX  %d %d  U=%d u=%d\n", the_chr, (int) h * U / u, (int) bitmap->rows, U, u);
+#if 1
+#else
+    if (u > h * U / (int) bitmap->rows)
+        u = h * U / (int) bitmap->rows;
+#endif
+
+
 
 
     if (serv->option_range && iprange_scan (option_range, (const unsigned char *) &client_address.sin_addr.s_addr, &found_ip)) {

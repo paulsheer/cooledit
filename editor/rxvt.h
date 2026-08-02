@@ -9,6 +9,7 @@ typedef struct _rxvtlib rxvtlib;
 struct rxvt_startup_options {
     int term_8bit;
     int large_font;
+    int small_font;
     int backspace_ctrl_h;
     int backspace_127;
     int x11_forwarding;

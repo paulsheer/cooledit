@@ -99,18 +99,78 @@ Run `remotefs` on a remote machine to access files using `cooledit`. On MS Windo
 
 #### Unicode Support
 
-`cooledit` has support for 96.4% of Unicode 17 and will render 153,821
-glyphs from ¡ through 󾠷, as well as the capability to enter raw characters
-and determine encoding correctness.
-
-> 道可道，非常道。名可名，非常名。無名天地之始；有名萬物之母。故常無欲，以觀其妙；常有欲，以觀其徼。此兩者，同出而異名，同謂之玄。玄之又玄，衆妙之門。
-> 
-> 😎🛟🚚🔧⍼💕💖💗💘💙💚💛💜💝💞💟💌🐀🐁🐂🐃🐄🐅🐆🐇🐈🐉🐊🐋🐌🐍🐎🐏
-> 
-> 𓅀𓅁𓅂𓅃𓅄𓅅𓅆𓅇𓅈𓅉𓅊𓅚𓅪𓅺𓆊𓆚𓆪𓆺
+`cooledit` has support for 99.5% of Unicode 17 code-points and will
+render 159,039 glyphs from ¡ through 󾠷, as well as the capability
+to enter raw characters and determine encoding correctness.
 
 `cooledit` does not do character combining.
 
+> 道可道，非常道。
+> 名可名，非常名。
+> 無名天地之始；有名萬物之母。
+> 故常無欲，以觀其妙；常有欲，以觀其徼。
+> 此兩者，同出而異名，同謂之玄。
+> 玄之又玄，衆妙之門。
+> 
+> 
+> 🌌🛤🗣➡🛤❓♾🚫🛤
+> 🏷🗣➡🏷❓♾🚫🏷
+> 
+> 🚫🏷🌌🌍👶
+> 🏷🌎🌱🐦🐟🌸⭐🤱
+> 
+> 🔁🚫💭🤲👀✨
+> 🔁💭🤲👀🔚
+> 
+> 👥↔🌱
+> 🪞🏷🚫🟰
+> 🤝☯🕳🌑
+> 
+> 🌑➡🌑➡🌑
+> 🚪✨♾
+> 
+> 
+> │𓇋𓏏│𓅱𓂧│𓇋𓈖│𓅱𓄿𓏏│
+> │𓈖𓈖│𓈖𓏏𓋴│𓅱𓄿𓏏│𓈗│
+> 
+> │𓂋𓈖│𓅱𓂧│𓇋𓈖│𓂋𓈖│
+> │𓈖𓈖│𓈖𓏏𓋴│𓂋𓈖│𓈗│
+> 
+> │𓈖│𓂋𓈖│
+> │𓏏𓊪│𓇯│𓅱│𓇾│
+> 
+> │𓅓│𓂋𓈖│
+> │𓅐│𓈎𓐍𓂋│𓎟│
+> 
+> │𓇋𓅱│
+> │𓈖│𓋴𓃀𓇋│𓄿𓃀│
+> 
+> │𓅓│𓋴𓃀𓇋│𓄿𓃀│
+> 
+> │𓋴𓈖𓅱𓇌│
+> │𓅨│
+> 
+> │𓇋𓌳𓈖│
+> 
+> │𓇋𓌳𓈖│
+> │𓅓│
+> │𓇋𓌳𓈖│
+> 
+> │𓋴𓃀𓄿│
+> │𓈙𓊪𓋴𓅱│
+> 
+> 
+> मार्गो यो वक्तुं शक्यः स न नित्यः मार्गः।
+> नाम यन्नाम्ना निर्देष्टुं शक्यते तन्न नित्यं नाम।
+> अनाम तत् द्यावापृथिव्योः प्रारम्भः;
+> सनाम सर्वभूतानां जननी।
+> तस्मात् सदा निरिच्छः सन् तस्य सूक्ष्मतां पश्येत्;
+> सदा सेच्छः सन् तस्य सीमां पश्येत्।
+> एते उभे एकस्मादेव प्रभवतः, नामभेदेन तु भिन्ने।
+> उभेऽपि गुह्यमित्युच्येते।
+> गुह्यादपि गुह्यतरम्—
+> सर्वेषां अद्भुतानां द्वारम्॥
+> 
 
 ![Unicode examples](screenshot3.gif)
 

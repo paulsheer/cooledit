@@ -20,6 +20,7 @@
 #include "font.h"
 #include "aafont.h"
 
+
 /* #ifndef NO_TTF command-line options are dummy in this case */
 int option_rgb_order = RedFirst;
 int option_interchar_spacing = 0;
@@ -537,15 +538,16 @@ static const char *hex_chars[16][7] = {
 }};
 #endif
 
-static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int dy, FT_Bitmap *bitmap, FT_Glyph_Metrics *metrics, int u_, int U_, int u, int U, int w, int h, int W, int H, int blank, int bold_effect);
-int load_one_freetype_font (FT_Face *face, const char *filename, int *desired_height, int *loaded_height);
+static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int dy, FT_Bitmap *bitmap, FT_Glyph_Metrics *metrics, int u_, int U_, int u, int U, int w, int h, int W, int H, int blank, int bold_effect, unsigned long the_chr);
+int load_one_freetype_font (FT_Face *face, const char *filename, int *desired_height, int *loaded_height, const int primary_loaded_height, const int primary_y_scale, const int primary_measured_height, const int primary_measured_ascent, int *ybearing_adjustment);
+C_wchar_t small_seal_script_Unicode_18_to_Unicode_17(C_wchar_t v);
 
 /* third level */
 static void aa_create_pixmap_freetype (struct aa_font_cache *f, unsigned long the_chr, struct aa_glyph_cache *glyph, int metrics_only)
 {E_
     int found = 0, font_i;
     int h, H, w, W;
-    int U, u;
+    int U, u, adj;
     int U_, u_;
     int mfw;
 
@@ -557,6 +559,14 @@ static void aa_create_pixmap_freetype (struct aa_font_cache *f, unsigned long th
 #ifdef MAP_WINDOWS
   retry_with_windows_mapping:
 #endif
+
+  /* Note (6) */
+  /* Mapping derived from SealSources.txt (Unicode 18.0.0 draft, 2026-05-18).
+   * Property kSEAL_MCJK associates each Seal ideograph (U+3D000..U+3FC3F)
+   * with its modern CJK Unified Ideograph equivalent.
+   * See: https://www.unicode.org/Public/draft/ucd/SealSources.txt */
+    if (the_chr >= 0x3D000 && the_chr <= 0x3FC3F)
+        the_chr = small_seal_script_Unicode_18_to_Unicode_17(the_chr);
 
     for (font_i = 0; font_i < f->f->font_freetype.n_fonts; font_i++) {
         unsigned long t;
@@ -570,9 +580,8 @@ static void aa_create_pixmap_freetype (struct aa_font_cache *f, unsigned long th
             continue;
 
         if (!cache->face) {
-            int desired_height;
-            desired_height = f->f->font_freetype.desired_height;
-            if (load_one_freetype_font ((FT_Face *) &cache->face, cache->freetype_fname, &desired_height, &cache->loaded_height)) {
+            cache->desired_height = f->f->font_freetype.desired_height;
+            if (load_one_freetype_font ((FT_Face *) &cache->face, cache->freetype_fname, &cache->desired_height, &cache->loaded_height, f->f->font_freetype.loaded_height, f->f->font_freetype.y_scale, f->f->font_freetype.measured_height, f->f->font_freetype.measured_ascent, &cache->ybearing_adjustment)) {
                 cache->load_failed = 1;
                 continue;
             }
@@ -612,7 +621,7 @@ u = 1000000000;
                     }
                     prev = next;
                 }
-                printf("Loaded font %s (nom=%d real=%d) in attempt to find unicode code point 0x%X. (0x%lX-0x%lX etc.)\n", cache->freetype_fname, desired_height, cache->loaded_height, (unsigned int) t, max_block_from, max_block_to);
+                printf("Loaded font %s (nom=%d real=%d) in attempt to find unicode code point 0x%X. (0x%lX-0x%lX etc.)\n", cache->freetype_fname, cache->desired_height, cache->loaded_height, (unsigned int) t, max_block_from, max_block_to);
             }
 #endif
         }
@@ -638,6 +647,8 @@ u = 1000000000;
                 if (!error && face->glyph->bitmap.width) {
                     found = 1;
                     U = cache->loaded_height;
+                    u = cache->desired_height;
+                    adj = cache->ybearing_adjustment;
                     if (!cache->load_logged) {
                         cache->load_logged = 1;
                         if (verbose_operation)
@@ -683,10 +694,11 @@ u = 1000000000;
         dx = metrics->horiBearingX / 64;
     }
 
-    u = f->f->font_freetype.desired_height;
     mfw = f->f->mean_font_width;
     if (f->f->force_fixed_width == FORCE_FIXED_WIDTH__UNICODETERMINALMODE && is_unicode_doublewidth_char (the_chr))
         mfw *= 2;
+
+    metrics->horiBearingY += 64 * adj;  /* See note (5) in font.c */
 
 /* force fixed font won't be populated the first time this is called. This
  * does not matter, since the first call is to get the mean font width based
@@ -709,9 +721,6 @@ u = 1000000000;
         U_ = U;
     }
 
-    if (U <= u)
-        U = u;
-
     h = f->f->font_freetype.measured_height;
     H = h * U / u;
 
@@ -721,11 +730,11 @@ u = 1000000000;
     dy = f->f->font_freetype.measured_ascent * U / u - metrics->horiBearingY / 64;
 
     if (!metrics_only)
-        glyph->pixmap = aa_render_glyph (f->gc, f->fg, f->bg, dx, dy, &face->glyph->bitmap, metrics, u_, U_, u, U, w, h, W, H, the_chr == ' ', f->bold_effect);
+        glyph->pixmap = aa_render_glyph (f->gc, f->fg, f->bg, dx, dy, &face->glyph->bitmap, metrics, u_, U_, u, U, w, h, W, H, the_chr == ' ', f->bold_effect, the_chr);
 }
 
 
-static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int dy, FT_Bitmap *bitmap, FT_Glyph_Metrics *metrics, int u_, int U_, int u, int U, int w, int h, int W, int H, int blank, int bold_effect)
+static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int dy, FT_Bitmap *bitmap, FT_Glyph_Metrics *metrics, int u_, int U_, int u, int U, int w, int h, int W, int H, int blank, int bold_effect, unsigned long the_chr)
 {E_
     XImage *shrunk;
     Pixmap pixmap;
@@ -769,15 +778,32 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
     g_bg = ((font_bg >> green_shift) & green_mask);
     b_bg = ((font_bg >> blue_shift) & blue_mask);
 
-/* if the glyph is trying to draw itself outside the bounds of the XImage then we constrain it to the furthest edge */
-    if (dy > h * U / u - bitmap->rows)
-        dy = h * U / u - bitmap->rows;
-    if (dy < 0)
-        dy = 0;
-    if (dx > w * U_ / u_ - bitmap->width)
-        dx = w * U_ / u_ - bitmap->width;
-    if (dx < 0)
-        dx = 0;
+
+#define FUDGE   0
+
+    if (the_chr >= 0x2000 && the_chr <= 0x27FF) {
+        /* box drawing characters and math symbols */
+    } else if (the_chr >= 0x1CC00 && the_chr <= 0x1CEFF) {
+        /* newer box drawing characters */
+    } else if (the_chr >= 0x1FB00 && the_chr <= 0x1FBFF) {
+        /* yet more box drawing characters */
+    } else { 
+/* all other characters do not need to align perfectly with the adjacent character above or to the left or right.... */
+
+        /* if the glyph is too large for the bounding box, then scale it veritcally */
+        if (U + FUDGE < (int) bitmap->rows * u / h)
+            U = (int) bitmap->rows * u / h;
+        /* if the glyph is trying to draw itself outside the bounds of the XImage then we constrain it to the furthest edge */
+        if (dy > h * U / u - (int) bitmap->rows + FUDGE)
+            dy = h * U / u - (int) bitmap->rows;
+        if (dy < -FUDGE)
+            dy = 0;
+        if (dx > w * U_ / u_ - bitmap->width + FUDGE)
+            dx = w * U_ / u_ - bitmap->width;
+        if (dx < -2)
+            dx = 0;
+    }
+
 
 #define BOLD_Y_SHIFT            0
 #define BOLD_X_SHIFT            1
@@ -832,7 +858,7 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
             for (i = 0; i < w; i++) { \
                 jj = j - dy; \
                 ii = i - dx; \
-                if (jj >= 0 && ii >= 0 && jj < bitmap->rows && ii < bitmap->width && !blank) { \
+                if (jj >= 0 && ii >= 0 && jj < (int) bitmap->rows && ii < bitmap->width && !blank) { \
                     grey = ((bitmap->buffer[jj * bitmap->pitch + (ii / s8)] >> (s7 - (ii % s8))) & s1); \
                 } else { \
                     grey = 0; \
@@ -840,11 +866,11 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
                 RGB(s1); \
             } \
         } else { \
+            DECLM; \
             for (i = 0; i < w; i++) { \
-                DECLM; \
                 jj = j - dy; \
                 ii = i - dx; \
-                if (jj >= 0 && ii >= 0 && jj < bitmap->rows && ii < bitmap->width && !blank) { \
+                if (jj >= 0 && ii >= 0 && jj < (int) bitmap->rows && ii < bitmap->width && !blank) { \
                     grey = ((bitmap->buffer[(h - 1 - jj) * (-bitmap->pitch) + (ii / s8)] >> (s7 - (ii % s8))) & s1); \
                 } else { \
                     grey = 0; \
@@ -861,14 +887,14 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
             for (i = 0; i < w; i++) { \
                 jjb = j - dy + BOLD_Y_SHIFT; \
                 iib = i - dx - BOLD_X_SHIFT; \
-                if (jjb >= 0 && iib >= 0 && jjb < bitmap->rows && iib < bitmap->width && !blank) { \
+                if (jjb >= 0 && iib >= 0 && jjb < (int) bitmap->rows && iib < bitmap->width && !blank) { \
                     bold = ((bitmap->buffer[jjb * bitmap->pitch + (iib / s8)] >> (s7 - (iib % s8))) & s1); \
                 } else { \
                     bold = 0; \
                 } \
                 jj = j - dy; \
                 ii = i - dx; \
-                if (jj >= 0 && ii >= 0 && jj < bitmap->rows && ii < bitmap->width && !blank) { \
+                if (jj >= 0 && ii >= 0 && jj < (int) bitmap->rows && ii < bitmap->width && !blank) { \
                     grey = ((bitmap->buffer[jj * bitmap->pitch + (ii / s8)] >> (s7 - (ii % s8))) & s1); \
                 } else { \
                     grey = 0; \
@@ -876,18 +902,18 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
                 RGBbold(s1); \
             } \
         } else { \
+            DECLMbold; \
             for (i = 0; i < w; i++) { \
-                DECLMbold; \
                 jjb = j - dy + BOLD_Y_SHIFT; \
                 iib = i - dx - BOLD_X_SHIFT; \
-                if (jjb >= 0 && iib >= 0 && jjb < bitmap->rows && iib < bitmap->width && !blank) { \
+                if (jjb >= 0 && iib >= 0 && jjb < (int) bitmap->rows && iib < bitmap->width && !blank) { \
                     bold = ((bitmap->buffer[(h - 1 - jjb) * (-bitmap->pitch) + (iib / s8)] >> (s7 - (iib % s8))) & s1); \
                 } else { \
                     bold = 0; \
                 } \
                 jj = j - dy; \
                 ii = i - dx; \
-                if (jj >= 0 && ii >= 0 && jj < bitmap->rows && ii < bitmap->width && !blank) { \
+                if (jj >= 0 && ii >= 0 && jj < (int) bitmap->rows && ii < bitmap->width && !blank) { \
                     grey = ((bitmap->buffer[(h - 1 - jj) * (-bitmap->pitch) + (ii / s8)] >> (s7 - (ii % s8))) & s1); \
                 } else { \
                     grey = 0; \
@@ -904,7 +930,7 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
             for (i = 0; i < w; i++) { \
                 jj = j - dy; \
                 ii = i - dx; \
-                if (jj >= 0 && ii >= 0 && jj < bitmap->rows && ii < bitmap->width && !blank) { \
+                if (jj >= 0 && ii >= 0 && jj < (int) bitmap->rows && ii < bitmap->width && !blank) { \
                     grey = bitmap->buffer[jj * bitmap->pitch + ii]; \
                 } else { \
                     grey = 0; \
@@ -916,7 +942,7 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
             for (i = 0; i < w; i++) { \
                 jj = j - dy; \
                 ii = i - dx; \
-                if (jj >= 0 && ii >= 0 && jj < bitmap->rows && ii < bitmap->width && !blank) { \
+                if (jj >= 0 && ii >= 0 && jj < (int) bitmap->rows && ii < bitmap->width && !blank) { \
                     grey = bitmap->buffer[(h - 1 - jj) * (-bitmap->pitch) + ii]; \
                 } else { \
                     grey = 0; \
@@ -933,14 +959,14 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
             for (i = 0; i < w; i++) { \
                 jjb = j - dy + BOLD_Y_SHIFT; \
                 iib = i - dx - BOLD_X_SHIFT; \
-                if (jjb >= 0 && iib >= 0 && jjb < bitmap->rows && iib < bitmap->width && !blank) { \
+                if (jjb >= 0 && iib >= 0 && jjb < (int) bitmap->rows && iib < bitmap->width && !blank) { \
                     bold = bitmap->buffer[jjb * bitmap->pitch + iib]; \
                 } else { \
                     bold = 0; \
                 } \
                 jj = j - dy; \
                 ii = i - dx; \
-                if (jj >= 0 && ii >= 0 && jj < bitmap->rows && ii < bitmap->width && !blank) { \
+                if (jj >= 0 && ii >= 0 && jj < (int) bitmap->rows && ii < bitmap->width && !blank) { \
                     grey = bitmap->buffer[jj * bitmap->pitch + ii]; \
                 } else { \
                     grey = 0; \
@@ -952,14 +978,14 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
             for (i = 0; i < w; i++) { \
                 jjb = j - dy + BOLD_Y_SHIFT; \
                 iib = i - dx - BOLD_X_SHIFT; \
-                if (jjb >= 0 && iib >= 0 && jjb < bitmap->rows && iib < bitmap->width && !blank) { \
+                if (jjb >= 0 && iib >= 0 && jjb < (int) bitmap->rows && iib < bitmap->width && !blank) { \
                     bold = bitmap->buffer[(h - 1 - jjb) * (-bitmap->pitch) + iib]; \
                 } else { \
                     bold = 0; \
                 } \
                 jj = j - dy; \
                 ii = i - dx; \
-                if (jj >= 0 && ii >= 0 && jj < bitmap->rows && ii < bitmap->width && !blank) { \
+                if (jj >= 0 && ii >= 0 && jj < (int) bitmap->rows && ii < bitmap->width && !blank) { \
                     grey = bitmap->buffer[(h - 1 - jj) * (-bitmap->pitch) + ii]; \
                 } else { \
                     grey = 0; \
@@ -1093,7 +1119,7 @@ for (j = 0; j < w; j++) {
             for (x = X1; x <= X2; x++)  \
             { \
                 int c1, C1; \
-                if (!(x >= 0 && y >= 0 && x < bitmap->width && y < bitmap->rows)) \
+                if (!(x >= 0 && y >= 0 && x < bitmap->width && y < (int) bitmap->rows)) \
                     continue; \
                 c1 = color_y_x; \
                 C1 = 255; \
@@ -1126,6 +1152,90 @@ for (j = 0; j < w; j++) {
     } while (0)
 
 #define SUM_COLOR(result, color_y_x)    SUM_COLORi(ii, jj, result, color_y_x)
+
+/* BitMask with [S]caling */
+
+#define BITMS(s1,s7,s8) \
+    do { \
+        if (bitmap->pitch >= 0) { \
+            DECLM; \
+            for (i = 0; i < w; i++) { \
+                jj = j; \
+                ii = i; \
+                if (!blank) { \
+                    unsigned int gr; \
+                    /* byte = bitmap->buffer[y * bitmap->pitch + x] */  \
+                    SUM_COLOR(grey, (gr = ((bitmap->buffer[y * bitmap->pitch + (x / s8)] >> (s7 - (x % s8))) & s1), gr * 255 / s1)); \
+                } else { \
+                    grey = 0; \
+                } \
+                RGB(255); \
+            } \
+        } else { \
+            DECLM; \
+            for (i = 0; i < w; i++) { \
+                jj = j; \
+                ii = i; \
+                if (!blank) { \
+                    unsigned int gr; \
+                    /* byte = bitmap->buffer[y * bitmap->pitch + x] */  \
+                    SUM_COLOR(grey, (gr = ((bitmap->buffer[(h - 1 - jj) * (-bitmap->pitch) + (ii / s8)] >> (s7 - (ii % s8))) & s1), gr * 255 / s1)); \
+                } else { \
+                    grey = 0; \
+                } \
+                RGB(255); \
+            } \
+        } \
+    } while (0)
+
+#define BITMSbold(s1,s7,s8) \
+    do { \
+        if (bitmap->pitch >= 0) { \
+            DECLMbold; \
+            for (i = 0; i < w; i++) { \
+                jjb = j + BOLD_Y_SHIFT; \
+                iib = i - BOLD_X_SHIFT; \
+                if (!blank) { \
+                    unsigned int bo; \
+                    SUM_COLORi(iib, jjb, bold, (bo = ((bitmap->buffer[y * bitmap->pitch + (x / s8)] >> (s7 - (x % s8))) & s1), bo * 255 / s1)); \
+                } else { \
+                    bold = 0; \
+                } \
+                jj = j; \
+                ii = i; \
+                if (!blank) { \
+                    unsigned int gr; \
+                    /* byte = bitmap->buffer[y * bitmap->pitch + x] */  \
+                    SUM_COLOR(grey, (gr = ((bitmap->buffer[y * bitmap->pitch + (x / s8)] >> (s7 - (x % s8))) & s1), gr * 255 / s1)); \
+                } else { \
+                    grey = 0; \
+                } \
+                RGBbold(255); \
+            } \
+        } else { \
+            DECLMbold; \
+            for (i = 0; i < w; i++) { \
+                jjb = j + BOLD_Y_SHIFT; \
+                iib = i - BOLD_X_SHIFT; \
+                if (!blank) { \
+                    unsigned int bo; \
+                    SUM_COLORi(iib, jjb, bold, (bo = ((bitmap->buffer[(h - 1 - jj) * (-bitmap->pitch) + (ii / s8)] >> (s7 - (ii % s8))) & s1), bo * 255 / s1)); \
+                } else { \
+                    bold = 0; \
+                } \
+                jj = j; \
+                ii = i; \
+                if (!blank) { \
+                    unsigned int gr; \
+                    /* byte = bitmap->buffer[y * bitmap->pitch + x] */  \
+                    SUM_COLOR(grey, (gr = ((bitmap->buffer[(h - 1 - jj) * (-bitmap->pitch) + (ii / s8)] >> (s7 - (ii % s8))) & s1), gr * 255 / s1)); \
+                } else { \
+                    grey = 0; \
+                } \
+                RGBbold(255); \
+            } \
+        } \
+    } while (0)
 
 #define BITC \
     do { \
@@ -1161,6 +1271,8 @@ for (j = 0; j < w; j++) {
             } \
         } \
     } while (0)
+
+/* WholeByte with [S]caling */
 
 #define BIT255S \
     do { \
@@ -1296,18 +1408,18 @@ for (j = 0; j < w; j++) {
                 break;
             }
         }
-    } else {
+    } else {   /* U != u || U_ != u_ */
         if (bold_effect == BOLD_EFFECT_STRONG) {
             for (j = 0; j < h; j++) {
                 switch ((int) bitmap->pixel_mode) {
                 case FT_PIXEL_MODE_MONO:
-                    BITMbold(1,7,8);
+                    BITMSbold(1,7,8);
                     break;
                 case FT_PIXEL_MODE_GRAY2:
-                    BITMbold(3,3,4);
+                    BITMSbold(3,3,4);
                     break;
                 case FT_PIXEL_MODE_GRAY4:
-                    BITMbold(15,1,2);
+                    BITMSbold(15,1,2);
                     break;
                 case FT_PIXEL_MODE_GRAY:
                     BIT255Sbold;
@@ -1326,13 +1438,13 @@ for (j = 0; j < w; j++) {
         for (j = 0; j < h; j++) {
             switch ((int) bitmap->pixel_mode) {
             case FT_PIXEL_MODE_MONO:
-                BITM(1,7,8);
+                BITMS(1,7,8);
                 break;
             case FT_PIXEL_MODE_GRAY2:
-                BITM(3,3,4);
+                BITMS(3,3,4);
                 break;
             case FT_PIXEL_MODE_GRAY4:
-                BITM(15,1,2);
+                BITMS(15,1,2);
                 break;
             case FT_PIXEL_MODE_GRAY:
                 BIT255S;

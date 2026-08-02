@@ -2334,8 +2334,10 @@ static struct mouse_funcs main_mouse_funcs =
 extern int (*global_callback) (XEvent *x);
 const char *get_default_widget_font (void);
 const char *get_default_editor_font (void);
+const char *get_default_editor_font_small (void);
 const char *get_default_editor_font_large (void);
 const char *get_default_8bit_term_font (void);
+const char *get_default_8bit_term_font_small (void);
 const char *get_default_8bit_term_font_large (void);
 const char *get_list_substitute_unicode_font_list (void);
 
@@ -2407,14 +2409,16 @@ int main (int argc, char **argv)
 	 || !strcmp (option_font2, "-?") || !strcmp (option_font2, "-h")) {
 	    int i;
 	    printf ("\n");
-	    printf ("\tcooledit -font default\n" \
-		    "\tcooledit -font large     # use 9x15B instead of 8x13B\n" \
+	    printf ("\tcooledit -font default   # use 15 pixel high font\n" \
+		    "\tcooledit -font small     # use 13 pixel high instead of 15\n" \
+		    "\tcooledit -font large     # defauilt\n" \
 		    "\tcooledit -font 8x13bold\n" \
 		    "\tcooledit -font 1-%d     # load one of this list of legacy X11 fonts\n", n);
 	    printf ("\n");
 	    printf ("Examples using fonts on file on the local machine: \n");
 	    printf ("\tcooledit -font NotoSansMono-Regular.ttf,...:14   # 14 means 14 pixels height. The '...' means add all 150+ Unicode fonts for anything missing\n");
-	    printf ("\tcooledit -font LiberationMono-Regular.ttf:16M    # 'M' means load in monochrome mode without anti-aliasing\n");
+	    printf ("\tcooledit -font LiberationMono-Regular.ttf:15     # Nice!\n");
+	    printf ("\tcooledit -font JetBrainsMono-Regular.ttf:16M    # 'M' means load in monochrome mode without anti-aliasing\n");
 	    printf ("\tcooledit -font 8x13B.pcf.gz,NotoColorEmoji.ttf:35 --widget-font  NotoSans-Regular.ttf:14     # then hit  Alt-I  then  End  then  PgDn  until 0x1F300\n");
 	    printf ("\tcooledit -font 9x15B.pcf.gz\n");
 	    printf ("\tcooledit -font /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:20\n");
@@ -2458,6 +2462,8 @@ int main (int argc, char **argv)
     if (option_font2) {
 	if (!strcmp (option_font2, "default"))
 	    option_font2 = (char *) strdup (get_default_editor_font ());
+	if (!strcmp (option_font2, "small"))
+	    option_font2 = (char *) strdup (get_default_editor_font_small ());
 	if (!strcmp (option_font2, "large"))
 	    option_font2 = (char *) strdup (get_default_editor_font_large ());
     }
@@ -2469,6 +2475,8 @@ int main (int argc, char **argv)
     if (option_8bit_term_font) {
 	if (!strcmp (option_8bit_term_font, "default"))
 	    option_8bit_term_font = (char *) strdup (get_default_8bit_term_font ());
+	if (!strcmp (option_8bit_term_font, "small"))
+	    option_8bit_term_font = (char *) strdup (get_default_8bit_term_font_small ());
 	if (!strcmp (option_8bit_term_font, "large"))
 	    option_8bit_term_font = (char *) strdup (get_default_8bit_term_font_large ());
     }

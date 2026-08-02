@@ -14,7 +14,7 @@
 #include "xim.h"
 #include "stringtools.h"
 
-struct rxvt_startup_options rxvt_startup_options = {0, 1, 0, 0, 1, 1, ""};
+struct rxvt_startup_options rxvt_startup_options = {0, 1, 0, 0, 0, 1, 1, ""};
 
 struct rxvts {
     rxvtlib *rxvt;
@@ -360,7 +360,9 @@ Window rxvt_get_main_window (rxvtlib *rxvt)
 static int rxvt_startup_dialog_ (struct rxvt_startup_options *opt);
 
 void save_options (void);
+const char *get_default_editor_font_small (void);
 const char *get_default_editor_font_large (void);
+const char *get_default_8bit_term_font_small (void);
 const char *get_default_8bit_term_font_large (void);
 char *substitute_font_wildcard (const char *s);
 void cooledit_main_loop (void);
@@ -393,6 +395,14 @@ int rxvt_startup_dialog (const char *host, char *shell_script)
             _large = substitute_font_wildcard (get_default_editor_font_large ());
         CFontLazyHonorFixedDoubleWidth ("rxvt", _large, NULL, &rxvt_encoding);
         CFontLazyForceFixed ("rxvt8bit", get_default_8bit_term_font_large (), NULL, &rxvt_8bit_encoding);
+    }
+
+    if (rxvt_startup_options.small_font) {
+        static char *_small = NULL;
+        if (!_small)
+            _small = substitute_font_wildcard (get_default_editor_font_small ());
+        CFontLazyHonorFixedDoubleWidth ("rxvt", _small, NULL, &rxvt_encoding);
+        CFontLazyForceFixed ("rxvt8bit", get_default_8bit_term_font_small (), NULL, &rxvt_8bit_encoding);
     }
 
     if (rxvt_startup_options.term_8bit) {
@@ -443,7 +453,7 @@ static int rxvt_startup_dialog_ (struct rxvt_startup_options *opt)
     char *check_labels[10] =
     {
         gettext_noop ("8-bit terminal"),
-        gettext_noop ("Large font"),
+        gettext_noop ("Use 8x13 font instead of 9x15"),
         gettext_noop ("Force backspace to ^H"),
         gettext_noop ("Force backspace to ^?"),
         gettext_noop ("Enable X11 forwarding"),
@@ -485,7 +495,7 @@ static int rxvt_startup_dialog_ (struct rxvt_startup_options *opt)
     inputs_result[0] = &inputs[0];
     inputs_result[1] = 0;
     checks_values_result[0] = &opt->term_8bit;
-    checks_values_result[1] = &opt->large_font;
+    checks_values_result[1] = &opt->small_font;
     checks_values_result[2] = &opt->backspace_ctrl_h;
     checks_values_result[3] = &opt->backspace_127;
     checks_values_result[4] = &opt->x11_forwarding;

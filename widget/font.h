@@ -17,6 +17,8 @@ struct freetype_cache {
     int load_logged;
     int load_failed;
     int loaded_height;
+    int desired_height;
+    int ybearing_adjustment;
     void *face;
 };
 
@@ -27,6 +29,8 @@ struct freetype_face {
     int n_fonts;
 #ifndef NO_TTF
     int desired_height;
+    int loaded_height;
+    int y_scale;
     int measured_height;
     int measured_ascent;
 #endif

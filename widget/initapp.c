@@ -400,7 +400,14 @@ int cooledit_regex_get_utf8_or_ascii (void)
         "NotoZnamennyMusicalNotation-Regular.ttf," \
         "SourceHanSans-Regular.otf," \
         "LorchinSansP0.ttf," \
-        "LorchinSansP2.ttf"
+        "LorchinSansP2.ttf," \
+        "SymbolsForLegacyComputing.ttf," \
+        "EgyptianHieroglyphsExtendedA.ttf," \
+        "SupplementalArrowsC.ttf," \
+        "CombiningDiacriticalMarksExtended.ttf," \
+        "VariationSelectors.ttf," \
+        "CyrillicExtendedCD.ttf," \
+        "LatinExtDGMiscSymbolSup.ttf"
 
 
 /*
@@ -416,6 +423,15 @@ int cooledit_regex_get_utf8_or_ascii (void)
 #endif
 
 const char *get_default_editor_font (void)
+{E_
+#ifndef NO_TTF
+    return "9x15B.pcf.gz,...";
+#else
+    return "-*-fixed-bold-r-*--15-140-*-*-*-*-*";
+#endif
+}
+
+const char *get_default_editor_font_small (void)
 {E_
 #ifndef NO_TTF
     return "8x13B.pcf.gz,...";
@@ -443,6 +459,15 @@ const char *get_default_widget_font (void)
 }
 
 const char *get_default_8bit_term_font (void)
+{E_
+#ifndef NO_TTF
+    return "9x15B-ISO8859-1.pcf.gz";
+#else
+    return "-*-fixed-bold-r-*--15-120-*-*-*-*-*";
+#endif
+}
+
+const char *get_default_8bit_term_font_small (void)
 {E_
 #ifndef NO_TTF
     return "8x13B-ISO8859-1.pcf.gz";

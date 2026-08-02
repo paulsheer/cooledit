@@ -309,6 +309,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 syntaxdir = $(datadir)/cooledit/fonts
 syntax_DATA = 8x13B-ISO8859-1.pcf.gz 8x13B.pcf.gz 9x15B-ISO8859-1.pcf.gz 9x15B.pcf.gz cdoc.ttf LiberationMono-Regular.ttf \
+        JetBrainsMono-Regular.ttf \
         NotoSansMono-Bold.ttf NotoColorEmoji.ttf \
         NotoFangsongKSSVertical-Regular.ttf NotoMusic-Regular.ttf NotoSansAdlam-Regular.ttf NotoSansAnatolianHieroglyphs-Regular.ttf NotoSansArabic-Regular.ttf \
         NotoSansArmenian-Regular.ttf NotoSansAvestan-Regular.ttf NotoSansBalinese-Regular.ttf NotoSansBamum-Regular.ttf NotoSansBassaVah-Regular.ttf \
@@ -344,7 +345,9 @@ syntax_DATA = 8x13B-ISO8859-1.pcf.gz 8x13B.pcf.gz 9x15B-ISO8859-1.pcf.gz 9x15B.p
         NotoSerifHentaigana-Regular.ttf NotoSerifKhojki-Regular.ttf NotoSerifMakasar-Regular.ttf NotoSerifNPHmong-Regular.ttf NotoSerifOldUyghur-Regular.ttf \
         NotoSerifOttomanSiyaq-Regular.ttf NotoSerifTangut-Regular.ttf NotoSerifTibetan-Regular.ttf NotoSerifTodhri-Regular.ttf NotoSerifToto-Regular.ttf \
         NotoSerifYezidi-Regular.ttf NotoTraditionalNushu-Regular.ttf NotoZnamennyMusicalNotation-Regular.ttf sort.py \
-        SourceHanSans-Regular.otf LorchinSansP0.ttf LorchinSansP2.ttf
+        SourceHanSans-Regular.otf LorchinSansP0.ttf LorchinSansP2.ttf \
+        SymbolsForLegacyComputing.ttf EgyptianHieroglyphsExtendedA.ttf SupplementalArrowsC.ttf CombiningDiacriticalMarksExtended.ttf \
+        VariationSelectors.ttf CyrillicExtendedCD.ttf LatinExtDGMiscSymbolSup.ttf
 
 all: all-am
 

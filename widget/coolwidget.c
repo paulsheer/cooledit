@@ -440,9 +440,16 @@ CWidget *CSetupWidget (const char *identifier, Window parent, int x, int y,
     memset (&xswa, '\0', sizeof (xswa));
 
 /* NLS ? */
-    if (CIdent (identifier) && kindofwidget == C_BUTTON_WIDGET)
+    if (CIdent (identifier)) {
+	if (kindofwidget == C_BUTTON_WIDGET) {
 /* Not essential to translate */
-	CError (_ ("Trying to create a button with the same identifier as an existing widget.\n"));
+	    CError (_ ("Trying to create a button with the same identifier as an existing widget.\n"));
+	} else {
+	    fprintf (stderr, "Internet error: creating widget \"%s\" (kind=%d) with duplicate identifier, previous=%p\n",
+		     identifier, kindofwidget, (void *)CIdent(identifier));
+	    abort ();
+	}
+    }
 
     xswa.colormap = CColormap;
     xswa.bit_gravity = NorthWestGravity;

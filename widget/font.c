@@ -35,21 +35,164 @@ static void encoding_to_wchar_t (const unsigned char *s, int l, C_wchar_t ** r_r
 static const char *font_lazy_find_pref1 (const char *name, enum font_encoding **e, enum force_fixed_width_enum *force_fixed_width);
 static const char *font_lazy_find_pref2 (const char *name, enum font_encoding **e, enum force_fixed_width_enum *force_fixed_width);
 
+static FT_Library library;
+static int initialized = 0;
 
-int load_one_freetype_font (FT_Face *face, const char *filename, int *desired_height, int *loaded_height)
+
+int load_one_freetype_font (FT_Face *face, const char *filename, int *desired_height, int *loaded_height, const int primary_loaded_height, const int primary_y_scale, const int primary_measured_height, const int primary_measured_ascent, int *ybearing_adjustment)
 {E_
-    static FT_Library library;
-    static int initialized = 0;
     int i, nominal_height, size_index = -1;
     int closest;
+    int reload_state = 0;
 
-    if (!filename) {
-        if (initialized) {
-            FT_Done_FreeType(library);
-            initialized = 0;
+    if (!initialized) {
+	initialized = 1;
+	if (FT_Init_FreeType (&library)) {
+	    fprintf (stderr, "Error initializing fretype library\n");
+	    return 1;
         }
-        return 0;
     }
+
+    if (FT_New_Face (library, filename, 0, face)) {
+	fprintf (stderr, "Font %s could not be loaded.\n%s", filename, font_error_string);
+	return 1;
+    }
+
+    assert (desired_height && *desired_height > 0);
+    assert (primary_measured_height > 0);
+    assert (ybearing_adjustment);
+    nominal_height = *desired_height;
+
+    /* find the closest size larger than height: */
+    if (size_index == -1) {
+        closest = 1024000;
+        for (i = 0; i < (*face)->num_fixed_sizes; i++) {
+            if ((*face)->available_sizes[i].height >= nominal_height) {
+                if (closest > (*face)->available_sizes[i].height) {
+                    closest = (*face)->available_sizes[i].height;
+                    size_index = i;
+                }
+            }
+        }
+    }
+
+    /* if not found, find the closest size smaller than height: */
+    if (size_index == -1) {
+        closest = 0;
+        for (i = 0; i < (*face)->num_fixed_sizes; i++) {
+            if ((*face)->available_sizes[i].height < nominal_height) {
+                if (closest < (*face)->available_sizes[i].height) {
+                    closest = (*face)->available_sizes[i].height;
+                    size_index = i;
+                }
+            }
+        }
+    }
+
+  reload:
+
+#ifdef FT_LOAD_COLOR
+    if (size_index != -1 && !FT_Select_Size((*face), size_index)) {
+#elif defined(__sun)
+/* sun comes with an older version of freetype that may not have this function */
+    static int try_load = 1;
+    static FT_Error (*__dl_FT_Select_Size) (FT_Face, FT_Int) = NULL;
+    if (try_load) {
+	try_load = 0;
+	__dl_FT_Select_Size = dlsym (RTLD_NEXT, "FT_Select_Size");
+    }
+    if (size_index != -1 && __dl_FT_Select_Size && !(*__dl_FT_Select_Size)((*face), size_index)) {
+#else
+    if (size_index != -1 && !FT_Select_Size((*face), size_index)) {
+#endif
+        nominal_height = (*face)->available_sizes[size_index].height;
+    } else if (!FT_Set_Pixel_Sizes((*face), nominal_height, nominal_height)) {
+        nominal_height = (*face)->size->metrics.y_ppem;
+    } else {
+	fprintf (stderr, "Font %s, fail setting size to %d.\n%s", filename, nominal_height, font_error_string);
+        if ((*face)->num_fixed_sizes) {
+	    fprintf (stderr, "Available sizes:\n");
+	    for (i = 0; i < (*face)->num_fixed_sizes; i++) {
+	        fprintf (stderr, "  %d\n", (int) (*face)->available_sizes[i].height);
+	    }
+        }
+        FT_Done_Face(*face);
+        *face = 0;
+        return 1;
+    }
+
+/* See note (5) in aafont.c */
+    if (reload_state == 0 && FT_IS_SCALABLE (*face)) {
+        reload_state = 1;
+
+        long long expected_ascent, expected_height;
+        long long measured_descent, expected_descent;
+        long long measured_ascent, measured_height;
+
+        (void) expected_ascent;
+        (void) expected_descent;
+        (void) measured_descent;
+        (void) expected_height;
+
+        measured_ascent = primary_measured_ascent * (64 * 65536);
+        measured_height = primary_measured_height * (64 * 65536);
+
+/* There are some fonts which are entirely above the baseline such as
+SymbolsForLegacyComputing.ttf. This means the descent is zero. This font should be
+rendered enlarged i.e. stretched vertically so that its descent matches the measured
+descent of the primary font and its height extends all the way to the highest glyph of the
+primary font. This means adding artificial y adjustment too. */
+
+        measured_descent = (measured_height - measured_ascent);
+        expected_descent = -((*face)->descender) * (*face)->size->metrics.y_scale;
+        expected_ascent = ((*face)->ascender) * (*face)->size->metrics.y_scale;
+        expected_height = (((*face)->ascender - (*face)->descender) * (*face)->size->metrics.y_scale);
+
+        if ((long long) expected_height * 998 < (long long) measured_height * 1000 && expected_descent < measured_descent) {
+            nominal_height = (long long) nominal_height * measured_height / expected_height;
+            *desired_height = (long long) nominal_height;
+            reload_state = 2;
+            goto reload;
+        }
+    }
+
+    if (reload_state == 2) {
+        long long expected_ascent, expected_height;
+        long long measured_descent, expected_descent;
+        long long measured_ascent, measured_height;
+
+        (void) expected_ascent;
+        (void) expected_descent;
+        (void) measured_descent;
+        (void) expected_height;
+
+        measured_ascent = primary_measured_ascent * (64 * 65536);
+        measured_height = primary_measured_height * (64 * 65536);
+
+        measured_descent = (measured_height - measured_ascent);
+        expected_descent = -((*face)->descender) * (*face)->size->metrics.y_scale;
+        expected_ascent = ((*face)->ascender) * (*face)->size->metrics.y_scale;
+        expected_height = (((*face)->ascender - (*face)->descender) * (*face)->size->metrics.y_scale);
+
+        if ((long long) expected_ascent > (long long) measured_ascent) {
+            *ybearing_adjustment -= (long long) (expected_ascent - measured_ascent + 32 * 65536) / (64 * 65536);
+        }
+    }
+
+    if (!*desired_height)  /* wildcard */
+        *desired_height = nominal_height;
+    *loaded_height = nominal_height;
+
+    return 0;
+}
+
+
+
+static int load_primary_freetype_font (FT_Face *face, const char *filename, int *desired_height, int *loaded_height, int *y_scale_)
+{E_
+    int i, nominal_height, size_index = -1;
+    int closest;
+    int y_scale = 0;
 
     if (!initialized) {
 	initialized = 1;
@@ -136,8 +279,10 @@ int load_one_freetype_font (FT_Face *face, const char *filename, int *desired_he
     if (size_index != -1 && !FT_Select_Size((*face), size_index)) {
 #endif
         nominal_height = (*face)->available_sizes[size_index].height;
+        y_scale = (*face)->size->metrics.y_scale;
     } else if (!FT_Set_Pixel_Sizes((*face), nominal_height, nominal_height)) {
         nominal_height = (*face)->size->metrics.y_ppem;
+        y_scale = (*face)->size->metrics.y_scale;
     } else {
 	fprintf (stderr, "Font %s, fail setting size to %d.\n%s", filename, nominal_height, font_error_string);
         if ((*face)->num_fixed_sizes) {
@@ -154,6 +299,8 @@ int load_one_freetype_font (FT_Face *face, const char *filename, int *desired_he
     if (!*desired_height)  /* wildcard */
         *desired_height = nominal_height;
     *loaded_height = nominal_height;
+    if (y_scale_)
+        *y_scale_ = y_scale;
 
     return 0;
 }
@@ -223,7 +370,7 @@ static int load_font_from_file (const char *fname, struct aa_font *r, int desire
         }
 
         if (!(fontfile)) { /* test if it is a file */
-            if (strstr (fname, ".ttf") || strstr (fname, ".otf") || strstr (fname, ".pcf")) {
+            if (strstr (fname, ".ttf") || strstr (fname, ".otf") || strstr (fname, ".pcf") || strstr (fname, ".bdf")) {
                 /* Trying to load what really appears to be a filename */
             } else if (r->font_freetype.n_fonts == 0) {
                 /* if the first one is not a loadable file, probably the user specified a X Font, so don't print an error */
@@ -247,7 +394,7 @@ static int load_font_from_file (const char *fname, struct aa_font *r, int desire
 
 /* a.0: dnh=24 drh=136 afh=100   notosans/NotoSans-Regular.ttf */
 
-        if (load_one_freetype_font (&face, t, &r->font_freetype.desired_height, &loaded_height)) {
+        if (load_primary_freetype_font (&face, t, &r->font_freetype.desired_height, &loaded_height, &r->font_freetype.y_scale)) {
             continue;
         }
 
@@ -273,10 +420,11 @@ small buttons and menus. We also want a condensed text editing style. */
                         y_descent = metrics->height - metrics->horiBearingY;
                 }
             }
+            r->font_freetype.loaded_height = loaded_height;
             r->font_freetype.measured_height = (a_ascent + y_descent + 31) * r->font_freetype.desired_height / loaded_height / 64;
             r->font_freetype.measured_ascent = a_ascent * r->font_freetype.desired_height / loaded_height / 64;
 
-/* printf("a.2 nom=%d real=%d  asc+desc=%d\n", r->font_freetype.desired_height, loaded_height, r->font_freetype.measured_height); */
+/* printf("a.2  %s:  nom=%d real=%d  asc+desc=%d asc=%d\n", fname, r->font_freetype.desired_height, loaded_height, r->font_freetype.measured_height, r->font_freetype.measured_ascent); */
 
         }
 
@@ -289,6 +437,8 @@ small buttons and menus. We also want a condensed text editing style. */
         r->font_freetype.faces[r->font_freetype.n_fonts].freetype_fname = (char *) strdup (t);
         r->font_freetype.faces[r->font_freetype.n_fonts].face = (void *) face;
         r->font_freetype.faces[r->font_freetype.n_fonts].loaded_height = loaded_height;
+        r->font_freetype.faces[r->font_freetype.n_fonts].desired_height = r->font_freetype.desired_height;
+        r->font_freetype.faces[r->font_freetype.n_fonts].ybearing_adjustment = 0;
         r->font_freetype.n_fonts++;
     }
 
@@ -1282,7 +1432,11 @@ void CFreeAllFonts (void)
 	i++;
     }
 #ifndef NO_TTF
-    load_one_freetype_font(0, 0, 0, 0);
+    if (initialized) {
+        FT_Done_FreeType(library);
+        memset (&library, '\0', sizeof (library));
+        initialized = 0;
+    }
 #endif
     font_lazy_cleanup ();
 }

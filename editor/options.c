@@ -244,6 +244,7 @@ static struct {
 
         {"options_startup_term_8bit", &rxvt_startup_options.term_8bit, 0, TYPE_HIDDEN_VALUE},
         {"options_startup_large_font", &rxvt_startup_options.large_font, 0, TYPE_HIDDEN_VALUE},
+        {"options_startup_small_font", &rxvt_startup_options.small_font, 0, TYPE_HIDDEN_VALUE},
         {"options_startup_backspace_ctrl_h", &rxvt_startup_options.backspace_ctrl_h, "rxvt/xterm, Force backspace to ^H", TYPE_ON_OFF},
         {"options_startup_backspace_127", &rxvt_startup_options.backspace_127, "rxvt/xterm, Force backspace to ^?", TYPE_ON_OFF},
         {"options_startup_x11_forwarding", &rxvt_startup_options.x11_forwarding, "rxvt/xterm, Enable X11 forwarding", TYPE_ON_OFF},
@@ -282,8 +283,8 @@ static struct {
 	{"option_foreground_red", &option_foreground_red},
 	{"option_foreground_green", &option_foreground_green},
 	{"option_foreground_blue", &option_foreground_blue},
-	{"option_font12", &option_font2},
-	{"option_widget_font12", &option_widget_font2},
+	{"option_font17", &option_font2},
+	{"option_widget_font17", &option_widget_font2},
 	{"option_8bit_term_font", &option_8bit_term_font},
 	{"option_backup_ext", &option_backup_ext},
 	{"option_man_cmdline3", &option_man_cmdline},

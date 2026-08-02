@@ -134,7 +134,7 @@ am_libCw_a_OBJECTS = initapp.$(OBJEXT) coolwidget.$(OBJEXT) \
 	symauth.$(OBJEXT) inspect.$(OBJEXT) cterminal.$(OBJEXT) \
 	childhandler.$(OBJEXT) xwinfwd.$(OBJEXT) soundfwd.$(OBJEXT) \
 	filetool.$(OBJEXT) fnmatch.$(OBJEXT) classify.$(OBJEXT) \
-	detectencoding.$(OBJEXT)
+	detectencoding.$(OBJEXT) smallsealscript.$(OBJEXT)
 libCw_a_OBJECTS = $(am_libCw_a_OBJECTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -180,12 +180,12 @@ am__depfiles_remade = ./$(DEPDIR)/ClientWin.Po ./$(DEPDIR)/aafont.Po \
 	./$(DEPDIR)/regex.Po ./$(DEPDIR)/regtools.Po \
 	./$(DEPDIR)/remotefs.Po ./$(DEPDIR)/remotefspassword.Po \
 	./$(DEPDIR)/scrollbar.Po ./$(DEPDIR)/sha256.Po \
-	./$(DEPDIR)/soundfwd.Po ./$(DEPDIR)/stringtools.Po \
-	./$(DEPDIR)/symauth.Po ./$(DEPDIR)/syntax.Po \
-	./$(DEPDIR)/textwidget.Po ./$(DEPDIR)/unicodedialog.Po \
-	./$(DEPDIR)/vertchar.Po ./$(DEPDIR)/widechar.Po \
-	./$(DEPDIR)/wordproc.Po ./$(DEPDIR)/xdnd.Po ./$(DEPDIR)/xim.Po \
-	./$(DEPDIR)/xwinfwd.Po
+	./$(DEPDIR)/smallsealscript.Po ./$(DEPDIR)/soundfwd.Po \
+	./$(DEPDIR)/stringtools.Po ./$(DEPDIR)/symauth.Po \
+	./$(DEPDIR)/syntax.Po ./$(DEPDIR)/textwidget.Po \
+	./$(DEPDIR)/unicodedialog.Po ./$(DEPDIR)/vertchar.Po \
+	./$(DEPDIR)/widechar.Po ./$(DEPDIR)/wordproc.Po \
+	./$(DEPDIR)/xdnd.Po ./$(DEPDIR)/xim.Po ./$(DEPDIR)/xwinfwd.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -412,7 +412,7 @@ libCw_a_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
 	symauth.c symauth.h inspect.c cterminal.c cterminal.h \
 	childhandler.c childhandler.h xwinfwd.c xwinfwd.h soundfwd.c soundfwd.h \
 	filetool.c filetool.h fnmatch.c fnmatch.h classify.c classify.h \
-	detectencoding.c
+	detectencoding.c smallsealscript.c
 
 all: all-am
 
@@ -510,6 +510,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/remotefspassword.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/scrollbar.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sha256.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/smallsealscript.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/soundfwd.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stringtools.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/symauth.Po@am__quote@ # am--include-marker
@@ -738,6 +739,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/remotefspassword.Po
 	-rm -f ./$(DEPDIR)/scrollbar.Po
 	-rm -f ./$(DEPDIR)/sha256.Po
+	-rm -f ./$(DEPDIR)/smallsealscript.Po
 	-rm -f ./$(DEPDIR)/soundfwd.Po
 	-rm -f ./$(DEPDIR)/stringtools.Po
 	-rm -f ./$(DEPDIR)/symauth.Po
@@ -853,6 +855,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/remotefspassword.Po
 	-rm -f ./$(DEPDIR)/scrollbar.Po
 	-rm -f ./$(DEPDIR)/sha256.Po
+	-rm -f ./$(DEPDIR)/smallsealscript.Po
 	-rm -f ./$(DEPDIR)/soundfwd.Po
 	-rm -f ./$(DEPDIR)/stringtools.Po
 	-rm -f ./$(DEPDIR)/symauth.Po

@@ -781,7 +781,9 @@ static Pixmap aa_render_glyph (GC fgc, long font_fg, long font_bg, int dx, int d
 
 #define FUDGE   0
 
-    if (the_chr >= 0x2000 && the_chr <= 0x27FF) {
+    if (the_chr >= 0x2000 && the_chr <= 0x206F /* 0x2070 = ⁰ */) {
+        /* math symbols */
+    } else if (the_chr >= 0x2080 /* 0x207F = ⁿ */ && the_chr <= 0x27FF) {
         /* box drawing characters and math symbols */
     } else if (the_chr >= 0x1CC00 && the_chr <= 0x1CEFF) {
         /* newer box drawing characters */
@@ -1219,7 +1221,7 @@ for (j = 0; j < w; j++) {
                 iib = i - BOLD_X_SHIFT; \
                 if (!blank) { \
                     unsigned int bo; \
-                    SUM_COLORi(iib, jjb, bold, (bo = ((bitmap->buffer[(h - 1 - jj) * (-bitmap->pitch) + (ii / s8)] >> (s7 - (ii % s8))) & s1), bo * 255 / s1)); \
+                    SUM_COLORi(iib, jjb, bold, (bo = ((bitmap->buffer[(h - 1 - jjb) * (-bitmap->pitch) + (iib / s8)] >> (s7 - (iib % s8))) & s1), bo * 255 / s1)); \
                 } else { \
                     bold = 0; \
                 } \

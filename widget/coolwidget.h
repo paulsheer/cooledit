@@ -76,6 +76,13 @@ typedef struct initialisation {
 #define WIDGET_MAGIC_BEGIN 0x6e065f4d
 #define WIDGET_MAGIC_END 0x54f560e9
 
+#define STATUS_WIDGET_MAGIC 0x735224f3
+
+struct status_widget_s {
+    unsigned int magic;
+    unsigned char lasttext[1024 + MAX_PATH_LEN];
+};
+
 #define TEXT_SET_COLUMN		1
 #define TEXT_SET_LINE		2
 #define TEXT_SET_POS		3

@@ -887,13 +887,28 @@ CWidget *CDrawTextFixed (const char *identifier, Window parent, int x, int y, co
     return wdt;
 }
 
+static void status_widget_destroy (CWidget * wdt)
+{
+    struct status_widget_s *sw = (struct status_widget_s *) wdt->hook;
+    assert (sw != NULL);
+    assert (sw->magic == STATUS_WIDGET_MAGIC);
+    free (sw);
+    wdt->hook = NULL;
+}
+
 CWidget *CDrawStatus (const char *identifier, Window parent, int x, int y, int w, char *str)
 {E_
     CWidget *wdt;
+    struct status_widget_s *sw;
     int h;
     h = FONT_PIX_PER_LINE + TEXT_RELIEF * 2 + 2;
     wdt = CSetupWidget (identifier, parent, x, y,
 		     w, h, C_STATUS_WIDGET, INPUT_EXPOSE, COLOR_FLAT, 0);
+    sw = CMalloc (sizeof (struct status_widget_s));
+    memset (sw, 0, sizeof (*sw));
+    sw->magic = STATUS_WIDGET_MAGIC;
+    wdt->hook = (void *) sw;
+    wdt->destroy = status_widget_destroy;
     wdt->text = CStr_dup (str);
     set_hint_pos (x + w + WIDGET_SPACING, y + h + WIDGET_SPACING);
     return wdt;
@@ -1309,21 +1324,25 @@ static int menu_width_calc (const unsigned char *p, const unsigned char *matchin
 /* this is a zero flicker routine */
 void render_status (CWidget * wdt, int expose)
 {E_
-    static Window lastwin = 0;
-    static unsigned char lasttext[1024 + MAX_PATH_LEN] = "";
+    struct status_widget_s *sw;
+    unsigned char *lasttext;
     Window win = CWindowOf (wdt);
     int last_width = 0;
     int h = CHeightOf (wdt);
     int w = CWidthOf (wdt);
     int l, x, x1 = 0, color = 0, n = 0;
     const unsigned char *p, *q;
+    sw = (struct status_widget_s *) wdt->hook;
+    assert (sw != NULL);
+    assert (sw->magic == STATUS_WIDGET_MAGIC);
+    lasttext = sw->lasttext;
     CPushFont ("widget", 0);
     x = TEXT_RELIEF + 1;	/* bevel is 1 */
-    if (lastwin == win && !expose)
+    if (!expose)
         x = menu_width_calc ((const unsigned char *) wdt->text.data, lasttext, x, &color, &x1, &n);
     q = (const unsigned char *) wdt->text.data + n;
     l = menu_width_calc (q, 0, x, 0, 0, 0);
-    if (lastwin == win && !expose) {
+    if (!expose) {
         last_width = menu_width_calc (lasttext + n, 0, x, 0, 0, 0);
         if (l < last_width && l < w) {
 	    CSetColor (COLOR_FLAT);
@@ -1359,7 +1378,6 @@ void render_status (CWidget * wdt, int expose)
 	    q = p + 1;
 	}
     }
-    lastwin = win;
     strncpy ((char *) lasttext, wdt->text.data, 1023);
     CPopFont ();
     return;

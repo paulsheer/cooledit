@@ -5628,6 +5628,9 @@ static int remote_listdir (struct remotefs *rfs, int *cached, const char *direct
     unsigned char *q;
     *errmsg = '\0';
 
+    if (!filter || !filter[0])
+        filter = "*";
+
     msg.len = encode_listdir_params (NULL, directory, options, filter);
     msg.data = (char *) malloc (msg.len);
     q = (unsigned char *) msg.data;
@@ -5652,6 +5655,11 @@ static int remote_listtwodirs (struct remotefs *rfs, int *cached, const char *di
     CStr s, msg;
     unsigned char *q;
     *errmsg = '\0';
+
+    if (!filter1 || !filter1[0])
+        filter1 = "*";
+    if (!filter2 || !filter2[0])
+        filter2 = "*";
 
     msg.len = encode_listtwodirs_params (NULL, directory, options1, filter1, options2, filter2);
     msg.data = (char *) malloc (msg.len);

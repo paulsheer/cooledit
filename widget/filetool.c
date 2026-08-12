@@ -944,7 +944,7 @@ static void ls_print_long (struct file_item *e, const char *target)
     else
         strftime (timebuf, sizeof (timebuf), "%b %d %H:%M", &tm);
     if (S_ISBLK (e->pstat.ustat.st_mode) || S_ISCHR (e->pstat.ustat.st_mode))
-        printf ("%-10s %4lu %5lu %5lu %3lu, %3lu %s %s%s%s\n",
+        printf ("%-10s %4lu %5lu %5lu   %3lu, %3lu  %s %s%s%s\n",
             mode, (unsigned long) e->pstat.ustat.st_nlink,
             (unsigned long) e->pstat.ustat.st_uid,
             (unsigned long) e->pstat.ustat.st_gid,
@@ -954,7 +954,7 @@ static void ls_print_long (struct file_item *e, const char *target)
             target ? " -> " : "",
             target ? target : "");
     else
-        printf ("%-10s %4lu %5lu %5lu %8lld %s %s%s%s\n",
+        printf ("%-10s %4lu %5lu %5lu %11lld %s %s%s%s\n",
             mode, (unsigned long) e->pstat.ustat.st_nlink,
             (unsigned long) e->pstat.ustat.st_uid,
             (unsigned long) e->pstat.ustat.st_gid,

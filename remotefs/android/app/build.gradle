@@ -8,8 +8,11 @@ if (keystorePropsFile.exists()) {
 
 android {
     namespace "com.cooledit.remotefs"
-    compileSdk 34
-    buildToolsVersion "30.0.3"
+    compileSdk 36
+
+    buildFeatures {
+        buildConfig true
+    }
 
     signingConfigs {
         release {
@@ -25,7 +28,7 @@ android {
     defaultConfig {
         applicationId "com.cooledit.remotefs"
         minSdkVersion 23
-        targetSdkVersion 34
+        targetSdkVersion 36
         versionCode 1
         versionName "1.0"
 
@@ -55,7 +58,7 @@ android {
     externalNativeBuild {
         cmake {
             path "src/main/cpp/CMakeLists.txt"
-            version "3.10.2"
+            version "3.22.1"
         }
     }
 
@@ -64,10 +67,10 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
-    ndkVersion "21.4.7075529"
+    ndkVersion "28.2.13676358"
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.0.0'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.zxing:core:3.5.1'
 }

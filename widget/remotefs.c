@@ -10502,6 +10502,8 @@ static int InstallService (const char *listenaddr, const char *iprange, const ch
         p += _snprintf (p, sizeof (szCmd) - (p - szCmd), " -k \"%s\"", kf);
     if (homedir)
         p += _snprintf (p, sizeof (szCmd) - (p - szCmd), " --home-dir \"%s\"", homedir);
+    if (option_port > 0)
+        p += _snprintf (p, sizeof (szCmd) - (p - szCmd), " --port %d", option_port);
     _snprintf (p, sizeof (szCmd) - (p - szCmd), " %s %s", listenaddr, iprange);
 
     hSCManager = OpenSCManagerA (NULL, NULL, SC_MANAGER_CREATE_SERVICE);

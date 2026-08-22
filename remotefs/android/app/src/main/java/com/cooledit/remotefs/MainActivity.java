@@ -398,7 +398,7 @@ public class MainActivity extends Activity {
         bindService(new Intent(this, RemoteFSService.class),
                     serviceConnection, Context.BIND_AUTO_CREATE);
 
-        Toast.makeText(this, "Server starting on " + listenAddr + ":50095", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Server starting on " + listenAddr + ":30095", Toast.LENGTH_SHORT).show();
         updateUI();
     }
 

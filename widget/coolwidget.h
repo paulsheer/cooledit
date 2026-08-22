@@ -664,7 +664,7 @@ CWidget *CClearTextbox (const char *identifier);
 int CSetTextboxPos (CWidget * wdt, int which, long p);
 
 /* Draws a thin horizontal raised ridge */
-CWidget *CDrawBar (Window parent, int x, int y, int w);
+CWidget *CDrawBar (const char *identifier, Window parent, int x, int y, int w);
 
 /* Vertical scroll bar */
 CWidget *CDrawVerticalScrollbar (const char *identifier, Window parent, int x, int y,

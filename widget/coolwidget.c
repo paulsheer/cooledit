@@ -637,7 +637,7 @@ Window CDrawHeadedDialog (const char *identifier, Window parent, int x, int y, c
 	(CDrawText (catstrs (identifier, ".header", NULL), win, WIDGET_SPACING, WIDGET_SPACING + 2, label))->position |= POSITION_CENTRE;
 	CGetHintPos (&x, &y);
 #ifndef NEXT_LOOK
-	(CDrawBar (win, WIDGET_SPACING, y, 10))->position |= POSITION_FILL;
+	(CDrawBar (catstrs (identifier, ".hbar", NULL), win, WIDGET_SPACING, y, 10))->position |= POSITION_FILL;
 	CGetHintPos (&x, &y);
 #endif
 	reset_hint_pos (WIDGET_SPACING + 2, y);
@@ -807,10 +807,10 @@ CWidget *CDrawProgress (const char *identifier, Window parent, int x, int y,
     return w;
 }
 
-CWidget *CDrawBar (Window parent, int x, int y, int w)
+CWidget *CDrawBar (const char *identifier, Window parent, int x, int y, int w)
 {E_
     CWidget *wdt;
-    wdt = CSetupWidget ("hbar", parent, x, y,
+    wdt = CSetupWidget (identifier, parent, x, y,
 			 w, 3, C_BAR_WIDGET, INPUT_EXPOSE, COLOR_FLAT, 0);
     set_hint_pos (x + w + WIDGET_SPACING, y + 3 + WIDGET_SPACING);
     return wdt;

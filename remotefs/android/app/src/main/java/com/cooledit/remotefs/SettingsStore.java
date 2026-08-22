@@ -14,6 +14,7 @@ public class SettingsStore {
     private static final String KEY_KEYFILE_PATH = "keyfile_path";
     private static final String KEY_SERVER_RUNNING = "server_running";
     private static final String KEY_SHOW_NOTIFICATION = "show_notification";
+    private static final String KEY_NO_SLEEP = "no_sleep";
     private static final String KEY_LAST_BUILD_TIME = "last_build_time";
     private static final String KEY_WAS_RUNNING = "was_running";
 
@@ -65,6 +66,14 @@ public class SettingsStore {
 
     public void setShowNotification(boolean show) {
         prefs.edit().putBoolean(KEY_SHOW_NOTIFICATION, show).commit();
+    }
+
+    public boolean getNoSleep() {
+        return prefs.getBoolean(KEY_NO_SLEEP, false);
+    }
+
+    public void setNoSleep(boolean noSleep) {
+        prefs.edit().putBoolean(KEY_NO_SLEEP, noSleep).commit();
     }
 
     public String getLastBuildTime() {

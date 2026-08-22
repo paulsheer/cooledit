@@ -10,14 +10,22 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Paint;
 import android.graphics.Typeface;
+import android.net.ConnectivityManager;
+import android.net.LinkAddress;
+import android.net.LinkProperties;
+import android.net.Network;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.provider.Settings;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
@@ -40,7 +48,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -53,12 +64,17 @@ public class MainActivity extends Activity {
     private Button startButton;
     private Button stopButton;
     private TextView statusText;
+    private TextView portInfo;
     private TextView qrLabel;
     private ImageView qrCode;
     private TextView keyText;
     private TextView qrPlaceholder;
     private CheckBox showNotificationCheckbox;
+    private CheckBox noSleepCheckbox;
     private TextView terminalText;
+
+    /* Persistent "No sleep" wake lock; static so it survives activity recreation */
+    private static PowerManager.WakeLock noSleepWakeLock;
 
     /* Log window shared memory */
     private ByteBuffer logWindowBuffer;
@@ -170,11 +186,13 @@ public class MainActivity extends Activity {
         startButton = (Button) findViewById(R.id.start_button);
         stopButton = (Button) findViewById(R.id.stop_button);
         statusText = (TextView) findViewById(R.id.status_text);
+        portInfo = (TextView) findViewById(R.id.port_info);
         qrLabel = (TextView) findViewById(R.id.qr_label);
         qrCode = (ImageView) findViewById(R.id.qr_code);
         keyText = (TextView) findViewById(R.id.key_text);
         qrPlaceholder = (TextView) findViewById(R.id.qr_placeholder);
         showNotificationCheckbox = (CheckBox) findViewById(R.id.show_notification_checkbox);
+        noSleepCheckbox = (CheckBox) findViewById(R.id.no_sleep_checkbox);
 
         showNotificationCheckbox.setChecked(settings.getShowNotification());
         showNotificationCheckbox.setOnCheckedChangeListener(
@@ -191,6 +209,17 @@ public class MainActivity extends Activity {
                     }
                 }
             });
+
+        noSleepCheckbox.setChecked(settings.getNoSleep());
+        noSleepCheckbox.setOnCheckedChangeListener(
+            new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    settings.setNoSleep(isChecked);
+                    applyNoSleep(isChecked);
+                }
+            });
+        applyNoSleep(noSleepCheckbox.isChecked());
 
         /* Set monospace font size so 11 chars ≈ 1/3 screen width */
         float screenW = getResources().getDisplayMetrics().widthPixels
@@ -241,6 +270,13 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 showQrWithTimer();
+            }
+        });
+
+        qrCode.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                hideQrCode();
             }
         });
 
@@ -399,6 +435,7 @@ public class MainActivity extends Activity {
                     serviceConnection, Context.BIND_AUTO_CREATE);
 
         Toast.makeText(this, "Server starting on " + listenAddr + ":30095", Toast.LENGTH_SHORT).show();
+        updatePortInfo();
         updateUI();
     }
 
@@ -415,7 +452,82 @@ public class MainActivity extends Activity {
         settings.setServerRunning(false);
         settings.setWasRunning(false);
         Toast.makeText(this, "Server stopped", Toast.LENGTH_SHORT).show();
+        updatePortInfo();
         updateUI();
+    }
+
+    /** Read the WiFi-negotiated IP (or cellular fallback) and refresh the port label */
+    private void updatePortInfo() {
+        if (portInfo == null) return;
+        String label = getString(R.string.port_info);
+        String ip = getWifiIp();
+        if (ip == null) {
+            ip = getCellularIp();
+        }
+        if (ip != null) {
+            label = label + " on " + ip;
+        }
+        portInfo.setText(label);
+    }
+
+    private String getWifiIp() {
+        try {
+            WifiManager wm = (WifiManager) getApplicationContext()
+                    .getSystemService(Context.WIFI_SERVICE);
+            if (wm == null) return null;
+            WifiInfo info = wm.getConnectionInfo();
+            if (info == null) return null;
+            int ip = info.getIpAddress();
+            if (ip == 0) return null;
+            return String.format(Locale.US, "%d.%d.%d.%d",
+                    ip & 0xff, (ip >> 8) & 0xff,
+                    (ip >> 16) & 0xff, (ip >> 24) & 0xff);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String getCellularIp() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return null;
+            Network network = cm.getActiveNetwork();
+            if (network == null) return null;
+            LinkProperties lp = cm.getLinkProperties(network);
+            if (lp == null) return null;
+            for (LinkAddress addr : lp.getLinkAddresses()) {
+                InetAddress inet = addr.getAddress();
+                if (inet instanceof Inet4Address && !inet.isLoopbackAddress()) {
+                    return inet.getHostAddress();
+                }
+            }
+        } catch (Exception e) {
+            return null;
+        }
+        return null;
+    }
+
+    /** Toggle "No sleep": keep the screen on and the CPU awake */
+    private void applyNoSleep(boolean enable) {
+        if (enable) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            if (noSleepWakeLock == null) {
+                PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                if (pm != null) {
+                    noSleepWakeLock = pm.newWakeLock(
+                        PowerManager.PARTIAL_WAKE_LOCK, "RemoteFS::NoSleep");
+                    noSleepWakeLock.setReferenceCounted(false);
+                }
+            }
+            if (noSleepWakeLock != null && !noSleepWakeLock.isHeld()) {
+                noSleepWakeLock.acquire();
+            }
+        } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            if (noSleepWakeLock != null && noSleepWakeLock.isHeld()) {
+                noSleepWakeLock.release();
+            }
+        }
     }
 
     private void updateUI() {

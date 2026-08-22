@@ -434,6 +434,9 @@ void remotefs_suspend_terminalio (struct remotefs_terminalio *io);
 const char *remotefs_home_dir (struct remotefs *rfs);
 void remotefs_set_password_cb (remotfs_password_cb_t f, void *d);
 
+typedef void (*remotfs_remote_access_cb_t) (void *user_data, const char *host);
+void remotefs_set_remote_access_cb (remotfs_remote_access_cb_t f, void *d);
+
 int remotefs_reader_util (struct remotefs_terminalio *io, const int no_io, remotefs_error_code_t *error_code);
 void remotefs_set_die_on_error (void);
 int remotefs_get_die_exit_code (void);

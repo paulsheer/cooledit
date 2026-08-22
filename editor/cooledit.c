@@ -2342,6 +2342,34 @@ const char *get_default_8bit_term_font_large (void);
 const char *get_list_substitute_unicode_font_list (void);
 
 
+static void port_change_warning (void *user_data, const char *host)
+{E_
+    char dir[MAX_PATH_LEN];
+    char path[MAX_PATH_LEN];
+    FILE *f;
+    (void) user_data;
+    if (!host || !strcmp (host, REMOTEFS_LOCAL))
+        return;
+    if (!local_home_dir || !*local_home_dir)
+        return;
+    snprintf (dir, sizeof (dir), "%s/.cedit", local_home_dir);
+    snprintf (path, sizeof (path), "%s/.port_change_warning_done", dir);
+    f = fopen (path, "r");
+    if (f) {
+        fclose (f);
+        return;
+    }
+    CMessageDialog (main_window, 20, 20, 0, " Remote Port Change ",
+                    " The default remote filesystem port has changed from 50095 to 30095. \n"
+                    " If you need to keep using the old port, set the environment \n"
+                    " variable REMOTEFS_PORT and restart cooledit. ");
+    mkdir (dir, 0700);
+    f = fopen (path, "w");
+    if (f)
+        fclose (f);
+}
+
+
 
 /* ----main()-------------------------------------------------------------- */
 int main (int argc, char **argv)
@@ -2509,6 +2537,7 @@ int main (int argc, char **argv)
     CPushFont ("editor", 0);
 
     main_window = CDrawMainWindow ("cooledit", "Cooledit");
+    remotefs_set_remote_access_cb (port_change_warning, NULL);
     xdnd_set_dnd_aware (CDndClass, main_window, 0);
     w = CWidgetOfWindow (main_window);
     w->funcs = mouse_funcs_new (w, &main_mouse_funcs);

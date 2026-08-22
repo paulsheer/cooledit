@@ -143,10 +143,10 @@ static int get_resolved_port (void)
     if ((env = getenv ("REMOTEFS_PORT"))) {
         port = atoi (env);
         if (port < 0 || port > 65535)
-            port = 50095;
+            port = 30095;
         return port;
     }
-    return 50095;
+    return 30095;
 }
 
 static unsigned long long remotefs_start_time;
@@ -2332,6 +2332,16 @@ void remotefs_set_password_cb (remotfs_password_cb_t f, void *d)
 {E_
     remotefs_password_cb_fn = f;
     remotefs_password_cb_user_data = d;
+}
+
+
+static remotfs_remote_access_cb_t remotefs_remote_access_cb_fn = NULL;
+static void *remotefs_remote_access_cb_user_data = NULL;
+
+void remotefs_set_remote_access_cb (remotfs_remote_access_cb_t f, void *d)
+{E_
+    remotefs_remote_access_cb_fn = f;
+    remotefs_remote_access_cb_user_data = d;
 }
 
 
@@ -7861,6 +7871,8 @@ static int remotefs_start (struct remotefs *rfs, const char *host, char *home_di
         *rfs = remotefs_local;
         rfs->remotefs_private = NULL;
     } else {
+        if (remotefs_remote_access_cb_fn)
+            remotefs_remote_access_cb_fn (remotefs_remote_access_cb_user_data, host);
         *rfs = remotefs_socket;
         rfs->remotefs_private = (struct remotefs_private *) malloc (sizeof (struct remotefs_private));
         memset (rfs->remotefs_private, '\0', sizeof (struct remotefs_private));
@@ -11127,7 +11139,7 @@ int main (int argc, char **argv)
         printf ("  --no-crypto                          Turn off encryption.\n");
         printf ("  --no-force-crypto                    Don't require encryption. Make a GUI choice.\n");
         printf ("  --no-crypto                          Turn off encryption.\n");
-        printf ("  --port <port>                        Listen on another port. Default is 50095.\n");
+        printf ("  --port <port>                        Listen on another port. Default is 30095.\n");
         printf ("                            (You can also set the REMOTEFS_PORT environment variable.)\n");
 #ifdef MSWIN
         printf ("  -k <file>, --key-file <file>         Read AES key from <file>.\n");

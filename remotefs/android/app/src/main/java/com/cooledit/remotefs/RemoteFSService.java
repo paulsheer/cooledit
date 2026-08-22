@@ -232,7 +232,7 @@ public class RemoteFSService extends Service {
 
         builder.setContentTitle(title)
                .setContentText(text)
-               .setSmallIcon(android.R.drawable.ic_menu_manage)
+               .setSmallIcon(R.drawable.ic_notification)
                .setOngoing(true)
                .setContentIntent(pendingIntent);
 

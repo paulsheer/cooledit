@@ -7281,9 +7281,9 @@ static int send_mesg (struct remotefs *rfs, struct reader_data *d, CStr * msg, i
                     *recursive = 1;
                     if ((enable_error = remotefs_enable_crypto (rfs, errmsg)))
                         strcpy (user_msg, errmsg);
+                    *recursive = 0;
                     if (strstr (errmsg, "remote hangs up"))
                         return -1;
-                    *recursive = 0;
                 }
                 if (rfs->remotefs_private->sock_data->sock == INVALID_SOCKET) {
                     retries = 0;

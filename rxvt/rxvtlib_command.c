@@ -2858,6 +2858,18 @@ void            rxvtlib_process_sgr_mode (rxvtlib *o, unsigned int nargs, const 
 	case 49:		/* default bg */
 	    rxvtlib_scr_color (o, restoreBG, RS_Blink);
 	    break;
+
+	case 100:
+	case 101:
+	case 102:
+	case 103:
+	case 104:
+	case 105:
+	case 106:
+	case 107:
+	    o->rstyle = SET_BGCOLOR (o->rstyle,
+			(o->Xdepth <= 2) ? Color_bg : minBrightCOLOR + (arg[i] - 100));
+	    break;
 	}
 }
 /*}}} */

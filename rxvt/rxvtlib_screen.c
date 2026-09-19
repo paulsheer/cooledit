@@ -99,6 +99,13 @@ static inline rxvt_buf_char_t text_t_to_char (text_t c)
 
 #endif
 
+/* Resolve a color field (index or truecolor) to an X pixel. */
+static inline unsigned long
+rend_pixel (rxvtlib *o, rend_t color)
+{
+    return o->PixColors[(int) color];
+}
+
 /* ------------------------------------------------------------------------- *
  *                        SCREEN `COMMON' ROUTINES                           *
  * ------------------------------------------------------------------------- */
@@ -1389,7 +1396,7 @@ void            rxvtlib_scr_erase_screen (rxvtlib *o, int mode)
 	    CLEAR_ROWS (row, num);
 	} else {
 	    ren = (o->rstyle & (RS_fgMask | RS_bgMask));
-	    gcvalue.foreground = o->PixColors[GET_BGCOLOR (ren)];
+	    gcvalue.foreground = rend_pixel (o, GET_BGCOLOR (ren));
 	    gcmask = GCForeground;
 	    XChangeGC (o->Xdisplay, o->TermWin.gc, gcmask, &gcvalue);
 	    ERASE_ROWS (row, num);
@@ -2512,18 +2519,18 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 	    if (rvid)
 		SWAP_IT (fore, back, i);
 	    if (back != Color_bg) {
-		gcvalue.background = o->PixColors[back];
+		gcvalue.background = rend_pixel (o, back);
 		gcmask |= GCBackground;
 	    }
 	    if (fore != Color_fg) {
-		gcvalue.foreground = o->PixColors[fore];
+		gcvalue.foreground = rend_pixel (o, fore);
 		gcmask |= GCForeground;
 	    }
 #ifndef NO_BOLDUNDERLINE
 	    else if (rend & RS_Bold) {
 		if (o->Xdepth > 2 && o->rs[Rs_color + Color_BD]
-		    && o->PixColors[fore] != o->PixColors[Color_BD]
-		    && o->PixColors[back] != o->PixColors[Color_BD]) {
+		    && rend_pixel (o, fore) != o->PixColors[Color_BD]
+		    && rend_pixel (o, back) != o->PixColors[Color_BD]) {
 		    gcvalue.foreground = o->PixColors[Color_BD];
 		    gcmask |= GCForeground;
 # ifndef VERYBOLD
@@ -2532,8 +2539,8 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 		}
 	    } else if (rend & RS_Uline) {
 		if (o->Xdepth > 2 && o->rs[Rs_color + Color_UL]
-		    && o->PixColors[fore] != o->PixColors[Color_UL]
-		    && o->PixColors[back] != o->PixColors[Color_UL]) {
+		    && rend_pixel (o, fore) != o->PixColors[Color_UL]
+		    && rend_pixel (o, back) != o->PixColors[Color_UL]) {
 		    gcvalue.foreground = o->PixColors[Color_UL];
 		    gcmask |= GCForeground;
 		    rend &= ~RS_Uline;	/* we've taken care of it */

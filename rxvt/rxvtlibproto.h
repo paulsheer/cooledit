@@ -120,6 +120,7 @@ void            rxvtlib_color_aliases (rxvtlib *o, int idx);
 void            rxvtlib_set_colorfgbg (rxvtlib *o);
 void            rxvtlib_Get_Colours (rxvtlib *o);
 void            rxvtlib_get_ext_colours (rxvtlib *o);
+void            rxvtlib_get_truecolor_pixels (rxvtlib *o);
 void            rxvtlib_Create_Windows (rxvtlib *o, int argc, const char *const *argv);
 void            rxvtlib_resize_subwindows (rxvtlib *o, int width, int height);
 void            rxvtlib_resize_all_windows (rxvtlib *o);

@@ -840,10 +840,10 @@ struct _row_col_t {
 #define ERASE			+2
 
 #ifdef ANSI256_AND_TRUECOLOR
-#define RS_zero                 0ULL
-#define RS_one                  1ULL
-#define RS_fgMask               0x000000001FFFFFFULL
-#define RS_bgshift              25
+#define RS_zero                 0U
+#define RS_one                  1U
+#define RS_fgMask               0x0FFFU
+#define RS_bgshift              12
 #else
 #ifndef ANSI256_AND_TRUECOLOR_defined
 #error
@@ -864,6 +864,7 @@ struct _row_col_t {
 #define RS_acsFont              (RS_one<<(RS_attrShift+4))        /* ACS graphics char set */
 #define RS_ukFont               (RS_one<<(RS_attrShift+5))        /* UK character set */
 #ifdef MULTICHAR_SET
+#error
 #define RS_multi0               (RS_one<<(RS_attrShift+6))
 #define RS_multi1               (RS_one<<(RS_attrShift+7))
 #endif
@@ -1104,6 +1105,40 @@ enum Rs_resource_list {
 #define SET_BGCOLOR(r,bg)	(((r) & ~RS_bgMask)  | ((rend_t) (bg)<<RS_bgshift))
 #define SET_ATTR(r,a)		(((r) & ~RS_attrMask)| (rend_t) (a))
 
+/* Levels per R,G,B component calculated as (2**RS_bgshift-(TOTAL_COLORS+240))**(1/3) */
+#define LpC                     15
+
+/* LpC*LpC*LpC truecolor. Colors higher the original terminal
+ * colors and ansi color-cube+gray colors are interpreted as 0-(LpC-1)
+ * levels of red, green, and blue totaling 3375 possible colors
+ * so that fg and bg fit inside 32-bits. Mapping of the 12-bit
+ * color for both fg and bg is as follows:
+ *
+ *   0-63      - Up to 64 original terminal colors (64 is just an example, the actual value is TOTAL_COLORS)
+ *   64-279    - ansiColorCubeName[216]
+ *   280–303   - ansiGrayLevelName[24]
+ *   304–3678  - True color 0..(LpC-1) levels translated into 0..255
+ *   3679–4095 - Unused
+ */
+#define TRUECOLOR_BASE          (COLOR256_BASE + COLOR256_COUNT)        /* TOTAL_COLORS + 240 */
+#define IS_TRUECOLOR(c)         ((c) >= TRUECOLOR_BASE)
+
+#define TRUECOLOR_COUNT		(LpC * LpC * LpC)			/* 3375 */
+
+#define RGB_TO_LEVEL(v)		(((v) * (LpC - 1) + 127) / 255)
+#define LEVEL_TO_RGB(l)		(((l) * 255 + (LpC - 1) / 2) / (LpC - 1))
+
+#define TRUECOLOR_CODE(r,g,b)	(TRUECOLOR_BASE + ((r) * LpC + (g)) * LpC + (b))
+
+#define SET_FGRGB(r,rgb)	SET_FGCOLOR((r), TRUECOLOR_CODE( \
+					RGB_TO_LEVEL(((rgb) >> 16) & 0xff), \
+					RGB_TO_LEVEL(((rgb) >> 8) & 0xff), \
+					RGB_TO_LEVEL((rgb) & 0xff)))
+#define SET_BGRGB(r,rgb)	SET_BGCOLOR((r), TRUECOLOR_CODE( \
+					RGB_TO_LEVEL(((rgb) >> 16) & 0xff), \
+					RGB_TO_LEVEL(((rgb) >> 8) & 0xff), \
+					RGB_TO_LEVEL((rgb) & 0xff)))
+
 #define scrollbar_visible()	(o->scrollBar.state)
 #define scrollbar_isMotion()	(o->scrollBar.state == 'm')
 #define scrollbar_isUp()	(o->scrollBar.state == 'U')
@@ -1184,7 +1219,7 @@ EXTERN Display *Xdisplay;
 EXTERN unsigned long Options;
 EXTERN XSizeHints szHint;
 EXTERN int      sb_shadow;
-EXTERN unsigned long PixColors[TOTAL_COLORS + COLOR256_COUNT];
+EXTERN unsigned long PixColors[TRUECOLOR_BASE + TRUECOLOR_COUNT];
 
 #ifdef INEXPENSIVE_LOCAL_X_CALLS
 EXTERN int      display_is_local;

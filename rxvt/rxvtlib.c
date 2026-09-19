@@ -172,6 +172,24 @@ void            rxvtlib_get_ext_colours (rxvtlib *o)
     }
 }
 
+void            rxvtlib_get_truecolor_pixels (rxvtlib *o)
+{E_
+    int             r, g, b;
+    XColor          xcol;
+
+    for (r = 0; r < LpC; r++)
+        for (g = 0; g < LpC; g++)
+            for (b = 0; b < LpC; b++) {
+                xcol.red = (unsigned short) (LEVEL_TO_RGB (r) * 257);
+                xcol.green = (unsigned short) (LEVEL_TO_RGB (g) * 257);
+                xcol.blue = (unsigned short) (LEVEL_TO_RGB (b) * 257);
+                xcol.flags = DoRed | DoGreen | DoBlue;
+                if (!XAllocColor (o->Xdisplay, o->Xcmap, &xcol))
+                    xcol.pixel = o->PixColors[Color_bg];
+                o->PixColors[TRUECOLOR_CODE (r, g, b)] = xcol.pixel;
+            }
+}
+
 #ifdef MULTICHAR_SET
 static  const char *const def_mfontName[] = {
     MFONT_LIST

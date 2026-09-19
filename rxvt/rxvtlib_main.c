@@ -200,6 +200,7 @@ void            rxvtlib_Get_Colours (rxvtlib *o)
 	o->PixColors[Color_border] = o->PixColors[Color_fg];
 
     rxvtlib_get_ext_colours (o);
+    rxvtlib_get_truecolor_pixels (o);
 
 /*
  * get scrollBar/menuBar shadow colors

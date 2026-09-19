@@ -2829,12 +2829,19 @@ void            rxvtlib_process_sgr_mode (rxvtlib *o, unsigned int nargs, const 
 	case 37:
 	    rxvtlib_scr_color (o, minCOLOR + (arg[i] - 30), RS_Bold);
 	    break;
-	case 38:		/* extended fg: 38;5;N */
+	case 38:		/* extended fg: 38;5;N / 38;2;R;G;B */
 	    if (i + 2 < nargs && arg[i + 1] == 5) {
 		if (arg[i + 2] >= 0 && arg[i + 2] < 256)
 		    o->rstyle = SET_FGCOLOR (o->rstyle,
 			    (o->Xdepth <= 2) ? Color_fg : ANSI256_TO_INDEX (arg[i + 2]));
 		i += 2;
+	    } else if (i + 4 < nargs && arg[i + 1] == 2) {
+		if (o->Xdepth >= 24) {
+		    int             r = arg[i + 2], g = arg[i + 3], b = arg[i + 4];
+		    if (r >= 0 && r < 256 && g >= 0 && g < 256 && b >= 0 && b < 256)
+			o->rstyle = SET_FGRGB (o->rstyle, (r << 16) | (g << 8) | b);
+		}
+		i += 4;
 	    }
 	    break;
 	case 39:		/* default fg */
@@ -2863,12 +2870,19 @@ void            rxvtlib_process_sgr_mode (rxvtlib *o, unsigned int nargs, const 
 	case 47:
 	    rxvtlib_scr_color (o, minCOLOR + (arg[i] - 40), RS_Blink);
 	    break;
-	case 48:		/* extended bg: 48;5;N */
+	case 48:		/* extended bg: 48;5;N / 48;2;R;G;B */
 	    if (i + 2 < nargs && arg[i + 1] == 5) {
 		if (arg[i + 2] >= 0 && arg[i + 2] < 256)
 		    o->rstyle = SET_BGCOLOR (o->rstyle,
 			    (o->Xdepth <= 2) ? Color_bg : ANSI256_TO_INDEX (arg[i + 2]));
 		i += 2;
+	    } else if (i + 4 < nargs && arg[i + 1] == 2) {
+		if (o->Xdepth >= 24) {
+		    int             r = arg[i + 2], g = arg[i + 3], b = arg[i + 4];
+		    if (r >= 0 && r < 256 && g >= 0 && g < 256 && b >= 0 && b < 256)
+			o->rstyle = SET_BGRGB (o->rstyle, (r << 16) | (g << 8) | b);
+		}
+		i += 4;
 	    }
 	    break;
 	case 49:		/* default bg */

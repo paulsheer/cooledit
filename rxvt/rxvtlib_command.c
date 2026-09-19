@@ -2833,6 +2833,18 @@ void            rxvtlib_process_sgr_mode (rxvtlib *o, unsigned int nargs, const 
 	    rxvtlib_scr_color (o, restoreFG, RS_Bold);
 	    break;
 
+	case 90:
+	case 91:
+	case 92:
+	case 93:
+	case 94:
+	case 95:
+	case 96:
+	case 97:
+	    o->rstyle = SET_FGCOLOR (o->rstyle,
+			(o->Xdepth <= 2) ? Color_fg : minBrightCOLOR + (arg[i] - 90));
+	    break;
+
 	case 40:
 	case 41:		/* set bg color */
 	case 42:

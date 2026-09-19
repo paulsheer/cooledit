@@ -2614,9 +2614,12 @@ void            rxvtlib_process_xterm_seq (rxvtlib *o)
 	 * menubar_dispatch() violates the constness of the string,
 	 * so do it here
 	 */
+#ifdef MENUBAR
+#error conflicts with set fg color
 	if (arg == XTerm_Menu)
 	    rxvtlib_menubar_dispatch (o, (char *) string);
 	else
+#endif
 	    rxvtlib_xterm_seq (o, arg, (char *)string);
     }
 }

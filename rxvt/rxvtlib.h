@@ -905,13 +905,20 @@ struct _row_col_t {
 #define XTerm_name		0
 #define XTerm_iconName		1
 #define XTerm_title		2
+#define XTerm_color		4	/* set 256-color palette entry */
+#define XTerm_fg		10	/* set default fg color */
+#define XTerm_bg		11	/* set default bg color */
+#define XTerm_cursor		12	/* set cursor color */
 #define XTerm_logfile		46	/* not implemented */
 #define XTerm_font		50
 
 /*
  * rxvt extensions of XTerm escape sequences: ESC ] Ps;Pt BEL
  */
+#ifdef MENUBAR
+#error conflicts with set fg color
 #define XTerm_Menu		10	/* set menu item */
+#endif
 #define XTerm_Pixmap		20	/* new bg pixmap */
 #define XTerm_restoreFG		39	/* change default fg color */
 #define XTerm_restoreBG		49	/* change default bg color */

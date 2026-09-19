@@ -791,12 +791,35 @@ void            rxvtlib_xterm_seq (rxvtlib *o, int op, const char *str)
     case XTerm_title:
 	rxvtlib_set_title (o, str);
 	break;
+#ifdef MENUBAR
+#error conflicts with set fg color
     case XTerm_Menu:
 	/*
 	 * menubar_dispatch() violates the constness of the string,
 	 * so DON'T do it here
 	 */
 	break;
+#endif
+    case XTerm_color:
+	{
+	    int             c = atoi (str);
+	    const char     *spec = strchr (str, ';');
+
+	    if (spec && *++spec && c >= 0 && c < 256)
+		rxvtlib_set_window_color (o, ANSI256_TO_INDEX (c), spec);
+	    break;
+	}
+    case XTerm_fg:
+	rxvtlib_set_window_color (o, Color_fg, str);
+	break;
+    case XTerm_bg:
+	rxvtlib_set_window_color (o, Color_bg, str);
+	break;
+#ifndef NO_CURSORCOLOR
+    case XTerm_cursor:
+	rxvtlib_set_window_color (o, Color_cursor, str);
+	break;
+#endif
     case XTerm_Pixmap:
 	if (*str != ';') {
 	    rxvtlib_scale_pixmap (o, "");	/* reset to default scaling */

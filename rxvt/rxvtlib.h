@@ -839,29 +839,43 @@ struct _row_col_t {
 #define DELETE			+1
 #define ERASE			+2
 
-/* all basic bit-flags in first/lower 16 bits */
+#ifdef ANSI256_AND_TRUECOLOR
+#define RS_zero                 0ULL
+#define RS_one                  1ULL
+#define RS_fgMask               0x000000001FFFFFFULL
+#define RS_bgshift              25
+#else
+#ifndef ANSI256_AND_TRUECOLOR_defined
+#error
+#endif
+#define RS_zero                 0U
+#define RS_one                  1U
+#define RS_fgMask               0x01FU
+#define RS_bgshift              5
+#endif
 
-#define RS_None			0	/* Normal */
-#define RS_fgMask		0x0000001Fu	/* 32 colors */
-#define RS_bgMask		0x000003E0u	/* 32 colors */
-#define RS_Bold			0x00000400u	/* bold */
-#define RS_Blink		0x00000800u	/* blink */
-#define RS_RVid			0x00001000u	/* reverse video */
-#define RS_Uline		0x00002000u	/* underline */
-#define RS_acsFont		0x00004000u	/* ACS graphics char set */
-#define RS_ukFont		0x00008000u	/* UK character set */
+#define RS_attrShift            (RS_bgshift * 2)
+#define RS_None                 RS_zero	                /* Normal */
+#define RS_bgMask               (RS_fgMask << RS_bgshift)
+#define RS_Bold                 (RS_one<<(RS_attrShift+0))        /* bold */
+#define RS_Blink                (RS_one<<(RS_attrShift+1))        /* blink */
+#define RS_RVid                 (RS_one<<(RS_attrShift+2))        /* reverse video */
+#define RS_Uline                (RS_one<<(RS_attrShift+3))        /* underline */
+#define RS_acsFont              (RS_one<<(RS_attrShift+4))        /* ACS graphics char set */
+#define RS_ukFont               (RS_one<<(RS_attrShift+5))        /* UK character set */
+#ifdef MULTICHAR_SET
+#define RS_multi0               (RS_one<<(RS_attrShift+6))
+#define RS_multi1               (RS_one<<(RS_attrShift+7))
+#endif
 #define RS_fontMask		(RS_acsFont|RS_ukFont)
 #define RS_baseattrMask		(RS_Bold|RS_Blink|RS_RVid|RS_Uline)
 
 /* all other bit-flags in upper 16 bits */
-
 #ifdef MULTICHAR_SET
-# define RS_multi0		0x10000000u	/* only multibyte characters */
-# define RS_multi1		0x20000000u	/* multibyte 1st byte */
 # define RS_multi2		(RS_multi0|RS_multi1)	/* multibyte 2nd byte */
 # define RS_multiMask		(RS_multi0|RS_multi1)	/* multibyte mask */
 #else
-# define RS_multiMask		0
+# define RS_multiMask		RS_zero
 #endif
 
 #define RS_attrMask		(RS_baseattrMask|RS_fontMask|RS_multiMask)
@@ -957,7 +971,7 @@ enum colour_list {
 #endif
 } dummy_var;
 
-#define DEFAULT_RSTYLE		(RS_None | (Color_fg) | (Color_bg<<5))
+#define DEFAULT_RSTYLE		(RS_None | (Color_fg) | ((rend_t) Color_bg<<RS_bgshift))
 
 /*
  * This resource list should match xdefaults.c
@@ -1073,14 +1087,14 @@ enum Rs_resource_list {
 
 /* how to build & extract colors and attributes */
 #define GET_FGCOLOR(r)		(((r) & RS_fgMask))
-#define GET_BGCOLOR(r)		(((r) & RS_bgMask)>>5)
+#define GET_BGCOLOR(r)		(((r) & RS_bgMask)>>RS_bgshift)
 #define GET_ATTR(r)		(((r) & RS_attrMask))
 #define GET_BGATTR(r)							\
     (((r) & RS_RVid) ? (((r) & (RS_attrMask & ~RS_RVid))		\
-			| (((r) & RS_fgMask)<<5))			\
+			| (((r) & RS_fgMask)<<RS_bgshift))		\
 		     : ((r) & (RS_attrMask | RS_bgMask)))
 #define SET_FGCOLOR(r,fg)	(((r) & ~RS_fgMask)  | (fg))
-#define SET_BGCOLOR(r,bg)	(((r) & ~RS_bgMask)  | ((bg)<<5))
+#define SET_BGCOLOR(r,bg)	(((r) & ~RS_bgMask)  | ((bg)<<RS_bgshift))
 #define SET_ATTR(r,a)		(((r) & ~RS_attrMask)| (a))
 
 #define scrollbar_visible()	(o->scrollBar.state)
@@ -1180,7 +1194,7 @@ EXTERN const char *key_backspace;
 EXTERN const char *key_delete;
 #endif
 #ifndef NO_BRIGHTCOLOR
-EXTERN unsigned int colorfgbg;
+EXTERN rend_t colorfgbg;
 #endif
 #ifdef KEYSYM_RESOURCE
 EXTERN const unsigned char *KeySym_map[256];
@@ -1294,15 +1308,6 @@ EXTERN KeySym   ks_smallfont;
 #ifndef _SCREEN_H		/* include once only */
 #define _SCREEN_H
 
-#ifdef UTF8_FONT
-#define rend_t		unsigned int
-#else
-#if defined(MULTICHAR_SET)
-#define rend_t		unsigned int
-#else
-#define rend_t		unsigned short
-#endif
-#endif
 
 /*
  * screen accounting:

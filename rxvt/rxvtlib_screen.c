@@ -566,7 +566,7 @@ int             rxvtlib_scr_change_screen (rxvtlib *o, int scrn)
  * Change the colour for following text
  */
 /* EXTPROTO */
-void            rxvtlib_scr_color (rxvtlib *o, unsigned int color, unsigned int Intensity)
+void            rxvtlib_scr_color (rxvtlib *o, unsigned int color, rend_t Intensity)
 {E_
     if (color == restoreFG)
 	color = Color_fg;
@@ -609,7 +609,7 @@ void            rxvtlib_scr_color (rxvtlib *o, unsigned int color, unsigned int 
  * Change the rendition style for following text
  */
 /* EXTPROTO */
-void            rxvtlib_scr_rendition (rxvtlib *o, int set, int style)
+void            rxvtlib_scr_rendition (rxvtlib *o, int set, rend_t style)
 {E_
     unsigned int    color;
     rend_t          font_attr;
@@ -2128,13 +2128,13 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
                     len, wlen,	/* text length screen/buffer                 */
                     fprop,	/* proportional font used                    */
                     rvid,	/* reverse video this position               */
-                    rend,	/* rendition                                 */
                     fore, back,	/* desired foreground/background             */
                     wbyte,	/* we're in multibyte                        */
 		    fontdiff,	/* current font size different to base font  */
                     morecur = 0, xpixel,	/* x offset for start of drawing (font)      */
                     ypixel,	/* y offset for start of drawing (font)      */
 		    ypixelc;	/* y offset for top of drawing               */
+    rend_t          rend;	/* rendition                                 */
     long            gcmask,	/* Graphics Context mask                     */
                     gcmaskf;
     static int      focus = -1;	/* screen in focus?                          */

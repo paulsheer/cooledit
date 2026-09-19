@@ -51,6 +51,8 @@
 typedef struct _rxvtlib rxvtlib;
 #endif
 
+#include "rxvtlibrend.h"
+
 #define UTF8_FONT
 // #undef UTF8_FONT
 

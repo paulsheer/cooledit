@@ -151,6 +151,27 @@ static  const char *const ansiGrayLevelName[] = {
     "#BCBCBC", "#C6C6C6", "#D0D0D0", "#DADADA", "#E4E4E4", "#EEEEEE",
 };
 
+void            rxvtlib_get_ext_colours (rxvtlib *o)
+{E_
+    int             i;
+    XColor          xcol;
+
+    if (o->Xdepth <= 2)
+        return;
+    for (i = 0; i < 216; i++) {
+        if (!XParseColor (o->Xdisplay, o->Xcmap, ansiColorCubeName[i], &xcol)
+            || !XAllocColor (o->Xdisplay, o->Xcmap, &xcol))
+            xcol.pixel = o->PixColors[Color_bg];
+        o->PixColors[COLOR256_BASE + i] = xcol.pixel;
+    }
+    for (i = 0; i < 24; i++) {
+        if (!XParseColor (o->Xdisplay, o->Xcmap, ansiGrayLevelName[i], &xcol)
+            || !XAllocColor (o->Xdisplay, o->Xcmap, &xcol))
+            xcol.pixel = o->PixColors[Color_bg];
+        o->PixColors[COLOR256_BASE + 216 + i] = xcol.pixel;
+    }
+}
+
 #ifdef MULTICHAR_SET
 static  const char *const def_mfontName[] = {
     MFONT_LIST

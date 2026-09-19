@@ -2829,6 +2829,14 @@ void            rxvtlib_process_sgr_mode (rxvtlib *o, unsigned int nargs, const 
 	case 37:
 	    rxvtlib_scr_color (o, minCOLOR + (arg[i] - 30), RS_Bold);
 	    break;
+	case 38:		/* extended fg: 38;5;N */
+	    if (i + 2 < nargs && arg[i + 1] == 5) {
+		if (arg[i + 2] >= 0 && arg[i + 2] < 256)
+		    o->rstyle = SET_FGCOLOR (o->rstyle,
+			    (o->Xdepth <= 2) ? Color_fg : ANSI256_TO_INDEX (arg[i + 2]));
+		i += 2;
+	    }
+	    break;
 	case 39:		/* default fg */
 	    rxvtlib_scr_color (o, restoreFG, RS_Bold);
 	    break;
@@ -2854,6 +2862,14 @@ void            rxvtlib_process_sgr_mode (rxvtlib *o, unsigned int nargs, const 
 	case 46:
 	case 47:
 	    rxvtlib_scr_color (o, minCOLOR + (arg[i] - 40), RS_Blink);
+	    break;
+	case 48:		/* extended bg: 48;5;N */
+	    if (i + 2 < nargs && arg[i + 1] == 5) {
+		if (arg[i + 2] >= 0 && arg[i + 2] < 256)
+		    o->rstyle = SET_BGCOLOR (o->rstyle,
+			    (o->Xdepth <= 2) ? Color_bg : ANSI256_TO_INDEX (arg[i + 2]));
+		i += 2;
+	    }
 	    break;
 	case 49:		/* default bg */
 	    rxvtlib_scr_color (o, restoreBG, RS_Blink);

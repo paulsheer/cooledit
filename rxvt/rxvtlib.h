@@ -971,6 +971,13 @@ enum colour_list {
 #endif
 } dummy_var;
 
+#define COLOR256_BASE           TOTAL_COLORS
+#define COLOR256_COUNT          240
+#define ANSI256_TO_INDEX(n) \
+    ((n) < 8 ? (minCOLOR + (n)) : \
+     (n) < 16 ? (minBrightCOLOR + ((n) - 8)) : \
+     (COLOR256_BASE + ((n) - 16)))
+
 #define DEFAULT_RSTYLE		(RS_None | (Color_fg) | ((rend_t) Color_bg<<RS_bgshift))
 
 /*
@@ -1093,9 +1100,9 @@ enum Rs_resource_list {
     (((r) & RS_RVid) ? (((r) & (RS_attrMask & ~RS_RVid))		\
 			| (((r) & RS_fgMask)<<RS_bgshift))		\
 		     : ((r) & (RS_attrMask | RS_bgMask)))
-#define SET_FGCOLOR(r,fg)	(((r) & ~RS_fgMask)  | (fg))
-#define SET_BGCOLOR(r,bg)	(((r) & ~RS_bgMask)  | ((bg)<<RS_bgshift))
-#define SET_ATTR(r,a)		(((r) & ~RS_attrMask)| (a))
+#define SET_FGCOLOR(r,fg)	(((r) & ~RS_fgMask)  | (rend_t) (fg))
+#define SET_BGCOLOR(r,bg)	(((r) & ~RS_bgMask)  | ((rend_t) (bg)<<RS_bgshift))
+#define SET_ATTR(r,a)		(((r) & ~RS_attrMask)| (rend_t) (a))
 
 #define scrollbar_visible()	(o->scrollBar.state)
 #define scrollbar_isMotion()	(o->scrollBar.state == 'm')
@@ -1177,7 +1184,7 @@ EXTERN Display *Xdisplay;
 EXTERN unsigned long Options;
 EXTERN XSizeHints szHint;
 EXTERN int      sb_shadow;
-EXTERN unsigned long PixColors[TOTAL_COLORS];
+EXTERN unsigned long PixColors[TOTAL_COLORS + COLOR256_COUNT];
 
 #ifdef INEXPENSIVE_LOCAL_X_CALLS
 EXTERN int      display_is_local;

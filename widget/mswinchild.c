@@ -10,6 +10,8 @@
 #include <tchar.h>
 #include <stdio.h>
 #include <strsafe.h>
+#include <wtsapi32.h>
+#include <userenv.h>
 
 #include "mswinchild.h"
 
@@ -246,6 +248,63 @@ static int escape_windows_arg (const char *src, char *dst, int dstsize)
     return i;
 }
 
+static void windows_path_to_unix_buf (const char *p, char *out, int outsz)
+{
+    if (!strncmp (p, "C:\\", 3) || !strncmp (p, "c:\\", 3))
+        snprintf (out, outsz, "%s", p + 2);
+    else if (((p[0] >= 'A' && p[0] <= 'Z') || (p[0] >= 'a' && p[0] <= 'z'))
+             && p[1] == ':' && (p[2] == '\\' || !p[2])) {
+        char drive = (p[0] >= 'a' && p[0] <= 'z') ? (char) (p[0] - 'a' + 'A') : p[0];
+        snprintf (out, outsz, "/%c:%s", drive, p + 2);
+    } else
+        snprintf (out, outsz, "%s", p);
+    for (char *q = out; *q; q++)
+        if (*q == '\\')
+            *q = '/';
+}
+
+/* REMOTEFS.EXE runs as a LocalSystem service, so a shell spawned with an
+ * inherited environment would otherwise see SYSTEM's variables (wrong
+ * USERPROFILE/TEMP/APPDATA/PATH). Copy the active console user's environment
+ * into this process so the shell inherits the user's variables instead. */
+static void adopt_user_environment (void)
+{
+    DWORD session_id;
+    HANDLE user_token = NULL;
+    LPVOID env_block = NULL;
+    WCHAR *p;
+
+    session_id = WTSGetActiveConsoleSessionId ();
+    if (session_id == 0xFFFFFFFF)
+        return;
+    if (!WTSQueryUserToken (session_id, &user_token))
+        return;
+    if (!CreateEnvironmentBlock (&env_block, user_token, FALSE)) {
+        CloseHandle (user_token);
+        return;
+    }
+    CloseHandle (user_token);
+
+    for (p = (WCHAR *) env_block; *p; p += wcslen (p) + 1) {
+        WCHAR *eq = wcschr (p, L'=');
+        if (eq) {
+            *eq = L'\0';
+            SetEnvironmentVariableW (p, eq + 1);
+            *eq = L'=';
+        }
+    }
+    DestroyEnvironmentBlock (env_block);
+
+    if (!getenv ("HOME")) {
+        char profile[MAX_PATH];
+        if (GetEnvironmentVariableA ("USERPROFILE", profile, sizeof (profile)) && *profile) {
+            char home[MAX_PATH];
+            windows_path_to_unix_buf (profile, home, sizeof (home));
+            SetEnvironmentVariableA ("HOME", home);
+        }
+    }
+}
+
 int cterminal_run_command (struct cterminal *c, struct cterminal_config *config, int dumb_terminal, const char *log_origin_host,
                            char *const argv[], char *errmsg)
 {
@@ -308,6 +367,7 @@ int cterminal_run_command (struct cterminal *c, struct cterminal_config *config,
     // Prepare the StartupInfoEx structure attached to the ConPTY.
     InitializeStartupInfoAttachedToConPTY(&siStartInfo, con);
 
+    adopt_user_environment ();
     if (config->term_name[0])
         SetEnvironmentVariable ("TERM", config->term_name);
     SetEnvironmentVariable ("BB_TERMINAL_MODE", "3");

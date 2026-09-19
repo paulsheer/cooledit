@@ -10644,6 +10644,14 @@ static int UninstallService (void)
 static HWND g_tray_hwnd = NULL;
 static NOTIFYICONDATAA g_nid;
 static volatile int g_tray_running = 0;
+static UINT g_taskbar_created_msg = 0;
+
+#define IDT_TRAY_RETRY 501
+
+static BOOL TrayIconAdd (void)
+{
+    return Shell_NotifyIconA (NIM_ADD, &g_nid);
+}
 
 static int SvcIsRunning (void)
 {E_
@@ -10716,6 +10724,12 @@ static LRESULT CALLBACK TrayWndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             DestroyMenu (hMenu);
         }
         break;
+    case WM_TIMER:
+        if (wParam == IDT_TRAY_RETRY) {
+            if (TrayIconAdd ())
+                KillTimer (hwnd, IDT_TRAY_RETRY);
+        }
+        break;
     case WM_COMMAND:
         if (LOWORD (wParam) == IDM_TRAY_START)
             SvcStart ();
@@ -10731,6 +10745,10 @@ static LRESULT CALLBACK TrayWndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         PostQuitMessage (0);
         break;
     default:
+        if (g_taskbar_created_msg && msg == g_taskbar_created_msg) {
+            TrayIconAdd ();
+            return 0;
+        }
         return DefWindowProcA (hwnd, msg, wParam, lParam);
     }
     return 0;
@@ -10751,6 +10769,8 @@ static DWORD WINAPI TrayIconThread (LPVOID lpParam)
     wc.lpszClassName = "RemoteFSTrayClass";
     if (!RegisterClassA (&wc))
         return 1;
+
+    g_taskbar_created_msg = RegisterWindowMessageA ("TaskbarCreated");
 
     g_tray_hwnd = CreateWindowA ("RemoteFSTrayClass", "RemoteFS",
                                  WS_OVERLAPPEDWINDOW,
@@ -10774,7 +10794,8 @@ static DWORD WINAPI TrayIconThread (LPVOID lpParam)
     strncpy (g_nid.szTip, "Cooledit RemoteFS Server", sizeof (g_nid.szTip) - 1);
     g_nid.szTip[sizeof (g_nid.szTip) - 1] = '\0';
 
-    Shell_NotifyIconA (NIM_ADD, &g_nid);
+    if (!TrayIconAdd ())
+        SetTimer (g_tray_hwnd, IDT_TRAY_RETRY, 5000, NULL);
 
     g_tray_running = 1;
 
@@ -10882,11 +10903,18 @@ static LRESULT CALLBACK StatusWndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARA
         pt.x = (short) LOWORD (lParam);
         pt.y = (short) HIWORD (lParam);
         ClientToScreen (hwnd, &pt);
+        if (SendMessageA (hwnd, WM_NCHITTEST, 0, MAKELPARAM (pt.x, pt.y)) == HTCLOSE) {
+            DestroyWindow (hwnd);
+            return 0;
+        }
         GetWindowRect (hwnd, &rc);
         if (!PtInRect (&rc, pt))
             DestroyWindow (hwnd);
         return 0;
     }
+    case WM_CLOSE:
+        DestroyWindow (hwnd);
+        return 0;
     case WM_DESTROY:
         ReleaseCapture ();
         KillTimer (hwnd, IDT_STATUS_REFRESH);
@@ -11030,6 +11058,13 @@ int main (int argc, char **argv)
         }
     }
 
+#ifdef MSWIN
+    if (tray_mode) {
+        TrayIconThread (NULL);
+        return 0;
+    }
+#endif
+
     if (option_no_crypto)
         option_no_force_crypto = 1;
 
@@ -11094,10 +11129,6 @@ int main (int argc, char **argv)
     }
     if (uninstall_mode)	
         return UninstallService ();
-    if (tray_mode) {
-        TrayIconThread (NULL);
-        return 0;
-    }
 #endif
 
 #ifdef SHELL_SUPPORT

@@ -735,6 +735,8 @@ void            rxvtlib_lookup_key (rxvtlib *o, XEvent * ev)
 #endif
 		case XK_Home:
 		    len = strlen (STRCPY (kbuf, KS_HOME));
+		    if (shft)
+			kbuf[len - 1] = '$';
 		    break;
 
 #ifdef XK_KP_Left
@@ -811,6 +813,8 @@ void            rxvtlib_lookup_key (rxvtlib *o, XEvent * ev)
 #endif
 		case XK_End:
 		    len = strlen (STRCPY (kbuf, KS_END));
+		    if (shft)
+			kbuf[len - 1] = '$';
 		    break;
 
 		case XK_Select:
@@ -2209,6 +2213,141 @@ void            rxvtlib_process_print_pipe (rxvtlib *o)
 #endif				/* PRINTPIPE */
 /*}}} */
 
+/*{{{ process DCS (Device Control String) sequences `ESC P ... ST' */
+
+static const struct {
+    const char     *name;
+    const char     *value;
+} rxvt_tcap[] = {
+    { "ku", "\033OA" }, { "kd", "\033OB" }, { "kr", "\033OC" }, { "kl", "\033OD" },
+    { "#2", "\033[7$" }, { "#4", "\033[d" }, { "%i", "\033[c" }, { "*7", "\033[8$" },
+    { "k1", "\033[11~" }, { "k2", "\033[12~" }, { "k3", "\033[13~" }, { "k4", "\033[14~" },
+    { "k5", "\033[15~" }, { "k6", "\033[17~" }, { "k7", "\033[18~" }, { "k8", "\033[19~" },
+    { "k9", "\033[20~" }, { "k;", "\033[21~" }, { "F1", "\033[23~" }, { "F2", "\033[24~" },
+    { "%1", "\033[28~" }, { "kb", "\177" }, { "kI", "\033[2~" }, { "kD", "\033[3~" },
+    { "kh", "\033[7~" }, { "@7", "\033[8~" }, { "kP", "\033[5~" }, { "kN", "\033[6~" },
+    { "K1", "\033Ow" }, { "K3", "\033Oy" }, { "K4", "\033Oq" }, { "K5", "\033Os" },
+    { "kB", "\033[Z" },
+};
+
+static const char *rxvtlib_tcap_lookup (rxvtlib *o, const char *name)
+{
+    size_t          i;
+
+    if (strcmp (name, "Co") == 0) {
+	if (o->Xdepth >= 24)
+	    return "16777216";
+	if (o->Xdepth > 2)
+	    return "256";
+	return "0";
+    }
+    if (strcmp (name, "RGB") == 0)
+	return (o->Xdepth >= 24) ? "8" : NULL;
+    if (strcmp (name, "TN") == 0)
+	return APL_NAME;
+
+    for (i = 0; i < sizeof (rxvt_tcap) / sizeof (rxvt_tcap[0]); i++)
+	if (strcmp (name, rxvt_tcap[i].name) == 0)
+	    return rxvt_tcap[i].value;
+
+    return NULL;
+}
+
+static int      rxvtlib_hexval (int c)
+{
+    if (c >= '0' && c <= '9')
+	return c - '0';
+    if (c >= 'a' && c <= 'f')
+	return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F')
+	return c - 'A' + 10;
+    return -1;
+}
+
+static int      rxvtlib_hex_decode (char *dst, int dstlen, const unsigned char *src, int len)
+{
+    int             i, n = 0;
+
+    for (i = 0; i + 1 < len; i += 2) {
+	int             hi = rxvtlib_hexval (src[i]);
+	int             lo = rxvtlib_hexval (src[i + 1]);
+
+	if (hi < 0 || lo < 0)
+	    return -1;
+	if (n < dstlen - 1)
+	    dst[n++] = (char) ((hi << 4) | lo);
+    }
+    dst[n] = '\0';
+    return n;
+}
+
+static void     rxvtlib_xtgettcap (rxvtlib *o, const unsigned char *data, int len)
+{
+    char            name[64];
+    char            hexname[128];
+    char            hexval[512];
+    const char     *value;
+    int             i, n;
+
+    n = rxvtlib_hex_decode (name, sizeof (name), data, len);
+    if (n < 0)
+	return;
+
+    value = rxvtlib_tcap_lookup (o, name);
+    if (value == NULL) {
+	rxvtlib_tt_printf (o, "\033P0+r\033\\");
+	return;
+    }
+
+    for (i = 0; i < n; i++)
+	sprintf (hexname + 2 * i, "%02x", (unsigned char) name[i]);
+    hexname[2 * n] = '\0';
+
+    for (i = 0; value[i]; i++)
+	sprintf (hexval + 2 * i, "%02x", (unsigned char) value[i]);
+    hexval[2 * i] = '\0';
+
+    rxvtlib_tt_printf (o, "\033P1+r%s=%s\033\\", hexname, hexval);
+}
+
+static void     rxvtlib_process_dcs_seq (rxvtlib *o)
+{
+    unsigned char   ch, inter = 0, final = 0;
+    unsigned char   data[STRING_MAX];
+    int             len = 0;
+
+    ch = rxvtlib_cmd_getc (o);
+    while (ch >= 0x30 && ch <= 0x3f)	/* skip parameter bytes */
+	ch = rxvtlib_cmd_getc (o);
+    if (ch >= 0x20 && ch <= 0x2f) {	/* intermediate byte */
+	inter = ch;
+	ch = rxvtlib_cmd_getc (o);
+    }
+    if (ch < 0x40 || ch > 0x7e)	/* not a final byte - malformed */
+	return;
+    final = ch;
+
+    for (;;) {				/* read body up to ST (ESC \) or BEL */
+	ch = rxvtlib_cmd_getc (o);
+	if (ch == '\033') {
+	    if (rxvtlib_cmd_getc (o) == '\\')
+		break;
+	} else if (ch == '\007') {
+	    break;
+	} else if (len < (int) sizeof (data) - 1) {
+	    data[len++] = ch;
+	}
+    }
+    data[len] = '\0';
+
+    if (inter == '+' && final == 'q')
+	rxvtlib_xtgettcap (o, data, len);
+    else if (inter == '$' && final == 'q')
+	rxvtlib_tt_printf (o, "\033P0$r\033\\");	/* DECRQSS: unsupported */
+    /* all other DCS (e.g. Sixel) is consumed and ignored */
+}
+/*}}} */
+
 /*{{{ process escape sequences */
 /* INTPROTO */
 void            rxvtlib_process_escape_seq (rxvtlib *o)
@@ -2286,6 +2425,9 @@ void            rxvtlib_process_escape_seq (rxvtlib *o)
 	break;
     case ']':
 	rxvtlib_process_xterm_seq (o);
+	break;
+    case 'P':
+	rxvtlib_process_dcs_seq (o);
 	break;
     case 'c':
 	rxvtlib_scr_poweron (o);

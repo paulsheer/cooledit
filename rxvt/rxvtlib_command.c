@@ -2330,9 +2330,14 @@ static void     rxvtlib_process_dcs_seq (rxvtlib *o)
     for (;;) {				/* read body up to ST (ESC \) or BEL */
 	ch = rxvtlib_cmd_getc (o);
 	if (ch == '\033') {
-	    if (rxvtlib_cmd_getc (o) == '\\')
+	    unsigned char   nxt = rxvtlib_cmd_getc (o);
+	    if (nxt == '\\')
 		break;
-	} else if (ch == '\007') {
+	    if (len < (int) sizeof (data) - 1)
+		data[len++] = ch;
+	    if (len < (int) sizeof (data) - 1)
+		data[len++] = nxt;
+	} else if (ch == '\007' || ch == '\0') {
 	    break;
 	} else if (len < (int) sizeof (data) - 1) {
 	    data[len++] = ch;

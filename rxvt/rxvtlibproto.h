@@ -119,6 +119,7 @@ XErrorHandler   xerror_handler (const Display * display,
 void            rxvtlib_color_aliases (rxvtlib *o, int idx);
 void            rxvtlib_set_colorfgbg (rxvtlib *o);
 void            rxvtlib_Get_Colours (rxvtlib *o);
+void            rxvtlib_get_ext_colour (rxvtlib *o, int i);
 void            rxvtlib_get_ext_colours (rxvtlib *o);
 void            rxvtlib_get_truecolor_pixels (rxvtlib *o);
 void            rxvtlib_Create_Windows (rxvtlib *o, int argc, const char *const *argv);

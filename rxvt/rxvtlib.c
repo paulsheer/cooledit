@@ -153,25 +153,26 @@ static  const char *const ansiGrayLevelName[] = {
     "#BCBCBC", "#C6C6C6", "#D0D0D0", "#DADADA", "#E4E4E4", "#EEEEEE",
 };
 
-void            rxvtlib_get_ext_colours (rxvtlib *o)
+void            rxvtlib_get_ext_colour (rxvtlib *o, int i)
 {E_
-    int             i;
     XColor          xcol;
+    const char     *name;
 
     if (o->Xdepth <= 2)
         return;
-    for (i = 0; i < 216; i++) {
-        if (!XParseColor (o->Xdisplay, o->Xcmap, ansiColorCubeName[i], &xcol)
-            || !XAllocColor (o->Xdisplay, o->Xcmap, &xcol))
-            xcol.pixel = o->PixColors[Color_bg];
-        o->PixColors[COLOR256_BASE + i] = xcol.pixel;
-    }
-    for (i = 0; i < 24; i++) {
-        if (!XParseColor (o->Xdisplay, o->Xcmap, ansiGrayLevelName[i], &xcol)
-            || !XAllocColor (o->Xdisplay, o->Xcmap, &xcol))
-            xcol.pixel = o->PixColors[Color_bg];
-        o->PixColors[COLOR256_BASE + 216 + i] = xcol.pixel;
-    }
+    name = (i < 216) ? ansiColorCubeName[i] : ansiGrayLevelName[i - 216];
+    if (!XParseColor (o->Xdisplay, o->Xcmap, name, &xcol)
+        || !XAllocColor (o->Xdisplay, o->Xcmap, &xcol))
+        xcol.pixel = o->PixColors[Color_bg];
+    o->PixColors[COLOR256_BASE + i] = xcol.pixel;
+}
+
+void            rxvtlib_get_ext_colours (rxvtlib *o)
+{E_
+    int             i;
+
+    for (i = 0; i < COLOR256_COUNT; i++)
+        rxvtlib_get_ext_colour (o, i);
 }
 
 void            rxvtlib_get_truecolor_pixels (rxvtlib *o)
@@ -179,6 +180,8 @@ void            rxvtlib_get_truecolor_pixels (rxvtlib *o)
     int             r, g, b;
     XColor          xcol;
 
+    if (o->Xdepth < 24)
+        return;
     for (r = 0; r < LpC; r++)
         for (g = 0; g < LpC; g++)
             for (b = 0; b < LpC; b++) {

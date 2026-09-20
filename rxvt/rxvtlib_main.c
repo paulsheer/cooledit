@@ -805,8 +805,10 @@ static void     rxvtlib_reset_palette (rxvtlib *o, int idx)
 	    && XAllocColor (o->Xdisplay, o->Xcmap, &xcol))
 	    o->PixColors[ci] = xcol.pixel;
     }
-    if (idx < 0 || idx >= 16)
-	rxvtlib_get_ext_colours (o);
+    if (idx < 0)
+        rxvtlib_get_ext_colours (o);
+    else if (idx >= 16)
+        rxvtlib_get_ext_colour (o, idx - 16);
 
     rxvtlib_set_colorfgbg (o);
     rxvtlib_scr_poweron (o);

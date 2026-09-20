@@ -812,6 +812,23 @@ static void     rxvtlib_reset_palette (rxvtlib *o, int idx)
     rxvtlib_scr_poweron (o);
 }
 
+/* report a colour's rgb value in response to an OSC query */
+static void     rxvtlib_report_color (rxvtlib *o, int op, int ansi, int idx)
+{E_
+    XColor          xcol;
+
+    xcol.pixel = o->PixColors[idx];
+    XQueryColor (o->Xdisplay, o->Xcmap, &xcol);
+    if (op == XTerm_color)
+	rxvtlib_tt_printf (o, "\033]4;%d;rgb:%04x/%04x/%04x\033\\",
+			   ansi, (unsigned) xcol.red,
+			   (unsigned) xcol.green, (unsigned) xcol.blue);
+    else
+	rxvtlib_tt_printf (o, "\033]%d;rgb:%04x/%04x/%04x\033\\",
+			   op, (unsigned) xcol.red,
+			   (unsigned) xcol.green, (unsigned) xcol.blue);
+}
+
 /* EXTPROTO */
 void            rxvtlib_xterm_seq (rxvtlib *o, int op, const char *str)
 {E_
@@ -842,15 +859,24 @@ void            rxvtlib_xterm_seq (rxvtlib *o, int op, const char *str)
 	    int             c = atoi (str);
 	    const char     *spec = strchr (str, ';');
 
-	    if (spec && *++spec && c >= 0 && c < 256)
+	    if (spec && spec[1] == '?') {
+		if (c >= 0 && c < 256)
+		    rxvtlib_report_color (o, XTerm_color, c, ANSI256_TO_INDEX (c));
+	    } else if (spec && *++spec && c >= 0 && c < 256)
 		rxvtlib_set_window_color (o, ANSI256_TO_INDEX (c), spec);
 	    break;
 	}
     case XTerm_fg:
-	rxvtlib_set_window_color (o, Color_fg, str);
+	if (str[0] == '?')
+	    rxvtlib_report_color (o, XTerm_fg, 0, Color_fg);
+	else
+	    rxvtlib_set_window_color (o, Color_fg, str);
 	break;
     case XTerm_bg:
-	rxvtlib_set_window_color (o, Color_bg, str);
+	if (str[0] == '?')
+	    rxvtlib_report_color (o, XTerm_bg, 0, Color_bg);
+	else
+	    rxvtlib_set_window_color (o, Color_bg, str);
 	break;
     case XTerm_resetFg:
 	rxvtlib_set_window_color (o, Color_fg, o->rs[Rs_color + Color_fg]);
@@ -860,7 +886,13 @@ void            rxvtlib_xterm_seq (rxvtlib *o, int op, const char *str)
 	break;
 #ifndef NO_CURSORCOLOR
     case XTerm_cursor:
-	rxvtlib_set_window_color (o, Color_cursor, str);
+	if (str[0] == '?') {
+	    int             ci = (o->Xdepth > 2 && o->cursorColorSet)
+	    ? Color_cursor : Color_fg;
+
+	    rxvtlib_report_color (o, XTerm_cursor, 0, ci);
+	} else
+	    rxvtlib_set_window_color (o, Color_cursor, str);
 	break;
     case XTerm_resetCursor:
 	if (o->rs[Rs_color + Color_cursor])

@@ -986,7 +986,10 @@ int cterminal_run_command (struct cterminal *o, struct cterminal_config *config,
                 PUTENVF ("PULSE_CLIENTCONFIG=%.90s", config->sound_env_config);
             PUTENVF ("WINDOWID=%lu", config->term_win_id);
             PUTENVF ("TERM=%s", config->term_name);
-            PUTENVF ("COLORTERM=%s", config->colorterm_name);
+            if (config->colorterm_name[0])
+                PUTENVF ("COLORTERM=%s", config->colorterm_name);
+            else
+                UNSETENV ("COLORTERM");
             strcpy (envstr, "COLORFGBG=");
             if (config->env_fg >= 0)
                 snprintf (envstr + strlen (envstr), 32, "%d;", config->env_fg);

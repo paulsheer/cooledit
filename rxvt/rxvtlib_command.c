@@ -2434,7 +2434,10 @@ void            rxvtlib_process_csi_seq (rxvtlib *o)
 	rxvtlib_scr_scroll_text (o, arg[0] ? arg[0] : 1);
 	break;
     case 'c':
-	rxvtlib_tt_printf (o, VT100_ANS);
+	if (priv == '>')
+	    rxvtlib_tt_printf (o, DA2_ANS);
+	else
+	    rxvtlib_tt_printf (o, VT100_ANS);
 	break;
     case 'm':
 	rxvtlib_process_sgr_mode (o, nargs, arg);
@@ -3681,7 +3684,8 @@ int            rxvtlib_run_command (rxvtlib *o, const char *host, char *const ar
     Cstrlcpy (c.display_env_var, o->rs[Rs_display_name] ? o->rs[Rs_display_name] : XDisplayString (o->Xdisplay), sizeof (c.display_env_var));
     Cstrlcpy (c.sound_env_var, o->rs[Rs_soundenvvar_name] ? o->rs[Rs_soundenvvar_name] : "", sizeof (c.sound_env_var));
     Cstrlcpy (c.term_name, o->rs[Rs_term_name] ? o->rs[Rs_term_name] : TERMENV, sizeof (c.term_name));
-    Cstrlcpy (c.colorterm_name, o->Xdepth <= 2 ? COLORTERMENV "-mono" : COLORTERMENVFULL, sizeof (c.colorterm_name));
+    /* COLORTERM: "truecolor" (>=24-bit), "rxvt" (color), unset (mono) */
+    Cstrlcpy (c.colorterm_name, o->Xdepth <= 2 ? "" : (o->Xdepth >= 24 ? "truecolor" : COLORTERMENV), sizeof (c.colorterm_name));
 
     c.term_win_id = (unsigned long) o->TermWin.parent[0];
     c.col = o->TermWin.ncol;

@@ -684,11 +684,6 @@ struct _row_col_t {
 
 /* COLORTERM, TERM environment variables */
 #define COLORTERMENV	"rxvt"
-#ifdef XPM_BACKGROUND
-# define COLORTERMENVFULL COLORTERMENV "-xpm"
-#else
-# define COLORTERMENVFULL COLORTERMENV
-#endif
 #ifndef TERMENV
 # ifdef KANJI
 #  define TERMENV	"kterm"
@@ -1615,6 +1610,7 @@ struct XCNQueue_t {
  * used.
  */
 #define VT100_ANS	"\033[?1;2c"	/* vt100 answerback */
+#define DA2_ANS		"\033[>85;262;0c"	/* secondary DA: rxvt family, v2.6.2 */
 #ifndef ESCZ_ANSWER
 # define ESCZ_ANSWER	VT100_ANS	/* obsolete ANSI ESC[c */
 #endif

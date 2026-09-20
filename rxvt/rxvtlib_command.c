@@ -2449,6 +2449,8 @@ void            rxvtlib_process_csi_seq (rxvtlib *o)
     unsigned char   ch, priv;
     unsigned int    nargs;
     int             arg[ESC_ARGS];
+    unsigned int    colmask = 0;
+    int             prev_colon = 0;
 
     for (nargs = ESC_ARGS; nargs > 0;)
 	arg[--nargs] = 0;
@@ -2466,8 +2468,12 @@ void            rxvtlib_process_csi_seq (rxvtlib *o)
 	if (isdigit (ch)) {
 	    for (; isdigit (ch); ch = rxvtlib_cmd_getc (o))
 		n = n * 10 + (ch - '0');
-	    if (nargs < ESC_ARGS)
+	    if (nargs < ESC_ARGS) {
+		if (prev_colon && nargs > 0)
+		    colmask |= (1u << nargs);
 		arg[nargs++] = n;
+	    }
+	    prev_colon = 0;
 	}
 	if (ch == '\b') {
 	    rxvtlib_scr_backspace (o);
@@ -2478,8 +2484,10 @@ void            rxvtlib_process_csi_seq (rxvtlib *o)
 	    rxvtlib_scr_add_lines (o, &ch, 0, 1);
 	    return;
 	}
-	if (ch < '@')
+	if (ch < '@') {
+	    prev_colon = (ch == ':');
 	    ch = rxvtlib_cmd_getc (o);
+	}
     } while (ch >= ' ' && ch < '@');
     if (ch == 033) {
 	rxvtlib_process_escape_seq (o);
@@ -2582,7 +2590,7 @@ void            rxvtlib_process_csi_seq (rxvtlib *o)
 	    rxvtlib_tt_printf (o, VT100_ANS);
 	break;
     case 'm':
-	rxvtlib_process_sgr_mode (o, nargs, arg);
+	rxvtlib_process_sgr_mode (o, nargs, arg, colmask);
 	break;
     case 'n':			/* request for information */
 	switch (arg[0]) {
@@ -2929,7 +2937,7 @@ void            rxvtlib_process_terminal_mode (rxvtlib *o, int mode, int priv, u
 
 /*{{{ process sgr sequences */
 /* INTPROTO */
-void            rxvtlib_process_sgr_mode (rxvtlib *o, unsigned int nargs, const int *arg)
+void            rxvtlib_process_sgr_mode (rxvtlib *o, unsigned int nargs, const int *arg, unsigned int colmask)
 {E_
     unsigned int    i;
 
@@ -2984,19 +2992,27 @@ void            rxvtlib_process_sgr_mode (rxvtlib *o, unsigned int nargs, const 
 			    (o->Xdepth <= 2) ? Color_fg : ANSI256_TO_INDEX (arg[i + 2]));
 		i += 2;
 	    } else if (i + 4 < nargs && arg[i + 1] == 2) {
-		int             r, g, b, off;
+		int             r, g, b, off = 4;
 
-		/* 38:2:R:G:B (no colorspace) or 38:2:CS:R:G:B (skip CS) */
-		if (i + 5 < nargs) {
-		    r = arg[i + 3];
-		    g = arg[i + 4];
-		    b = arg[i + 5];
-		    off = 5;
+		if (colmask & (1u << (i + 1))) {
+		    unsigned int    j, cnt = 0;
+
+		    for (j = i + 2; j < nargs && (colmask & (1u << j)); j++)
+			cnt++;
+		    if (cnt >= 4) {
+			r = arg[i + 3];
+			g = arg[i + 4];
+			b = arg[i + 5];
+			off = 5;
+		    } else {
+			r = arg[i + 2];
+			g = arg[i + 3];
+			b = arg[i + 4];
+		    }
 		} else {
 		    r = arg[i + 2];
 		    g = arg[i + 3];
 		    b = arg[i + 4];
-		    off = 4;
 		}
 		if (o->Xdepth >= 24
 		    && r >= 0 && r < 256 && g >= 0 && g < 256 && b >= 0 && b < 256)
@@ -3037,19 +3053,27 @@ void            rxvtlib_process_sgr_mode (rxvtlib *o, unsigned int nargs, const 
 			    (o->Xdepth <= 2) ? Color_bg : ANSI256_TO_INDEX (arg[i + 2]));
 		i += 2;
 	    } else if (i + 4 < nargs && arg[i + 1] == 2) {
-		int             r, g, b, off;
+		int             r, g, b, off = 4;
 
-		/* 48:2:R:G:B (no colorspace) or 48:2:CS:R:G:B (skip CS) */
-		if (i + 5 < nargs) {
-		    r = arg[i + 3];
-		    g = arg[i + 4];
-		    b = arg[i + 5];
-		    off = 5;
+		if (colmask & (1u << (i + 1))) {
+		    unsigned int    j, cnt = 0;
+
+		    for (j = i + 2; j < nargs && (colmask & (1u << j)); j++)
+			cnt++;
+		    if (cnt >= 4) {
+			r = arg[i + 3];
+			g = arg[i + 4];
+			b = arg[i + 5];
+			off = 5;
+		    } else {
+			r = arg[i + 2];
+			g = arg[i + 3];
+			b = arg[i + 4];
+		    }
 		} else {
 		    r = arg[i + 2];
 		    g = arg[i + 3];
 		    b = arg[i + 4];
-		    off = 4;
 		}
 		if (o->Xdepth >= 24
 		    && r >= 0 && r < 256 && g >= 0 && g < 256 && b >= 0 && b < 256)

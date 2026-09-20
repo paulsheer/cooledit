@@ -2,10 +2,10 @@ diff --git b/remotefs.apk a/remotefs.apk
 index ee0a47f..8a85109 100644
 Binary files b/remotefs.apk and a/remotefs.apk differ
 diff --git b/rxvt/rxvtlib.c a/rxvt/rxvtlib.c
-index 0b6e97e..1dd9826 100644
+index 8af7fa3..30558ae 100644
 --- b/rxvt/rxvtlib.c
 +++ a/rxvt/rxvtlib.c
-@@ -172,6 +172,8 @@ void            rxvtlib_get_ext_colours (rxvtlib *o)
+@@ -174,6 +174,8 @@ void            rxvtlib_get_ext_colours (rxvtlib *o)
      }
  }
  
@@ -14,13 +14,13 @@ index 0b6e97e..1dd9826 100644
  void            rxvtlib_get_truecolor_pixels (rxvtlib *o)
  {E_
      int             r, g, b;
-@@ -190,6 +192,39 @@ void            rxvtlib_get_truecolor_pixels (rxvtlib *o)
+@@ -192,6 +194,39 @@ void            rxvtlib_get_truecolor_pixels (rxvtlib *o)
              }
  }
  
 +#else
 +
-+#define TRUECOLOR_CACHE_SIZE    256
++#define TRUECOLOR_CACHE_SIZE    65536
 +
 +static struct {
 +    unsigned long   pixel;
@@ -55,10 +55,10 @@ index 0b6e97e..1dd9826 100644
  static  const char *const def_mfontName[] = {
      MFONT_LIST
 diff --git b/rxvt/rxvtlib.h a/rxvt/rxvtlib.h
-index bc7e284..ed5fe18 100644
+index 9f77fc6..9e05ba2 100644
 --- b/rxvt/rxvtlib.h
 +++ a/rxvt/rxvtlib.h
-@@ -840,11 +840,18 @@ struct _row_col_t {
+@@ -835,11 +835,18 @@ struct _row_col_t {
  #define ERASE			+2
  
  #ifdef ANSI256_AND_TRUECOLOR
@@ -77,17 +77,25 @@ index bc7e284..ed5fe18 100644
  #ifndef ANSI256_AND_TRUECOLOR_defined
  #error
  #endif
-@@ -1105,6 +1112,7 @@ enum Rs_resource_list {
- #define SET_BGCOLOR(r,bg)	(((r) & ~RS_bgMask)  | ((rend_t) (bg)<<RS_bgshift))
- #define SET_ATTR(r,a)		(((r) & ~RS_attrMask)| (rend_t) (a))
+@@ -1117,6 +1124,7 @@ enum Rs_resource_list {
+ #define SET_BGCOLOR(p,bg)	(((p) & ~RS_bgMask)  | ((rend_t) (bg)<<RS_bgshift))
+ #define SET_ATTR(p,a)		(((p) & ~RS_attrMask)| (rend_t) (a))
  
 +#ifdef TRUECOLOR_MIN
  /* Levels per R,G,B component calculated as (2**RS_bgshift-(TOTAL_COLORS+240))**(1/3) */
  #define LpC                     15
  
-@@ -1139,6 +1147,18 @@ enum Rs_resource_list {
- 					RGB_TO_LEVEL(((rgb) >> 8) & 0xff), \
- 					RGB_TO_LEVEL((rgb) & 0xff)))
+@@ -1133,6 +1141,7 @@ enum Rs_resource_list {
+  *   3679–4095 - Unused
+  */
+ #define TRUECOLOR_BASE          (COLOR256_BASE + COLOR256_COUNT)        /* TOTAL_COLORS + 240 */
++#define IS_TRUECOLOR(c)         ((c) >= TRUECOLOR_BASE)
+ 
+ #define TRUECOLOR_COUNT		(LpC * LpC * LpC)			/* 3375 */
+ 
+@@ -1150,6 +1159,18 @@ enum Rs_resource_list {
+ 					RGB_TO_LEVEL(g), \
+ 					RGB_TO_LEVEL(b)))
  
 +#else
 +/* 24-bit truecolor: within each 25-bit color field, bit 24 is the truecolor
@@ -97,14 +105,14 @@ index bc7e284..ed5fe18 100644
 +#define RS_RGBMask		0xFFFFFFULL
 +#define IS_TRUECOLOR(c)		((c) & RS_trueColorMask)
 +#define GET_RGB(c)		((int)((c) & RS_RGBMask))
-+#define SET_FGRGB(r,rgb)	SET_FGCOLOR((r), ((rend_t)(rgb) | RS_trueColorMask))
-+#define SET_BGRGB(r,rgb)	SET_BGCOLOR((r), ((rend_t)(rgb) | RS_trueColorMask))
++#define SET_FGRGB(p,r,g,b)	SET_FGCOLOR((p), ((rend_t)(((r) << 16) | ((g) << 8) | (b)) | RS_trueColorMask))
++#define SET_BGRGB(p,r,g,b)	SET_BGCOLOR((p), ((rend_t)(((r) << 16) | ((g) << 8) | (b)) | RS_trueColorMask))
 +#endif
 +
  #define scrollbar_visible()	(o->scrollBar.state)
  #define scrollbar_isMotion()	(o->scrollBar.state == 'm')
  #define scrollbar_isUp()	(o->scrollBar.state == 'U')
-@@ -1219,7 +1239,11 @@ EXTERN Display *Xdisplay;
+@@ -1230,7 +1251,11 @@ EXTERN Display *Xdisplay;
  EXTERN unsigned long Options;
  EXTERN XSizeHints szHint;
  EXTERN int      sb_shadow;
@@ -117,10 +125,10 @@ index bc7e284..ed5fe18 100644
  #ifdef INEXPENSIVE_LOCAL_X_CALLS
  EXTERN int      display_is_local;
 diff --git b/rxvt/rxvtlib_main.c a/rxvt/rxvtlib_main.c
-index 038097f..d177f89 100644
+index 9cb2e81..89007f5 100644
 --- b/rxvt/rxvtlib_main.c
 +++ a/rxvt/rxvtlib_main.c
-@@ -200,7 +200,9 @@ void            rxvtlib_Get_Colours (rxvtlib *o)
+@@ -206,7 +206,9 @@ void            rxvtlib_Get_Colours (rxvtlib *o)
  	o->PixColors[Color_border] = o->PixColors[Color_fg];
  
      rxvtlib_get_ext_colours (o);
@@ -131,7 +139,7 @@ index 038097f..d177f89 100644
  /*
   * get scrollBar/menuBar shadow colors
 diff --git b/rxvt/rxvtlib_screen.c a/rxvt/rxvtlib_screen.c
-index 31fff8c..35e7daf 100644
+index 9991b70..ec5f676 100644
 --- b/rxvt/rxvtlib_screen.c
 +++ a/rxvt/rxvtlib_screen.c
 @@ -103,7 +103,13 @@ static inline rxvt_buf_char_t text_t_to_char (text_t c)
@@ -149,7 +157,7 @@ index 31fff8c..35e7daf 100644
  
  /* ------------------------------------------------------------------------- *
 diff --git b/rxvt/rxvtlibproto.h a/rxvt/rxvtlibproto.h
-index c9beb33..8850a12 100644
+index a0720c4..bfee041 100644
 --- b/rxvt/rxvtlibproto.h
 +++ a/rxvt/rxvtlibproto.h
 @@ -120,7 +120,11 @@ void            rxvtlib_color_aliases (rxvtlib *o, int idx);
@@ -165,12 +173,15 @@ index c9beb33..8850a12 100644
  void            rxvtlib_resize_subwindows (rxvtlib *o, int width, int height);
  void            rxvtlib_resize_all_windows (rxvtlib *o);
 diff --git b/rxvt/rxvtlibrend.h a/rxvt/rxvtlibrend.h
-index b34a2fe..3972adc 100644
+index 3600b8e..13185f4 100644
 --- b/rxvt/rxvtlibrend.h
 +++ a/rxvt/rxvtlibrend.h
-@@ -4,8 +4,12 @@
+@@ -2,9 +2,15 @@
+ #define ANSI256_AND_TRUECOLOR
  #define ANSI256_AND_TRUECOLOR_defined
  
++#define TRUECOLOR_MIN
++
  #ifdef ANSI256_AND_TRUECOLOR
 +#ifdef TRUECOLOR_MIN
  typedef unsigned int rend_t;
@@ -181,3 +192,191 @@ index b34a2fe..3972adc 100644
  typedef unsigned int rend_t;
  #endif
  
+diff --git b/rxvt/true-color-alternative.diff a/rxvt/true-color-alternative.diff
+index b08b5d3..ad8f1d5 100644
+--- b/rxvt/true-color-alternative.diff
++++ a/rxvt/true-color-alternative.diff
+@@ -0,0 +1,183 @@
++diff --git b/remotefs.apk a/remotefs.apk
++index ee0a47f..8a85109 100644
++Binary files b/remotefs.apk and a/remotefs.apk differ
++diff --git b/rxvt/rxvtlib.c a/rxvt/rxvtlib.c
++index 0b6e97e..1dd9826 100644
++--- b/rxvt/rxvtlib.c
+++++ a/rxvt/rxvtlib.c
++@@ -172,6 +172,8 @@ void            rxvtlib_get_ext_colours (rxvtlib *o)
++     }
++ }
++ 
+++#ifdef TRUECOLOR_MIN
+++
++ void            rxvtlib_get_truecolor_pixels (rxvtlib *o)
++ {E_
++     int             r, g, b;
++@@ -190,6 +192,39 @@ void            rxvtlib_get_truecolor_pixels (rxvtlib *o)
++             }
++ }
++ 
+++#else
+++
+++#define TRUECOLOR_CACHE_SIZE    256
+++
+++static struct {
+++    unsigned long   pixel;
+++    int             rgb;
+++    char            valid;
+++} truecolor_cache[TRUECOLOR_CACHE_SIZE];
+++
+++unsigned long   rxvtlib_get_truecolor_pixel (rxvtlib *o, int rgb)
+++{E_
+++    XColor          xcol;
+++    int             slot = rgb & (TRUECOLOR_CACHE_SIZE - 1);
+++
+++    if (truecolor_cache[slot].valid && truecolor_cache[slot].rgb == rgb)
+++        return truecolor_cache[slot].pixel;
+++
+++    xcol.red = (unsigned short) (((rgb >> 16) & 0xff) * 257);
+++    xcol.green = (unsigned short) (((rgb >> 8) & 0xff) * 257);
+++    xcol.blue = (unsigned short) ((rgb & 0xff) * 257);
+++    xcol.flags = DoRed | DoGreen | DoBlue;
+++    if (!XAllocColor (o->Xdisplay, o->Xcmap, &xcol))
+++        xcol.pixel = o->PixColors[Color_bg];
+++
+++    truecolor_cache[slot].valid = 1;
+++    truecolor_cache[slot].rgb = rgb;
+++    truecolor_cache[slot].pixel = xcol.pixel;
+++    return xcol.pixel;
+++}
+++
+++#endif
+++
++ #ifdef MULTICHAR_SET
++ static  const char *const def_mfontName[] = {
++     MFONT_LIST
++diff --git b/rxvt/rxvtlib.h a/rxvt/rxvtlib.h
++index bc7e284..ed5fe18 100644
++--- b/rxvt/rxvtlib.h
+++++ a/rxvt/rxvtlib.h
++@@ -840,11 +840,18 @@ struct _row_col_t {
++ #define ERASE			+2
++ 
++ #ifdef ANSI256_AND_TRUECOLOR
+++#ifdef TRUECOLOR_MIN
++ #define RS_zero                 0U
++ #define RS_one                  1U
++ #define RS_fgMask               0x0FFFU
++ #define RS_bgshift              12
++ #else
+++#define RS_zero                 0ULL
+++#define RS_one                  1ULL
+++#define RS_fgMask               0x000000001FFFFFFULL
+++#define RS_bgshift              25
+++#endif
+++#else
++ #ifndef ANSI256_AND_TRUECOLOR_defined
++ #error
++ #endif
++@@ -1105,6 +1112,7 @@ enum Rs_resource_list {
++ #define SET_BGCOLOR(r,bg)	(((r) & ~RS_bgMask)  | ((rend_t) (bg)<<RS_bgshift))
++ #define SET_ATTR(r,a)		(((r) & ~RS_attrMask)| (rend_t) (a))
++ 
+++#ifdef TRUECOLOR_MIN
++ /* Levels per R,G,B component calculated as (2**RS_bgshift-(TOTAL_COLORS+240))**(1/3) */
++ #define LpC                     15
++ 
++@@ -1139,6 +1147,18 @@ enum Rs_resource_list {
++ 					RGB_TO_LEVEL(((rgb) >> 8) & 0xff), \
++ 					RGB_TO_LEVEL((rgb) & 0xff)))
++ 
+++#else
+++/* 24-bit truecolor: within each 25-bit color field, bit 24 is the truecolor
+++ * flag and bits 0..23 hold a raw 0xRRGGBB value. */
+++#define RS_trueColorShift	24
+++#define RS_trueColorMask	(RS_one << RS_trueColorShift)
+++#define RS_RGBMask		0xFFFFFFULL
+++#define IS_TRUECOLOR(c)		((c) & RS_trueColorMask)
+++#define GET_RGB(c)		((int)((c) & RS_RGBMask))
+++#define SET_FGRGB(r,rgb)	SET_FGCOLOR((r), ((rend_t)(rgb) | RS_trueColorMask))
+++#define SET_BGRGB(r,rgb)	SET_BGCOLOR((r), ((rend_t)(rgb) | RS_trueColorMask))
+++#endif
+++
++ #define scrollbar_visible()	(o->scrollBar.state)
++ #define scrollbar_isMotion()	(o->scrollBar.state == 'm')
++ #define scrollbar_isUp()	(o->scrollBar.state == 'U')
++@@ -1219,7 +1239,11 @@ EXTERN Display *Xdisplay;
++ EXTERN unsigned long Options;
++ EXTERN XSizeHints szHint;
++ EXTERN int      sb_shadow;
+++#ifdef TRUECOLOR_MIN
++ EXTERN unsigned long PixColors[TRUECOLOR_BASE + TRUECOLOR_COUNT];
+++#else
+++EXTERN unsigned long PixColors[TOTAL_COLORS + COLOR256_COUNT];
+++#endif
++ 
++ #ifdef INEXPENSIVE_LOCAL_X_CALLS
++ EXTERN int      display_is_local;
++diff --git b/rxvt/rxvtlib_main.c a/rxvt/rxvtlib_main.c
++index 038097f..d177f89 100644
++--- b/rxvt/rxvtlib_main.c
+++++ a/rxvt/rxvtlib_main.c
++@@ -200,7 +200,9 @@ void            rxvtlib_Get_Colours (rxvtlib *o)
++ 	o->PixColors[Color_border] = o->PixColors[Color_fg];
++ 
++     rxvtlib_get_ext_colours (o);
+++#ifdef TRUECOLOR_MIN
++     rxvtlib_get_truecolor_pixels (o);
+++#endif
++ 
++ /*
++  * get scrollBar/menuBar shadow colors
++diff --git b/rxvt/rxvtlib_screen.c a/rxvt/rxvtlib_screen.c
++index 31fff8c..35e7daf 100644
++--- b/rxvt/rxvtlib_screen.c
+++++ a/rxvt/rxvtlib_screen.c
++@@ -103,7 +103,13 @@ static inline rxvt_buf_char_t text_t_to_char (text_t c)
++ static inline unsigned long
++ rend_pixel (rxvtlib *o, rend_t color)
++ {
+++#ifdef TRUECOLOR_MIN
++     return o->PixColors[(int) color];
+++#else
+++    if (IS_TRUECOLOR (color))
+++        return rxvtlib_get_truecolor_pixel (o, GET_RGB (color));
+++    return o->PixColors[(int) color];
+++#endif
++ }
++ 
++ /* ------------------------------------------------------------------------- *
++diff --git b/rxvt/rxvtlibproto.h a/rxvt/rxvtlibproto.h
++index c9beb33..8850a12 100644
++--- b/rxvt/rxvtlibproto.h
+++++ a/rxvt/rxvtlibproto.h
++@@ -120,7 +120,11 @@ void            rxvtlib_color_aliases (rxvtlib *o, int idx);
++ void            rxvtlib_set_colorfgbg (rxvtlib *o);
++ void            rxvtlib_Get_Colours (rxvtlib *o);
++ void            rxvtlib_get_ext_colours (rxvtlib *o);
+++#ifdef TRUECOLOR_MIN
++ void            rxvtlib_get_truecolor_pixels (rxvtlib *o);
+++#else
+++unsigned long   rxvtlib_get_truecolor_pixel (rxvtlib *o, int rgb);
+++#endif
++ void            rxvtlib_Create_Windows (rxvtlib *o, int argc, const char *const *argv);
++ void            rxvtlib_resize_subwindows (rxvtlib *o, int width, int height);
++ void            rxvtlib_resize_all_windows (rxvtlib *o);
++diff --git b/rxvt/rxvtlibrend.h a/rxvt/rxvtlibrend.h
++index b34a2fe..3972adc 100644
++--- b/rxvt/rxvtlibrend.h
+++++ a/rxvt/rxvtlibrend.h
++@@ -4,8 +4,12 @@
++ #define ANSI256_AND_TRUECOLOR_defined
++ 
++ #ifdef ANSI256_AND_TRUECOLOR
+++#ifdef TRUECOLOR_MIN
++ typedef unsigned int rend_t;
++ #else
+++typedef unsigned long long rend_t;
+++#endif
+++#else
++ typedef unsigned int rend_t;
++ #endif
++ 

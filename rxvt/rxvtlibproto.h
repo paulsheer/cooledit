@@ -75,7 +75,7 @@ void            rxvtlib_process_window_ops (rxvtlib *o, const int *args, int nar
 void            rxvtlib_process_xterm_seq (rxvtlib *o);
 void            rxvtlib_process_terminal_mode (rxvtlib *o, int mode, int priv, unsigned int nargs,
 				       const int *arg);
-void            rxvtlib_process_sgr_mode (rxvtlib *o, unsigned int nargs, const int *arg);
+void            rxvtlib_process_sgr_mode (rxvtlib *o, unsigned int nargs, const int *arg, unsigned int colmask);
 void            rxvtlib_process_graphics (rxvtlib *o);
 void            rxvtlib_AddToCNQueue (rxvtlib *o, int width, int height);
 int             rxvtlib_RemoveFromCNQueue (rxvtlib *o, int width, int height);

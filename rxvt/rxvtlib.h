@@ -1133,7 +1133,6 @@ enum Rs_resource_list {
  *   3679–4095 - Unused
  */
 #define TRUECOLOR_BASE          (COLOR256_BASE + COLOR256_COUNT)        /* TOTAL_COLORS + 240 */
-#define IS_TRUECOLOR(c)         ((c) >= TRUECOLOR_BASE)
 
 #define TRUECOLOR_COUNT		(LpC * LpC * LpC)			/* 3375 */
 

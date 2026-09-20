@@ -2145,6 +2145,7 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
     long            gcmask,	/* Graphics Context mask                     */
                     gcmaskf;
     static int      focus = -1;	/* screen in focus?                          */
+    int             is_cursor_cell;
     unsigned long   ltmp;
     rend_t          rt1, rt2;	/* tmp rend values                           */
 
@@ -2293,7 +2294,7 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 	*srp ^= RS_RVid;
 #ifndef NO_CURSORCOLOR
 	cc1 = *srp & (RS_fgMask | RS_bgMask);
-	if (o->Xdepth <= 2 || !o->rs[Rs_color + Color_cursor])
+	if (o->Xdepth <= 2 || !o->cursorColorSet)
 	    ccol1 = Color_fg;
 	else
 	    ccol1 = Color_cursor;
@@ -2394,6 +2395,8 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 	    /* redraw one or more characters */
 	    dtp[col] = stp[col];
 	    rend = drp[col] = srp[col];
+	    is_cursor_cell = (o->screen.flags & Screen_VisibleCursor) && focus
+		&& scrrow == currow && col == o->screen.cur.col;
 
 	    len = 0;
 	    o->buffer[len++] = ec = text_t_to_char (stp[col]);
@@ -2516,8 +2519,15 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 			o->buffer[i] = 0x1e;
 		break;
 	    }
-	    if (rvid)
+	    if (rvid) {
 		SWAP_IT (fore, back, i);
+		if (o->Xdepth > 2 && !is_cursor_cell) {
+		    if (o->highlightBgSet)
+			back = Color_HC;
+		    if (o->highlightFgSet)
+			fore = Color_HF;
+		}
+	    }
 	    if (back != Color_bg) {
 		gcvalue.background = rend_pixel (o, back);
 		gcmask |= GCBackground;
@@ -2633,7 +2643,7 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 	    wbyte = morecur ? 1 : 0;
 #ifndef NO_CURSORCOLOR
 	    gcmask = 0;
-	    if (o->Xdepth > 2 && o->rs[Rs_color + Color_cursor]) {
+	    if (o->Xdepth > 2 && o->cursorColorSet) {
 		gcvalue.foreground = o->PixColors[Color_cursor];
 		gcmask = GCForeground;
 		XChangeGC (o->Xdisplay, o->TermWin.gc, gcmask, &gcvalue);

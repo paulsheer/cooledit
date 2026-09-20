@@ -157,6 +157,8 @@ static struct _optList optList[] = {
     RSTRG (Rs_color + Color_BD, "colorBD", "color"),
     RSTRG (Rs_color + Color_UL, "colorUL", "color"),
 #endif				/* NO_BOLDUNDERLINE */
+    RSTRG (Rs_color + Color_HC, "highlightColor", "color"),
+    RSTRG (Rs_color + Color_HF, "highlightTextColor", "color"),
 #ifdef KEEP_SCROLLCOLOR
     RSTRG (Rs_color + Color_scroll, "scrollColor", "color"),
     RSTRG (Rs_color + Color_trough, "troughColor", "color"),

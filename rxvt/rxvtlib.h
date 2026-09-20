@@ -909,6 +909,14 @@ struct _row_col_t {
 #define XTerm_fg		10	/* set default fg color */
 #define XTerm_bg		11	/* set default bg color */
 #define XTerm_cursor		12	/* set cursor color */
+#define XTerm_highlightBg	17	/* set selection background color */
+#define XTerm_highlightFg	19	/* set selection foreground color */
+#define XTerm_resetPalette	104	/* reset palette entry(ies) */
+#define XTerm_resetFg		110	/* reset default fg color */
+#define XTerm_resetBg		111	/* reset default bg color */
+#define XTerm_resetCursor	112	/* reset cursor color */
+#define XTerm_resetHighlightBg	117	/* reset selection background */
+#define XTerm_resetHighlightFg	119	/* reset selection foreground */
 #define XTerm_logfile		46	/* not implemented */
 #define XTerm_font		50
 
@@ -961,6 +969,8 @@ enum colour_list {
 #endif
     Color_pointer,
     Color_border,
+    Color_HC,			/* highlight background (OSC 17) */
+    Color_HF,			/* highlight foreground (OSC 19) */
 #ifndef NO_BOLDUNDERLINE
     Color_BD,
     Color_UL,
@@ -973,7 +983,7 @@ enum colour_list {
 #ifdef KEEP_SCROLLCOLOR
     Color_topShadow = NRS_COLORS,
     Color_bottomShadow,
-    TOTAL_COLORS		/* upto 28 */
+    TOTAL_COLORS		/* upto 30 */
 #else
     TOTAL_COLORS = NRS_COLORS	/* */
 #endif
@@ -1849,6 +1859,9 @@ struct _Arrows {
  short    current_screen;
  rend_t   rstyle;
  short    rvideo;
+ short    highlightBgSet;
+ short    highlightFgSet;
+ short    cursorColorSet;
 
 #ifdef MULTICHAR_SET
 short           multi_byte;

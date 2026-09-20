@@ -94,9 +94,11 @@ static  const char *const def_colorName[] = {
     COLOR_CURSOR_FOREGROUND,
 #endif				/* ! NO_CURSORCOLOR */
     NULL,			
-    NULL			
+    NULL,
+    NULL,
+    NULL
 #ifndef NO_BOLDUNDERLINE
-	, NULL,			
+	, NULL,
     NULL			
 #endif				/* ! NO_BOLDUNDERLINE */
 #ifdef KEEP_SCROLLCOLOR

@@ -194,6 +194,12 @@ void            rxvtlib_Get_Colours (rxvtlib *o)
 	o->PixColors[i] = xcol.pixel;
     }
 
+    o->highlightBgSet = (o->rs[Rs_color + Color_HC] != 0);
+    o->highlightFgSet = (o->rs[Rs_color + Color_HF] != 0);
+#ifndef NO_CURSORCOLOR
+    o->cursorColorSet = (o->rs[Rs_color + Color_cursor] != 0);
+#endif
+
     if (o->Xdepth <= 2 || !o->rs[Rs_color + Color_pointer])
 	o->PixColors[Color_pointer] = o->PixColors[Color_fg];
     if (o->Xdepth <= 2 || !o->rs[Rs_color + Color_border])
@@ -740,6 +746,14 @@ void            rxvtlib_set_window_color (rxvtlib *o, int idx, const char *color
 /* XSetWindowAttributes attr; */
 /* Cursor cursor; */
   Done:
+    if (idx == Color_HC)
+	o->highlightBgSet = 1;
+    if (idx == Color_HF)
+	o->highlightFgSet = 1;
+#ifndef NO_CURSORCOLOR
+    if (idx == Color_cursor)
+	o->cursorColorSet = 1;
+#endif
     if (idx == Color_bg && !(o->Options & Opt_transparent))
 	XSetWindowBackground (o->Xdisplay, o->TermWin.vt, o->PixColors[Color_bg]);
 
@@ -775,6 +789,29 @@ void            rxvtlib_set_window_color (rxvtlib *o, int idx, const char *color
  *      39 = change default fg color
  *      49 = change default bg color
  */
+/* reset palette entries: -1 = all, 0..255 = one entry */
+static void     rxvtlib_reset_palette (rxvtlib *o, int idx)
+{E_
+    XColor          xcol;
+    int             i, ci;
+    const char     *name;
+
+    for (i = 0; i < 16; i++) {
+	if (idx >= 0 && idx != i)
+	    continue;
+	ci = ANSI256_TO_INDEX (i);
+	name = o->rs[Rs_color + ci];
+	if (name && XParseColor (o->Xdisplay, o->Xcmap, name, &xcol)
+	    && XAllocColor (o->Xdisplay, o->Xcmap, &xcol))
+	    o->PixColors[ci] = xcol.pixel;
+    }
+    if (idx < 0 || idx >= 16)
+	rxvtlib_get_ext_colours (o);
+
+    rxvtlib_set_colorfgbg (o);
+    rxvtlib_scr_poweron (o);
+}
+
 /* EXTPROTO */
 void            rxvtlib_xterm_seq (rxvtlib *o, int op, const char *str)
 {E_
@@ -815,11 +852,51 @@ void            rxvtlib_xterm_seq (rxvtlib *o, int op, const char *str)
     case XTerm_bg:
 	rxvtlib_set_window_color (o, Color_bg, str);
 	break;
+    case XTerm_resetFg:
+	rxvtlib_set_window_color (o, Color_fg, o->rs[Rs_color + Color_fg]);
+	break;
+    case XTerm_resetBg:
+	rxvtlib_set_window_color (o, Color_bg, o->rs[Rs_color + Color_bg]);
+	break;
 #ifndef NO_CURSORCOLOR
     case XTerm_cursor:
 	rxvtlib_set_window_color (o, Color_cursor, str);
 	break;
+    case XTerm_resetCursor:
+	if (o->rs[Rs_color + Color_cursor])
+	    rxvtlib_set_window_color (o, Color_cursor, o->rs[Rs_color + Color_cursor]);
+	else
+	    o->cursorColorSet = 0;
+	break;
 #endif
+    case XTerm_highlightBg:
+	rxvtlib_set_window_color (o, Color_HC, str);
+	break;
+    case XTerm_highlightFg:
+	rxvtlib_set_window_color (o, Color_HF, str);
+	break;
+    case XTerm_resetHighlightBg:
+	if (o->rs[Rs_color + Color_HC])
+	    rxvtlib_set_window_color (o, Color_HC, o->rs[Rs_color + Color_HC]);
+	else
+	    o->highlightBgSet = 0;
+	break;
+    case XTerm_resetHighlightFg:
+	if (o->rs[Rs_color + Color_HF])
+	    rxvtlib_set_window_color (o, Color_HF, o->rs[Rs_color + Color_HF]);
+	else
+	    o->highlightFgSet = 0;
+	break;
+    case XTerm_resetPalette:
+	{
+	    int             c = atoi (str);
+
+	    if (*str == '\0')
+		rxvtlib_reset_palette (o, -1);
+	    else if (c >= 0 && c < 256)
+		rxvtlib_reset_palette (o, c);
+	    break;
+	}
     case XTerm_Pixmap:
 	if (*str != ';') {
 	    rxvtlib_scale_pixmap (o, "");	/* reset to default scaling */
@@ -1328,6 +1405,8 @@ char    **rxvtlib_init_resources (rxvtlib *o, int argc, const char *const *argv)
 #endif				/* NO_CURSORCOLOR */
     rxvtlib_color_aliases (o, Color_pointer);
     rxvtlib_color_aliases (o, Color_border);
+    rxvtlib_color_aliases (o, Color_HC);
+    rxvtlib_color_aliases (o, Color_HF);
 #ifndef NO_BOLDUNDERLINE
     rxvtlib_color_aliases (o, Color_BD);
     rxvtlib_color_aliases (o, Color_UL);

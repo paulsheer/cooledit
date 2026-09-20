@@ -1108,9 +1108,9 @@ enum Rs_resource_list {
     (((r) & RS_RVid) ? (((r) & (RS_attrMask & ~RS_RVid))		\
 			| (((r) & RS_fgMask)<<RS_bgshift))		\
 		     : ((r) & (RS_attrMask | RS_bgMask)))
-#define SET_FGCOLOR(r,fg)	(((r) & ~RS_fgMask)  | (rend_t) (fg))
-#define SET_BGCOLOR(r,bg)	(((r) & ~RS_bgMask)  | ((rend_t) (bg)<<RS_bgshift))
-#define SET_ATTR(r,a)		(((r) & ~RS_attrMask)| (rend_t) (a))
+#define SET_FGCOLOR(p,fg)	(((p) & ~RS_fgMask)  | (rend_t) (fg))
+#define SET_BGCOLOR(p,bg)	(((p) & ~RS_bgMask)  | ((rend_t) (bg)<<RS_bgshift))
+#define SET_ATTR(p,a)		(((p) & ~RS_attrMask)| (rend_t) (a))
 
 /* Levels per R,G,B component calculated as (2**RS_bgshift-(TOTAL_COLORS+240))**(1/3) */
 #define LpC                     15
@@ -1137,14 +1137,14 @@ enum Rs_resource_list {
 
 #define TRUECOLOR_CODE(r,g,b)	(TRUECOLOR_BASE + ((r) * LpC + (g)) * LpC + (b))
 
-#define SET_FGRGB(r,rgb)	SET_FGCOLOR((r), TRUECOLOR_CODE( \
-					RGB_TO_LEVEL(((rgb) >> 16) & 0xff), \
-					RGB_TO_LEVEL(((rgb) >> 8) & 0xff), \
-					RGB_TO_LEVEL((rgb) & 0xff)))
-#define SET_BGRGB(r,rgb)	SET_BGCOLOR((r), TRUECOLOR_CODE( \
-					RGB_TO_LEVEL(((rgb) >> 16) & 0xff), \
-					RGB_TO_LEVEL(((rgb) >> 8) & 0xff), \
-					RGB_TO_LEVEL((rgb) & 0xff)))
+#define SET_FGRGB(p,r,g,b)	SET_FGCOLOR((p), TRUECOLOR_CODE( \
+					RGB_TO_LEVEL(r), \
+					RGB_TO_LEVEL(g), \
+					RGB_TO_LEVEL(b)))
+#define SET_BGRGB(p,r,g,b)	SET_BGCOLOR((p), TRUECOLOR_CODE( \
+					RGB_TO_LEVEL(r), \
+					RGB_TO_LEVEL(g), \
+					RGB_TO_LEVEL(b)))
 
 #define scrollbar_visible()	(o->scrollBar.state)
 #define scrollbar_isMotion()	(o->scrollBar.state == 'm')

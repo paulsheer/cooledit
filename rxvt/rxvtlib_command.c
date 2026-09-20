@@ -2855,7 +2855,7 @@ void            rxvtlib_process_sgr_mode (rxvtlib *o, unsigned int nargs, const 
 		}
 		if (o->Xdepth >= 24
 		    && r >= 0 && r < 256 && g >= 0 && g < 256 && b >= 0 && b < 256)
-		    o->rstyle = SET_FGRGB (o->rstyle, (r << 16) | (g << 8) | b);
+		    o->rstyle = SET_FGRGB (o->rstyle, r, g, b);
 		i += off;
 	    }
 	    break;
@@ -2908,7 +2908,7 @@ void            rxvtlib_process_sgr_mode (rxvtlib *o, unsigned int nargs, const 
 		}
 		if (o->Xdepth >= 24
 		    && r >= 0 && r < 256 && g >= 0 && g < 256 && b >= 0 && b < 256)
-		    o->rstyle = SET_BGRGB (o->rstyle, (r << 16) | (g << 8) | b);
+		    o->rstyle = SET_BGRGB (o->rstyle, r, g, b);
 		i += off;
 	    }
 	    break;

@@ -1137,10 +1137,10 @@ enum Rs_resource_list {
 
 #define TRUECOLOR_COUNT		(LpC * LpC * LpC)			/* 3375 */
 
-#define RGB_TO_LEVEL(v)		(((v) * (LpC - 1) + 127) / 255)
-#define LEVEL_TO_RGB(l)		(((l) * 255 + (LpC - 1) / 2) / (LpC - 1))
+#define RGB_TO_LEVEL(v)		(((v) * (LpC - 1)) / 255)
+#define LEVEL_TO_RGB(l)		(((l) * 255) / (LpC - 1))
 
-#define TRUECOLOR_CODE(r,g,b)	(TRUECOLOR_BASE + ((r) * LpC + (g)) * LpC + (b))
+#define TRUECOLOR_CODE(r,g,b)	(TRUECOLOR_BASE + (r) * (LpC * LpC) + (g) * LpC + (b))
 
 #define SET_FGRGB(p,r,g,b)	SET_FGCOLOR((p), TRUECOLOR_CODE( \
 					RGB_TO_LEVEL(r), \

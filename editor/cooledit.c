@@ -214,6 +214,7 @@ void get_next_hint_message (void)
     {
 /* HINTSTART */
 /* The following are hints that go on the title bar: eg "Cooledit - Hint: Undo key-for-key with Ctrl-Backspace" */
+	gettext_noop("Edit files on Android: RemoteFS is in the Google Play store"),
 	gettext_noop("Hold down Shift for gentle scrolling with the mouse wheel"),
 	gettext_noop("To drag and drop, highlight text, then click and drag from within the selection"),
 	gettext_noop("Dragging with the right mouse button will move text"),

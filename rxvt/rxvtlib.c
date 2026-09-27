@@ -175,24 +175,53 @@ void            rxvtlib_get_ext_colours (rxvtlib *o)
         rxvtlib_get_ext_colour (o, i);
 }
 
+static unsigned long
+rxvtlib_rgb_channel (unsigned long mask, unsigned short value)
+{
+    int             shift, bits;
+    unsigned long   m;
+
+    if (!mask)
+        return 0;
+    for (shift = 0; (mask & (1UL << shift)) == 0; shift++);
+    for (bits = 0, m = mask; m; m >>= 1)
+        if (m & 1)
+            bits++;
+    if (bits > 16)
+        bits = 16;
+    return (((unsigned long) value) >> (16 - bits)) << shift;
+}
+
 void            rxvtlib_get_truecolor_pixels (rxvtlib *o)
 {E_
     int             r, g, b;
-    XColor          xcol;
 
     if (o->Xdepth < 24)
         return;
-    for (r = 0; r < LpC; r++)
-        for (g = 0; g < LpC; g++)
-            for (b = 0; b < LpC; b++) {
-                xcol.red = (unsigned short) (LEVEL_TO_RGB (r) * 257);
-                xcol.green = (unsigned short) (LEVEL_TO_RGB (g) * 257);
-                xcol.blue = (unsigned short) (LEVEL_TO_RGB (b) * 257);
-                xcol.flags = DoRed | DoGreen | DoBlue;
-                if (!XAllocColor (o->Xdisplay, o->Xcmap, &xcol))
-                    xcol.pixel = o->PixColors[Color_bg];
-                o->PixColors[TRUECOLOR_CODE (r, g, b)] = xcol.pixel;
-            }
+
+    if (o->Xvisual->class == TrueColor) {
+        for (r = 0; r < LpC; r++)
+            for (g = 0; g < LpC; g++)
+                for (b = 0; b < LpC; b++)
+                    o->PixColors[TRUECOLOR_CODE (r, g, b)] =
+                        rxvtlib_rgb_channel (o->Xvisual->red_mask, (unsigned short) (LEVEL_TO_RGB (r) * 257))
+                        | rxvtlib_rgb_channel (o->Xvisual->green_mask, (unsigned short) (LEVEL_TO_RGB (g) * 257))
+                        | rxvtlib_rgb_channel (o->Xvisual->blue_mask, (unsigned short) (LEVEL_TO_RGB (b) * 257));
+    } else {
+        XColor          xcol;
+
+        for (r = 0; r < LpC; r++)
+            for (g = 0; g < LpC; g++)
+                for (b = 0; b < LpC; b++) {
+                    xcol.red = (unsigned short) (LEVEL_TO_RGB (r) * 257);
+                    xcol.green = (unsigned short) (LEVEL_TO_RGB (g) * 257);
+                    xcol.blue = (unsigned short) (LEVEL_TO_RGB (b) * 257);
+                    xcol.flags = DoRed | DoGreen | DoBlue;
+                    if (!XAllocColor (o->Xdisplay, o->Xcmap, &xcol))
+                        xcol.pixel = o->PixColors[Color_bg];
+                    o->PixColors[TRUECOLOR_CODE (r, g, b)] = xcol.pixel;
+                }
+    }
 }
 
 #ifdef MULTICHAR_SET

@@ -11,6 +11,15 @@
 #include "sha256.h"
 #include "symauth.h"
 
+int symauth_constant_time_memcmp (const unsigned char *a, const unsigned char *b, int len)
+{
+    unsigned char result = 0;
+    int i;
+
+    for (i = 0; i < len; i++)
+        result |= a[i] ^ b[i];
+    return (result != 0);
+}
 
 struct symauth {
 #define SYMAUTH_MAGIC           0x542c72f2
@@ -173,6 +182,6 @@ int symauth_decrypt (struct symauth *symauth, const unsigned char *in, int inlen
     (*symauth->aes_encrypt_fn) (auth + SYMAUTH_BLOCK_SIZE, NULL, SYMAUTH_BLOCK_SIZE, &symauth->aes_authrecv_key, auth);
     (*symauth->aes_decrypt_fn) (in, out_, inlen, &symauth->aes_decrypt_key, iv);
 
-    return memcmp (auth, auth_, SYMAUTH_BLOCK_SIZE) != 0;
+    return symauth_constant_time_memcmp (auth, auth_, SYMAUTH_BLOCK_SIZE) != 0;
 }
 

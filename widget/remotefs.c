@@ -3816,7 +3816,7 @@ static int recv_crypto_ (struct sock_data *sock_data, struct crypto_buf *d, unsi
         *reader_error = READER_ERROR_BADCHALLENGE;
         return SOCKET_ERROR;
     }
-    if (memcmp (sock_data->crypto_data.challenge, b->challenge, SYMAUTH_BLOCK_SIZE)) {
+    if (symauth_constant_time_memcmp (sock_data->crypto_data.challenge, b->challenge, SYMAUTH_BLOCK_SIZE)) {
         /* the most common case of a wrong password happens here */
         *reader_error = READER_ERROR_BADCHALLENGE;
         return SOCKET_ERROR;

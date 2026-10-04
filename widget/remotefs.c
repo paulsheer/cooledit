@@ -3535,6 +3535,8 @@ enum reader_error {
     READER_REMOTEERROR_BADBLOCKSIZE = READER_REMOTEERROR + READER_ERROR_BADBLOCKSIZE,
     READER_REMOTEERROR_PKTSIZETOOLONG = READER_REMOTEERROR + READER_ERROR_PKTSIZETOOLONG,
     READER_REMOTEERROR_BADPADBYTES = READER_REMOTEERROR + READER_ERROR_BADPADBYTES,
+
+#define READER_ERROR_TOO_LARGE          1000
 };
 
 static const char *reader_error_to_str (enum reader_error e)
@@ -3734,9 +3736,61 @@ static int recv_crypto_ (struct sock_data *sock_data, struct crypto_buf *d, unsi
         }
         e = (struct crypto_packet_error *) (d->buf + d->written);
         decode_uint32 (e->read_error, &remote_reader_error);
-        *reader_error = READER_REMOTEERROR + remote_reader_error;
+        if (remote_reader_error > READER_ERROR_TOO_LARGE)
+            *reader_error = READER_ERROR_TOO_LARGE;
+        else
+            *reader_error = READER_REMOTEERROR + remote_reader_error;
         return SOCKET_ERROR;
     }
+
+/*
+ *   What actually happens for each malicious injection block_count:
+ *
+ *   ┌─────────────┬─────────────────────────────────────────┬─────────────────┬──────────────────────┐
+ *   │ block_count │            check that fires             │     effect      │ bytes buffered first │
+ *   ├─────────────┼─────────────────────────────────────────┼─────────────────┼──────────────────────┤
+ *   │ 0–4         │ BADBLOCKSIZE (remotefs.c:3741)          │ teardown        │ 2                    │
+ *   ├─────────────┼─────────────────────────────────────────┼─────────────────┼──────────────────────┤
+ *   │ 5–4100      │ reaches wait → MAC fails → BADCHALLENGE │ teardown        │ up to ~64 KB (65602) │
+ *   ├─────────────┼─────────────────────────────────────────┼─────────────────┼──────────────────────┤
+ *   │ 4101–10000  │ PKTSIZETOOLONG (remotefs.c:3748)        │ teardown        │ 2                    │
+ *   ├─────────────┼─────────────────────────────────────────┼─────────────────┼──────────────────────┤
+ *   │ >10000      │ BADBLOCKSIZE                            │ teardown        │ 2                    │
+ *   ├─────────────┼─────────────────────────────────────────┼─────────────────┼──────────────────────┤
+ *   │ 0xffff      │ error path (remotefs.c:3727)            │ error injection │ 10                   │
+ *   └─────────────┴─────────────────────────────────────────┴─────────────────┴──────────────────────┘
+ *
+ *   Malicious error injection Error on block_count = 0xffff:
+ *
+ *   ┌───────────────────────┬─────────────────┬──────────────┬─────────────────────────────────────────────┬───────────┐
+ *   │        v (hex)        │     v (dec)     │ reader_error │                string shown                 │ behavior  │
+ *   ├───────────────────────┼─────────────────┼──────────────┼─────────────────────────────────────────────┼───────────┤
+ *   │ 0x00000000            │ 0               │ 100          │ "<invalid-error>"                           │ teardown  │
+ *   ├───────────────────────┼─────────────────┼──────────────┼─────────────────────────────────────────────┼───────────┤
+ *   │ 0x00000001            │ 1               │ 101          │ "remote: timeout waiting for response"      │ teardown  │
+ *   ├───────────────────────┼─────────────────┼──────────────┼─────────────────────────────────────────────┼───────────┤
+ *   │ 0x00000002            │ 2               │ 102          │ "remote: invalid checksum in crypto packet" │ teardown  │
+ *   ├───────────────────────┼─────────────────┼──────────────┼─────────────────────────────────────────────┼───────────┤
+ *   │ 0x00000003            │ 3               │ 103          │ "remote: crypto key/pass does not match"    │ re-prompt │
+ *   ├───────────────────────┼─────────────────┼──────────────┼─────────────────────────────────────────────┼───────────┤
+ *   │ 0x00000004            │ 4               │ 104          │ "remote: replay attack detected"            │ teardown  │
+ *   ├───────────────────────┼─────────────────┼──────────────┼─────────────────────────────────────────────┼───────────┤
+ *   │ 0x00000005            │ 5               │ 105          │ "remote: bad crypto packet size"            │ teardown  │
+ *   ├───────────────────────┼─────────────────┼──────────────┼─────────────────────────────────────────────┼───────────┤
+ *   │ 0x00000006            │ 6               │ 106          │ "remote: crypto packet size too long"       │ teardown  │
+ *   ├───────────────────────┼─────────────────┼──────────────┼─────────────────────────────────────────────┼───────────┤
+ *   │ 0x00000007            │ 7               │ 107          │ "remote: crypto packet bad pad bytes"       │ teardown  │
+ *   ├───────────────────────┼─────────────────┼──────────────┼─────────────────────────────────────────────┼───────────┤
+ *   │ 0x00000008–0x00000383 │ 8–899           │ 108–999      │ "<unknown-error>"                           │ teardown  │
+ *   ├───────────────────────┼─────────────────┼──────────────┼─────────────────────────────────────────────┼───────────┤
+ *   │ 0x00000384            │ 900             │ 1000         │ "<unknown-error>"                           │ teardown  │
+ *   ├───────────────────────┼─────────────────┼──────────────┼─────────────────────────────────────────────┼───────────┤
+ *   │ 0x00000385–0x000003E8 │ 901–1000        │ 1001–1100    │ "<unknown-error>"                           │ teardown  │
+ *   ├───────────────────────┼─────────────────┼──────────────┼─────────────────────────────────────────────┼───────────┤
+ *   │ 0x000003E9–0xFFFFFFFF │ 1001–4294967295 │ 1000         │ "<unknown-error>"                           │ teardown  │
+ *   └───────────────────────┴─────────────────┴──────────────┴─────────────────────────────────────────────┴───────────┘
+ *
+ */
 
     if (blocks < (SYMAUTH_ADMIN_BLOCKS + 1) || blocks > 10000) {
         *reader_error = READER_ERROR_BADBLOCKSIZE;

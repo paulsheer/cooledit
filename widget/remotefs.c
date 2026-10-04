@@ -10746,7 +10746,8 @@ static LRESULT CALLBACK TrayWndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         break;
     default:
         if (g_taskbar_created_msg && msg == g_taskbar_created_msg) {
-            TrayIconAdd ();
+            if (!TrayIconAdd ())
+                SetTimer (hwnd, IDT_TRAY_RETRY, 5000, NULL);
             return 0;
         }
         return DefWindowProcA (hwnd, msg, wParam, lParam);

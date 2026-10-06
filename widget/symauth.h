@@ -16,3 +16,5 @@ int symauth_with_aesni (struct symauth *s);
 
 void symauth_hex_dump (int f, const char *msg, const unsigned char *p, int l);
 
+int symauth_constant_time_memcmp (const unsigned char *a, const unsigned char *b, int len);
+

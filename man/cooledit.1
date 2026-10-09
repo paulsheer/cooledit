@@ -249,7 +249,9 @@ Start a unicode xterm with X forwarding support by connecting
 to remotefs with X forwarding support.
 .TP
 .I -host <ip>
-Remote IP address of remotefs server.
+Remote IP address of remotefs server for rxvt. Unlike ssh this
+protocol automatically reconnects if the link goes down so you
+don't lose your terminal session.
 .TP
 .I -script <shell-command>
 Execute a shell command in the rxvt terminal connected

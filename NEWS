@@ -1,6 +1,8 @@
 Version 5.0.3
 
     * Update to latest unicode NotoSans fonts (✅)
+    * rxvt automatically reconnects to remotefs when your link goes down
+        so you don't have to login again.
     * Regular-expression search moved to the Onigmo engine for full
         Unicode/UTF-8 support; syntax highlighting rewritten with a
         re-entrant lexical processor and brace-depth tracking.

@@ -350,6 +350,7 @@ extern int option_rgb_order;
 extern int option_interchar_spacing;
 
 int option_new_window_ask_for_file = 1;
+int option_save_lines = 30000;
 
 char *option_display = 0;
 char *option_geometry = 0;
@@ -401,6 +402,7 @@ void usage (void)
 	    "\n" \
 	    "--widget-font <font-name>                font of widgets and controls\n" \
 	    "--8bit-term-font <font-name>             font for the terminal in 8-bit mode\n" \
+	    "-sl, --save-lines <N>                    lines in the rxvt scroll history\n" \
 	    "-S, --suppress-load-files                don't load saved desktop\n" \
 	    "-U, --suppress-load-options              don't load saved options\n" \
 	    "-E, -no-override                         command line doesn't override init file\n" \
@@ -487,6 +489,7 @@ struct prog_options cooledit_options[] =
     {'f', "-fn", "-font", ARG_STRING, &option_font2, 0, 0},
     {0, "", "--widget-font", ARG_STRING, &option_widget_font2, 0, 0},
     {0, "", "--8bit-term-font", ARG_STRING, &option_8bit_term_font, 0, 0},
+    {0, "-sl", "--save-lines", ARG_INT, 0, 0, &option_save_lines},
     {'S', "", "--suppress-load-files", ARG_SET, 0, 0, &option_suppress_load_files_cmdline},
     {'U', "", "--suppress-load-options", ARG_SET, 0, 0, &option_suppress_load_options},
     {'E', "-no-override", "", ARG_SET, 0, 0, &option_command_line_doesnt_override},
@@ -2108,10 +2111,10 @@ void cooledit_main_loop (void)
 		    }
 		    break;
 		case CK_Terminal:
-		    rxvt_start_unicode (edit[current_edit]->editor->host, CRoot);
+		    rxvt_start_unicode (edit[current_edit]->editor->host, option_save_lines, CRoot);
 		    break;
 		case CK_8BitTerminal:
-		    rxvt_start_8bit (edit[current_edit]->editor->host, CRoot);
+		    rxvt_start_8bit (edit[current_edit]->editor->host, option_save_lines, CRoot);
 		    break;
 		case CK_Complete:
 		    complete_command (edit[current_edit]);
@@ -2380,8 +2383,8 @@ int main (int argc, char **argv)
     int x, y, setsize = 0;
     char *example_fonts[] =
     {
-	"-misc-fixed-bold-r-normal--13-120-75-75-c-80",
-	"-*-courier-medium-r-normal--13-120-75-75-m-60",
+	"-misc-fixed-bold-r-normal--13-120-*",
+        "-*-courier-medium-r-normal--12-120-*",
 	"-*-times-medium-r-*--14-*-*-*-p-*",
 	"-*-helvetica-bold-r-*--14-*-*-*-p-*",
 	"-*-charter-bold-r-*--14-*-*-*-p-*",

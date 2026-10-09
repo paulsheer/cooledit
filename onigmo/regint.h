@@ -169,8 +169,12 @@ void dbg_free(void *v);
 #undef xfree
 #define xfree       dbg_free
 
+#define TIMEOUT_LABEL
+
 #ifdef RUBY
 
+# undef TIMEOUT_LABEL
+# define TIMEOUT_LABEL  timeout:
 # define CHECK_INTERRUPT_IN_MATCH_AT do { \
   msa->counter++; \
   if (msa->counter >= 128) { \

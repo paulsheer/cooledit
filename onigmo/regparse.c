@@ -469,6 +469,13 @@ typedef struct {
   int*   back_refs;
 } NameEntry;
 
+#define MARSHAL_4_TO_3(f, g, t1, t2, t3) \
+    static int \
+    f(st_data_t a1, st_data_t a2, st_data_t a3, st_data_t a4) { \
+        (void) a4; \
+        return g((t1) a1, (t2) a2, (t3) a3); \
+    }
+
 # ifdef USE_ST_LIBRARY
 
 typedef st_table  NameTable;
@@ -498,6 +505,8 @@ i_print_name_entry(HashDataType key_, HashDataType e_, HashDataType arg_)
   return ST_CONTINUE;
 }
 
+MARSHAL_4_TO_3(i_print_name_entry_, i_print_name_entry, HashDataType, HashDataType, HashDataType);
+
 extern int
 onig_print_names(FILE* fp, regex_t* reg)
 {
@@ -505,7 +514,7 @@ onig_print_names(FILE* fp, regex_t* reg)
 
   if (IS_NOT_NULL(t)) {
     fprintf(fp, "name table\n");
-    onig_st_foreach(t, i_print_name_entry, (HashDataType )fp);
+    onig_st_foreach(t, i_print_name_entry_, (HashDataType )fp);
     fputs("\n", fp);
   }
   return 0;
@@ -524,13 +533,15 @@ i_free_name_entry(HashDataType key_, HashDataType e_, HashDataType arg_ ARG_UNUS
   return ST_DELETE;
 }
 
+MARSHAL_4_TO_3(i_free_name_entry_, i_free_name_entry, HashDataType, HashDataType, HashDataType);
+
 static int
 names_clear(regex_t* reg)
 {
   NameTable* t = (NameTable* )reg->name_table;
 
   if (IS_NOT_NULL(t)) {
-    onig_st_foreach(t, i_free_name_entry, 0);
+    onig_st_foreach(t, i_free_name_entry_, 0);
   }
   return 0;
 }
@@ -640,6 +651,8 @@ i_names(HashDataType key_ ARG_UNUSED, HashDataType e_, HashDataType arg_)
   return ST_CONTINUE;
 }
 
+MARSHAL_4_TO_3(i_names_, i_names, HashDataType, HashDataType, HashDataType);
+
 extern int
 onig_foreach_name(regex_t* reg,
   int (*func)(const UChar*, const UChar*,int,int*,regex_t*,void*), void* arg)
@@ -653,7 +666,7 @@ onig_foreach_name(regex_t* reg,
     narg.reg  = reg;
     narg.arg  = arg;
     narg.enc  = reg->enc; /* should be pattern encoding. */
-    onig_st_foreach(t, i_names, (HashDataType )&narg);
+    onig_st_foreach(t, i_names_, (HashDataType )&narg);
   }
   return narg.ret;
 }
@@ -677,13 +690,15 @@ i_renumber_name(HashDataType key_ ARG_UNUSED, HashDataType e_, HashDataType map_
   return ST_CONTINUE;
 }
 
+MARSHAL_4_TO_3(i_renumber_name_, i_renumber_name, HashDataType, HashDataType, HashDataType);
+
 extern int
 onig_renumber_name_table(regex_t* reg, GroupNumRemap* map)
 {
   NameTable* t = (NameTable* )reg->name_table;
 
   if (IS_NOT_NULL(t)) {
-    onig_st_foreach(t, i_renumber_name, (HashDataType )map);
+    onig_st_foreach(t, i_renumber_name_, (HashDataType )map);
   }
   return 0;
 }

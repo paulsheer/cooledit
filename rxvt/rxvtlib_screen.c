@@ -2114,6 +2114,30 @@ static int draw_image_string_ (Display * display, Drawable d, GC gc, int x, int 
     XChangeGC (display, CGC, GCForeground | GCBackground | GCLineWidth, &values_return);
     return CImageTextWC (d, x, y, NULL, string, length);
 }
+#else
+
+static int XDrawString_marshal (Display * display, Drawable d, GC gc, int x, int y, rxvt_buf_char_t *str, int length)
+{
+    return XDrawString(display, d, gc, x, y, (char *) str, length);
+}
+
+static int XDrawImageString_marshal (Display * display, Drawable d, GC gc, int x, int y, rxvt_buf_char_t *str, int length)
+{
+    return XDrawImageString(display, d, gc, x, y, (char *) str, length);
+}
+
+#ifdef MULTICHAR_SET
+static int XDrawString16_marshal (Display * display, Drawable d, GC gc, int x, int y, rxvt_buf_char_t *str, int length)
+{
+    return XDrawString16(display, d, gc, x, y, (XChar2b *) str, length);
+}
+
+static int XDrawImageString16_marshal(Display *display, Drawable d, GC gc, int x, int y, rxvt_buf_char_t *str, int length)
+{
+    return XDrawImageString16(display, d, gc, x, y, (XChar2b *) str, length);
+}
+#endif
+
 #endif
 
 /* ------------------------------------------------------------------------- */
@@ -2172,7 +2196,8 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
     int             bfont;	/* we've changed font to bold font           */
 #endif
 #endif
-    int             (*draw_string) (), (*draw_image_string) ();
+    int             (*draw_string) (Display * display, Drawable d, GC gc, int x, int y, rxvt_buf_char_t *str, int length);
+    int             (*draw_image_string) (Display * display, Drawable d, GC gc, int x, int y, rxvt_buf_char_t *str, int length);
 
     bfont = 0;
 
@@ -2206,8 +2231,8 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
     draw_image_string = draw_image_string_;
 #else
     XSetFont (o->Xdisplay, o->TermWin.gc, o->TermWin.font->fid);
-    draw_string = XDrawString;
-    draw_image_string = XDrawImageString;
+    draw_string = XDrawString_marshal;
+    draw_image_string = XDrawImageString_marshal;
 #endif
     boldlast = 0;
 
@@ -2425,8 +2450,8 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 			wbyte = 1;
 			XSetFont (o->Xdisplay, o->TermWin.gc, o->TermWin.mfont->fid);
 			fontdiff = o->TermWin.mprop;
-			draw_string = XDrawString16;
-			draw_image_string = XDrawImageString16;
+			draw_string = XDrawString16_marshal;
+			draw_image_string = XDrawImageString16_marshal;
 		    }
 		    /* double stepping - we're in Kanji mode */
 		    for (; ++col < o->TermWin.ncol;) {
@@ -2464,8 +2489,8 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 			wbyte = 0;
 			XSetFont (o->Xdisplay, o->TermWin.gc, o->TermWin.font->fid);
 			fontdiff = o->TermWin.mprop;
-			draw_string = XDrawString;
-			draw_image_string = XDrawImageString;
+			draw_string = XDrawString_marshal;
+			draw_image_string = XDrawImageString_marshal;
 		    }
 #endif
 		    /* single stepping - `normal' mode */

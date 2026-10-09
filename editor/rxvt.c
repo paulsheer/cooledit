@@ -14,7 +14,7 @@
 #include "xim.h"
 #include "stringtools.h"
 
-struct rxvt_startup_options rxvt_startup_options = {0, 1, 0, 0, 0, 1, 1, ""};
+struct rxvt_startup_options rxvt_startup_options = {0, 1, 0, 0, 0, 1, 1, "", 30000};
 
 struct rxvts {
     rxvtlib *rxvt;
@@ -223,29 +223,51 @@ static rxvtlib *rxvt_allocate (const char *host, Window win, int c, char **a, in
 
 extern char *init_font;
 
-static char **rxvt_args (char **argv)
+static char **rxvt_args (int save_lines, char **argv)
 {E_
-    char **a;
-    char *b[] =
-	{ "rxvt", "-fg", "white", "-bg", "black", "-font", "8x13bold", "-sl", "30000", "-si", "+sk", "-e", 0 };
-    int i = 0, j, k;
-    if (argv)
-	for (i = 0; argv[i]; i++);
+    char **send_argv;
+    int argc;
+    char sl[16];
+    int i = 0;
+
+    snprintf(sl, sizeof (sl), "%d", save_lines);
+
+    if (!argv)
+        argc = 0;
+    else
+        for (argc = 0; argv[argc]; argc++);
+
+    send_argv = (char **) malloc ((argc + 20) * sizeof(char *));
+
+#define ADDARG(s)       do { send_argv[i++] = (s); } while(0)
+
+    ADDARG("rxvt");
+    ADDARG("-fg");
+    ADDARG("white");
+    ADDARG("-bg");
+    ADDARG("black");
+    ADDARG("-font");
     CPushFont ("editor", 0);
-    if (CIsFixedFont () && init_font) {
-	for (k = 0; b[k] && strcmp (b[k], "-font"); k++);
-	if (k != i)
-	    b[k + 1] = init_font;
-    }
+    if (CIsFixedFont () && init_font)
+        ADDARG(init_font);
+    else
+        ADDARG("8x13bold");
     CPopFont ();
-    for (j = 0; b[j]; j++);
-    a = malloc ((i + j + 1) * sizeof (char *));
-    memcpy (a, b, j * sizeof (char *));
-    if (argv)
-	memcpy (a + j, argv, (i + 1) * sizeof (char *));
-    if (!i)
-	a[--j] = 0;		/* shell */
-    return a;
+    ADDARG("-sl");
+    ADDARG(sl);
+    ADDARG("-si");
+    ADDARG("+sk");
+
+    if (argc) {
+        int j;
+        ADDARG("-e");
+        for (j = 0; j < argc; j++)
+            ADDARG(argv[j]);
+    }
+
+    ADDARG(NULL);
+
+    return send_argv;
 }
 
 #if 0
@@ -279,7 +301,7 @@ void rxvtlib_shutall (void)
     }
 }
 
-rxvtlib *rxvt_start_unicode (const char *host, Window win)
+rxvtlib *rxvt_start_unicode (const char *host, int save_lines, Window win)
 {E_
     unsigned long b = 0;
 
@@ -292,10 +314,10 @@ rxvtlib *rxvt_start_unicode (const char *host, Window win)
     if (rxvt_startup_options.sound_forwarding)
         b |= RXVT_OPTIONS_SOUND_FORWARDING;
 
-    return rxvt_start (host, CRoot, 0, 0, b);
+    return rxvt_start (host, save_lines, CRoot, 0, 0, b);
 }
 
-rxvtlib *rxvt_start_8bit (const char *host, Window win)
+rxvtlib *rxvt_start_8bit (const char *host, int save_lines, Window win)
 {E_
     unsigned long b = 0;
 
@@ -308,15 +330,15 @@ rxvtlib *rxvt_start_8bit (const char *host, Window win)
     if (rxvt_startup_options.sound_forwarding)
         b |= RXVT_OPTIONS_SOUND_FORWARDING;
 
-    return rxvt_start (host, CRoot, 0, 0, b);
+    return rxvt_start (host, save_lines, CRoot, 0, 0, b);
 }
 
-rxvtlib *rxvt_start (const char *host, Window win, char **argv, int do_sleep, unsigned long rxvt_options)
+rxvtlib *rxvt_start (const char *host, int save_lines, Window win, char **argv, int do_sleep, unsigned long rxvt_options)
 {E_
     int a = 0;
     rxvtlib *rxvt;
     char **b;
-    b = rxvt_args (argv);
+    b = rxvt_args (save_lines, argv);
     while (b[a])
 	a++;
     rxvt = rxvt_allocate (host, win, a, b, do_sleep, rxvt_options);
@@ -378,7 +400,7 @@ int rxvt_startup_dialog (const char *host, char *shell_script)
     remotefs_set_die_on_error ();
 
     if (host) {
-        Cstrlcpy (rxvt_startup_options.host, host, sizeof (rxvt_startup_options.host));
+        Cstrlcpy (rxvt_startup_options.connect_host, host, sizeof (rxvt_startup_options.connect_host));
     } else {
         char *p;
         if (rxvt_startup_dialog_ (&rxvt_startup_options))
@@ -422,9 +444,9 @@ int rxvt_startup_dialog (const char *host, char *shell_script)
 
     if (shell_script && *shell_script) {
         char *arg[4] = {"sh", "-c", shell_script, NULL};
-        rxvt_start (rxvt_startup_options.host, CRoot, arg, 0, rxvt_options);
+        rxvt_start (rxvt_startup_options.connect_host, rxvt_startup_options.save_lines, CRoot, arg, 0, rxvt_options);
     } else {
-        rxvt_start (rxvt_startup_options.host, CRoot, 0, 0, rxvt_options);
+        rxvt_start (rxvt_startup_options.connect_host, rxvt_startup_options.save_lines, CRoot, 0, 0, rxvt_options);
     }
 
     while (rxvt_list && rxvt_list->next)
@@ -443,11 +465,13 @@ static int rxvt_startup_dialog_ (struct rxvt_startup_options *opt)
     char *inputs[10] =
     {
         gettext_noop ("localhost"),
+        gettext_noop ("30000"),
         0
     };
     char *input_labels[10] =
     {
         gettext_noop ("IP address of remote or 'localhost'"),
+        gettext_noop ("Scroll save lines"),
         0
     };
     char *check_labels[10] =
@@ -481,11 +505,13 @@ static int rxvt_startup_dialog_ (struct rxvt_startup_options *opt)
     char *input_names[10] =
     {
         gettext_noop ("rxvtremoteip"),
+        gettext_noop ("rxvtscrollines"),
         0
     };
     char *input_tool_hint[10] =
     {
         gettext_noop ("The remote IP must be running remotefs (or REMOTEFS.EXE for MS Windows).\nUse the -remote option on the command-line to skip this dialog"),
+        gettext_noop ("Number of lines of history to save for scrolling up"),
         0
     };
     int *checks_values_result[10];
@@ -493,7 +519,8 @@ static int rxvt_startup_dialog_ (struct rxvt_startup_options *opt)
     int r;
 
     inputs_result[0] = &inputs[0];
-    inputs_result[1] = 0;
+    inputs_result[1] = &inputs[1];
+    inputs_result[2] = 0;
     checks_values_result[0] = &opt->term_8bit;
     checks_values_result[1] = &opt->small_font;
     checks_values_result[2] = &opt->backspace_ctrl_h;
@@ -505,7 +532,10 @@ static int rxvt_startup_dialog_ (struct rxvt_startup_options *opt)
     r = CInputsWithOptions (0, 0, 0, _ (" Start Terminal "), inputs_result, input_labels, input_names, input_tool_hint, checks_values_result, check_labels, check_tool_hints, check_group, 0, 60);
     if (r)
         return 1;
-    Cstrlcpy (opt->host, inputs[0], sizeof (opt->host));
+    Cstrlcpy (opt->connect_host, inputs[0], sizeof (opt->connect_host));
+    opt->save_lines = atoi(inputs[1]);
+    if (opt->save_lines < 0 || opt->save_lines > 100000)
+        opt->save_lines = 30000;
     return 0;
 }
 

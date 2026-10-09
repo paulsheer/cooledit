@@ -14,14 +14,15 @@ struct rxvt_startup_options {
     int backspace_127;
     int x11_forwarding;
     int sound_forwarding;
-    char host[256];
+    char connect_host[256];
+    int save_lines;
 };
 
 extern struct rxvt_startup_options rxvt_startup_options;
 
-rxvtlib *rxvt_start (const char *host, Window win, char **argv, int do_sleep, unsigned long rxvt_options);
-rxvtlib *rxvt_start_8bit (const char *host, Window win);
-rxvtlib *rxvt_start_unicode (const char *host, Window win);
+rxvtlib *rxvt_start (const char *host, int save_lines, Window win, char **argv, int do_sleep, unsigned long rxvt_options);
+rxvtlib *rxvt_start_8bit (const char *host, int save_lines, Window win);
+rxvtlib *rxvt_start_unicode (const char *host, int save_lines, Window win);
 
 
 int rxvt_have_pid (const char *host, pid_t pid);

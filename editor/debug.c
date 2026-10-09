@@ -99,6 +99,8 @@ struct debug_options debug_options = {
     0                           /* show_on_stdout, options_debug_show_on_stdout */
 };
 
+extern int option_save_lines;
+
 typedef struct struct_debug {
     int x, y, r;
     Window w;
@@ -1228,7 +1230,7 @@ static int xdebug_run_program (Debug * d)
         char errmsg[CTERMINAL_ERR_MSG_LEN];
 	struct _rxvtlib *rxvt;
         gargv[0] = d->progname;
-	rxvt = rxvt_start (d->host, CRoot, gargv, 1, 0);
+	rxvt = rxvt_start (d->host, option_save_lines, CRoot, gargv, 1, 0);
 	if (!rxvt) {
 	    d->xterm_pid = 0;
 	    d->pid = 0;

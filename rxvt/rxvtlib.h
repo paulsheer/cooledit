@@ -96,10 +96,10 @@ struct _rxvtlib {
 
 #ifdef UTF8_FONT
  const char *fontname;
- int charset_8bit;
- unsigned long rxvt_options;
  char utf8buf[6];
 #endif
+ int charset_8bit;
+ unsigned long rxvt_options;
  int utf8buflen;
  int env_fg;
  int env_bg;

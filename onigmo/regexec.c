@@ -4227,7 +4227,7 @@ match_at(regex_t* reg, const UChar* str, const UChar* end,
   xfree(xmalloc_base);
   return ONIGERR_UNEXPECTED_BYTECODE;
 
- timeout:
+ TIMEOUT_LABEL /* use as macro to prevent '...defined but not used [-Wunused-label]' */
   STACK_SAVE;
   xfree(xmalloc_base);
   return ONIGERR_TIMEOUT;

@@ -116,7 +116,7 @@ struct aa_font_cache {
 static void aa_insert (void)
 {E_
     struct aa_font_cache *p;
-    p = malloc (sizeof (*font_cache_list));
+    p = (struct aa_font_cache *) malloc (sizeof (*font_cache_list));
     memset (p, 0, sizeof (*font_cache_list));
     if (!font_cache_list) {
 	font_cache_list = p;
@@ -1478,7 +1478,7 @@ static void aa_create_pixmap_ (struct aa_font_cache *f, int j, int i, int metric
 {E_
     if (!f->glyph[j]) {
         int i;
-	f->glyph[j] = malloc (sizeof (struct aa_glyph_cache) * 256);
+	f->glyph[j] = (struct aa_glyph_cache *) malloc (sizeof (struct aa_glyph_cache) * 256);
         for (i = 0; i < 256; i++) {
             memset(&f->glyph[j][i], 0, sizeof(f->glyph[j][i]));
             f->glyph[j][i].width = -1;

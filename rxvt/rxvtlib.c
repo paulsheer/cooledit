@@ -368,10 +368,12 @@ void rxvtlib_init (rxvtlib *o, unsigned long rxvt_options)
     memset (o, 0, sizeof (rxvtlib));
     o->cmd_fd = -1;
     o->charset_8bit = (rxvt_options & RXVT_OPTIONS_TERM8BIT) ? 1 : 0;
+#ifdef UTF8_FONT
     if ((rxvt_options & RXVT_OPTIONS_TERM8BIT))
         o->fontname = "rxvt8bit";
     else
         o->fontname = "rxvt";
+#endif
     o->rxvt_options = rxvt_options;
     o->Xfd = Xfd;
     o->PrivateModes = PrivateModes;

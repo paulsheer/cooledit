@@ -9,7 +9,14 @@
 #include <math.h>
 #include <errno.h>
 #include <sys/sysmacros.h>
+#if defined(__FreeBSD__)
+#include <sys/extattr.h>
+#elif defined(__sun) || defined(__sun__)
+#include <fcntl.h>
+#include <unistd.h>
+#else
 #include <sys/xattr.h>
+#endif
 
 #include "inspect.h"
 #include <config.h>
@@ -243,8 +250,24 @@ static const char *reparse_tag_name (unsigned long long tag)
 static void set_junction_xattr (const char *path)
 {
     const char val[] = "1";
+#if defined(__FreeBSD__)
+    if (extattr_set_link (path, EXTATTR_NAMESPACE_USER, "windows.junction", val, 1) < 0)
+        fprintf (stderr, "Warning: could not set xattr on %s: %s\n", path, strerror (errno));
+#elif defined(__sun) || defined(__sun__)
+    {
+        int fd = attropen (path, "windows.junction", O_CREAT | O_WRONLY | O_TRUNC, 0644);
+        if (fd < 0) {
+            fprintf (stderr, "Warning: could not set xattr on %s: %s\n", path, strerror (errno));
+            return;
+        }
+        if (write (fd, val, 1) != 1)
+            fprintf (stderr, "Warning: could not set xattr on %s: %s\n", path, strerror (errno));
+        close (fd);
+    }
+#else
     if (lsetxattr (path, "trusted.windows.junction", val, 1, 0) < 0)
         fprintf (stderr, "Warning: could not set xattr on %s: %s\n", path, strerror (errno));
+#endif
 }
 
 static void warn_skipping (struct portable_stat *pst, const char *path)

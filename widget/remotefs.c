@@ -67,7 +67,13 @@
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
 #include <sys/types.h>
+#if defined(__FreeBSD__)
+#include <sys/extattr.h>
+#elif defined(__sun) || defined(__sun__)
+#include <unistd.h>
+#else
 #include <sys/xattr.h>
+#endif
 #include <sys/wait.h>
 #include <sys/un.h>
 #endif
@@ -889,11 +895,48 @@ static int posix_readlink (const char *linkpath, char *target, int target_sz)
     return 0;
 }
 
+static void set_junction_xattr (const char *path)
+{
+    const char val[] = "1";
+#if defined(__FreeBSD__)
+    if (extattr_set_link (path, EXTATTR_NAMESPACE_USER, "windows.junction", val, 1) < 0)
+        fprintf (stderr, "Warning: could not set xattr on %s: %s\n", path, strerror (errno));
+#elif defined(__sun) || defined(__sun__)
+    {
+        int fd = attropen (path, "windows.junction", O_CREAT | O_WRONLY | O_TRUNC, 0644);
+        if (fd < 0) {
+            fprintf (stderr, "Warning: could not set xattr on %s: %s\n", path, strerror (errno));
+            return;
+        }
+        if (write (fd, val, 1) != 1)
+            fprintf (stderr, "Warning: could not set xattr on %s: %s\n", path, strerror (errno));
+        close (fd);
+    }
+#else
+    if (lsetxattr (path, "trusted.windows.junction", val, 1, 0) < 0)
+        fprintf (stderr, "Warning: could not set xattr on %s: %s\n", path, strerror (errno));
+#endif
+}
+
 static void check_junction_xattr (const char *path, struct portable_stat *pst)
 {
     char val[2] = "";
+#if defined(__FreeBSD__)
+    if (extattr_get_link (translate_path_sep (path), EXTATTR_NAMESPACE_USER, "windows.junction", val, 1) == 1 && val[0] == '1')
+        pst->wattr.reparse_tag = REPARSE_TAG_MOUNT_POINT;
+#elif defined(__sun) || defined(__sun__)
+    {
+        int fd = attropen (translate_path_sep (path), "windows.junction", O_RDONLY);
+        if (fd >= 0) {
+            if (read (fd, val, 1) == 1 && val[0] == '1')
+                pst->wattr.reparse_tag = REPARSE_TAG_MOUNT_POINT;
+            close (fd);
+        }
+    }
+#else
     if (lgetxattr (translate_path_sep (path), "trusted.windows.junction", val, 1) == 1 && val[0] == '1')
         pst->wattr.reparse_tag = REPARSE_TAG_MOUNT_POINT;
+#endif
 }
 
 static int portable_stat (int link, const char *fname, struct portable_stat *p, int *just_not_there, enum remotefs_error_code *remotefs_error_code_, char *errmsg)
@@ -4848,10 +4891,7 @@ static void remotefs_junction_ (const char *target, const char *linkpath, CStr *
         alloc_encode_errno_strerror (r, 0);
         return;
     }
-    {
-        const char val[] = "1";
-        (void) lsetxattr (translate_path_sep (linkpath), "trusted.windows.junction", val, 1, 0);
-    }
+    set_junction_xattr (translate_path_sep (linkpath));
 #endif
 
     r->len = encode_uint (NULL, REMOTEFS_SUCCESS);

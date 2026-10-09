@@ -1,6 +1,6 @@
 
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT([cooledit], [4.1.0])
+AC_INIT([cooledit], [5.0.3])
 
 dnl Identify target.
 AC_CANONICAL_SYSTEM

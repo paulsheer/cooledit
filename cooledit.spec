@@ -1,9 +1,9 @@
-%define srcversion	4.1.0
+%define srcversion	5.0.3
 
 Summary: 	Full featured multiple window programmer's text editor
 Name: 		cooledit
 Icon: 		cooledit.xpm
-Version: 	4.1.0
+Version: 	5.0.3
 Release: 	2federa
 License: 	GPL/BSD
 Group: 		Editors

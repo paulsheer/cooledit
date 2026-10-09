@@ -1,3 +1,29 @@
+Version 5.0.3
+
+    * Update to latest unicode NotoSans fonts (✅)
+    * Regular-expression search moved to the Onigmo engine for full
+        Unicode/UTF-8 support; syntax highlighting rewritten with a
+        re-entrant lexical processor and brace-depth tracking.
+    * True-color (24-bit) and 256-color support in the terminal, plus
+        xterm theme colors and the 90-97 / 100-107 SGR bright-color modes.
+    * Standalone terminal (coolterm) with a -script option to run a shell
+        command; X11 forwarding, remote-shell reconnect, TCP keep-alive,
+        and pulseaudio forwarding.
+    * Remote debugging.
+    * RemoteFS published on the Android Play store; recursive remote copy
+        (cp -R / scp style) via --filetool; file-browser caching and roughly
+        halved latency over slow links.
+    * RemoteFS default port changed 50095 to 30095; -port option and
+        REMOTEFS_PORT environment variable to override.
+    * File browser handles /proc/ and /sys/ files with indefinite length,
+        local-to-local copies, and columnated ls -l listings.
+    * Configurable rxvt scroll history (save-lines).
+    * Unicode 17 font updates, additional symbol fonts, vulgar-fraction
+        composition, centered superscript math glyphs, and a monochrome
+        (no anti-aliasing) font mode.
+    * Build and portability fixes for WSL, Solaris, and FreeBSD; recent GCC
+        strictness and missing-prototype cleanups.
+
 Version 4.1.2
 
     * Syntax highlighting updates.

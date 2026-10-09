@@ -8,7 +8,6 @@
 #include <time.h>
 #include <math.h>
 #include <errno.h>
-#include <sys/sysmacros.h>
 #if defined(__FreeBSD__)
 #include <sys/extattr.h>
 #elif defined(__sun) || defined(__sun__)
@@ -16,6 +15,7 @@
 #include <unistd.h>
 #else
 #include <sys/xattr.h>
+#include <sys/sysmacros.h>
 #endif
 
 #include "inspect.h"

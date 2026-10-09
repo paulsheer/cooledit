@@ -2350,7 +2350,7 @@ const char *get_list_substitute_unicode_font_list (void);
 static void port_change_warning (void *user_data, const char *host)
 {E_
     char dir[MAX_PATH_LEN];
-    char path[MAX_PATH_LEN];
+    char path[MAX_PATH_LEN + 32];
     FILE *f;
     (void) user_data;
     if (!host || !strcmp (host, REMOTEFS_LOCAL))

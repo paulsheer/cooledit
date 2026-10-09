@@ -749,7 +749,7 @@ int cterminal_get_pty (struct cterminal *o, char *errmsg)
 #if defined(HAVE_GRANTPT) && defined(HAVE_UNLOCKPT)
 #if defined(PTYS_ARE_GETPT) || defined(PTYS_ARE_PTMX)
     {
-        extern char *ptsname ();
+        extern char *ptsname (int);
 
 #ifdef PTYS_ARE_GETPT
         if ((fd = getpt ()) >= 0)

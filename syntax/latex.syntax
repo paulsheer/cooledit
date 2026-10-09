@@ -34,33 +34,33 @@ wholechars right abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
     keyword whole \\pounds yellow
 
 # sectioning and table of contents
-    keyword whole \\part[*]{*} brightred
-    keyword whole \\part{*} brightred
-    keyword whole \\part\*{*} brightred
-    keyword whole \\chapter[*]{*} brightred
-    keyword whole \\chapter{*} brightred
-    keyword whole \\chapter\*{*} brightred
-    keyword whole \\section[*]{*} brightred
-    keyword whole \\section{*} brightred
-    keyword whole \\section\*{*} brightred
-    keyword whole \\subsection[*]{*} brightred
-    keyword whole \\subsection{*} brightred
-    keyword whole \\subsection\*{*} brightred
-    keyword whole \\subsubsection[*]{*} brightred
-    keyword whole \\subsubsection{*} brightred
-    keyword whole \\subsubsection\*{*} brightred
-    keyword whole \\paragraph[*]{*} brightred
-    keyword whole \\paragraph{*} brightred
-    keyword whole \\paragraph\*{*} brightred
-    keyword whole \\subparagraph[*]{*} brightred
-    keyword whole \\subparagraph{*} brightred
-    keyword whole \\subparagraph\*{*} brightred
+    keyword whole bracematch \\part[*]{*} brightred
+    keyword whole bracematch \\part{*} brightred
+    keyword whole bracematch \\part\*{*} brightred
+    keyword whole bracematch \\chapter[*]{*} brightred
+    keyword whole bracematch \\chapter{*} brightred
+    keyword whole bracematch \\chapter\*{*} brightred
+    keyword whole bracematch \\section[*]{*} brightred
+    keyword whole bracematch \\section{*} brightred
+    keyword whole bracematch \\section\*{*} brightred
+    keyword whole bracematch \\subsection[*]{*} brightred
+    keyword whole bracematch \\subsection{*} brightred
+    keyword whole bracematch \\subsection\*{*} brightred
+    keyword whole bracematch \\subsubsection[*]{*} brightred
+    keyword whole bracematch \\subsubsection{*} brightred
+    keyword whole bracematch \\subsubsection\*{*} brightred
+    keyword whole bracematch \\paragraph[*]{*} brightred
+    keyword whole bracematch \\paragraph{*} brightred
+    keyword whole bracematch \\paragraph\*{*} brightred
+    keyword whole bracematch \\subparagraph[*]{*} brightred
+    keyword whole bracematch \\subparagraph{*} brightred
+    keyword whole bracematch \\subparagraph\*{*} brightred
 
     keyword whole \\appendix brightred
     keyword whole \\tableofcontents brightred
 
 # misc
-    keyword whole \\item[*] yellow
+    keyword whole bracematch \\item[*] yellow
     keyword whole \\item yellow
     keyword whole \\\\ yellow
     keyword \\\s yellow black
@@ -69,25 +69,25 @@ wholechars right abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
     keyword \\% yellow
 
 # docuement and page styles
-    keyword whole \\documentstyle[*]{*} yellow
-    keyword whole \\documentstyle{*} yellow
-    keyword whole \\pagestyle{*} yellow
+    keyword whole bracematch \\documentstyle[*]{*} yellow
+    keyword whole bracematch \\documentstyle{*} yellow
+    keyword whole bracematch \\pagestyle{*} yellow
 
 # cross references
-    keyword whole \\label{*} yellow
-    keyword whole \\ref{*} yellow
+    keyword whole bracematch \\label{*} yellow
+    keyword whole bracematch \\ref{*} yellow
 
 # bibliography and citations
-    keyword whole \\bibliography{*} yellow
-    keyword whole \\bibitem[*]{*} yellow
-    keyword whole \\bibitem{*} yellow
-    keyword whole \\cite[*]{*} yellow
-    keyword whole \\cite{*} yellow
+    keyword whole bracematch \\bibliography{*} yellow
+    keyword whole bracematch \\bibitem[*]{*} yellow
+    keyword whole bracematch \\bibitem{*} yellow
+    keyword whole bracematch \\cite[*]{*} yellow
+    keyword whole bracematch \\cite{*} yellow
 
 # splitting the input
-    keyword whole \\input{*} yellow
-    keyword whole \\include{*} yellow
-    keyword whole \\includeonly{*} yellow
+    keyword whole bracematch \\input{*} yellow
+    keyword whole bracematch \\include{*} yellow
+    keyword whole bracematch \\includeonly{*} yellow
 
 # line breaking
     keyword whole \\linebreak[\[01234\]] yellow
@@ -109,9 +109,9 @@ wholechars right abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
 
 # definitions
     keyword \\newcommand{*}[*] cyan
-    keyword \\newcommand{*} cyan
-    keyword \\newenvironment{*}[*]{*} cyan
-    keyword \\newenvironment{*}{*} cyan
+    keyword bracematch \\newcommand{*} cyan
+    keyword bracematch \\newenvironment{*}[*]{*} cyan
+    keyword bracematch \\newenvironment{*}{*} cyan
 
 # boxes
 
@@ -156,6 +156,7 @@ wholechars right abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
     keyword \\end{*} brightcyan
 
     keyword \\theorem{*}{*} yellow
+    keyword bracematch \\emph{*} brightcyan
 
 # if all else fails
     keyword whole \\begin white
@@ -269,6 +270,8 @@ context exclusive \\begin{verbatim} \\end{verbatim} white
 
 # mathematical formulas
 context $ $ brightgreen
+    keyword \\$ orange
+
 context exclusive \\begin{equation} \\end{equation} brightgreen
 context exclusive \\begin{displaymath} \\end{displaymath} brightgreen
 context exclusive \\begin{eqnarray} \\end{eqnarray} brightgreen

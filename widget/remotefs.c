@@ -5537,6 +5537,7 @@ static int local_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio *
 static int local_shellreconnect (struct remotefs *rfs, struct remotefs_terminalio *io, char *errmsg)
 {E_
     assert (!"local_shellreconnect");
+    return -1;
 }
 
 static int local_shellresize (struct remotefs *rfs, unsigned long pid, int columns, int rows, char *errmsg)

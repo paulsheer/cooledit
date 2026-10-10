@@ -477,7 +477,7 @@ static int rxvt_startup_dialog_ (struct rxvt_startup_options *opt)
     char *check_labels[10] =
     {
         gettext_noop ("8-bit terminal"),
-        gettext_noop ("Use 8x13 font instead of 9x15"),
+        gettext_noop ("Use smaller 8x13 font"),
         gettext_noop ("Force backspace to ^H"),
         gettext_noop ("Force backspace to ^?"),
         gettext_noop ("Enable X11 forwarding"),

@@ -250,6 +250,10 @@ void dbg_free(void *v);
 # define xstrcat(dest,src,size)	  strcat(dest,src)
 #endif
 
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
 #if defined(ONIG_DEBUG_MEMLEAK) && defined(_MSC_VER)
 # define _CRTDBG_MAP_ALLOC
 # include <malloc.h>

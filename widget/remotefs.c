@@ -59,6 +59,7 @@
 #ifndef MSWIN
 #include <sys/socket.h>
 #include <sys/signal.h>
+#include <signal.h>
 #include <sys/file.h>
 #ifndef __FreeBSD__
 #include <sys/sysmacros.h>
@@ -6852,7 +6853,7 @@ static int remote_shellkill (struct remotefs *rfs, struct remotefs_terminalio *i
 /* The TCP stack reports the close before the trailing data, possibly
  * because the caller does not do a shutdown(). Therefore flush and
  * wait 10ms before closing. */
-#ifndef MSWIN
+#ifdef TIOCOUTQ
     int pending = 0, i;
     for (i = 0; i < 200; i++) {
         ioctl(rfs->remotefs_private->sock_data->sock, TIOCOUTQ, &pending);
@@ -6860,7 +6861,16 @@ static int remote_shellkill (struct remotefs *rfs, struct remotefs_terminalio *i
             break;
         usleep(1000);
     }
+#elif defined(SO_LINGER)        /* Solaris has no TIOCOUTQ */
+    {
+        struct linger l;
+        memset (&l, '\0', sizeof (l));
+        l.l_onoff = 1;
+        l.l_linger = 1;
+        setsockopt (rfs->remotefs_private->sock_data->sock, SOL_SOCKET, SO_LINGER, (char *) &l, sizeof (l));
+    }
 #endif
+
     usleep(10000);
 
     free (msg.data);
@@ -9203,14 +9213,24 @@ static void add_client (struct service *serv)
                 perrorsocket ("WSAIoctl SIO_KEEPALIVE_VALS");
         }
 #else
+#ifdef TCP_KEEPIDLE
         {
             int keepidle = 25;
-            int keepintvl = 5;
-            int keepcnt = 3;
             setsockopt (sock_data->sock, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof (keepidle));
+        }
+#endif
+#ifdef TCP_KEEPINTVL
+        {
+            int keepintvl = 5;
             setsockopt (sock_data->sock, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof (keepintvl));
+        }
+#endif
+#ifdef TCP_KEEPCNT
+        {
+            int keepcnt = 3;
             setsockopt (sock_data->sock, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof (keepcnt));
         }
+#endif
 #endif
     }
     if (ioctlsocket (sock_data->sock, FIONBIO, &nbio))  {

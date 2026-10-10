@@ -104,6 +104,7 @@
 #endif
 
 #include "remotefs.h"
+#include "undeadlock.h"
 #include "dirtools.h"
 #include "aes.h"
 #include "sha256.h"
@@ -1900,7 +1901,6 @@ int remotefs_shell_util (const char *host, int xwin_fd, struct remotefs_terminal
 {E_
     memset (io, '\0', sizeof (*io));
     io->cmd_fd = -1;
-    io->undead_lock_fd = -1;
     io->remotefs = remotefs_new (host, errmsg);
     if (!io->remotefs)
         return -1;
@@ -6397,7 +6397,7 @@ whenever it starts a new shell. This way the remote can destroy the
 suspended shells using delete_suspendedshell.
 
 Of course it should not send any terminals in the database that are
-still live. The flock will ensure this.
+still live. The fcntl lock will ensure this.
 
 */
 
@@ -6444,16 +6444,29 @@ static int terminal_undead_load (const char *hostip, struct terminal_undead *a, 
         if (n >= max_undead)
             break;
         snprintf (path, sizeof (path), "%s/%s", dir, name);
-        f = fopen (path, "r");
+        if (undead_lock_find (path))
+            continue;   /* our own process has it, so we don't send the pid for killing */
+        f = fopen (path, "r+");
         if (f) {
             a[n].cmd_pid = atol (name);
             if (fscanf (f, "%lu-%llu", &a[n].host_pid, &a[n].start_time) == 2)
-                if (flock (fileno (f), LOCK_EX | LOCK_NB) == 0)
+                if (undead_lock_fcntl (fileno (f), F_WRLCK, F_SETLK) == 0) {
+                    undead_lock_fcntl (fileno (f), F_UNLCK, F_SETLK);
                     n++;
+                }
             fclose (f);
         }
     }
     closedir (d);
+
+{
+int i;
+printf("\n");
+for (i = 0; i < n; i++)
+printf("sending to kill:  cmdpid=%ld hostpid=%ld starttime=%lld\n", a[i].cmd_pid, a[i].host_pid, a[i].start_time);
+printf("\n");
+}
+
     return n;
 }
 
@@ -6472,32 +6485,18 @@ static void terminal_undead_purge (const char *hostip, struct terminal_undead *u
 
 static void terminal_undead_clear (struct remotefs_terminalio *io)
 {
-    if (io->undead_lock_fd >= 0) {
-        close (io->undead_lock_fd);
-        io->undead_lock_fd = -1;
+    if (io->undead_lock) {
+        undead_lock_free (io->undead_lock);
+        io->undead_lock = NULL;
     }
-    unlink (io->undead_path);
 }
 
 static void terminal_undead_save (struct remotefs_terminalio *io, const char *hostip, struct cterminal_config *config)
 {
-    FILE *f;
-    int fd;
-    if (terminal_undead_createpath (io->undead_path, sizeof (io->undead_path), hostip, config))
-        return;
-    f = fopen (io->undead_path, "w");
-    if (f) {
-        fprintf (f, "%lu-%llu\n", config->host_pid, config->start_time);
-        fclose (f);
-    }
-    io->undead_lock_fd = -1;
-    fd = open (io->undead_path, O_RDWR);
-    if (fd >= 0) {
-        if (flock (fd, LOCK_EX) == 0)
-            io->undead_lock_fd = fd;
-        else
-            close (fd);
-    }
+    char undead_path[MAX_PATH_LEN];
+    if (terminal_undead_createpath (undead_path, sizeof (undead_path), hostip, config))
+         return;
+    io->undead_lock = undead_lock_alloc (undead_path, config);
 }
 
 static int remote_shellcmdnew (struct remotefs *rfs, struct remotefs_terminalio *io, struct cterminal_config *config, int dumb_terminal, char *const args[], char *errmsg)

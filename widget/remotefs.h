@@ -403,13 +403,13 @@ struct portable_stat;
 struct cterminal_config;
 struct xwinclient_data;
 struct soundclient_data;
+struct undead_lock;
 struct remotefs_terminalio {
     int cmd_fd;
     struct reader_data *reader_data;
     struct remotefs *remotefs;
     unsigned long cmd_pid;
-    char undead_path[576];
-    int undead_lock_fd;
+    struct undead_lock *undead_lock;
     unsigned char *base;
     char ttydev[64]; /* fixme: make CTERMINAL_TTYDEV_SZ */
     char host[256];

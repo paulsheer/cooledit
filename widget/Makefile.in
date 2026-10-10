@@ -129,12 +129,13 @@ am_libCw_a_OBJECTS = initapp.$(OBJEXT) coolwidget.$(OBJEXT) \
 	pathdup.$(OBJEXT) widechar.$(OBJEXT) unicodedialog.$(OBJEXT) \
 	aafont.$(OBJEXT) look-cool.$(OBJEXT) look-gtk.$(OBJEXT) \
 	look-next.$(OBJEXT) redblack.$(OBJEXT) regtools.$(OBJEXT) \
-	remotefs.$(OBJEXT) androidmounts.$(OBJEXT) ipv6scan.$(OBJEXT) \
-	aes.$(OBJEXT) sha256.$(OBJEXT) remotefspassword.$(OBJEXT) \
-	symauth.$(OBJEXT) inspect.$(OBJEXT) cterminal.$(OBJEXT) \
-	childhandler.$(OBJEXT) xwinfwd.$(OBJEXT) soundfwd.$(OBJEXT) \
-	filetool.$(OBJEXT) fnmatch.$(OBJEXT) classify.$(OBJEXT) \
-	detectencoding.$(OBJEXT) smallsealscript.$(OBJEXT)
+	remotefs.$(OBJEXT) undeadlock.$(OBJEXT) \
+	androidmounts.$(OBJEXT) ipv6scan.$(OBJEXT) aes.$(OBJEXT) \
+	sha256.$(OBJEXT) remotefspassword.$(OBJEXT) symauth.$(OBJEXT) \
+	inspect.$(OBJEXT) cterminal.$(OBJEXT) childhandler.$(OBJEXT) \
+	xwinfwd.$(OBJEXT) soundfwd.$(OBJEXT) filetool.$(OBJEXT) \
+	fnmatch.$(OBJEXT) classify.$(OBJEXT) detectencoding.$(OBJEXT) \
+	smallsealscript.$(OBJEXT)
 libCw_a_OBJECTS = $(am_libCw_a_OBJECTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -183,9 +184,10 @@ am__depfiles_remade = ./$(DEPDIR)/ClientWin.Po ./$(DEPDIR)/aafont.Po \
 	./$(DEPDIR)/smallsealscript.Po ./$(DEPDIR)/soundfwd.Po \
 	./$(DEPDIR)/stringtools.Po ./$(DEPDIR)/symauth.Po \
 	./$(DEPDIR)/syntax.Po ./$(DEPDIR)/textwidget.Po \
-	./$(DEPDIR)/unicodedialog.Po ./$(DEPDIR)/vertchar.Po \
-	./$(DEPDIR)/widechar.Po ./$(DEPDIR)/wordproc.Po \
-	./$(DEPDIR)/xdnd.Po ./$(DEPDIR)/xim.Po ./$(DEPDIR)/xwinfwd.Po
+	./$(DEPDIR)/undeadlock.Po ./$(DEPDIR)/unicodedialog.Po \
+	./$(DEPDIR)/vertchar.Po ./$(DEPDIR)/widechar.Po \
+	./$(DEPDIR)/wordproc.Po ./$(DEPDIR)/xdnd.Po ./$(DEPDIR)/xim.Po \
+	./$(DEPDIR)/xwinfwd.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -407,7 +409,7 @@ libCw_a_SOURCES = initapp.c coolwidget.c dirtools.c menu.c mathfuncs.c \
 	vertchar.c cursor.c bookmark.c font.c font.h xim.c \
 	pathdup.c widechar.c unicodedialog.c aafont.c aafont.h \
 	look-cool.c look-gtk.c look-next.c redblack.c redblack.h \
-	regtools.c remotefs.c remotefs.h androidmounts.c androidmounts.h ipv6scan.c aes.c aes.h\
+	regtools.c remotefs.c remotefs.h undeadlock.c undeadlock.h androidmounts.c androidmounts.h ipv6scan.c aes.c aes.h\
 	sha256.c sha256.h remotefspassword.c remotefspassword.h \
 	symauth.c symauth.h inspect.c cterminal.c cterminal.h \
 	childhandler.c childhandler.h xwinfwd.c xwinfwd.h soundfwd.c soundfwd.h \
@@ -516,6 +518,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/symauth.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syntax.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/textwidget.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/undeadlock.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unicodedialog.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vertchar.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/widechar.Po@am__quote@ # am--include-marker
@@ -745,6 +748,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/symauth.Po
 	-rm -f ./$(DEPDIR)/syntax.Po
 	-rm -f ./$(DEPDIR)/textwidget.Po
+	-rm -f ./$(DEPDIR)/undeadlock.Po
 	-rm -f ./$(DEPDIR)/unicodedialog.Po
 	-rm -f ./$(DEPDIR)/vertchar.Po
 	-rm -f ./$(DEPDIR)/widechar.Po
@@ -861,6 +865,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/symauth.Po
 	-rm -f ./$(DEPDIR)/syntax.Po
 	-rm -f ./$(DEPDIR)/textwidget.Po
+	-rm -f ./$(DEPDIR)/undeadlock.Po
 	-rm -f ./$(DEPDIR)/unicodedialog.Po
 	-rm -f ./$(DEPDIR)/vertchar.Po
 	-rm -f ./$(DEPDIR)/widechar.Po

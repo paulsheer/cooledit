@@ -4,8 +4,11 @@
 #define SOUNDSTATUS_DATA                 3
 #define SOUNDSTATUS_SHUTDOWN             4
 
+#ifndef ADD_REMOVE_WATCH_CB_F /* older gcc versions don't like redefining function types */
+#define ADD_REMOVE_WATCH_CB_F
 typedef int (*add_watch_cb_f) (char *file, int line, int sock, void (*callback) (int, fd_set *, fd_set *, fd_set *, void *), int how, void *data);
 typedef void (*remove_watch_cb_f) (int sock, void (*callback) (int, fd_set *, fd_set *, fd_set *, void *), int how);
+#endif
 
 struct soundclient_data;
 struct soundfwd_data;

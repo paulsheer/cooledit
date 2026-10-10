@@ -105,11 +105,12 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_remotefs_OBJECTS = remotefs.$(OBJEXT) regtools.$(OBJEXT) \
-	pathdup.$(OBJEXT) ipv6scan.$(OBJEXT) aes.$(OBJEXT) \
-	sha256.$(OBJEXT) symauth.$(OBJEXT) hashtable.$(OBJEXT) \
-	cterminal.$(OBJEXT) childhandler.$(OBJEXT) xwinfwd.$(OBJEXT) \
-	soundfwd.$(OBJEXT) fnmatch.$(OBJEXT) androidmounts.$(OBJEXT)
+am_remotefs_OBJECTS = remotefs.$(OBJEXT) undeadlock.$(OBJEXT) \
+	regtools.$(OBJEXT) pathdup.$(OBJEXT) ipv6scan.$(OBJEXT) \
+	aes.$(OBJEXT) sha256.$(OBJEXT) symauth.$(OBJEXT) \
+	hashtable.$(OBJEXT) cterminal.$(OBJEXT) childhandler.$(OBJEXT) \
+	xwinfwd.$(OBJEXT) soundfwd.$(OBJEXT) fnmatch.$(OBJEXT) \
+	androidmounts.$(OBJEXT)
 remotefs_OBJECTS = $(am_remotefs_OBJECTS)
 remotefs_DEPENDENCIES =
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -137,7 +138,8 @@ am__depfiles_remade = ./$(DEPDIR)/aes.Po ./$(DEPDIR)/androidmounts.Po \
 	./$(DEPDIR)/ipv6scan.Po ./$(DEPDIR)/pathdup.Po \
 	./$(DEPDIR)/regtools.Po ./$(DEPDIR)/remotefs.Po \
 	./$(DEPDIR)/sha256.Po ./$(DEPDIR)/soundfwd.Po \
-	./$(DEPDIR)/symauth.Po ./$(DEPDIR)/xwinfwd.Po
+	./$(DEPDIR)/symauth.Po ./$(DEPDIR)/undeadlock.Po \
+	./$(DEPDIR)/xwinfwd.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -339,7 +341,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CPPFLAGS = -I$(top_srcdir)/widget -I$(top_srcdir) 
-remotefs_SOURCES = remotefs.c regtools.c pathdup.c ipv6scan.c aes.c sha256.c symauth.c hashtable.c cterminal.c childhandler.c xwinfwd.c soundfwd.c fnmatch.c androidmounts.c
+remotefs_SOURCES = remotefs.c undeadlock.c regtools.c pathdup.c ipv6scan.c aes.c sha256.c symauth.c hashtable.c cterminal.c childhandler.c xwinfwd.c soundfwd.c fnmatch.c androidmounts.c
 remotefs_LDADD = 
 all: all-am
 
@@ -437,6 +439,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sha256.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/soundfwd.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/symauth.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/undeadlock.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xwinfwd.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
@@ -611,6 +614,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/sha256.Po
 	-rm -f ./$(DEPDIR)/soundfwd.Po
 	-rm -f ./$(DEPDIR)/symauth.Po
+	-rm -f ./$(DEPDIR)/undeadlock.Po
 	-rm -f ./$(DEPDIR)/xwinfwd.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -670,6 +674,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/sha256.Po
 	-rm -f ./$(DEPDIR)/soundfwd.Po
 	-rm -f ./$(DEPDIR)/symauth.Po
+	-rm -f ./$(DEPDIR)/undeadlock.Po
 	-rm -f ./$(DEPDIR)/xwinfwd.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
@@ -711,6 +716,9 @@ uninstall-am: uninstall-binPROGRAMS
 remotefs.c:
 	ln -sf ../widget/remotefs.c .
 
+undeadlock.c:
+	ln -sf ../widget/undeadlock.c .
+
 regtools.c:
 	ln -sf ../widget/regtools.c .
 
@@ -746,9 +754,6 @@ xwinfwd.c:
 
 soundfwd.c:
 	ln -sf ../widget/soundfwd.c .
-
-hashtable.c:
-	ln -sf ../widget/hashtable.c .
 
 androidmounts.c:
 	ln -sf ../widget/androidmounts.c .

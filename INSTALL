@@ -59,3 +59,11 @@ export FREETYPE_CFLAGS='-I/opt/cooledit/include/freetype2 -I/usr/include/libpng1
 ./configure --disable-shared --prefix=/opt/cooledit/
 
 
+
+# Static build:
+
+export X_EXTRA_LIBS='-lxcb -lXau -lXdmcp -lbz2 -lbrotlidec -lbrotlicommon -lpng -lz -lm'
+export CFLAGS='-Wall -Wuninitialized -O2 -s'
+./configure --prefix=/opt/cooledit --enable-static --disable-shared
+make LDFLAGS='-all-static'
+

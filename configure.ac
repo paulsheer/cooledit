@@ -302,6 +302,9 @@ dnl# FreeBSD needs to link libxpg4
 AC_CHECK_LIB(xpg4, setlocale, [LIBS="$LIBS -lxpg4"])
 dnl AC_CHECK_LIB(freetype, FT_Init_FreeType, [LIBS="$LIBS -lfreetype"])
 
+dnl# SunOS (Solaris 10 and earlier) needs to link libsocket and libnsl
+COOLEDIT_SUNOS_SOCKET_LIBS
+
 
 
 AC_SUBST(DEBUG)

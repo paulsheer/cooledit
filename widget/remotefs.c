@@ -61,7 +61,11 @@
 #include <sys/signal.h>
 #include <signal.h>
 #include <sys/file.h>
-#ifndef __FreeBSD__
+#if defined(__FreeBSD__)
+/* major()/minor() are macros in <sys/types.h> on FreeBSD */
+#elif defined(__sun) || defined(__sun__)
+#include <sys/mkdev.h>
+#else
 #include <sys/sysmacros.h>
 #endif
 #include <netinet/in.h>

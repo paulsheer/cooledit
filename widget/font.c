@@ -91,6 +91,8 @@ int load_one_freetype_font (FT_Face *face, const char *filename, int *desired_he
 
   reload:
 
+    ; /* prevent compile error */
+
 #ifdef FT_LOAD_COLOR
     if (size_index != -1 && !FT_Select_Size((*face), size_index)) {
 #elif defined(__sun)

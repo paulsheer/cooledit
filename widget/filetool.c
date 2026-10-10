@@ -477,6 +477,17 @@ int filetool_copy_local_to_local (const char *local_src_filename, const char *lo
         return 1;
     }
 
+    {
+        struct stat dst_st;
+        if (stat (local_dst_filename, &dst_st) == 0
+                && dst_st.st_dev == local_st.st_dev
+                && dst_st.st_ino == local_st.st_ino) {
+            fprintf (stderr, "%s: Error: source and destination are the same file\n", local_dst_filename);
+            fclose (fsrc);
+            return 1;
+        }
+    }
+
     indefinite = remotefs_check_indefinite_length (local_src_filename);
     filelen = indefinite ? FILE_LEN_INDEFINITE : (unsigned long long) local_st.st_size;
 

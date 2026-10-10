@@ -5,6 +5,7 @@
 SCRIPTDIR="$(cd "$(dirname "$0")" && pwd)"
 COOLEDIT="$(cd "$SCRIPTDIR/../editor" && pwd)/cooledit"
 KEYFILE="$SCRIPTDIR/../AESKEYFILE-windows"
+GETFATTR="$SCRIPTDIR/../getfattr-portable"
 REMOTE_HOST="$1"
 REMOTE="${REMOTE_HOST}:"
 REMOTE_BASE="C:/Users/Owner/REMOTEFS-TESTS"
@@ -122,7 +123,7 @@ find_junctions() {
     local dir="$1"
     find "$dir" -type l 2>/dev/null | while read -r link; do
         local val
-        val=$(getfattr -h -n trusted.windows.junction "$link" --only-values 2>/dev/null)
+        val=$("$GETFATTR" -h -n trusted.windows.junction "$link" --only-values 2>/dev/null)
         [ "$val" = "1" ] && echo "$link"
     done | sort
 }
@@ -142,7 +143,7 @@ assert_junctions_match() {
         if [ "$src_target" != "$dst_target" ]; then
             fail "$desc: $relpath target '$dst_target' != '$src_target'"; ok=0
         fi
-        dst_xattr=$(getfattr -h -n trusted.windows.junction "$dstlink" --only-values 2>/dev/null)
+        dst_xattr=$("$GETFATTR" -h -n trusted.windows.junction "$dstlink" --only-values 2>/dev/null)
         if [ "$dst_xattr" != "1" ]; then
             fail "$desc: $relpath missing junction xattr at dst (got '$dst_xattr')"; ok=0
         fi
@@ -161,7 +162,7 @@ assert_is_junction() {
     if [ "$actual_target" != "$target" ]; then
         fail "$desc: target '$actual_target' != '$target'"; ok=0
     fi
-    xattr_val=$(getfattr -h -n trusted.windows.junction "$path" --only-values 2>/dev/null)
+    xattr_val=$("$GETFATTR" -h -n trusted.windows.junction "$path" --only-values 2>/dev/null)
     if [ "$xattr_val" != "1" ]; then
         fail "$desc: missing junction xattr (got '$xattr_val')"; ok=0
     fi
@@ -722,25 +723,25 @@ else
 fi
 
 # ============================================================
-# Case 23: /proc/version local -> remote -> local, md5sum roundtrip
+# Case 23: /proc/1/cmdline local -> remote -> local, md5sum roundtrip
 # ============================================================
-LOCAL_PROC_VERSION_MD5=$(md5sum /proc/version | awk '{print $1}')
+LOCAL_PROC_CMDLINE_MD5=$(md5sum /proc/1/cmdline | awk '{print $1}')
 echo ""
-echo "--- Case 23: /proc/version roundtrip md5sum ---"
+echo "--- Case 23: /proc/1/cmdline roundtrip md5sum ---"
 rm -rf "$WORKDIR/roundtrip/case23"
 mkdir -p "$WORKDIR/roundtrip/case23"
-run_filetool /proc/version "${REMOTE_TESTDIR}/dst"
+run_filetool /proc/1/cmdline "${REMOTE_TESTDIR}/dst"
 ret=$?
 if [ $ret -eq 0 ]; then
-    run_filetool "${REMOTE_TESTDIR}/dst/version" "$WORKDIR/roundtrip/case23"
+    run_filetool "${REMOTE_TESTDIR}/dst/cmdline" "$WORKDIR/roundtrip/case23"
     ret=$?
 fi
 if [ $ret -eq 0 ]; then
-    ROUNDTRIP_MD5=$(md5sum "$WORKDIR/roundtrip/case23/version" | awk '{print $1}')
-    assert_eq "$ROUNDTRIP_MD5" "$LOCAL_PROC_VERSION_MD5" \
-        "/proc/version -> remote -> local: roundtrip md5sum matches"
+    ROUNDTRIP_MD5=$(md5sum "$WORKDIR/roundtrip/case23/cmdline" | awk '{print $1}')
+    assert_eq "$ROUNDTRIP_MD5" "$LOCAL_PROC_CMDLINE_MD5" \
+        "/proc/1/cmdline -> remote -> local: roundtrip md5sum matches"
 else
-    fail "/proc/version roundtrip: copy failed (exit $ret)"
+    fail "/proc/1/cmdline roundtrip: copy failed (exit $ret)"
 fi
 
 # ============================================================
@@ -1246,7 +1247,7 @@ if [ $ret -eq 0 ]; then
         "junction dir roundtrip: junctions preserved"
     # Verify plain symlinks inside the dir remain plain symlinks (no xattr)
     for link in link-to-file link-to-dir; do
-        xv=$(getfattr -h -n trusted.windows.junction "$WORKDIR/roundtrip/case39/junc-rt/$link" --only-values 2>/dev/null)
+        xv=$("$GETFATTR" -h -n trusted.windows.junction "$WORKDIR/roundtrip/case39/junc-rt/$link" --only-values 2>/dev/null)
         if [ -z "$xv" ]; then
             pass "junction dir roundtrip: $link remains plain symlink (no xattr)"
         else
@@ -1271,7 +1272,7 @@ if [ $ret -eq 0 ]; then
     assert_junctions_match "$WORKDIR/local-junctions" "$WORKDIR/roundtrip/case40/junctions" \
         "junction dir remote->local: junctions preserved"
     for link in link-to-file link-to-dir; do
-        xv=$(getfattr -h -n trusted.windows.junction "$WORKDIR/roundtrip/case40/junctions/$link" --only-values 2>/dev/null)
+        xv=$("$GETFATTR" -h -n trusted.windows.junction "$WORKDIR/roundtrip/case40/junctions/$link" --only-values 2>/dev/null)
         if [ -z "$xv" ]; then
             pass "junction dir remote->local: $link remains plain symlink"
         else

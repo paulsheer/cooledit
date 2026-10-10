@@ -160,6 +160,15 @@ static int match_bracket(const char *p, int k, int kfold)
 	return inv;
 }
 
+static size_t fnmatch_strnlen (const char *s, size_t count)
+{
+    const char *sc;
+
+    for (sc = s; count-- && *sc != '\0'; ++sc)
+	/* nothing */ ;
+    return sc - s;
+}
+
 static int fnmatch_internal(const char *pat, size_t m, const char *str, size_t n, int flags)
 {
 	const char *p, *ptail, *endpat;
@@ -200,7 +209,7 @@ static int fnmatch_internal(const char *pat, size_t m, const char *str, size_t n
 	}
 
 	/* Compute real pat length if it was initially unknown/-1 */
-	m = strnlen(pat, m);
+	m = fnmatch_strnlen(pat, m);
 	endpat = pat + m;
 
 	/* Find the last * in pat and count chars needed after it */
@@ -222,7 +231,7 @@ static int fnmatch_internal(const char *pat, size_t m, const char *str, size_t n
 	 * because all of pat has already been parsed once. */
 
 	/* Compute real str length if it was initially unknown/-1 */
-	n = strnlen(str, n);
+	n = fnmatch_strnlen(str, n);
 	endstr = str + n;
 	if (n < tailcnt) return FNM_NOMATCH;
 

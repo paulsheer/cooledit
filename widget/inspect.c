@@ -32,6 +32,9 @@ struct inspect_st__ *inspect_data__ = NULL;
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
 
 
 struct inspect_st__ *inspect_data__ = NULL;

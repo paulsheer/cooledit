@@ -13,6 +13,7 @@
 #elif defined(__sun) || defined(__sun__)
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/mkdev.h>
 #else
 #include <sys/xattr.h>
 #include <sys/sysmacros.h>

@@ -51,16 +51,9 @@ int main (int argc, char **argv)
     if (extattr_set_link (linkpath, EXTATTR_NAMESPACE_USER, "windows.junction", val, 1) < 0)
         fprintf (stderr, "mkjunction: warning: could not set xattr on %s: %s\n", linkpath, strerror (errno));
 #elif defined(__sun) || defined(__sun__)
-    {
-        int fd = attropen (linkpath, "windows.junction", O_CREAT | O_WRONLY | O_TRUNC, 0644);
-        if (fd < 0) {
-            fprintf (stderr, "mkjunction: warning: could not set xattr on %s: %s\n", linkpath, strerror (errno));
-            return 1;
-        }
-        if (write (fd, val, 1) != 1)
-            fprintf (stderr, "mkjunction: warning: could not set xattr on %s: %s\n", linkpath, strerror (errno));
-        close (fd);
-    }
+    /* Solaris has no per-symlink xattr API, so no junction attribute is set;
+       the result is a plain symlink. */
+    (void) val;
 #else
     if (lsetxattr (linkpath, "trusted.windows.junction", val, 1, 0) < 0)
         fprintf (stderr, "mkjunction: warning: could not set xattr on %s: %s\n", linkpath, strerror (errno));

@@ -907,22 +907,17 @@ static int posix_readlink (const char *linkpath, char *target, int target_sz)
 
 static void set_junction_xattr (const char *path)
 {
-    const char val[] = "1";
 #if defined(__FreeBSD__)
+    const char val[] = "1";
     if (extattr_set_link (path, EXTATTR_NAMESPACE_USER, "windows.junction", val, 1) < 0)
         fprintf (stderr, "Warning: could not set xattr on %s: %s\n", path, strerror (errno));
 #elif defined(__sun) || defined(__sun__)
-    {
-        int fd = attropen (path, "windows.junction", O_CREAT | O_WRONLY | O_TRUNC, 0644);
-        if (fd < 0) {
-            fprintf (stderr, "Warning: could not set xattr on %s: %s\n", path, strerror (errno));
-            return;
-        }
-        if (write (fd, val, 1) != 1)
-            fprintf (stderr, "Warning: could not set xattr on %s: %s\n", path, strerror (errno));
-        close (fd);
-    }
+    /* Solaris has no per-symlink xattr API (attropen() follows the link and
+       stores the attribute on the target), so junctions are treated as plain
+       symlinks and no xattr is set. */
+    (void) path;
 #else
+    const char val[] = "1";
     if (lsetxattr (path, "trusted.windows.junction", val, 1, 0) < 0)
         fprintf (stderr, "Warning: could not set xattr on %s: %s\n", path, strerror (errno));
 #endif
@@ -930,20 +925,17 @@ static void set_junction_xattr (const char *path)
 
 static void check_junction_xattr (const char *path, struct portable_stat *pst)
 {
-    char val[2] = "";
 #if defined(__FreeBSD__)
+    char val[2] = "";
     if (extattr_get_link (translate_path_sep (path), EXTATTR_NAMESPACE_USER, "windows.junction", val, 1) == 1 && val[0] == '1')
         pst->wattr.reparse_tag = REPARSE_TAG_MOUNT_POINT;
 #elif defined(__sun) || defined(__sun__)
-    {
-        int fd = attropen (translate_path_sep (path), "windows.junction", O_RDONLY);
-        if (fd >= 0) {
-            if (read (fd, val, 1) == 1 && val[0] == '1')
-                pst->wattr.reparse_tag = REPARSE_TAG_MOUNT_POINT;
-            close (fd);
-        }
-    }
+    /* Solaris: junction xattrs are unavailable (see set_junction_xattr), so a
+       symlink is never marked as a junction. */
+    (void) path;
+    (void) pst;
 #else
+    char val[2] = "";
     if (lgetxattr (translate_path_sep (path), "trusted.windows.junction", val, 1) == 1 && val[0] == '1')
         pst->wattr.reparse_tag = REPARSE_TAG_MOUNT_POINT;
 #endif

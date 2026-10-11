@@ -22,13 +22,10 @@ static int print_value (const char *path, const char *attr)
 #if defined(__FreeBSD__)
     n = extattr_get_link (path, EXTATTR_NAMESPACE_USER, shortname, buf, sizeof (buf));
 #elif defined(__sun) || defined(__sun__)
-    {
-        int fd = attropen (path, shortname, O_RDONLY);
-        if (fd >= 0) {
-            n = read (fd, buf, sizeof (buf));
-            close (fd);
-        }
-    }
+    /* Solaris has no per-symlink xattr API, so no junction attribute is ever
+       reported (n stays -1, yielding an empty value). */
+    (void) shortname;
+    (void) buf;
 #else
     n = lgetxattr (path, attr, buf, sizeof (buf));
 #endif

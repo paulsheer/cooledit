@@ -6,7 +6,19 @@ SCRIPTDIR="$(cd "$(dirname "$0")" && pwd)"
 COOLEDIT="$(cd "$SCRIPTDIR/../editor" && pwd)/cooledit"
 KEYFILE="$SCRIPTDIR/../AESKEYFILE-windows"
 GETFATTR="$SCRIPTDIR/../getfattr-portable"
-REMOTE_HOST="$1"
+REMOTE_HOST=""
+NO_JUNCTION=0
+NO_PROC=0
+
+for arg in "$@"; do
+    case "$arg" in
+        --no-junction) NO_JUNCTION=1 ;;
+        --no-proc)     NO_PROC=1 ;;
+        -*)            echo "Unknown option: $arg" >&2; exit 1 ;;
+        *)             REMOTE_HOST="$arg" ;;
+    esac
+done
+
 REMOTE="${REMOTE_HOST}:"
 REMOTE_BASE="C:/Users/Owner/REMOTEFS-TESTS"
 PASSED=0
@@ -21,7 +33,7 @@ PASSWORD_FILE="$PASSWORD_DIR/.password"
 PASSWORD_BACKUP=""
 
 test "$REMOTE_HOST" = "" && {
-    echo 'Usage: test_filetool_remote.sh <IP-address>'
+    echo 'Usage: test_filetool_win32.sh [--no-junction] [--no-proc] <IP-address>'
     exit 1
 }
 
@@ -725,23 +737,25 @@ fi
 # ============================================================
 # Case 23: /proc/1/cmdline local -> remote -> local, md5sum roundtrip
 # ============================================================
-LOCAL_PROC_CMDLINE_MD5=$(md5sum /proc/1/cmdline | awk '{print $1}')
-echo ""
-echo "--- Case 23: /proc/1/cmdline roundtrip md5sum ---"
-rm -rf "$WORKDIR/roundtrip/case23"
-mkdir -p "$WORKDIR/roundtrip/case23"
-run_filetool /proc/1/cmdline "${REMOTE_TESTDIR}/dst"
-ret=$?
-if [ $ret -eq 0 ]; then
-    run_filetool "${REMOTE_TESTDIR}/dst/cmdline" "$WORKDIR/roundtrip/case23"
+if [ "$NO_PROC" = 0 ]; then
+    LOCAL_PROC_CMDLINE_MD5=$(md5sum /proc/1/cmdline | awk '{print $1}')
+    echo ""
+    echo "--- Case 23: /proc/1/cmdline roundtrip md5sum ---"
+    rm -rf "$WORKDIR/roundtrip/case23"
+    mkdir -p "$WORKDIR/roundtrip/case23"
+    run_filetool /proc/1/cmdline "${REMOTE_TESTDIR}/dst"
     ret=$?
-fi
-if [ $ret -eq 0 ]; then
-    ROUNDTRIP_MD5=$(md5sum "$WORKDIR/roundtrip/case23/cmdline" | awk '{print $1}')
-    assert_eq "$ROUNDTRIP_MD5" "$LOCAL_PROC_CMDLINE_MD5" \
-        "/proc/1/cmdline -> remote -> local: roundtrip md5sum matches"
-else
-    fail "/proc/1/cmdline roundtrip: copy failed (exit $ret)"
+    if [ $ret -eq 0 ]; then
+        run_filetool "${REMOTE_TESTDIR}/dst/cmdline" "$WORKDIR/roundtrip/case23"
+        ret=$?
+    fi
+    if [ $ret -eq 0 ]; then
+        ROUNDTRIP_MD5=$(md5sum "$WORKDIR/roundtrip/case23/cmdline" | awk '{print $1}')
+        assert_eq "$ROUNDTRIP_MD5" "$LOCAL_PROC_CMDLINE_MD5" \
+            "/proc/1/cmdline -> remote -> local: roundtrip md5sum matches"
+    else
+        fail "/proc/1/cmdline roundtrip: copy failed (exit $ret)"
+    fi
 fi
 
 # ============================================================
@@ -1286,58 +1300,64 @@ fi
 # ============================================================
 # Case 41: Single junction local -> remote -> local (roundtrip)
 # ============================================================
-echo ""
-echo "--- Case 41: Single junction local -> remote -> local ---"
-rm -rf "$WORKDIR/roundtrip/case41"
-mkdir -p "$WORKDIR/roundtrip/case41"
-run_filetool "$WORKDIR/standalone-junction1" "${REMOTE_TESTDIR}/junc-single"
-ret=$?
-if [ $ret -eq 0 ]; then
-    run_filetool "${REMOTE_TESTDIR}/junc-single" "$WORKDIR/roundtrip/case41"
+if [ "$NO_JUNCTION" = 0 ]; then
+    echo ""
+    echo "--- Case 41: Single junction local -> remote -> local ---"
+    rm -rf "$WORKDIR/roundtrip/case41"
+    mkdir -p "$WORKDIR/roundtrip/case41"
+    run_filetool "$WORKDIR/standalone-junction1" "${REMOTE_TESTDIR}/junc-single"
     ret=$?
-fi
-if [ $ret -eq 0 ]; then
-    assert_is_junction "$WORKDIR/roundtrip/case41/junc-single" "some-target" \
-        "single junction roundtrip: target and xattr preserved"
-else
-    fail "single junction roundtrip: copy failed (exit $ret)"
+    if [ $ret -eq 0 ]; then
+        run_filetool "${REMOTE_TESTDIR}/junc-single" "$WORKDIR/roundtrip/case41"
+        ret=$?
+    fi
+    if [ $ret -eq 0 ]; then
+        assert_is_junction "$WORKDIR/roundtrip/case41/junc-single" "some-target" \
+            "single junction roundtrip: target and xattr preserved"
+    else
+        fail "single junction roundtrip: copy failed (exit $ret)"
+    fi
 fi
 
 # ============================================================
 # Case 42: Single junction remote -> local
 # Uses standalone junction already on Windows (pushed during setup).
 # ============================================================
-echo ""
-echo "--- Case 42: Single junction remote -> local ---"
-rm -rf "$WORKDIR/roundtrip/case42"
-mkdir -p "$WORKDIR/roundtrip/case42"
-run_filetool "${REMOTE_TESTDIR}/dst/standalone-junction1" "$WORKDIR/roundtrip/case42"
-ret=$?
-if [ $ret -eq 0 ]; then
-    assert_is_junction "$WORKDIR/roundtrip/case42/standalone-junction1" "some-target" \
-        "single junction remote->local: target and xattr preserved"
-else
-    fail "single junction remote->local: copy failed (exit $ret)"
+if [ "$NO_JUNCTION" = 0 ]; then
+    echo ""
+    echo "--- Case 42: Single junction remote -> local ---"
+    rm -rf "$WORKDIR/roundtrip/case42"
+    mkdir -p "$WORKDIR/roundtrip/case42"
+    run_filetool "${REMOTE_TESTDIR}/dst/standalone-junction1" "$WORKDIR/roundtrip/case42"
+    ret=$?
+    if [ $ret -eq 0 ]; then
+        assert_is_junction "$WORKDIR/roundtrip/case42/standalone-junction1" "some-target" \
+            "single junction remote->local: target and xattr preserved"
+    else
+        fail "single junction remote->local: copy failed (exit $ret)"
+    fi
 fi
 
 # ============================================================
 # Case 43: Single junction (absolute target) local -> remote -> local
 # ============================================================
-echo ""
-echo "--- Case 43: Single junction (absolute target) roundtrip ---"
-rm -rf "$WORKDIR/roundtrip/case43"
-mkdir -p "$WORKDIR/roundtrip/case43"
-run_filetool "$WORKDIR/standalone-junction2" "${REMOTE_TESTDIR}/junc-abs"
-ret=$?
-if [ $ret -eq 0 ]; then
-    run_filetool "${REMOTE_TESTDIR}/junc-abs" "$WORKDIR/roundtrip/case43"
+if [ "$NO_JUNCTION" = 0 ]; then
+    echo ""
+    echo "--- Case 43: Single junction (absolute target) roundtrip ---"
+    rm -rf "$WORKDIR/roundtrip/case43"
+    mkdir -p "$WORKDIR/roundtrip/case43"
+    run_filetool "$WORKDIR/standalone-junction2" "${REMOTE_TESTDIR}/junc-abs"
     ret=$?
-fi
-if [ $ret -eq 0 ]; then
-    assert_is_junction "$WORKDIR/roundtrip/case43/junc-abs" "/absolute/target/path" \
-        "single junction (abs target) roundtrip: target and xattr preserved"
-else
-    fail "single junction (abs target) roundtrip: copy failed (exit $ret)"
+    if [ $ret -eq 0 ]; then
+        run_filetool "${REMOTE_TESTDIR}/junc-abs" "$WORKDIR/roundtrip/case43"
+        ret=$?
+    fi
+    if [ $ret -eq 0 ]; then
+        assert_is_junction "$WORKDIR/roundtrip/case43/junc-abs" "/absolute/target/path" \
+            "single junction (abs target) roundtrip: target and xattr preserved"
+    else
+        fail "single junction (abs target) roundtrip: copy failed (exit $ret)"
+    fi
 fi
 
 # ============================================================
@@ -1398,16 +1418,18 @@ assert_ls_prefix "${REMOTE_TESTDIR}/symlinks/link-absolute" "L" \
 # ============================================================
 # Case 46: --ls -l remote junction shows J prefix
 # ============================================================
-echo ""
-echo "--- Case 46: --ls -l junction shows J prefix ---"
-assert_ls_prefix "${REMOTE_TESTDIR}/junctions/junction-to-file" "J" \
-    "--ls -l junction junction-to-file"
-assert_ls_prefix "${REMOTE_TESTDIR}/junctions/junction-to-dir" "J" \
-    "--ls -l junction junction-to-dir"
-assert_ls_prefix "${REMOTE_TESTDIR}/dst/standalone-junction1" "J" \
-    "--ls -l standalone junction1"
-assert_ls_prefix "${REMOTE_TESTDIR}/dst/standalone-junction2" "J" \
-    "--ls -l standalone junction2 (abs target)"
+if [ "$NO_JUNCTION" = 0 ]; then
+    echo ""
+    echo "--- Case 46: --ls -l junction shows J prefix ---"
+    assert_ls_prefix "${REMOTE_TESTDIR}/junctions/junction-to-file" "J" \
+        "--ls -l junction junction-to-file"
+    assert_ls_prefix "${REMOTE_TESTDIR}/junctions/junction-to-dir" "J" \
+        "--ls -l junction junction-to-dir"
+    assert_ls_prefix "${REMOTE_TESTDIR}/dst/standalone-junction1" "J" \
+        "--ls -l standalone junction1"
+    assert_ls_prefix "${REMOTE_TESTDIR}/dst/standalone-junction2" "J" \
+        "--ls -l standalone junction2 (abs target)"
+fi
 
 # ============================================================
 # Case 47: --ls -l regular files do NOT get L or J prefix
@@ -1454,33 +1476,35 @@ fi
 
 # junctions directory: junction-to-file, junction-to-dir should be J,
 # link-to-file, link-to-dir should be L
-run_filetool_ls_capture -l "${REMOTE_TESTDIR}/junctions"
-ret=$?
-if [ $ret -eq 0 ]; then
-    ok=1
-    for name in junction-to-file junction-to-dir; do
-        mode=$(echo "$LS_STDOUT" | grep "$name" | head -1 | awk '{print $1}')
-        if [ -z "$mode" ]; then
-            fail "--ls -l junctions dir: $name not found in listing"
-            ok=0
-        elif [ "${mode:0:1}" != "J" ]; then
-            fail "--ls -l junctions dir: $name expected J prefix, got $mode"
-            ok=0
-        fi
-    done
-    for name in link-to-file link-to-dir; do
-        mode=$(echo "$LS_STDOUT" | grep "$name" | head -1 | awk '{print $1}')
-        if [ -z "$mode" ]; then
-            fail "--ls -l junctions dir: $name not found in listing"
-            ok=0
-        elif [ "${mode:0:1}" != "L" ]; then
-            fail "--ls -l junctions dir: $name expected L prefix, got $mode"
-            ok=0
-        fi
-    done
-    [ "$ok" -eq 1 ] && pass "--ls -l junctions dir: J for junctions, L for symlinks"
-else
-    fail "--ls -l junctions dir: failed (exit $ret)"
+if [ "$NO_JUNCTION" = 0 ]; then
+    run_filetool_ls_capture -l "${REMOTE_TESTDIR}/junctions"
+    ret=$?
+    if [ $ret -eq 0 ]; then
+        ok=1
+        for name in junction-to-file junction-to-dir; do
+            mode=$(echo "$LS_STDOUT" | grep "$name" | head -1 | awk '{print $1}')
+            if [ -z "$mode" ]; then
+                fail "--ls -l junctions dir: $name not found in listing"
+                ok=0
+            elif [ "${mode:0:1}" != "J" ]; then
+                fail "--ls -l junctions dir: $name expected J prefix, got $mode"
+                ok=0
+            fi
+        done
+        for name in link-to-file link-to-dir; do
+            mode=$(echo "$LS_STDOUT" | grep "$name" | head -1 | awk '{print $1}')
+            if [ -z "$mode" ]; then
+                fail "--ls -l junctions dir: $name not found in listing"
+                ok=0
+            elif [ "${mode:0:1}" != "L" ]; then
+                fail "--ls -l junctions dir: $name expected L prefix, got $mode"
+                ok=0
+            fi
+        done
+        [ "$ok" -eq 1 ] && pass "--ls -l junctions dir: J for junctions, L for symlinks"
+    else
+        fail "--ls -l junctions dir: failed (exit $ret)"
+    fi
 fi
 
 # ============================================================

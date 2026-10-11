@@ -7,7 +7,7 @@
 # round-tripping it back to the client and comparing locally, following the
 # pattern of test_filetool_win32.sh.
 #
-# Usage:  test_filetool_cross.sh [remote-host-ip]
+# Usage:  test_filetool_cross.sh [--no-junction] [--no-proc] [--no-dev] [remote-host-ip]
 #
 # Prerequisites:
 #   - a remotefs server is already running on <remote-host-ip> (e.g. with
@@ -20,7 +20,22 @@ MKJUNCTION="$SCRIPTDIR/../mkjunction"
 VALGRIND="valgrind"
 VALGRIND_FLAGS="--leak-check=full --show-leak-kinds=all --error-exitcode=42"
 
-REMOTE_HOST="${1:-10.0.2.2}"
+REMOTE_HOST=""
+NO_JUNCTION=0
+NO_PROC=0
+NO_DEV=0
+
+for arg in "$@"; do
+    case "$arg" in
+        --no-junction) NO_JUNCTION=1 ;;
+        --no-proc)     NO_PROC=1 ;;
+        --no-dev)      NO_DEV=1 ;;
+        -*)            echo "Unknown option: $arg" >&2; exit 1 ;;
+        *)             REMOTE_HOST="$arg" ;;
+    esac
+done
+
+REMOTE_HOST="${REMOTE_HOST:-10.0.2.2}"
 REMOTE="${REMOTE_HOST}:"
 # Server-side (Linux) base directory. Unique per run so no stale state leaks
 # between runs. The client addresses it as ${REMOTE}${R_BASE}/...
@@ -806,6 +821,7 @@ fi
 # Junction copy tests
 # ============================================================
 echo ""
+if [ "$NO_JUNCTION" = 0 ]; then
 echo "=== Junction Copy Tests ==="
 
 echo ""
@@ -917,6 +933,7 @@ if diff -r "$WORKDIR/local-junctions" "$WORKDIR/local-dst/junctions-rt" >/dev/nu
 else
     fail "junction roundtrip: diff -r shows differences"
 fi
+fi  # NO_JUNCTION
 
 # ============================================================
 # Non-existent source error
@@ -1241,6 +1258,7 @@ else
     fail "single broken symlink local->local: copy failed (exit $ret)"
 fi
 
+if [ "$NO_PROC" = 0 ]; then
 # ============================================================
 # /proc/1/cmdline copy tests (md5sum verification)
 # ============================================================
@@ -1305,6 +1323,7 @@ else
         pass "remote /proc/1/cmdline -> local specific path: copy succeeded (md5 check skipped)"
     fi
 fi
+fi  # NO_PROC
 
 # ============================================================
 # Special file skipping tests
@@ -1313,6 +1332,7 @@ SPECIAL_DIR="$WORKDIR/special-files"
 mkdir -p "$SPECIAL_DIR"
 
 echo ""
+if [ "$NO_DEV" = 0 ]; then
 echo "--- Case: special files: character device /dev/null -> local dir ---"
 run_filetool_stderr /dev/null "$WORKDIR/local-dst/existing-dir/"
 ret=$?
@@ -1333,6 +1353,7 @@ if echo "$FILE_TOOL_STDERR" | grep -q "skipping character device"; then
 else
     fail "char device -> remote: expected 'skipping character device' in stderr, got: $FILE_TOOL_STDERR"
 fi
+fi  # NO_DEV
 
 mkfifo "$SPECIAL_DIR/test-fifo" 2>/dev/null
 if [ -p "$SPECIAL_DIR/test-fifo" ]; then

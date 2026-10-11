@@ -66,3 +66,14 @@ widget/syntax/syntax-test
 widget/syntax/syntax.c
 widget/syntax/syntax.o
 widget/syntax/unittest.syntax-start
+
+AESKEYFILE
+AESKEYFILE-windows
+getfattr-portable
+mkjunction
+onigmo/.deps/
+onigmo/*.o
+test-tools/
+tests/work-dir/
+widget/libCw.a
+

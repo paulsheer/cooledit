@@ -5,7 +5,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/widget -I$(top_srcdir)
 remotefs_SOURCES = remotefs.c undeadlock.c regtools.c pathdup.c ipv6scan.c aes.c sha256.c symauth.c hashtable.c cterminal.c childhandler.c xwinfwd.c soundfwd.c fnmatch.c androidmounts.c
 FREETYPE_LIBS = 
 LIBS += $(shell test x"`uname`" = xSunOS && echo "-lsocket -lnsl")
-LDFLAGS = -static
+LDFLAGS = @STATIC_LDFLAGS@
 # CFLAGS = -O0 -Wall -g3
 CFLAGS = -O2 -s
 
@@ -55,7 +55,7 @@ androidmounts.c:
 	ln -sf ../widget/androidmounts.c .
 
 
-remotefs_LDADD = 
+remotefs_LDADD = @STATIC_SUBST_LIBS@
 
 DEFS = -DSTANDALONE -DNO_INSPECT
 

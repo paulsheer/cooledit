@@ -1897,8 +1897,12 @@ int edit_load_syntax (WEdit * edit, char **names, char *type)
 {E_
     int r;
     char *f;
+    struct stat st;
 
     edit_free_syntax_rules (edit);
+
+    if (!local_home_dir || stat (local_home_dir, &st))
+	return -1;
 
 #ifdef MIDNIGHT
     if (!SLtt_Use_Ansi_Colors || !use_colors)
@@ -1918,7 +1922,7 @@ int edit_load_syntax (WEdit * edit, char **names, char *type)
     CEnableAlarm();
     if (r == -1) {
 	edit_free_syntax_rules (edit);
-	edit_error_dialog (_ (" Load syntax file "), _ (" File access error "));
+	    edit_error_dialog (_ (" Load syntax file "), _ (" File access error "));
 	return r;
     }
     if (r) {

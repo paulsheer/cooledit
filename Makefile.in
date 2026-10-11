@@ -158,11 +158,12 @@ am__define_uniq_tagged_files = \
   unique=`for i in $$list; do \
     if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
   done | $(am__uniquify_input)`
-DIST_SUBDIRS = $(SUBDIRS)
+DIST_SUBDIRS = onigmo rxvt widget static-c-subst remotefs editor lib \
+	syntax pixmap man notosans
 am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in AUTHORS \
 	COPYING ChangeLog INSTALL NEWS README TODO compile \
-	config.guess config.rpath config.sub depcomp install-sh \
-	ltconfig ltmain.sh missing mkinstalldirs
+	config.guess config.rpath config.sub install-sh ltconfig \
+	ltmain.sh missing mkinstalldirs
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -288,6 +289,8 @@ RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+STATIC_LDFLAGS = @STATIC_LDFLAGS@
+STATIC_SUBST_LIBS = @STATIC_SUBST_LIBS@
 STRIP = @STRIP@
 VERSION = @VERSION@
 XMKMF = @XMKMF@
@@ -360,7 +363,9 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-SUBDIRS = onigmo rxvt widget remotefs editor lib syntax pixmap man notosans
+@BUILD_STATIC_SUBST_FALSE@STATIC_SUBST_SUBDIR = 
+@BUILD_STATIC_SUBST_TRUE@STATIC_SUBST_SUBDIR = static-c-subst
+SUBDIRS = onigmo rxvt widget $(STATIC_SUBST_SUBDIR) remotefs editor lib syntax pixmap man notosans
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = config.rpath
 all: config.h

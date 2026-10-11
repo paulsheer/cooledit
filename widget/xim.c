@@ -360,8 +360,10 @@ XIMStyle get_input_style (void)
     XIMStyle input_style = 0;
     XIMStyles *xim_styles = NULL;
     if (!CIM) {
-	if (option_use_xim)
+	if (option_use_xim) {
 	    xim_print_error ("Trying to get input_style, but Input Method is null.");
+            option_use_xim = 0;
+        }
 	return 0;
     }
     if (XGetIMValues (CIM, XNQueryInputStyle, &xim_styles, NULL) || !xim_styles) {

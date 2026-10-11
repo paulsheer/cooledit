@@ -229,7 +229,7 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LD = @LD@
-LDFLAGS = -static
+LDFLAGS = @STATIC_LDFLAGS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@ $(shell test x"`uname`" = xSunOS && echo "-lsocket \
 	-lnsl")
@@ -270,6 +270,8 @@ RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+STATIC_LDFLAGS = @STATIC_LDFLAGS@
+STATIC_SUBST_LIBS = @STATIC_SUBST_LIBS@
 STRIP = @STRIP@
 VERSION = @VERSION@
 XMKMF = @XMKMF@
@@ -344,7 +346,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CPPFLAGS = -I$(top_srcdir)/widget -I$(top_srcdir) 
 remotefs_SOURCES = remotefs.c undeadlock.c regtools.c pathdup.c ipv6scan.c aes.c sha256.c symauth.c hashtable.c cterminal.c childhandler.c xwinfwd.c soundfwd.c fnmatch.c androidmounts.c
-remotefs_LDADD = 
+remotefs_LDADD = @STATIC_SUBST_LIBS@
 all: all-am
 
 .SUFFIXES:

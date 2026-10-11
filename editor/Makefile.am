@@ -2,6 +2,7 @@ bin_PROGRAMS = cooledit smalledit coolman
 bin_SCRIPTS = coolterm coolproject
 
 AM_CPPFLAGS = -I$(top_srcdir)/widget -I$(top_srcdir) -I$(top_srcdir)/intl
+AM_LDFLAGS = @STATIC_LDFLAGS@
 
 cooledit_SOURCES = cooledit.c find.c editoptions.c mancmd.c options.c \
 	debug.c cooleditmenus.c shell.c shell.h copyright.h mail.c complete.c \

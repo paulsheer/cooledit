@@ -4402,8 +4402,26 @@ static void init_random (void)
 #define SHELLRND	"ls -al /etc/ /tmp/ 2>/dev/null ; dd if=/dev/urandom bs=1024 count=1 2>/dev/null"
     p = popen (SHELLRND, "r");
     if (!p) {
-        perror ("could not execute '" SHELLRND "'");
-        exit (1);
+        clock_t t1;
+        struct timeval t2;
+        pid_t p1;
+        DIR *d1;
+        struct dirent *e1;
+        sha256_reset (&sha256);
+        t1 = clock ();
+        gettimeofday (&t2, NULL);
+        p1 = getpid ();
+        sha256_update (&sha256, (void *) &t1, sizeof (t1));
+        sha256_update (&sha256, (void *) &t2, sizeof (t2));
+        sha256_update (&sha256, (void *) &p1, sizeof (p1));
+        if ((d1 = opendir ("/"))) {
+            while ((e1 = readdir(d1)))
+                sha256_update (&sha256, (void *) e1, sizeof (*e1));
+            closedir (d1);
+        }
+        sha256_finish (&sha256, random_seed);
+        scramble_random ();
+        return;
     }
     sha256_reset (&sha256);
     while ((c = fread (buf, 1, sizeof (buf), p)) > 0)

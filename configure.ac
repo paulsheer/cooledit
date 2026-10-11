@@ -18,6 +18,15 @@ echo
 
 AC_AIX
 
+dnl Detect an explicit --enable-static: link all executables fully statically
+dnl (and build the static-c-subst replacement library).
+AC_ARG_ENABLE([static],
+    [AS_HELP_STRING([--enable-static],
+        [link executables fully statically (default is no)])],
+    [enable_static_build=$enableval],
+    [enable_static_build=no])
+AM_CONDITIONAL([BUILD_STATIC_SUBST], [test "x$enable_static_build" = xyes])
+
 LT_INIT([disable-shared])
 AC_CONFIG_MACRO_DIRS([m4])
 
@@ -82,6 +91,15 @@ CFLAGS="$CFLAGS $X_CFLAGS $FREETYPE_CFLAGS"
 LDFLAGS="$LDFLAGS $X_LIBS"
 AC_SUBST(LDFLAGS)
 AC_SUBST(FREETYPE_LIBS)
+
+if test "x$enable_static_build" = xyes; then
+    STATIC_LDFLAGS="-all-static"
+    STATIC_SUBST_LIBS="-L../static-c-subst -lstatic-c-subst"
+    X_EXTRA_LIBS="$X_EXTRA_LIBS -lxcb -lXau -lXdmcp -lbz2 -lbrotlidec -lbrotlicommon -lpng -lz -lm -L../static-c-subst -lstatic-c-subst"
+else
+    STATIC_LDFLAGS=""
+    STATIC_SUBST_LIBS=""
+fi
 
 
 
@@ -313,6 +331,8 @@ AC_SUBST(DINCLUDE)
 AC_SUBST(CFLAGS)
 AC_SUBST(CPPFLAGS)
 AC_SUBST(LDFLAGS)
+AC_SUBST(STATIC_LDFLAGS)
+AC_SUBST(STATIC_SUBST_LIBS)
 AC_SUBST(LIBS)
 AC_SUBST(X_CFLAGS)
 AC_SUBST(X_LIBS)
@@ -359,7 +379,7 @@ LIBS="$withval $LIBS"
 
 dnl internationalization macros
 AC_OUTPUT([Makefile onigmo/Makefile rxvt/Makefile widget/Makefile remotefs/Makefile editor/Makefile \
-	pixmap/Makefile lib/Makefile syntax/Makefile man/Makefile notosans/Makefile])
+	pixmap/Makefile lib/Makefile syntax/Makefile man/Makefile notosans/Makefile static-c-subst/Makefile])
 
 echo ""
 echo "Configuration done."

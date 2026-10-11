@@ -907,10 +907,14 @@ int edit_load_macro_cmd (WEdit * edit, struct macro_rec *macro, int k)
 	}
 	fclose (f);
 	return found;
-    } else
+    } else {
+        struct stat st;
+	if (local_home_dir && !stat (local_home_dir, &st)) { /* don't show error if this is a stripped file-system */
 /* This heads the 'Load Macro' dialog box */
-	edit_error_dialog (_(" Load macro "),
-		get_sys_error (_(" Error trying to open macro file ")));
+	    edit_error_dialog (_(" Load macro "),
+		    get_sys_error (_(" Error trying to open macro file ")));
+	}
+    }
 
     if (macro)
 	edit_clear_macro (macro);

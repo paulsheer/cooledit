@@ -661,6 +661,8 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
+STATIC_SUBST_LIBS
+STATIC_LDFLAGS
 DINCLUDE
 DLIB
 DEBUG
@@ -714,6 +716,8 @@ EGREP
 GREP
 SED
 LIBTOOL
+BUILD_STATIC_SUBST_FALSE
+BUILD_STATIC_SUBST_TRUE
 am__fastdepCC_FALSE
 am__fastdepCC_TRUE
 CCDEPMODE
@@ -817,8 +821,8 @@ ac_user_opts='
 enable_option_checking
 enable_silent_rules
 enable_dependency_tracking
-enable_shared
 enable_static
+enable_shared
 with_pic
 enable_fast_install
 with_aix_soname
@@ -1482,6 +1486,7 @@ Optional Features:
                           do not reject slow dependency extractors
   --disable-dependency-tracking
                           speeds up one-time build
+  --enable-static         link executables fully statically (default is no)
   --enable-shared[=PKGS]  build shared libraries [default=no]
   --enable-static[=PKGS]  build static libraries [default=yes]
   --enable-fast-install[=PKGS]
@@ -5063,6 +5068,23 @@ then :
 
 fi
 
+
+
+# Check whether --enable-static was given.
+if test ${enable_static+y}
+then :
+  enableval=$enable_static; enable_static_build=$enableval
+else $as_nop
+  enable_static_build=no
+fi
+
+ if test "x$enable_static_build" = xyes; then
+  BUILD_STATIC_SUBST_TRUE=
+  BUILD_STATIC_SUBST_FALSE='#'
+else
+  BUILD_STATIC_SUBST_TRUE='#'
+  BUILD_STATIC_SUBST_FALSE=
+fi
 
 
 case `pwd` in
@@ -15158,6 +15180,15 @@ LDFLAGS="$LDFLAGS $X_LIBS"
 
 
 
+if test "x$enable_static_build" = xyes; then
+    STATIC_LDFLAGS="-all-static"
+    STATIC_SUBST_LIBS="-L../static-c-subst -lstatic-c-subst"
+    X_EXTRA_LIBS="$X_EXTRA_LIBS -lxcb -lXau -lXdmcp -lbz2 -lbrotlidec -lbrotlicommon -lpng -lz -lm -L../static-c-subst -lstatic-c-subst"
+else
+    STATIC_LDFLAGS=""
+    STATIC_SUBST_LIBS=""
+fi
+
 
 
 
@@ -17331,6 +17362,8 @@ printf "%s\n" "no" >&6; }
 
 
 
+
+
 have_forkpty=no
 
   for ac_func in forkpty
@@ -17450,7 +17483,7 @@ printf "%s\n" "no" >&6; }
 fi
 
 
-ac_config_files="$ac_config_files Makefile onigmo/Makefile rxvt/Makefile widget/Makefile remotefs/Makefile editor/Makefile pixmap/Makefile lib/Makefile syntax/Makefile man/Makefile notosans/Makefile"
+ac_config_files="$ac_config_files Makefile onigmo/Makefile rxvt/Makefile widget/Makefile remotefs/Makefile editor/Makefile pixmap/Makefile lib/Makefile syntax/Makefile man/Makefile notosans/Makefile static-c-subst/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -17582,6 +17615,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${am__fastdepCC_TRUE}" && test -z "${am__fastdepCC_FALSE}"; then
   as_fn_error $? "conditional \"am__fastdepCC\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${BUILD_STATIC_SUBST_TRUE}" && test -z "${BUILD_STATIC_SUBST_FALSE}"; then
+  as_fn_error $? "conditional \"BUILD_STATIC_SUBST\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${am__fastdepCC_TRUE}" && test -z "${am__fastdepCC_FALSE}"; then
@@ -18472,6 +18509,7 @@ do
     "syntax/Makefile") CONFIG_FILES="$CONFIG_FILES syntax/Makefile" ;;
     "man/Makefile") CONFIG_FILES="$CONFIG_FILES man/Makefile" ;;
     "notosans/Makefile") CONFIG_FILES="$CONFIG_FILES notosans/Makefile" ;;
+    "static-c-subst/Makefile") CONFIG_FILES="$CONFIG_FILES static-c-subst/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

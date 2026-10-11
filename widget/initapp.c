@@ -231,6 +231,9 @@ int cooledit_regex_get_utf8_or_ascii (void)
 }
 
 #ifndef NO_TTF
+
+#ifndef __FreeBSD__
+
 #define ALL_TTF_RESIZABLE_FONTS \
         "NotoSans-Regular.ttf," \
         "NotoSansSymbols-Regular.ttf," \
@@ -409,6 +412,41 @@ int cooledit_regex_get_utf8_or_ascii (void)
         "CyrillicExtendedCD.ttf," \
         "LatinExtDGMiscSymbolSup.ttf"
 
+#else
+
+#define ALL_TTF_RESIZABLE_FONTS \
+	"NotoSans-Regular.ttf," \
+	"NotoSansSymbols-Regular.ttf," \
+	"NotoSansSymbols2-Regular.ttf," \
+	"NotoSansMath-Regular.ttf," \
+	"NotoColorEmoji.ttf," \
+	"NotoMusic-Regular.ttf," \
+	"NotoSansSignWriting-Regular.ttf," \
+	"NotoSansArmenian-Regular.ttf," \
+	"NotoSansCham-Regular.ttf," \
+	"NotoSansCherokee-Regular.ttf," \
+	"NotoSansDevanagari-Regular.ttf," \
+	"NotoSansEthiopic-Regular.ttf," \
+	"NotoSansHebrew-Regular.ttf," \
+	"NotoSansKannada-Regular.ttf," \
+	"NotoSansKhmer-Regular.ttf," \
+	"NotoSansLao-Regular.ttf," \
+	"NotoSansMyanmar-Regular.ttf," \
+	"NotoSansRunic-Regular.ttf," \
+	"NotoSansSinhalaUI-Regular.ttf," \
+	"NotoSansTamil-Regular.ttf," \
+	"NotoSansTelugu-Regular.ttf," \
+	"NotoSansThai-Regular.ttf," \
+	"NotoSansArabicUI-Regular.ttf," \
+	"Lohit-Bengali.ttf," \
+	"NotoSerifGeorgian-Regular.ttf," \
+	"Lohit-Gujarati.ttf," \
+	"Lohit-Malayalam.ttf," \
+	"Lohit-Oriya.ttf," \
+	"Yinmar-Regular.ttf," \
+	"SourceHanSans-Regular.otf" \
+
+#endif
 
 /*
  * Adobe font names:

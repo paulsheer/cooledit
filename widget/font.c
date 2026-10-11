@@ -361,14 +361,20 @@ static int load_font_from_file (const char *fname, struct aa_font *r, int desire
             fontfile = fopen (t, "r");
         }
 
-        if (!fontfile) {
-            snprintf (t, MAX_PATH_LEN, "%s/%s", "/usr/local/share/fonts/noto", v);
-            fontfile = fopen (t, "r");
-        }
+        const char *font_paths[] = {
+            "/usr/local/share/fonts/noto",
+            "/usr/local/share/fonts/misc",
+            "/usr/local/share/fonts/google-fonts",
+            "/usr/local/share/fonts/Lohit",
+            "/usr/local/share/fonts/SourceHanSans",
+            NULL,
+        };
 
-        if (!fontfile) {
-            snprintf (t, MAX_PATH_LEN, "%s/%s", "/usr/local/share/fonts/misc", v);
+        const char **ff = font_paths;
+        while (!fontfile && *ff) {
+            snprintf (t, MAX_PATH_LEN, "%s/%s", *ff, v);
             fontfile = fopen (t, "r");
+            ff++;
         }
 
         if (!(fontfile)) { /* test if it is a file */
@@ -378,7 +384,10 @@ static int load_font_from_file (const char *fname, struct aa_font *r, int desire
                 /* if the first one is not a loadable file, probably the user specified a X Font, so don't print an error */
                 return l;
             }
-	    fprintf (stderr, "No such file %s in ./, notosans/, %s/%s/, %s/, or %s/.\n", v, LIBDIR, "/fonts", "/usr/local/share/fonts/noto", "/usr/local/share/fonts/misc");
+            fprintf (stderr, "No such file %s in ./, notosans/, %s/%s/", v, LIBDIR, "/fonts");
+            for (ff = font_paths; *ff; ff++)
+                fprintf (stderr, "%s %s", *(ff + 1) == NULL ? ", or" : ", ", *ff);
+            fprintf (stderr, "\n");
             continue;
         } else {
             fclose(fontfile);

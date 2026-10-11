@@ -229,7 +229,6 @@ fi
 AC_SUBST(rxvt_intp_define)
 AC_SUBST(rxvt_u_intp_define)
 
-AC_CHECK_LIB(intl, tolower)
 
 dnl Checks for library functions.
 AC_FUNC_ALLOCA

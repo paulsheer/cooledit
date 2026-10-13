@@ -1,3 +1,9 @@
+Version 5.0.4
+
+    * Fixed rxvt rendering stutter on slow X connections.
+    * OS/compiler compatibility fixes.
+    * Filetool extended attribute support for FreeBSD.
+
 Version 5.0.3
 
     * Update to latest unicode NotoSans fonts (✅)

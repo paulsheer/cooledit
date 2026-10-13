@@ -69,10 +69,10 @@
 #define PACKAGE "cooledit"
 #define PACKAGE_BUGREPORT ""
 #define PACKAGE_NAME "cooledit"
-#define PACKAGE_STRING "cooledit 5.0.3"
+#define PACKAGE_STRING "cooledit 5.0.4"
 #define PACKAGE_TARNAME "cooledit"
 #define PACKAGE_URL ""
-#define PACKAGE_VERSION "5.0.3"
+#define PACKAGE_VERSION "5.0.4"
 #define PTYS_ARE_GETPT 1
 #define PTYS_ARE_SEARCHED 1
 #define RETSIGTYPE void
@@ -100,5 +100,5 @@
 #ifndef __EXTENSIONS__
 # define __EXTENSIONS__ 1
 #endif
-#define VERSION "5.0.3"
+#define VERSION "5.0.4"
 #define XTERM_CMD "rxvt -fn %F -bg Navy -fg White "

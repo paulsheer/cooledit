@@ -58,9 +58,6 @@
 /* Define to 1 if you have the <libc.h> header file. */
 #undef HAVE_LIBC_H
 
-/* Define to 1 if you have the `intl' library (-lintl). */
-#undef HAVE_LIBINTL
-
 /* Define to 1 if you have the `memchr' function. */
 #undef HAVE_MEMCHR
 

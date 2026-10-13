@@ -14,7 +14,7 @@ import re
 import sys
 from pathlib import Path
 
-TOP = Path(__file__).resolve().parent
+TOP = Path.cwd()
 
 
 def neutralize_targets(path, targets):

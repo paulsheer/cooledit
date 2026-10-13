@@ -1738,6 +1738,7 @@ struct bar_t {
  int      Xfd ;
 
  unsigned long scroll_arrow_timestamp_ms;
+ unsigned long refresh_millitime;
 #ifdef META8_OPTION
  unsigned char meta_char;
 #endif

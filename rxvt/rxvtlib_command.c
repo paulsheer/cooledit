@@ -1203,12 +1203,14 @@ void rxvtlib_update_screen (rxvtlib * o)
     }
 }
 
-static int io_avail (int fd)
+int rxvtlib_io_avail (int fd)
 {E_
     struct timeval tv;
     tv.tv_sec = 0;
     tv.tv_usec = 0;
     fd_set rd;
+    if (fd < 0)
+        return 0;
     FD_ZERO (&rd);
     FD_SET (fd, &rd);
     return select (fd + 1, &rd, NULL, NULL, &tv) == 1;
@@ -1225,9 +1227,9 @@ static int rxvt_fd_read (rxvtlib *o)
 	return c;
     do {
 /* if x events are pending this could mean a ^C to stop scrolling: */
-        if (io_avail (ConnectionNumber (CDisplay))) {
+        if (rxvtlib_io_avail (ConnectionNumber (CDisplay))) {
 /* if nothing pending on the socket, then the Watch won't invoke this function again. this would be bad, so do not break */
-            if (io_avail (o->cmd_fd)) {
+            if (rxvtlib_io_avail (o->cmd_fd)) {
                 c = 0;
                 break;
             }
@@ -1457,6 +1459,24 @@ static unsigned long millitime (void)
     struct timeval tv;
     gettimeofday (&tv, NULL);
     return (unsigned long) tv.tv_sec * 1000ULL + (unsigned long) tv.tv_usec / 1000ULL;
+}
+
+/* a  cat BIG-FILE  on a slow X server can create an awful user experience */
+int rxvtlib_too_soon_refresh (rxvtlib * o, int *type)
+{
+    unsigned long now;
+    now = millitime ();
+    if (!o->refresh_millitime || now > o->refresh_millitime + 333) {
+	o->refresh_millitime = now;
+	*type |= SMOOTH_REFRESH;
+	return 0;
+    }
+    if (!rxvtlib_io_avail (o->cmd_fd)) {
+	o->refresh_millitime = now;
+	*type |= SMOOTH_REFRESH;
+	return 0;
+    }
+    return 1;
 }
 
 static void scrollbar_button_repeat (rxvtlib * o)

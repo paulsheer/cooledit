@@ -2140,6 +2140,9 @@ static int XDrawImageString16_marshal(Display *display, Drawable d, GC gc, int x
 
 #endif
 
+int rxvtlib_too_soon_refresh (rxvtlib * o, int *type);
+int rxvtlib_io_avail (int fd);
+
 /* ------------------------------------------------------------------------- */
 /*
  * Refresh the screen
@@ -2205,6 +2208,10 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 	return;
     if (!o->TermWin.mapped)
 	return;
+
+    if (rxvtlib_too_soon_refresh (o, &type))
+	return;
+
 
 /*
  * A: set up vars
@@ -2644,6 +2651,8 @@ void            rxvtlib_scr_refresh (rxvtlib *o, int type)
 		XChangeGC (o->Xdisplay, o->TermWin.gc, gcmask, &gcvalue);
 	    }
 	}
+	if (rxvtlib_io_avail (ConnectionNumber (o->Xdisplay)))
+	    XFlush (o->Xdisplay);
     }
 
 /*

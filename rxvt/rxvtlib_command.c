@@ -2762,7 +2762,7 @@ void            rxvtlib_process_window_ops (rxvtlib *o, const int *args, int nar
 }
 #endif
 
-/*{{{ process xterm text parameters sequences `ESC ] Ps ; Pt BEL' */
+/*{{{ process xterm text parameters sequences `ESC ] Ps ; Pt BEL' or `ESC ] Ps ; Pt ST' */
 /* INTPROTO */
 void            rxvtlib_process_xterm_seq (rxvtlib *o)
 {E_
@@ -2777,6 +2777,11 @@ void            rxvtlib_process_xterm_seq (rxvtlib *o)
 	int             n = 0;
 
 	while ((ch = rxvtlib_cmd_getc (o)) != 007) {
+	    if (ch == '\033') {
+		if (rxvtlib_cmd_getc (o) == '\\')
+		    break;	/* ST (ESC \) terminates OSC */
+		return;		/* other ESC: abort, control character */
+	    }
 	    if (ch) {
 		if (ch == '\t')
 		    ch = ' ';	/* translate '\t' to space */

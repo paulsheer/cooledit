@@ -214,7 +214,10 @@ void get_next_hint_message (void)
     {
 /* HINTSTART */
 /* The following are hints that go on the title bar: eg "Cooledit - Hint: Undo key-for-key with Ctrl-Backspace" */
-	gettext_noop("Magic! cooledit -rxvt -host <IP> will reconnect to remotefs even if your link drops?"),
+	gettext_noop("Magic! cooledit -rxvt -host <IP> will reconnect to remotefs even if your link drops!"),
+#ifdef __FreeBSD__
+	gettext_noop("Render 159,039 glyphs of Unicode 17 - get the full distribution"),
+#endif
 	gettext_noop("Edit files on Android: RemoteFS is in the Google Play store"),
 	gettext_noop("Hold down Shift for gentle scrolling with the mouse wheel"),
 	gettext_noop("To drag and drop, highlight text, then click and drag from within the selection"),

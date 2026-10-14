@@ -1,3 +1,8 @@
+Version 5.0.5
+
+    * Fix Linux static build on later distributions.
+    * Missing rxvt terminal escape sequence.
+
 Version 5.0.4
 
     * Fixed rxvt rendering stutter on slow X connections.

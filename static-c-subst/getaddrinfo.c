@@ -190,13 +190,15 @@ static int hosts_lookup (const char *node, int family, addr_entry_t * list, int 
         if (!matches)
             continue;
         if (inet_pton (AF_INET, tok[0], &a4) == 1) {
-            if (family == AF_UNSPEC || family == AF_INET)
+            if (family == AF_UNSPEC || family == AF_INET) {
                 collect_addr (list, count, AF_INET, &a4);
-            found = 1;
+                found = 1;
+            }
         } else if (inet_pton (AF_INET6, tok[0], &a6) == 1) {
-            if (family == AF_UNSPEC || family == AF_INET6)
+            if (family == AF_UNSPEC || family == AF_INET6) {
                 collect_addr (list, count, AF_INET6, &a6);
-            found = 1;
+                found = 1;
+            }
         }
     }
     fclose (f);
@@ -348,11 +350,22 @@ static int dns_parse_response (const unsigned char *pkt, int len, int want_famil
     return 0;
 }
 
+static unsigned long long microtime(void)
+{
+    long long r = 0;
+    struct timeval tv;
+    gettimeofday (&tv, NULL);
+    r = tv.tv_sec;
+    r *= 1000000;
+    r += tv.tv_usec;
+    return r;
+}
+
 static int dns_query_ns (const unsigned char *query, int qlen,
                          const ns_entry_t * ns, int want_family,
                          addr_entry_t * list, int *count)
 {
-    int fd, r, n;
+    int fd, retry;
     unsigned char resp[DNS_MAX_PKT];
     struct timeval tv;
     fd_set rfds;
@@ -363,30 +376,35 @@ static int dns_query_ns (const unsigned char *query, int qlen,
     if (fd < 0)
         return -1;
 
-    r = sendto (fd, query, qlen, 0, (const struct sockaddr *) &ns->ss, ns->len);
-    if (r < 0) {
-        close (fd);
-        return -1;
+    for (retry = 1; retry <= 3; retry++) {
+        unsigned long long then, now;
+        int r, n;
+        r = sendto (fd, query, qlen, 0, (const struct sockaddr *) &ns->ss, ns->len);
+        if (r < 0) {
+            close (fd);
+            return -1;
+        }
+        then = microtime ();
+        while ((now = microtime ()) < then + 2000000) {
+            FD_ZERO (&rfds);
+            FD_SET (fd, &rfds);
+            tv.tv_sec = (then + 2000000 - now) / 1000000;
+            tv.tv_usec = (then + 2000000 - now) % 1000000;
+            r = select (fd + 1, &rfds, NULL, NULL, &tv);
+            if (r <= 0)         /* EINTR or timeout */
+                continue;
+            fromlen = sizeof (from);
+            n = recvfrom (fd, resp, sizeof (resp), 0, (struct sockaddr *) &from, &fromlen);
+            if (n >= DNS_HDR_SIZE && rd16 (resp) == rd16 (query)) {
+                close (fd);
+                return dns_parse_response (resp, n, want_family, list, count);
+            }
+            break; /* try again */
+        }
     }
 
-    tv.tv_sec = 2;
-    tv.tv_usec = 0;
-    FD_ZERO (&rfds);
-    FD_SET (fd, &rfds);
-    r = select (fd + 1, &rfds, NULL, NULL, &tv);
-    if (r <= 0) {
-        close (fd);
-        return -1;
-    }
-
-    fromlen = sizeof (from);
-    n = recvfrom (fd, resp, sizeof (resp), 0, (struct sockaddr *) &from, &fromlen);
     close (fd);
-    if (n < DNS_HDR_SIZE)
-        return -1;
-    if (rd16 (resp) != rd16 (query))       /* mismatched transaction id */
-        return -1;
-    return dns_parse_response (resp, n, want_family, list, count);
+    return -1;
 }
 
 static int dns_lookup (const char *node, int family, addr_entry_t * list, int *count)

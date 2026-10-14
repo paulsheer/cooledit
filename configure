@@ -662,6 +662,7 @@ am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
 STATIC_SUBST_LIBS
+STATIC_GCC_LDFLAGS
 STATIC_LDFLAGS
 DINCLUDE
 DLIB
@@ -15182,10 +15183,12 @@ LDFLAGS="$LDFLAGS $X_LIBS"
 
 if test "x$enable_static_build" = xyes; then
     STATIC_LDFLAGS="-all-static"
+    STATIC_GCC_LDFLAGS="-static"
     STATIC_SUBST_LIBS="-L../static-c-subst -lstatic-c-subst"
-    X_EXTRA_LIBS="$X_EXTRA_LIBS -lxcb -lXau -lXdmcp -lbz2 -lbrotlidec -lbrotlicommon -lpng -lz -lm -L../static-c-subst -lstatic-c-subst"
+    X_EXTRA_LIBS="$X_EXTRA_LIBS -Wl,--start-group -lX11 -lXcursor -lXrender -lXfixes -L../static-c-subst -lstatic-c-subst -Wl,-u,__libc_dlopen_mode -Wl,--end-group -lxcb -lXau -lXdmcp -lbz2 -lbrotlidec -lbrotlicommon -lpng -lz -lm"
 else
     STATIC_LDFLAGS=""
+    STATIC_GCC_LDFLAGS=""
     STATIC_SUBST_LIBS=""
 fi
 
@@ -17300,6 +17303,7 @@ fi
         { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
     fi
+
 
 
 

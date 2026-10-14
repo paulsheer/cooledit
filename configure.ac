@@ -94,10 +94,12 @@ AC_SUBST(FREETYPE_LIBS)
 
 if test "x$enable_static_build" = xyes; then
     STATIC_LDFLAGS="-all-static"
+    STATIC_GCC_LDFLAGS="-static"
     STATIC_SUBST_LIBS="-L../static-c-subst -lstatic-c-subst"
-    X_EXTRA_LIBS="$X_EXTRA_LIBS -lxcb -lXau -lXdmcp -lbz2 -lbrotlidec -lbrotlicommon -lpng -lz -lm -L../static-c-subst -lstatic-c-subst"
+    X_EXTRA_LIBS="$X_EXTRA_LIBS -Wl,--start-group -lX11 -lXcursor -lXrender -lXfixes -L../static-c-subst -lstatic-c-subst -Wl,-u,__libc_dlopen_mode -Wl,--end-group -lxcb -lXau -lXdmcp -lbz2 -lbrotlidec -lbrotlicommon -lpng -lz -lm"
 else
     STATIC_LDFLAGS=""
+    STATIC_GCC_LDFLAGS=""
     STATIC_SUBST_LIBS=""
 fi
 
@@ -331,6 +333,7 @@ AC_SUBST(CFLAGS)
 AC_SUBST(CPPFLAGS)
 AC_SUBST(LDFLAGS)
 AC_SUBST(STATIC_LDFLAGS)
+AC_SUBST(STATIC_GCC_LDFLAGS)
 AC_SUBST(STATIC_SUBST_LIBS)
 AC_SUBST(LIBS)
 AC_SUBST(X_CFLAGS)

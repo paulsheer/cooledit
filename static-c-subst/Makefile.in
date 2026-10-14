@@ -113,7 +113,7 @@ am__v_AR_1 =
 libstatic_c_subst_a_AR = $(AR) $(ARFLAGS)
 libstatic_c_subst_a_LIBADD =
 am_libstatic_c_subst_a_OBJECTS = getaddrinfo.$(OBJEXT) \
-	getpwuid.$(OBJEXT) getgrnam.$(OBJEXT)
+	getpwuid.$(OBJEXT) getgrnam.$(OBJEXT) dlopen.$(OBJEXT)
 libstatic_c_subst_a_OBJECTS = $(am_libstatic_c_subst_a_OBJECTS)
 am_gai_tests_OBJECTS = tests.$(OBJEXT)
 gai_tests_OBJECTS = $(am_gai_tests_OBJECTS)
@@ -137,7 +137,7 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/getaddrinfo.Po \
+am__depfiles_remade = ./$(DEPDIR)/dlopen.Po ./$(DEPDIR)/getaddrinfo.Po \
 	./$(DEPDIR)/getgrnam.Po ./$(DEPDIR)/getpwuid.Po \
 	./$(DEPDIR)/tests.Po
 am__mv = mv -f
@@ -267,6 +267,7 @@ RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+STATIC_GCC_LDFLAGS = @STATIC_GCC_LDFLAGS@
 STATIC_LDFLAGS = @STATIC_LDFLAGS@
 STATIC_SUBST_LIBS = @STATIC_SUBST_LIBS@
 STRIP = @STRIP@
@@ -342,7 +343,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 noinst_LIBRARIES = libstatic-c-subst.a
-libstatic_c_subst_a_SOURCES = getaddrinfo.c getpwuid.c getgrnam.c
+libstatic_c_subst_a_SOURCES = getaddrinfo.c getpwuid.c getgrnam.c dlopen.c
 gai_tests_SOURCES = tests.c
 all: all-am
 
@@ -395,6 +396,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dlopen.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getaddrinfo.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getgrnam.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getpwuid.Po@am__quote@ # am--include-marker
@@ -558,7 +560,8 @@ clean-am: clean-checkPROGRAMS clean-generic clean-libtool \
 	clean-noinstLIBRARIES mostlyclean-am
 
 distclean: distclean-am
-		-rm -f ./$(DEPDIR)/getaddrinfo.Po
+		-rm -f ./$(DEPDIR)/dlopen.Po
+	-rm -f ./$(DEPDIR)/getaddrinfo.Po
 	-rm -f ./$(DEPDIR)/getgrnam.Po
 	-rm -f ./$(DEPDIR)/getpwuid.Po
 	-rm -f ./$(DEPDIR)/tests.Po
@@ -607,7 +610,8 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-		-rm -f ./$(DEPDIR)/getaddrinfo.Po
+		-rm -f ./$(DEPDIR)/dlopen.Po
+	-rm -f ./$(DEPDIR)/getaddrinfo.Po
 	-rm -f ./$(DEPDIR)/getgrnam.Po
 	-rm -f ./$(DEPDIR)/getpwuid.Po
 	-rm -f ./$(DEPDIR)/tests.Po

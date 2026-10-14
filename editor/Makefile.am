@@ -20,12 +20,14 @@ cooledit_LDADD = ../rxvt/librxvt.a ../widget/libCw.a ../onigmo/libonigmo.a @FREE
 smalledit_LDADD = ../widget/libCw.a ../onigmo/libonigmo.a @FREETYPE_LIBS@ @X_LIBS@ -lX11 @X_EXTRA_LIBS@
 coolman_LDADD = ../widget/libCw.a ../onigmo/libonigmo.a @FREETYPE_LIBS@ @X_LIBS@ -lX11 @X_EXTRA_LIBS@
 
+if BUILD_STATIC_SUBST
 # libstatic-c-subst.a is linked via -lstatic-c-subst (inside the --start-group),
 # so automake does not see it as a dependency.  Track it explicitly so editing
 # static-c-subst/dlopen.c etc. relinks the editors.
 EXTRA_cooledit_DEPENDENCIES = ../static-c-subst/libstatic-c-subst.a
 EXTRA_smalledit_DEPENDENCIES = ../static-c-subst/libstatic-c-subst.a
 EXTRA_coolman_DEPENDENCIES = ../static-c-subst/libstatic-c-subst.a
+endif
 
 datadir = $(prefix)/share
 localedir = $(datadir)/locale

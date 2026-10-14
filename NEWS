@@ -1,3 +1,7 @@
+Version 5.0.6
+
+    * Fixed broken Makefile.
+
 Version 5.0.5
 
     * Fix Linux static build on later distributions.

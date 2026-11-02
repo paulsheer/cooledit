@@ -511,8 +511,10 @@ static Window draw_file_browser (const char *identifier, Window parent, int x, i
         (CDrawTextInputP (catstrs (identifier, ".host", NULL), win, x, y2,
 		        FONT_MEAN_WIDTH * 24, AUTO_HEIGHT, 255, host))->position |= POSITION_BOTTOM;
         CGetHintPos (&x, 0);
-        (CDrawButton (catstrs (identifier, ".forget", NULL), win, x, y2,
+        (w = CDrawButton (catstrs (identifier, ".forget", NULL), win, x, y2,
                         AUTO_SIZE, _ (" Forget ")))->position |= POSITION_BOTTOM;
+        w->hotkey = 0;
+        w->options &= ~WIDGET_HOTKEY_ACTIVATES;
         CGetHintPos (&x, 0);
 /* Toolhint */
         CSetToolHint (catstrs (identifier, ".hstx", NULL), _("IP address of remote host running remotefs export tool, or " REMOTEFS_LOCAL));

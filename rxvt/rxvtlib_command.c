@@ -1573,7 +1573,7 @@ static void rxvtlib_process_x_event (rxvtlib * o, XEvent * ev)
         if (o->last_activity && o->cterminal_io.remotefs && o->life_cycle != LIFE_CYCLE_SUSPENDED) {
             time_t now;
             time (&now);
-            if (now - o->last_activity >= 25) {
+            if (now - o->last_activity >= 25 && !CIdent ("_inputdialog")) {
                 char ret[256], errmsg[CTERMINAL_ERR_MSG_LEN];
                 o->last_activity = now;
                 if ((*o->cterminal_io.remotefs->remotefs_ping) (o->cterminal_io.remotefs, "ping", ret, sizeof (ret), errmsg)) {

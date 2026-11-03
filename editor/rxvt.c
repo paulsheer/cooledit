@@ -22,7 +22,7 @@ struct rxvts {
     int killed;
 } *rxvt_list = 0;
 
-int rxvt_event (XEvent * xevent)
+static int rxvt_event_ (XEvent * xevent)
 {E_
     pid_t mine = 0;
     Window win;
@@ -103,6 +103,18 @@ int rxvt_event (XEvent * xevent)
 	prev = l;
     }
     return 0;
+}
+
+int rxvt_event (XEvent * xevent)
+{E_
+    static int entered = 0;
+    int r;
+    if (entered)
+        return 0;
+    entered++;
+    r = rxvt_event_ (xevent);
+    entered--;
+    return r;
 }
 
 int rxvt_have_pid (const char *host, pid_t pid)
